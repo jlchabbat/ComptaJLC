@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Présentation</title>
+<style>
+@page { size: A4; margin: 14mm; }
+body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
+.bandeau { background: #1f3864; color: #fff; padding: 8mm 9mm; border-radius: 3mm; margin-bottom: 5mm; }
+.bandeau h1 { margin: 0; font-size: 24pt; } .bandeau p { margin: 2mm 0 0; font-size: 11.5pt; color: #dfe7f5; }
+.bandeau a { color: #fff; }
+h2 { color: #1f3864; font-size: 14pt; border-bottom: 2px solid #1f3864; padding-bottom: 1mm; margin: 6mm 0 3mm; break-after: avoid; }
+ul, ol { padding-left: 6mm; margin: 1mm 0 3mm; } li { margin: 1mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 3mm; font-size: 10pt; }
+th, td { border: 1px solid #c9d3e3; padding: 1.8mm 2.2mm; text-align: left; vertical-align: top; }
+th { background: #1f3864; color: #fff; } tr { break-inside: avoid; }
+td:first-child { font-weight: 600; color: #1f3864; white-space: nowrap; }
+.chiffres { display: flex; gap: 3mm; margin: 3mm 0; }
+.chiffres div { flex: 1; border: 1px solid #c9d3e3; border-radius: 2mm; padding: 2.5mm 3mm; background: #f6f8fc; }
+.chiffres b { display: block; font-size: 12pt; white-space: nowrap; color: #1f3864; } .chiffres span { font-size: 8.5pt; color: #555; text-transform: uppercase; }
+figure { margin: 3mm 0; text-align: center; break-inside: avoid; }
+figure img { max-width: 100%; max-height: 95mm; border: 1px solid #c9d3e3; border-radius: 2mm; }
+figcaption { font-size: 8.5pt; color: #555; font-style: italic; }
+.deux { display: flex; gap: 4mm; } .deux figure { flex: 1; }
+.case { display: inline-block; width: 3.2mm; height: 3.2mm; border: 1px solid #333; margin-right: 2mm; vertical-align: -0.4mm; }
+ul.points { list-style: none; padding-left: 0; }
+.petit { font-size: 9pt; color: #555; }
+</style></head><body>
+<div class="bandeau"><h1>ComptaBB</h1>
+<p>La comptabilité de la Loge Bnei Brith, en ligne · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 26/09/2026</p></div>
+
+<p><b>ComptaBB est une application web qui tient la comptabilité en shekels de la Loge</b> : saisie guidée, fiches des bénévoles, tiers et membres,
+rapprochement bancaire, journaux, états annuels et clôture. Elle s'ouvre depuis un ordinateur, une tablette ou un téléphone, et remplace le classeur Excel.</p>
+<div class="chiffres"><div><span>Mouvements repris</span><b>421</b></div><div><span>Lignes d'écritures</span><b>1 544</b></div>
+<div><span>Débit = crédit</span><b>1 451 040,66 ₪</b></div><div><span>Tests automatiques</span><b>56</b></div></div>
+
+<h2>Ce que fait ComptaBB</h2>
+<p>Une seule base, partagée par tous, remplace le classeur et les fichiers envoyés par e-mail : chacun voit les mêmes chiffres à jour.</p>
+<ul>
+<li><b>Saisir sans être comptable</b> : on choisit un type d'opération (cotisation, don, facture, frais, virement, carte Isracard…) et l'application génère les écritures équilibrées ; écriture libre, modification ou annulation par écriture inverse restent possibles, avec motif et trace.</li>
+<li><b>Faire participer les bénévoles</b> : chacun note en ligne les recettes et dépenses de son activité ; le trésorier complète et reporte.</li>
+<li><b>Suivre les tiers</b> : membres, fournisseurs et autres, avec adresse ; import d'un fichier Tiers.xlsx ; solde dû, impayés, cotisations, relance, lettrage.</li>
+<li><b>Rapprocher la banque</b> : import du relevé Mizrahi (PDF en hébreu), pointage automatique, état de rapprochement.</li>
+<li><b>Tenir les journaux</b> : banque et caisse avec solde progressif, imprimables et exportables en Excel.</li>
+<li><b>Produire les états et clôturer</b> : compte de résultat, bilan, budget, comparaison avec l'année précédente, à-nouveaux, archive figée.</li>
+</ul>
+<div class="deux"><figure><img src="images/03_saisie.png"><figcaption>Saisie guidée : aperçu des écritures et contrôles.</figcaption></figure>
+<figure><img src="images/11_journal.png"><figcaption>Journal de banque avec solde progressif.</figcaption></figure></div>
+
+<h2>Qui fait quoi</h2>
+<table><tr><th>Rôle</th><th>Ce qu'il fait</th><th>Ce qu'il voit</th></tr>
+<tr><td>Trésorier</td><td>Saisie, corrections, codes, tiers, fiches, rapprochement, budget, clôture, utilisateurs, sauvegardes</td><td>Tout</td></tr>
+<tr><td>Bureau</td><td>Consultation seule</td><td>Tableau de bord, écritures, journaux, états, tiers, rapprochement</td></tr>
+<tr><td>Vérificateur</td><td>Consultation seule, contrôles, historique</td><td>Comme le bureau</td></tr>
+<tr><td>Bénévole</td><td>Note les lignes de ses fiches, crée des tiers provisoires, transmet</td><td>Seulement ses fiches, ni soldes ni écritures</td></tr></table>
+
+<h2>Fonctionnalités</h2>
+<p>Les pages sont rangées en sept menus ; dans toutes les listes, on cherche en tapant une partie du code ou du libellé, et les tableaux se trient d'un clic sur l'en-tête.</p>
+<table><tr><th>Menu</th><th>Ce qu'on y fait</th></tr>
+<tr><td>Saisie</td><td>Saisie guidée (aperçu et 11 contrôles), écriture libre, codes analytiques et nouveaux tiers, fiches bénévoles</td></tr>
+<tr><td>Tiers</td><td>Liste et fiches (adresse, CP, ville), import Tiers.xlsx, impayés et relances, cotisations et taux de recouvrement, lettrage, tiers provisoires</td></tr>
+<tr><td>Consulter</td><td>Tableau de bord, écritures, journaux de banque et de caisse, grand livre, balance, analytique</td></tr>
+<tr><td>Banque</td><td>Import du relevé, traductions, pointage automatique et manuel, écriture créée depuis le relevé, écart par mois</td></tr>
+<tr><td>Fin d'exercice</td><td>Compte de résultat, bilan, budget et réalisé, année N et N-1 ; clôture avec à-nouveaux et archive Excel</td></tr>
+<tr><td>Contrôle</td><td>État des règles comptables ; historique de toutes les actions (recherche, Excel)</td></tr>
+<tr><td>Administration</td><td>Référentiels et utilisateurs ; base de données : sauvegardes, restauration, remise à zéro et reprise du classeur</td></tr></table>
+<figure><img src="images/02_accueil_menu.png" style="max-height:80mm"><figcaption>Tableau de bord et menus.</figcaption></figure>
+
+<h2>Accès</h2>
+<ol>
+<li>Ouvrir <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> et se connecter avec son identifiant.</li>
+<li>Icône sur le Bureau : Edge › … › Applications › Installer ce site en tant qu'application ; Chrome › ⋮ › Caster, enregistrer et partager › Installer la page en tant qu'application.</li>
+<li>Les boutons A− A A+ en haut à droite règlent la taille des caractères, mémorisée sur chaque appareil.</li>
+<li>Un nouvel utilisateur reçoit son compte du trésorier (Fiches bénévoles › Nouveau bénévole, ou Administration › Référentiels › Utilisateurs).</li>
+</ol>
+<p>L'hébergement est en essai gratuit chez PythonAnywhere ; s'il convient, l'offre payante coûte environ 5 $ par mois, sans engagement.
+Les mises à jour se font en une commande, avec sauvegarde automatique et retour arrière possible (protocole PDF).</p>
+
+<h2>Garde-fous</h2>
+<ul>
+<li>Chaque mouvement est équilibré (débit = crédit) et chaque ligne porte soit un débit, soit un crédit.</li>
+<li>Comptes, journaux et codes doivent exister ; la date doit tomber dans l'exercice ouvert ; un exercice clôturé est verrouillé.</li>
+<li>Une correction exige un motif ; l'avant et l'après sont gardés ; une écriture d'un exercice clos s'annule par une écriture inverse.</li>
+<li>L'historique note qui a fait quoi et quand ; son effacement laisse une copie Excel et une trace.</li>
+<li>Connexion chiffrée (HTTPS), mot de passe par personne, droits selon le rôle.</li>
+<li>Sauvegardes à chaque mise à jour, chaque nuit et à la demande ; téléchargement mensuel conseillé ; archive Excel figée à chaque clôture.</li>
+</ul>
+
+<h2>Points en suspens</h2>
+<ul class="points">
+<li><span class="case"></span>Tester l'application avec le trésorier, le bureau et un bénévole, puis décider de garder l'hébergement.</li>
+<li><span class="case"></span>Activer la sauvegarde automatique de nuit (PythonAnywhere › Tasks).</li>
+<li><span class="case"></span>Importer le vrai relevé Mizrahi (tnuot.pdf) et vérifier la lecture.</li>
+<li><span class="case"></span>Importer les coordonnées des tiers (Tiers.xlsx) et la cotisation attendue des membres.</li>
+<li><span class="case"></span>Expliquer l'écart Banque 1 de 2 910,00 ₪ (Mvt 285 et 177, mis en attente).</li>
+<li><span class="case"></span>Solder le compte de virements internes 580000 (149 655,84 ₪).</li>
+<li><span class="case"></span>Vérifier les soldes d'ouverture de la caisse et de BIT (BIT créditeur de 1 590,50 ₪).</li>
+<li><span class="case"></span>Affecter le résultat de l'exercice court 2025 (+6 678,60 ₪), repris à la clôture 2026.</li>
+</ul>
+<p class="petit">Documents associés : mode d'emploi détaillé (PDF, 28 pages) · protocole de mise à jour (PDF).</p>
+</body></html>
