@@ -236,29 +236,155 @@ def cle(texte):
     return re.sub(r"[^a-z]", "", unicodedata.normalize("NFKD", texte or "").encode("ascii", "ignore").decode().lower())
 
 
-def importer_csv(rangees):
-    """Met à jour (ou crée) les fiches à partir des colonnes du modèle Imports/modeles/07_membres.csv
-    (Type, Adresse, Code postal et Ville sont facultatifs)."""
+COLONNES_TIERS = {
+    "compte": ["compte", "numero", "ncompte", "numerodecompte", "comptetiers"],
+    "type": ["type", "typedetiers", "categorie"],
+    "nom": ["nom", "raisonsociale", "nomouraisonsociale", "societe", "nomraisonsociale"],
+    "prenom": ["prenom"],
+    "adresse": ["adresse", "rue", "adresse1"],
+    "code_postal": ["codepostal", "cp", "zip"],
+    "ville": ["ville", "localite", "commune"],
+    "telephone": ["telephone", "tel", "portable", "mobile", "gsm"],
+    "email": ["email", "mail", "courriel", "adressemail", "adresseemail"],
+    "date_adhesion": ["datedadhesion", "dateadhesion", "adhesion"],
+    "statut": ["statut"],
+    "cotisation": ["cotisation", "cotisationannuelle", "cotisationattendue"],
+}
+ENTETES_MODELE = ["Compte", "Type", "Nom", "Prénom", "Adresse", "Code postal", "Ville", "Téléphone", "E-mail",
+                  "Date d'adhésion", "Statut", "Cotisation annuelle"]
+
+
+def _colonnes(entetes):
+    res = {}
+    for i, e in enumerate(entetes):
+        k = cle(str(e or ""))
+        for champ, noms in COLONNES_TIERS.items():
+            if k in noms and champ not in res:
+                res[champ] = i
+    return res
+
+
+@dataclass
+class RapportImport:
+    crees: list = field(default_factory=list)
+    mis_a_jour: list = field(default_factory=list)
+    erreurs: list = field(default_factory=list)
+
+
+@transaction.atomic
+def importer_tableau(rangees):
+    """Importe des tiers (Tiers.xlsx ou CSV). Une ligne = un tiers ; en-têtes reconnus sous plusieurs formes.
+
+    Compte présent : fiche de ce compte (compte créé s'il manque et que son préfixe correspond à un type).
+    Compte absent : tiers retrouvé par type + nom + prénom, sinon créé avec un compte proposé.
+    Une cellule vide ne remplace jamais une valeur déjà saisie ; rien n'est supprimé."""
     from .releves import date as lire_date, nombre
-    entetes, maj, inconnus = None, 0, []
-    for r in rangees:
-        if entetes is None:
-            entetes = [cle(c) for c in r]
+    rapport, cols, defaut = RapportImport(), None, TypeTiers.objects.filter(libelle="Membre").first()
+    for n, r in enumerate(rangees, 1):
+        r = list(r)
+        if cols is None:
+            c = _colonnes(r)
+            if "nom" in c or "compte" in c:
+                cols = c
             continue
-        v = dict(zip(entetes, r))
-        compte = Compte.objects.filter(numero=(v.get("compte") or "").strip()).first()
-        if not compte:
-            if (v.get("compte") or "").strip():
-                inconnus.append(v["compte"].strip())
+        val = lambda k: ("" if k not in cols or cols[k] >= len(r) or r[cols[k]] is None else r[cols[k]])  # noqa: E731
+        texte = lambda k: str(val(k)).strip()  # noqa: E731
+        numero, nom = texte("compte"), texte("nom")
+        if not numero and not nom:
             continue
-        statut = cle(v.get("statut"))
-        t = TypeTiers.objects.filter(libelle__iexact=(v.get("type") or "").strip()).first() or type_du_compte(compte.numero)
-        texte = lambda k: (v.get(k) or "").strip()  # noqa: E731
-        Membre.objects.update_or_create(compte=compte, defaults={
-            "type": t, "nom": texte("nom").upper() or compte.libelle, "prenom": texte("prenom"),
-            "adresse": texte("adresse"), "code_postal": texte("codepostal") or texte("cp"), "ville": texte("ville"),
-            "telephone": texte("telephone"), "email": texte("email"),
-            "date_adhesion": lire_date(v.get("datedadhesion")), "cotisation": nombre(v.get("cotisationannuelle")),
-            "statut": statut if statut in dict(Membre.STATUTS) else "actif"})
-        maj += 1
-    return maj, inconnus
+        numero = numero[:-2] if numero.endswith(".0") else numero          # nombre lu par Excel
+        t = None
+        if texte("type"):
+            t = next((x for x in TypeTiers.objects.all() if cle(x.libelle) == cle(texte("type"))), None)
+            if not t:
+                rapport.erreurs.append(f"Ligne {n} : type « {texte('type')} » inconnu (Référentiels › Types de tiers).")
+                continue
+        fiche = None
+        if numero:
+            compte = Compte.objects.filter(numero=numero).first()
+            t = t or type_du_compte(numero)
+            if not t or not numero.startswith(t.prefixe):
+                rapport.erreurs.append(f"Ligne {n} : le compte {numero} ne correspond à aucun type de tiers.")
+                continue
+            if not compte:
+                if not nom:
+                    rapport.erreurs.append(f"Ligne {n} : nom manquant pour créer le compte {numero}.")
+                    continue
+                modele = Compte.objects.filter(numero__startswith=t.prefixe, anal1__isnull=False).first()
+                compte = Compte.objects.create(numero=numero, libelle=f"{nom.upper()} {texte('prenom').upper()}".strip(),
+                                               lettrable=True, anal1=modele.anal1 if modele else None)
+            fiche = Membre.objects.filter(compte=compte).first()
+            nouveau = fiche is None
+            fiche = fiche or Membre(compte=compte, nom=(nom or compte.libelle).upper())
+        else:
+            t = t or defaut
+            fiche = Membre.objects.filter(type=t, nom__iexact=nom, prenom__iexact=texte("prenom")).first()
+            nouveau = fiche is None
+            if nouveau:
+                fiche = Membre.objects.get(compte=creer_tiers(t, nom, texte("prenom")))
+        fiche.type = fiche.type or t
+        for champ in ("prenom", "adresse", "code_postal", "ville", "telephone", "email"):
+            if texte(champ):
+                setattr(fiche, champ, texte(champ))
+        if nom:
+            fiche.nom = nom.upper()
+        if val("date_adhesion") != "":
+            fiche.date_adhesion = lire_date(val("date_adhesion")) or fiche.date_adhesion
+        if val("cotisation") != "":
+            fiche.cotisation = nombre(val("cotisation"))
+        if texte("statut") and cle(texte("statut")) in dict(Membre.STATUTS):
+            fiche.statut = cle(texte("statut"))
+        if texte("email") and "@" not in texte("email"):
+            rapport.erreurs.append(f"Ligne {n} : e-mail « {texte('email')} » ignoré.")
+            fiche.email = ""
+        fiche.save()
+        (rapport.crees if nouveau else rapport.mis_a_jour).append(f"{fiche.compte_id} {fiche}")
+    if cols is None:
+        rapport.erreurs.append("En-têtes non reconnus : une colonne « Nom » ou « Compte » est nécessaire.")
+    return rapport
+
+
+def lire_tableau(nom_fichier, contenu):
+    """Rangées d'un fichier .xlsx (première feuille contenant des en-têtes reconnus) ou .csv."""
+    import csv
+    import io
+    if nom_fichier.lower().endswith((".xlsx", ".xlsm")):
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(contenu), data_only=True, read_only=True)
+        for ws in wb.worksheets:
+            rangees = [list(r) for r in ws.iter_rows(values_only=True)]
+            if any(_colonnes(r).keys() & {"nom", "compte"} for r in rangees[:20]):
+                return rangees
+        return []
+    if nom_fichier.lower().endswith(".csv"):
+        s = contenu.decode("utf-8-sig", errors="replace")
+        return list(csv.reader(io.StringIO(s), delimiter=";" if s.count(";") >= s.count(",") else ","))
+    raise ValueError("Format non reconnu : fichier .xlsx ou .csv attendu.")
+
+
+def classeur_modele():
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Tiers"
+    ws.append(ENTETES_MODELE)
+    for c in ws[1]:
+        c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F3864")
+    ws.append(["", "Membre", "COHEN", "David", "12 rue Herzl", "4250000", "Netanya", "+972 50 000 0000", "david@example.org",
+               "01/09/2020", "actif", 500])
+    ws.append(["", "Fournisseur", "TRAITEUR EXEMPLE", "", "5 rue Allenby", "6100000", "Tel Aviv", "+972 3 000 0000",
+               "contact@example.org", "", "", ""])
+    for i, largeur in enumerate([14, 12, 24, 16, 28, 12, 16, 18, 26, 14, 12, 12], 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = largeur
+    ws.freeze_panes = "A2"
+    aide = wb.create_sheet("Mode d'emploi")
+    for ligne in ["Une ligne par tiers. Seule la colonne Nom est obligatoire (ou Compte pour mettre à jour un tiers existant).",
+                  "Compte vide : le compte est créé d'après le type et le nom (411COHEN001, 401TRAIT001…).",
+                  "Type : Membre, Fournisseur ou un autre type des Référentiels ; vide = Membre (ou type du compte).",
+                  "Un tiers déjà présent (même compte, ou même type + nom + prénom) est mis à jour ; une cellule vide ne remplace rien.",
+                  "Statut (membres) : actif, honoraire ou démissionnaire. Dates : jj/mm/aaaa. Montants : 500 ou 500,00.",
+                  "Supprimer les deux lignes d'exemple avant l'import."]:
+        aide.append([ligne])
+    aide.column_dimensions["A"].width = 120
+    return wb

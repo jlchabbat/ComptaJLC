@@ -1,6 +1,5 @@
 """Suivi des membres : liste, fiche (situation, historique, lettrage, relance), impayés, cotisations."""
 
-import csv
 import io
 from urllib.parse import quote
 
@@ -8,6 +7,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from . import membres as moteur
@@ -26,7 +26,7 @@ class MembreFicheForm(forms.ModelForm):
 
 
 class ImportMembresForm(forms.Form):
-    fichier = forms.FileField(label="Fichier des membres (CSV, modèle 07_membres.csv)")
+    fichier = forms.FileField(label="Fichier des tiers (Tiers.xlsx ou CSV)")
 
 
 @login_required
@@ -42,11 +42,19 @@ def liste(request):
             messages.success(request, f"{n} lettrage(s) automatique(s).")
             return redirect("membres")
         if form.is_valid():
-            s = form.cleaned_data["fichier"].read().decode("utf-8-sig", errors="replace")
-            maj, inconnus = moteur.importer_csv(list(csv.reader(io.StringIO(s), delimiter=";" if s.count(";") >= s.count(",") else ",")))
-            Modification.objects.create(auteur=request.user.get_username(), lot="Membres", action="Import membres",
-                                        objet=form.cleaned_data["fichier"].name[:200], apres=f"{maj} fiche(s)")
-            messages.success(request, f"{maj} fiche(s) mise(s) à jour." + (f" Comptes inconnus ignorés : {', '.join(inconnus[:10])}." if inconnus else ""))
+            f = form.cleaned_data["fichier"]
+            try:
+                r = moteur.importer_tableau(moteur.lire_tableau(f.name, f.read()))
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect("membres")
+            Modification.objects.create(auteur=request.user.get_username(), lot="Tiers", action="Import tiers", objet=f.name[:200],
+                                        apres=f"{len(r.crees)} créé(s), {len(r.mis_a_jour)} mis à jour, {len(r.erreurs)} erreur(s)")
+            messages.success(request, f"Import de {f.name} : {len(r.crees)} tiers créé(s), {len(r.mis_a_jour)} mis à jour.")
+            if r.crees:
+                messages.info(request, "Créés : " + " · ".join(r.crees[:30]) + (" …" if len(r.crees) > 30 else ""))
+            for e in r.erreurs[:20]:
+                messages.error(request, e)
             return redirect("membres")
     q, statut, type_ = request.GET.get("q", "").strip(), request.GET.get("statut", ""), request.GET.get("type", "")
     qs = Membre.objects.select_related("compte", "type")
@@ -127,3 +135,13 @@ def cotisations(request):
     lignes, total = moteur.cotisations(ex) if ex else ([], {})
     return render(request, "compta/cotisations.html", {"exercice": ex, "exercices": Exercice.objects.order_by("-debut"),
                                                         "lignes": lignes, "total": total})
+
+
+@login_required
+@voir
+def modele_tiers(request):
+    tampon = io.BytesIO()
+    moteur.classeur_modele().save(tampon)
+    return HttpResponse(tampon.getvalue(), headers={
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": 'attachment; filename="Tiers.xlsx"'})

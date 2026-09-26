@@ -10,9 +10,11 @@
 <td>{{ m.ville }}</td><td>{{ m.telephone }}</td><td>{% if m.email %}<a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}</td><td class="n">{{ m.cotisation|zero_vide }}</td>
 <td class="n {% if solde > 0 %}neg{% endif %}">{{ solde|zero_vide }}</td></tr>{% empty %}<tr><td colspan="10">Aucun tiers.</td></tr>{% endfor %}</table>
 {% if peut %}<div class="deux" style="margin-top:16px">
-<form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer les fiches</h2>
-<p class="aide">Colonnes du modèle Imports/modeles/07_membres.csv : Compte ; Type ; Nom ; Prénom ; Adresse ; Code postal ; Ville ; Téléphone ;
-E-mail ; Date d'adhésion ; Statut ; Cotisation annuelle (Type, Adresse, Code postal et Ville facultatifs). Les fiches existantes sont mises à jour.</p>
+<form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer des tiers (Tiers.xlsx)</h2>
+<p class="aide">Un classeur Excel (ou CSV), une ligne par tiers. Colonnes reconnues : Compte, Type, Nom, Prénom, Adresse, Code postal (ou CP),
+Ville, Téléphone (ou Tél), E-mail (ou Mail), Date d'adhésion, Statut, Cotisation. Seul le Nom est obligatoire ; sans compte, il est créé
+d'après le type (Membre par défaut). Un tiers déjà présent est mis à jour ; une cellule vide ne remplace rien ; rien n'est supprimé.
+<a href="{% url 'modele_tiers' %}">Télécharger le modèle Tiers.xlsx</a></p>
 <div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div><div class="boutons"><button class="principal">Importer</button></div></form>
 <form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Lettrage automatique</h2>
 <p class="aide">Pour tous les tiers : facture et règlement de même montant dans une même opération, puis facture et premier règlement

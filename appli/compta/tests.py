@@ -798,10 +798,10 @@ class Membres(TestCase):
     def test_cotisations_et_import(self):
         self.assertEqual(Reglage.lire("compte_cotisations"), "700000")      # créé par l'initialisation
         ex = Exercice.objects.get(libelle="2026")
-        n, inconnus = mbr.importer_csv([["Compte", "Nom", "Prénom", "Téléphone", "E-mail", "Date d'adhésion", "Statut", "Cotisation annuelle"],
-                                        ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org", "01/09/2020", "honoraire", "500,00"],
-                                        ["411XXX", "Inconnu", "", "", "", "", "actif", ""]])
-        self.assertEqual((n, inconnus), (1, ["411XXX"]))
+        r = mbr.importer_tableau([["Compte", "Nom", "Prénom", "Téléphone", "E-mail", "Date d'adhésion", "Statut", "Cotisation annuelle"],
+                                  ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org", "01/09/2020", "honoraire", "500,00"],
+                                  ["999XXX", "Inconnu", "", "", "", "", "actif", ""]])
+        self.assertEqual((len(r.crees), len(r.mis_a_jour), len(r.erreurs)), (0, 1, 1))
         m = Membre.objects.get(compte_id="411TAIEB001")
         self.assertEqual((m.nom, m.statut, m.cotisation, m.date_adhesion), ("TAIEB", "honoraire", D(500), dt.date(2020, 9, 1)))
         lignes, tot = mbr.cotisations(ex)
@@ -926,3 +926,56 @@ class EcransCorrections(TestCase):
         self.client.force_login(b)
         self.assertNotContains(self.client.get("/mouvement/500/"), "Modifier")
         self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 403)
+
+
+class ImportTiers(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        mbr.creer_manquants()
+        Membre.objects.filter(compte_id="411TAIEB001").update(telephone="050-111", ville="Netanya")
+
+    def classeur(self, lignes):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Feuil1"
+        ws.append(["Liste des tiers 2026"])                      # une ligne de titre avant les en-têtes
+        ws.append(["Nom", "Prénom", "Type", "Adresse", "CP", "Ville", "Tél", "Mail", "Cotisation"])
+        for l in lignes:
+            ws.append(l)
+        tampon = __import__("io").BytesIO()
+        wb.save(tampon)
+        return tampon.getvalue()
+
+    def test_import_xlsx(self):
+        contenu = self.classeur([
+            ["Taieb", "Jeanne", "Membre", "3 rue Weizmann", 4250000, None, None, "jeanne@example.org", 450],   # mise à jour
+            ["Levy", "Rachel", None, None, None, "Haïfa", "054-222", None, None],                                # nouveau membre
+            ["Partner", None, "Fournisseur", "8 Ha-Barzel", "6971005", "Tel Aviv", None, "pas-un-mail", None],   # nouveau fournisseur
+            ["Inconnu", None, "Sponsor", None, None, None, None, None, None],                                  # type inconnu
+            [None, None, None, None, None, None, None, None, None]])
+        r = mbr.importer_tableau(mbr.lire_tableau("Tiers.xlsx", contenu))
+        self.assertEqual((len(r.crees), len(r.mis_a_jour), len(r.erreurs)), (2, 1, 2))
+        t = Membre.objects.get(compte_id="411TAIEB001")
+        self.assertEqual((t.adresse, t.code_postal, t.ville, t.telephone, t.email, t.cotisation),
+                         ("3 rue Weizmann", "4250000", "Netanya", "050-111", "jeanne@example.org", D(450)))   # cellules vides : rien d'effacé
+        levy = Membre.objects.get(nom="LEVY")
+        self.assertEqual((levy.compte_id, levy.type.libelle, levy.ville), ("411LEVY001", "Membre", "Haïfa"))
+        p = Membre.objects.get(nom="PARTNER")
+        self.assertEqual((p.compte_id, p.email, p.code_postal), ("401PARTN001", "", "6971005"))
+        # réimport : plus de création, que des mises à jour
+        r = mbr.importer_tableau(mbr.lire_tableau("Tiers.xlsx", contenu))
+        self.assertEqual((len(r.crees), len(r.mis_a_jour)), (0, 3))
+
+    def test_ecran_et_modele(self):
+        call_command("migrate", verbosity=0)
+        u = User.objects.create_user("t")
+        u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(u)
+        r = self.client.get("/membres/modele-tiers.xlsx")
+        self.assertEqual(r["Content-Disposition"], 'attachment; filename="Tiers.xlsx"')
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        modele = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
+        self.assertEqual(modele["Tiers"]["C1"].value, "Nom")
+        self.client.post("/membres/", {"fichier": SimpleUploadedFile("Tiers.xlsx", r.content)})
+        self.assertTrue(Membre.objects.filter(compte_id="411COHEN001", ville="Netanya").exists())
+        self.assertTrue(Membre.objects.filter(compte__numero__startswith="401TRAIT", type__libelle="Fournisseur").exists())
