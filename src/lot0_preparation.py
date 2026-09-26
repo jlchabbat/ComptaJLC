@@ -131,9 +131,9 @@ class Chaines:
 
     def enregistrer(self):
         s = self.p.lire("xl/sharedStrings.xml")
-        m = re.search(r'<sst [^>]*count="(\d+)" uniqueCount="\d+">', s)
-        tete = s[: m.start()] + m.group(0).replace(
-            f'count="{m.group(1)}"', f'count="{int(m.group(1)) + self.ajouts}"')
+        m = re.search(r'<sst [^>]*>', s)
+        n = re.search(r' count="(\d+)"', m.group(0))
+        tete = s[: m.start()] + (m.group(0).replace(n.group(0), f' count="{int(n.group(1)) + self.ajouts}"') if n else m.group(0))
         tete = re.sub(r'uniqueCount="\d+"', f'uniqueCount="{len(self.si)}"', tete)
         self.p.ecrire("xl/sharedStrings.xml", tete + "".join(self.si) + "</sst>")
 
@@ -223,7 +223,8 @@ def feuilles(p):
     rels = p.lire("xl/_rels/workbook.xml.rels")
     cibles = dict(re.findall(r'Id="(rId\d+)"[^>]*Target="([^"]+)"', rels))
     cibles.update({a: b for b, a in re.findall(r'Target="([^"]+)"[^>]*Id="(rId\d+)"', rels)})
-    return {n: "xl/" + cibles[r] for n, r in re.findall(r'<sheet name="([^"]+)" sheetId="\d+" r:id="(rId\d+)"/>', wb)}
+    chemin = lambda c: c[1:] if c.startswith("/") else "xl/" + c
+    return {n: chemin(cibles[r]) for n, r in re.findall(r'<sheet name="([^"]+)"[^>]*? r:id="(rId\d+)"\s*/>', wb)}
 
 
 def tables(p):

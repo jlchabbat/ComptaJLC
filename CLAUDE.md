@@ -21,9 +21,15 @@ ComptaBB » du classeur fait foi).
 - `src/lot1_saisie.py` : onglets Saisie, Codes, Modèles (appliqué après le Lot 0).
   Paramètres de saisie dans T_ModelesOperation / T_Schemas / T_Paiements /
   T_TypesTiers ; calculs intermédiaires nommés `SA_*` (Saisie!Q:R masquées).
+- `src/lot1_distance.py` : onglet Transmission (T_Recu), Libellé Axe1 du plan,
+  protection sans mot de passe des onglets de consultation (pas des onglets
+  dont les tables s'agrandissent). `src/classeur_saisie.py` : classeur du
+  saisisseur à distance (T_Envoi, référentiels en valeurs, sans grand livre).
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
 - `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
-  (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas).
+  (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
+  AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour
+  la saisie à distance.
 - `Imports/` : modèles (`modeles/`, anonymisés, versionnés) et exports de
   reprise (`reprise/`, hors Git).
 - État détaillé du classeur : `docs/inventaire.md`. Plan : `docs/plan-lots.md`.

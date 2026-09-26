@@ -73,9 +73,30 @@ libellé et montant).
 5. Onglet **Codes** : vérifier que la liste des tiers de Saisie et le code
    proposé (bloc A) s'affichent.
 
-## Reste du Lot 1 (2e partie)
+## 2e partie — saisie à distance, libellés, protection
 
-- Classeur de saisie externe `ComptaBB_Saisie.xlsx` et zone
-  « Transmission » du classeur maître (accès à distance, Q6).
-- Colonnes « Libellé Axe1 / Axe2 » dans les vues qui n'en ont pas encore.
-- Protection des onglets de référence et des formules (sans mot de passe).
+Produite par `python src/lot1_distance.py lot1.xlsm ComptaBB.xlsm`, puis
+`python src/classeur_saisie.py ComptaBB.xlsm ComptaBB_Saisie.xlsx`.
+
+| Élément | Rôle |
+|---|---|
+| **ComptaBB_Saisie.xlsx** | Classeur léger pour un bénévole : l'onglet Saisie du maître (mêmes contrôles), les modèles, les référentiels en valeurs, **sans grand livre**. Les opérations s'accumulent dans l'onglet Envoi (table T_Envoi, Mvt numérotés à partir de 1). À régénérer quand un membre ou un code est ajouté au maître. |
+| **Onglet Transmission** (maître) | Le trésorier colle en A7 les lignes de T_Envoi. Chaque ligne est contrôlée : date, journal, compte, Anal2, débit ou crédit, Mvt équilibré, déjà dans Écritures. Les Mvt et pièces reçoivent leur numéro définitif, et les lignes à reporter s'affichent en vert. La ligne de Journal « Transmission » est préparée. |
+| **Libellé Axe1** | Nouvelle colonne calculée de T_PlanComptable ; aperçu de Saisie complété. |
+| **Protection** | 14 onglets de consultation et de saisie protégés **sans mot de passe** (Révision › Ôter la protection) : seules les cases jaunes et le solde d'ouverture de Banque1 restent modifiables. Écritures, référentiels, Paramètres, Modèles, Journal, Transmission et ImportBanque ne sont pas protégés : leurs tables doivent pouvoir s'agrandir, et la requête se rafraîchir. |
+
+Circuit : le bénévole saisit dans ComptaBB_Saisie.xlsx (dossier OneDrive
+Transmissions, droit « Peut modifier ») et colle ses lignes dans Envoi. Le
+trésorier copie les lignes de T_Envoi, les colle dans Transmission, puis les
+reporte sous Écritures, vide T_Recu et remet T_Envoi à zéro.
+
+Vérifications :
+- structure OK pour les deux classeurs ;
+- `tests/recette_lot1_distance.py` : 4 cas sur 4 conformes par LibreOffice
+  (cotisation saisie à distance → Mvt 1 ; lignes reçues renumérotées 422 et
+  423, pièces 833 et 834 ; Mvt déséquilibré et doublon signalés) ;
+- les 15 scénarios de saisie restent conformes.
+
+Recette dans Excel : ouvrir `ComptaBB_Saisie.xlsx`, saisir une opération, la
+coller dans Envoi, puis faire le circuit complet dans le maître. Vérifier
+aussi qu'on ne peut modifier que les cases jaunes des onglets protégés.

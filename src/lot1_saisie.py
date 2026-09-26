@@ -426,7 +426,7 @@ def onglet_saisie(cl):
     part = cl.nouvel_onglet("Saisie", "Accueil",
                             [(1, 1, 2, 0), (2, 2, 30, 0), (3, 3, 32, 0), (4, 4, 11, 0), (5, 5, 8, 0), (6, 6, 12, 0),
                              (7, 7, 22, 0), (8, 8, 40, 0), (9, 10, 11, 0), (11, 11, 7, 0), (12, 12, 8, 0), (13, 13, 9, 0),
-                             (14, 14, 5, 0), (15, 15, 22, 0), (16, 16, 3, 0), (17, 23, 16, 1), (24, 25, 34, 1)],
+                             (14, 14, 5, 0), (15, 16, 22, 0), (17, 23, 16, 1), (24, 25, 34, 1)],
                             vue='<selection activeCell="C4" sqref="C4"/>', cf=cf, dv=dv,
                             liens='<hyperlink ref="H1" location="\'Accueil\'!A1" tooltip="Retour au menu" display="← Accueil"/>')
     fe = Feuille(cl.p, part)
@@ -484,7 +484,7 @@ def onglet_saisie(cl):
     # 3. aperçu
     fe.poser(f"B{L_APERCU - 2}", c_texte(f"B{L_APERCU - 2}", ch, "3. Écritures générées", S_SECTION))
     entetes = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Intitulé", "Libellé", "Débit", "Crédit", "Solde", "Anal1", "Anal2", "Let",
-               "Libellé Axe2"]
+               "Libellé Axe2", "Libellé Axe1"]
     for j, h in enumerate(entetes):
         ref = f"{lettre(2 + j)}{L_APERCU - 1}"
         fe.poser(ref, c_texte(ref, ch, h, S_ENTETE))
@@ -517,6 +517,7 @@ def onglet_saisie(cl):
             "L": (f'IF({g},"",IFERROR(INDEX(T_PlanComptable[Axe 1 (Anal1)],MATCH($F{r},T_PlanComptable[Compte],0)),""))', None, True),
             "M": (f'IF({g},"",$C$10)', None, True),
             "O": (f'IF({g},"",IFERROR(INDEX(T_Axe2[Libellé],MATCH($M{r},T_Axe2[Code],0)),"Code introuvable"))', None, True),
+            "P": (f'IF({g},"",IF($L{r}="","",IFERROR(INDEX(T_Axe1[Libellé],MATCH($L{r},T_Axe1[Code],0)),"Code introuvable")))', None, True),
         }
         for c, (f_, s, texte) in cellules.items():
             fe.poser(f"{c}{r}", c_f(f"{c}{r}", f_, s, texte=texte))
@@ -525,9 +526,9 @@ def onglet_saisie(cl):
     fe.poser(f"B{L_ZONE - 3}", c_texte(f"B{L_ZONE - 3}", ch, "4. Lignes à reporter dans Écritures", S_SECTION))
     fe.poser(f"B{L_ZONE - 2}", c_f(f"B{L_ZONE - 2}",
              f'IF(SA_OK,"Sélectionner B{L_ZONE}:N"&({L_ZONE - 1}+SA_NbLignes)&", Copier ; dans Écritures, cliquer la cellule A"'
-             '&(ROWS(T_Ecritures[Date])+2)&" (première ligne vide sous la table) ; Collage spécial › Valeurs, en cochant « Blancs non compris ».",'
+             '&(ROWS(T_Ecritures[Date])+2-(COUNT(T_Ecritures[Date])=0))&" (première ligne vide sous la table) ; Collage spécial › Valeurs, en cochant « Blancs non compris ».",'
              '"Rien à reporter tant que tous les contrôles ne sont pas OK.")', S_GRAS))
-    fe.poser(f"H{L_ZONE - 3}", c_f(f"H{L_ZONE - 3}", 'HYPERLINK("#\'Écritures\'!A"&(ROWS(T_Ecritures[Date])+2),"→ Aller à la première ligne vide d\'Écritures")', S_LIEN))
+    fe.poser(f"H{L_ZONE - 3}", c_f(f"H{L_ZONE - 3}", 'HYPERLINK("#\'Écritures\'!A"&(ROWS(T_Ecritures[Date])+2-(COUNT(T_Ecritures[Date])=0)),"→ Aller à la première ligne vide d\'Écritures")', S_LIEN))
     for j, h in enumerate(entetes[:13]):
         ref = f"{lettre(2 + j)}{L_ZONE - 1}"
         fe.poser(ref, c_texte(ref, ch, {"Intitulé": "(Intitulé : calculé)", "Anal1": "(Anal1 : calculé)", "Let": "(Let : vide)"}.get(h, h), S_ENTETE))

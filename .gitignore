@@ -28,3 +28,6 @@ __pycache__/
 
 # Relevés bancaires téléchargés (données bancaires)
 Releves/
+
+# Classeur de saisie généré (référentiels : noms des membres)
+*_Saisie.xlsx
