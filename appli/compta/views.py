@@ -82,7 +82,7 @@ def ecritures(request):
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
     return render(request, "compta/ecritures.html", {
         "page": page, "filtres": f, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
-        "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2),
+        "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2), "comptes": Compte.objects.all(),
     })
 
 
@@ -148,3 +148,109 @@ def controles(request):
 @consulter
 def modifications(request):
     return render(request, "compta/modifications.html", {"page": Paginator(Modification.objects.all(), 100).get_page(request.GET.get("page"))})
+
+
+# ---------------------------------------------------------------- saisie guidée et codes (W1)
+
+from django.contrib import messages  # noqa: E402
+from django.db import transaction  # noqa: E402
+from django.shortcuts import redirect  # noqa: E402
+
+from . import saisie as moteur  # noqa: E402
+from .forms import CodeForm, MembreForm, SaisieForm, StatutForm  # noqa: E402
+from .models import ModeleOperation, Prefixe, TypeTiers  # noqa: E402
+
+
+@login_required
+@permission_required("compta.add_mouvement", raise_exception=True)
+def saisie(request):
+    form = SaisieForm(request.POST or None, initial={"date": dt.date.today()})
+    resultat = op = None
+    if request.method == "POST" and form.is_valid():
+        c = form.cleaned_data
+        op = moteur.Operation(date=c["date"], modele=c["modele"], tiers=c["tiers"], montant=c["montant"], paiement=c["paiement"],
+                              vers=c["vers"], anal2=c["anal2"], compte=c["compte"], remboursement=c["remboursement"],
+                              libelle=c["libelle"])
+        resultat = moteur.controler(op)
+        doublon_seul = list(resultat.erreurs) == ["Déjà enregistrée ?"] and c["forcer"]
+        if "enregistrer" in request.POST and (resultat.ok or doublon_seul):
+            crees = moteur.enregistrer(op, request.user, forcer_doublon=doublon_seul)
+            messages.success(request, "Enregistré : " + ", ".join(f"Mvt {m.numero}" for m in crees) + f" · {resultat.libelle}")
+            return redirect("mouvement", crees[0].numero)
+    numero, piece = Mouvement.prochain_numero(), Mouvement.prochaine_piece()
+    modeles = {m.pk: {"aide": m.aide, "prefixe": m.tiers.prefixe if m.tiers else "", "vi": m.schema == "VI"}
+               for m in ModeleOperation.objects.select_related("tiers")}
+    return render(request, "compta/saisie.html", {"form": form, "resultat": resultat, "numero": numero, "piece": piece,
+                                                  "modeles": modeles})
+
+
+def _journaliser(request, action, objet, avant="", apres=""):
+    Modification.objects.create(auteur=request.user.get_username(), action=action, objet=objet, avant=avant, apres=apres)
+
+
+def _cle_nom(nom):
+    import unicodedata
+    s = unicodedata.normalize("NFKD", nom.upper())
+    return "".join(ch for ch in s if ch.isalpha() and ord(ch) < 128)[:5]
+
+
+def compte_membre_propose(nom):
+    t = TypeTiers.objects.filter(libelle="Membre").first()
+    prefixe = (t.prefixe if t else "411") + _cle_nom(nom)
+    rang = 1
+    while Compte.objects.filter(numero=f"{prefixe}{rang:03d}").exists():
+        rang += 1
+    return f"{prefixe}{rang:03d}"
+
+
+@login_required
+@permission_required("compta.add_codeanalytique", raise_exception=True)
+def codes(request):
+    code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code")
+    membre_form = MembreForm(request.POST if "creer_membre" in request.POST else None, prefix="membre")
+    statut_form = StatutForm(request.POST if "changer_statut" in request.POST else None, prefix="statut")
+    if request.method == "POST":
+        with transaction.atomic():
+            if "creer_code" in request.POST and code_form.is_valid():
+                c = code_form.cleaned_data
+                p, lib = c["prefixe"], c["libelle"].strip().upper()
+                if CodeAnalytique.objects.filter(axe=p.axe, libelle=lib).exists():
+                    code_form.add_error("libelle", "Ce libellé existe déjà dans cet axe.")
+                else:
+                    nouveau = CodeAnalytique.objects.create(code=p.code_suivant(), axe=p.axe, libelle=lib,
+                                                            statut=c["statut"] if p.axe == 2 else 1)
+                    _journaliser(request, "Création", f"code axe {p.axe} {nouveau.code}", apres=lib)
+                    messages.success(request, f"Code {nouveau.code} créé : {lib}.")
+                    return redirect("codes")
+            if "creer_membre" in request.POST and membre_form.is_valid():
+                c = membre_form.cleaned_data
+                libelle = f"{c['nom'].strip().upper()} {c['prenom'].strip().upper()}".strip()
+                existant = Compte.objects.filter(libelle=libelle).first()
+                if existant:
+                    membre_form.add_error("nom", f"Un compte existe déjà à ce nom : {existant.numero}.")
+                else:
+                    t = TypeTiers.objects.filter(libelle="Membre").first()
+                    modele = Compte.objects.filter(numero__startswith=t.prefixe if t else "411", anal1__isnull=False).first()
+                    compte = Compte.objects.create(numero=compte_membre_propose(c["nom"]), libelle=libelle, lettrable=True,
+                                                   anal1=modele.anal1 if modele else None)
+                    _journaliser(request, "Création", f"compte {compte.numero}", apres=libelle)
+                    messages.success(request, f"Membre créé : {compte.numero} – {libelle}.")
+                    return redirect("codes")
+            if "changer_statut" in request.POST and statut_form.is_valid():
+                c = statut_form.cleaned_data
+                code, nouveau = c["code"], c["statut"]
+                utilise = code.lignes.count()
+                if nouveau == code.statut:
+                    statut_form.add_error("statut", "C'est déjà le statut de ce code.")
+                elif utilise and not c["confirmation"]:
+                    statut_form.add_error("confirmation", f"Code utilisé dans {utilise} ligne(s) : cocher la confirmation.")
+                else:
+                    avant = code.get_statut_display()
+                    code.statut = nouveau
+                    code.save()
+                    _journaliser(request, "Statut", f"code {code.code}", avant=avant, apres=code.get_statut_display())
+                    messages.success(request, f"{code.code} : {avant} → {code.get_statut_display()}.")
+                    return redirect("codes")
+    prefixes = [(p, p.code_suivant()) for p in Prefixe.objects.all()]
+    return render(request, "compta/codes.html", {"code_form": code_form, "membre_form": membre_form, "statut_form": statut_form,
+                                                 "prefixes": prefixes})

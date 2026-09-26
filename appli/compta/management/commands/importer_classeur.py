@@ -65,7 +65,9 @@ class Command(BaseCommand):
         if Mouvement.objects.exists() and not remplacer:
             raise CommandError("La base contient déjà des écritures : relancer avec --remplacer pour les effacer.")
         if remplacer:
-            for m in (Ligne, Mouvement, Modification, Journal, Compte, Prefixe, CodeAnalytique, Exercice, Reglage):
+            from compta.models import LigneSchema, ModeleOperation, MoyenPaiement, TypeTiers
+            for m in (Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
+                      Prefixe, CodeAnalytique, Exercice, Reglage):
                 m.objects.all().delete()
         wb = openpyxl.load_workbook(classeur, data_only=True)
         t = tables(wb)
@@ -127,6 +129,9 @@ class Command(BaseCommand):
         Modification.objects.create(auteur="Reprise", lot="Appli W0", action="Reprise",
                                     objet=f"classeur {classeur.rsplit('/', 1)[-1]}",
                                     apres=f"{len(par_mvt)} mouvements, {len(lignes)} lignes")
+
+        from compta.saisie import initialiser_parametres
+        initialiser_parametres()
 
         # vérification
         d_x = sum(montant(r["Débit"]) for r in lignes)

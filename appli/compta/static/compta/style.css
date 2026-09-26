@@ -34,3 +34,20 @@ button.principal { background: var(--bleu); color: #fff; border-color: var(--ble
 .connexion input { width: 100%; }
 .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 800px) { .deux { grid-template-columns: 1fr; } }
+.message.success { background: var(--okf); color: var(--ok); border-color: #b6d7a8; }
+.formulaire { display: grid; grid-template-columns: 260px 1fr; gap: 8px 16px; align-items: center; }
+.formulaire label { font-weight: 600; }
+.formulaire input:not([type=checkbox]), .formulaire select { width: 100%; max-width: 460px; background: #fff2cc; color: #0000cc; }
+.aide { color: #666; font-size: 12px; }
+.erreurs li { color: var(--ko); }
+.boutons { display: flex; gap: 8px; margin-top: 16px; }
+.liste-cherchable { position: relative; width: 100%; max-width: 460px; }
+form.filtres .liste-cherchable { min-width: 260px; }
+.liste-cherchable input { width: 100%; }
+.liste-cherchable ul { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 0; list-style: none;
+  max-height: 320px; overflow-y: auto; background: #fff; border: 1px solid #b9c0cc; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.liste-cherchable li { padding: 5px 8px; cursor: pointer; color: #222; font-weight: normal; }
+.liste-cherchable li.actif, .liste-cherchable li:hover { background: #ddebf7; }
+.liste-cherchable li.choisi { font-weight: 600; }
+.liste-cherchable li.vide { color: #888; cursor: default; }
+.apercu td { font-variant-numeric: tabular-nums; }

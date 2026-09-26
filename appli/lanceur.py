@@ -42,6 +42,8 @@ def main():
             chemin = input("Classeur ComptaBB.xlsm à reprendre (vide pour passer) : ").strip().strip('"')
             if chemin:
                 call_command("importer_classeur", chemin)
+    from compta.saisie import initialiser_parametres
+    initialiser_parametres()   # paramètres de saisie manquants (idempotent)
 
     from waitress import serve
     from comptabb.wsgi import application

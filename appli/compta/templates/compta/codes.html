@@ -1,0 +1,21 @@
+{% extends "compta/base.html" %}{% block titre %}Codes{% endblock %}{% block contenu %}
+<h1>Codes analytiques et membres</h1>
+<div class="deux">
+<form method="post" class="carte">{% csrf_token %}<h2>Nouveau code analytique</h2>
+<p class="aide">Choisissez le préfixe : l'application propose le code suivant ; vous ne saisissez que le libellé.</p>
+<div class="formulaire">{% for f in code_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="creer_code" value="1">Créer le code</button></div></form>
+
+<form method="post" class="carte">{% csrf_token %}<h2>Nouveau membre</h2>
+<p class="aide">Le compte est proposé à partir des 5 premières lettres du nom (411NOMXX001…).</p>
+<div class="formulaire">{% for f in membre_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="creer_membre" value="1">Créer le membre</button></div></form>
+
+<form method="post" class="carte">{% csrf_token %}<h2>Statut d'un code (axe 2)</h2>
+<div class="formulaire">{% for f in statut_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="changer_statut" value="1">Changer le statut</button></div></form>
+
+<div class="carte"><h2>Préfixes et prochain code</h2>
+<table><tr><th>Préfixe</th><th>Axe</th><th>Libellé</th><th>Prochain code</th></tr>
+{% for p, suivant in prefixes %}<tr><td>{{ p.prefixe }}</td><td>{{ p.axe }}</td><td>{{ p.libelle }}</td><td>{{ suivant }}</td></tr>{% endfor %}</table></div>
+</div>{% endblock %}

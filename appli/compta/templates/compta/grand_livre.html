@@ -1,6 +1,6 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Grand livre{% endblock %}{% block contenu %}
 <h1>Grand livre</h1>
-<form class="filtres" method="get"><label>Compte <select name="compte">{% for c in comptes %}<option value="{{ c.numero }}" {% if compte.numero == c.numero %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+<form class="filtres" method="get"><label>Compte <select name="compte" data-cherchable>{% for c in comptes %}<option value="{{ c.numero }}" {% if compte.numero == c.numero %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label><button class="principal">Afficher</button></form>
 {% if compte %}<table><tr><th>Date</th><th>Jnl</th><th>Mvt</th><th>Libellé</th><th>Axe 2</th><th class="n">Débit</th><th class="n">Crédit</th><th class="n">Solde</th></tr>
 <tr><td colspan="7">Solde au {{ debut|date:"d/m/Y" }}</td><td class="n">{{ ouverture|shekel }}</td></tr>

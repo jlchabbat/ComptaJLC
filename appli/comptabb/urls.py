@@ -16,6 +16,8 @@ urlpatterns = [
     path("analytique/", views.analytique, name="analytique"),
     path("controles/", views.controles, name="controles"),
     path("modifications/", views.modifications, name="modifications"),
+    path("saisie/", views.saisie, name="saisie"),
+    path("codes/", views.codes, name="codes"),
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
     path("admin/", admin.site.urls),

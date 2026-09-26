@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Modification, Mouvement, Prefixe, Reglage
+from .models import (
+    CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneSchema, Modification, ModeleOperation, Mouvement, MoyenPaiement, Prefixe,
+    Reglage, TypeTiers,
+)
 
 
 @admin.register(CodeAnalytique)
@@ -20,11 +23,14 @@ class CompteAdmin(admin.ModelAdmin):
     list_display = ("numero", "libelle", "anal1", "lettrable", "actif")
     list_filter = ("anal1", "actif")
     search_fields = ("numero", "libelle")
+    autocomplete_fields = ("anal1",)
 
 
 @admin.register(Journal)
 class JournalAdmin(admin.ModelAdmin):
     list_display = ("code", "intitule", "type", "compte", "actif")
+    search_fields = ("code", "intitule")
+    autocomplete_fields = ("compte",)
 
 
 @admin.register(Exercice)
@@ -40,7 +46,7 @@ class ReglageAdmin(admin.ModelAdmin):
 class LigneInline(admin.TabularInline):
     model = Ligne
     extra = 0
-    autocomplete_fields = ("compte",)
+    autocomplete_fields = ("compte", "anal2")
 
 
 @admin.register(Mouvement)
@@ -68,3 +74,27 @@ class ModificationAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(TypeTiers)
+class TypeTiersAdmin(admin.ModelAdmin):
+    list_display = ("libelle", "prefixe")
+
+
+@admin.register(MoyenPaiement)
+class MoyenPaiementAdmin(admin.ModelAdmin):
+    list_display = ("libelle", "journal", "ordre")
+    autocomplete_fields = ("journal",)
+
+
+@admin.register(LigneSchema)
+class LigneSchemaAdmin(admin.ModelAdmin):
+    list_display = ("schema", "ligne", "mvt", "role", "sens", "si_regle", "journal")
+    list_filter = ("schema",)
+
+
+@admin.register(ModeleOperation)
+class ModeleOperationAdmin(admin.ModelAdmin):
+    list_display = ("type", "schema", "compte", "journal_defaut", "tiers", "paiement_obligatoire", "classe", "ordre", "actif")
+    search_fields = ("type", "libelle_type")
+    autocomplete_fields = ("compte", "journal_defaut")

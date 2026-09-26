@@ -43,7 +43,7 @@ class Prefixe(models.Model):
         verbose_name = "préfixe"
 
     def __str__(self):
-        return self.prefixe
+        return f"{self.prefixe} – {self.libelle} (axe {self.axe})" if self.libelle else f"{self.prefixe} (axe {self.axe})"
 
     def code_suivant(self):
         """Plus grand numéro existant + 1 ; 1 chiffre pour l'axe 1, 3 pour l'axe 2."""
@@ -222,3 +222,87 @@ def soldes(lignes):
     t = lignes.aggregate(d=Sum("debit"), c=Sum("credit"))
     d, c = arrondi(t["d"]), arrondi(t["c"])
     return d, c, d - c
+
+
+# ---------------------------------------------------------------- paramètres de la saisie guidée
+
+class TypeTiers(models.Model):
+    libelle = models.CharField("libellé", max_length=30, unique=True)
+    prefixe = models.CharField("préfixe de compte", max_length=10)
+
+    class Meta:
+        verbose_name = "type de tiers"
+        verbose_name_plural = "types de tiers"
+
+    def __str__(self):
+        return self.libelle
+
+
+class MoyenPaiement(models.Model):
+    libelle = models.CharField("libellé", max_length=40, unique=True)
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, null=True, blank=True,
+                                help_text="Vide pour « Non réglé » (facture seule).")
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordre", "libelle"]
+        verbose_name = "moyen de paiement"
+        verbose_name_plural = "moyens de paiement"
+
+    def __str__(self):
+        return self.libelle
+
+    @property
+    def regle(self):
+        return self.journal_id is not None
+
+
+class LigneSchema(models.Model):
+    """Une ligne d'écriture générée par un schéma (RT, DT, RS, DS, RM, RF, VI, CB)."""
+
+    ROLES = [("TIERS", "compte du tiers"), ("CONTREPARTIE", "compte du modèle ou saisi"), ("TRESO", "banque ou caisse"),
+             ("DEST", "banque qui reçoit"), ("VIREMENT", "compte de virement interne")]
+    JOURNAUX = [("PAIEMENT_OU_DEFAUT", "paiement si réglé, sinon journal du modèle"), ("DEFAUT", "journal du modèle"),
+                ("PAIEMENT", "journal du paiement"), ("DESTINATION", "journal de la banque qui reçoit")]
+    schema = models.CharField("schéma", max_length=4)
+    ligne = models.PositiveSmallIntegerField()
+    mvt = models.PositiveSmallIntegerField("Mvt", default=1)
+    role = models.CharField("rôle", max_length=12, choices=ROLES)
+    sens = models.CharField(max_length=1, choices=[("D", "Débit"), ("C", "Crédit")])
+    si_regle = models.BooleanField("seulement si réglé", default=False)
+    journal = models.CharField(max_length=20, choices=JOURNAUX)
+
+    class Meta:
+        ordering = ["schema", "ligne"]
+        unique_together = [("schema", "ligne")]
+        verbose_name = "ligne de schéma"
+        verbose_name_plural = "schémas d'écritures"
+
+    def __str__(self):
+        return f"{self.schema}|{self.ligne}"
+
+
+class ModeleOperation(models.Model):
+    type = models.CharField("type d'opération", max_length=60, unique=True)
+    schema = models.CharField("schéma", max_length=4)
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True,
+                               help_text="Compte de charge ou de produit proposé ; vide = à choisir à la saisie.")
+    journal_defaut = models.ForeignKey(Journal, on_delete=models.PROTECT, null=True, blank=True, verbose_name="journal par défaut")
+    tiers = models.ForeignKey(TypeTiers, on_delete=models.PROTECT, null=True, blank=True, help_text="Vide = sans tiers.")
+    paiement_obligatoire = models.BooleanField(default=True)
+    classe = models.CharField(max_length=1, blank=True, help_text="Classe attendue du compte (6 ou 7).")
+    libelle_type = models.CharField("libellé type", max_length=40)
+    aide = models.CharField(max_length=200, blank=True)
+    ordre = models.PositiveSmallIntegerField(default=0)
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["ordre", "type"]
+        verbose_name = "modèle d'opération"
+        verbose_name_plural = "modèles d'opérations"
+
+    def __str__(self):
+        return self.type
+
+    def lignes_schema(self, regle):
+        return [l for l in LigneSchema.objects.filter(schema=self.schema) if regle or not l.si_regle]

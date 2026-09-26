@@ -1,10 +1,12 @@
 {% load static %}<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}"></head>
+<title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}"><script src="{% static 'compta/liste.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>
-<nav>{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
+<nav>{% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie</a>{% endif %}
+{% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes</a>{% endif %}
+{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écritures</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
@@ -15,5 +17,5 @@
 <span class="qui">{{ user.get_full_name|default:user.username }} ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
-<main>{% block contenu %}{% endblock %}</main>
+<main>{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
 </body></html>

@@ -1,0 +1,52 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Saisie{% endblock %}{% block contenu %}
+<h1>Saisie d'une opération</h1>
+<p class="aide">Prochain mouvement : Mvt {{ numero }} · pièce {{ piece }}. Dans les listes, tapez une partie du code ou du libellé.</p>
+<form method="post" class="carte">{% csrf_token %}
+<div class="formulaire">
+{% with f=form.date %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.modele %}{% include "compta/_champ.html" %}{% endwith %}
+<span></span><div class="aide" id="aide-modele"></div>
+{% with f=form.tiers %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.montant %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.paiement %}{% include "compta/_champ.html" %}{% endwith %}
+<div class="ligne-vers" style="display:contents">{% with f=form.vers %}{% include "compta/_champ.html" %}{% endwith %}</div>
+{% with f=form.anal2 %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.compte %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.libelle %}{% include "compta/_champ.html" %}{% endwith %}
+<label for="{{ form.remboursement.id_for_label }}">{{ form.remboursement.label }}</label><div>{{ form.remboursement }}</div>
+</div>
+{% if resultat %}
+<h2>Écritures générées{% if resultat.libelle %} · {{ resultat.libelle }}{% endif %}</h2>
+{% if resultat.lignes %}<table class="apercu"><tr><th>Mvt</th><th>Journal</th><th>Compte</th><th>Libellé du compte</th><th class="n">Débit</th><th class="n">Crédit</th></tr>
+{% for l in resultat.lignes %}<tr><td>{{ numero|add:l.mvt|add:"-1" }}</td><td>{{ l.journal.code|default:"?" }}</td><td>{{ l.compte.numero|default:"?" }}</td><td>{{ l.compte.libelle|default:"" }}</td>
+<td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td></tr>{% endfor %}</table>{% endif %}
+{% if resultat.erreurs %}<h2>Contrôles à corriger</h2><ul class="erreurs">{% for k, v in resultat.erreurs.items %}<li><b>{{ k }}</b> : {{ v }}</li>{% endfor %}</ul>
+{% if "Déjà enregistrée ?" in resultat.erreurs %}<p>{{ form.forcer }} <label for="{{ form.forcer.id_for_label }}">{{ form.forcer.label }}</label></p>{% endif %}
+{% else %}<p class="statut OK">Tous les contrôles sont OK : l'opération peut être enregistrée.</p>{% endif %}
+{% endif %}
+<div class="boutons"><button name="apercu" value="1">Aperçu et contrôles</button><button class="principal" name="enregistrer" value="1">Enregistrer</button>
+<a href="{% url 'saisie' %}">Nouvelle saisie</a></div>
+</form>
+{{ modeles|json_script:"modeles" }}
+<script>
+(function () {
+  var modeles = JSON.parse(document.getElementById("modeles").textContent);
+  var modele = document.getElementById("{{ form.modele.id_for_label }}");
+  var tiers = document.getElementById("{{ form.tiers.id_for_label }}");
+  var vers = document.querySelector(".ligne-vers");
+  function maj() {
+    var m = modeles[modele.value] || null;
+    document.getElementById("aide-modele").textContent = m ? m.aide : "";
+    // tiers : seulement ceux du type attendu (membre 411…, fournisseur 401…)
+    for (var i = 0; i < tiers.options.length; i++) {
+      var o = tiers.options[i];
+      o.hidden = !!(o.value && m && (!m.prefixe || o.value.indexOf(m.prefixe) !== 0));
+    }
+    if (tiers.selectedOptions[0] && tiers.selectedOptions[0].hidden) { tiers.value = ""; if (tiers.majListe) tiers.majListe(); }
+    vers.style.display = m && m.vi ? "contents" : "none";
+  }
+  modele.addEventListener("change", maj);
+  maj();
+})();
+</script>
+{% endblock %}

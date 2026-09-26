@@ -2,9 +2,10 @@
 <h1>Écritures</h1>
 <form class="filtres" method="get">
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
-<label>Journal <select name="journal"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j.code }}</option>{% endfor %}</select></label>
-<label>Compte (début) <input name="compte" value="{{ filtres.compte }}" size="10"></label>
-<label>Axe 2 <select name="anal2"><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+<label>Journal <select name="journal" data-cherchable="Code ou intitulé…"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
+<label>Compte (début ou choix) <input name="compte" value="{{ filtres.compte }}" size="14" list="liste-comptes" placeholder="n° ou libellé"></label>
+<datalist id="liste-comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
+<label>Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Recherche <input name="q" value="{{ filtres.q }}"></label><button class="principal">Filtrer</button></form>
 <p>{{ page.paginator.count }} lignes · débit {{ total_debit|shekel }} · crédit {{ total_credit|shekel }}</p>
 <table><tr><th>Date</th><th>Jnl</th><th>Mvt</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 1</th><th>Axe 2</th></tr>
