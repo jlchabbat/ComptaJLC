@@ -43,6 +43,8 @@ DATE_CLOTURE = dt.date(2025, 12, 31)
 EXERCICE = (dt.date(2026, 1, 1), dt.date(2026, 12, 31))
 RACINE_ONEDRIVE = r"D:\OneDrive"
 RELEVE_B1 = r"Releves\tnuot.pdf"
+# Libellés fournis par le trésorier pour les codes Anal2 utilisés sans libellé
+LIBELLES_AXE2 = {"SOC.005": "ENFANTS MALADES"}
 
 # Styles existants du classeur (cellXfs)
 S_DATE, S_MONTANT, S_TEXTE = 1, 2, 3
@@ -582,6 +584,10 @@ def referentiels(p, ch, f, valeurs, ecritures_finales, journal):
         r = k + 2
         for c in "ABC":
             fe.poser(f"{c}{r}", re.sub(r'r="[A-Z]+\d+"', f'r="{c}{r}"', cel[c], count=1))
+        code = ch.valeur(int(re.search(r"<v>(\d+)</v>", cel["A"]).group(1)))
+        if code in LIBELLES_AXE2:
+            fe.poser(f"B{r}", c_texte(f"B{r}", ch, LIBELLES_AXE2[code]))
+            journal.append(("Libellé", f"T_Axe2 {code}", "vide", LIBELLES_AXE2[code]))
     for r in range(len(gardes) + 2, fin_avant + 1):
         if r in fe.lignes and not fe.lignes[r][1]:
             fe.supprimer_ligne(r)
