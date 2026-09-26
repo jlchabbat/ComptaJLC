@@ -83,22 +83,11 @@ Bouton vert **Reload**, puis ouvrir `https://VOTRE_NOM.pythonanywhere.com`.
 
 ## 6. Mettre à jour le code
 
-1. Télécharger le nouveau ZIP (GitHub, même lien qu'au point 2) et l'envoyer
-   dans l'onglet **Files** (le nom peut finir par « (2) », c'est sans
-   importance).
-2. Fermer les anciennes consoles (l'offre gratuite en permet 2), ouvrir une
-   console **Bash** et coller ces lignes, une à la fois :
-
-```bash
-cd ~ && rm -rf ComptaBB-ancien && mv ComptaBB ComptaBB-ancien
-mkdir -p ~/maj && unzip -q "$(ls -t ~/ComptaBB-*.zip | head -1)" -d ~/maj && mv ~/maj/* ~/ComptaBB && rm -rf ~/maj ~/ComptaBB-*.zip
-cd ~/ComptaBB/appli && source ~/venv/bin/activate && export COMPTABB_DATA=~/comptabb-data
-pip install -q -r requirements.txt && python manage.py preparer
-```
-
-3. **Reload** dans l'onglet Web. Les données (`comptabb-data`) ne sont pas
-   touchées ; l'ancien code reste dans `ComptaBB-ancien` jusqu'à la mise à
-   jour suivante.
+Suivre le protocole `docs/ComptaBB_protocole_mise_a_jour.pdf` (source :
+`docs/protocole-mise-a-jour.html`). En bref : envoyer le ZIP dans Files, puis
+`bash ~/maj.sh` dans une console Bash (script `appli/deploiement/maj.sh` :
+sauvegarde de la base, nouveau code, bibliothèques, `preparer`, rechargement ;
+`bash ~/maj.sh --retour` remet la version précédente).
 
 ## 7. Fin de l'essai
 
