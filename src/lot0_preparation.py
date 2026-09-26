@@ -44,7 +44,7 @@ EXERCICE = (dt.date(2026, 1, 1), dt.date(2026, 12, 31))
 RACINE_ONEDRIVE = r"D:\OneDrive"
 RELEVE_B1 = r"Releves\tnuot.pdf"
 # Libellés fournis par le trésorier pour les codes Anal2 utilisés sans libellé
-LIBELLES_AXE2 = {"SOC.005": "ENFANTS MALADES"}
+LIBELLES_AXE2 = {"SOC.005": "ENFANTS MALADES", "SOC.006": "BOURSES"}
 
 # Styles existants du classeur (cellXfs)
 S_DATE, S_MONTANT, S_TEXTE = 1, 2, 3
