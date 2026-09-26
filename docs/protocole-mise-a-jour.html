@@ -24,18 +24,29 @@ tr { break-inside: avoid; }
          line-height: 6mm; font-weight: bold; margin-right: 2mm; font-size: 9pt; }
 .case { display: inline-block; width: 3.5mm; height: 3.5mm; border: 1px solid #333; margin-right: 2mm; vertical-align: -0.5mm; }
 .petit { font-size: 9pt; color: #555; }
+a { color: #1f5fbf; word-break: break-all; }
 </style></head><body>
 
 <h1>ComptaBB – Protocole de mise à jour</h1>
-<p class="sous">Site : <b>https://comptabb.pythonanywhere.com</b> · compte PythonAnywhere : <b>ComptaBB</b> · version du 26/09/2026</p>
+<p class="sous">Site : <b><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></b> · compte PythonAnywhere : <b>ComptaBB</b> · version du 26/09/2026</p>
 
 <div class="cadre memo"><b>Aide-mémoire (une fois le protocole connu)</b>
 <ol>
-<li>Télécharger le ZIP : <code>https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip</code></li>
-<li>PythonAnywhere › <b>Files</b> › <b>Upload a file</b> › choisir le ZIP.</li>
-<li>PythonAnywhere › <b>Consoles</b> › <b>Bash</b>, taper : <code>bash ~/maj.sh</code></li>
+<li>Télécharger le ZIP : <a href="https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip">https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip</a></li>
+<li>PythonAnywhere › <b><a href="https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB">Files</a></b> › <b>Upload a file</b> › choisir le ZIP.</li>
+<li>PythonAnywhere › <b><a href="https://www.pythonanywhere.com/user/ComptaBB/consoles/">Consoles</a></b> › <b>Bash</b>, taper : <code>bash ~/maj.sh</code></li>
 <li>Attendre « MISE À JOUR TERMINÉE », ouvrir le site, appuyer sur <b>Ctrl+F5</b>.</li>
 </ol></div>
+
+<div class="cadre"><b>Liens utiles</b> (cliquables)
+<table style="margin-top:2mm"><tr><td style="width:34%">Le site ComptaBB</td><td><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></td></tr>
+<tr><td>Télécharger la dernière version (ZIP)</td><td><a href="https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip">https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip</a></td></tr>
+<tr><td>PythonAnywhere – Files (envoi du ZIP)</td><td><a href="https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB">https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB</a></td></tr>
+<tr><td>PythonAnywhere – Consoles</td><td><a href="https://www.pythonanywhere.com/user/ComptaBB/consoles/">https://www.pythonanywhere.com/user/ComptaBB/consoles/</a></td></tr>
+<tr><td>PythonAnywhere – Web (Reload, journaux, 3 mois)</td><td><a href="https://www.pythonanywhere.com/user/ComptaBB/webapps/">https://www.pythonanywhere.com/user/ComptaBB/webapps/</a></td></tr>
+<tr><td>Dépôt GitHub</td><td><a href="https://github.com/jlchabbat/ComptaBB">https://github.com/jlchabbat/ComptaBB</a></td></tr>
+<tr><td>Guide d'hébergement complet</td><td><a href="https://github.com/jlchabbat/ComptaBB/blob/claude/vibrant-darwin-rn22ty/docs/hebergement-pythonanywhere.md">https://github.com/jlchabbat/ComptaBB/blob/claude/vibrant-darwin-rn22ty/docs/hebergement-pythonanywhere.md</a></td></tr>
+</table></div>
 
 <h2>1. Quand faire une mise à jour ?</h2>
 <ul>
@@ -59,23 +70,23 @@ et le script en fait une <b>copie de sauvegarde</b> avant tout changement.</li>
 <h3><span class="etape">A</span>Télécharger la nouvelle version (sur votre PC)</h3>
 <ol>
 <li>Être connecté à GitHub dans le navigateur (le dépôt est privé).</li>
-<li>Ouvrir ce lien : <code>https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip</code></li>
+<li>Ouvrir ce lien : <a href="https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip">https://github.com/jlchabbat/ComptaBB/archive/refs/heads/claude/vibrant-darwin-rn22ty.zip</a></li>
 <li>Le fichier <code>ComptaBB-claude-vibrant-darwin-rn22ty.zip</code> arrive dans <b>Téléchargements</b>. Ne pas le décompresser.
 <span class="petit">(Un nom finissant par « (2) » ou « (3) » est sans importance.)</span></li>
 </ol>
 <p class="petit">Si la branche a été fusionnée dans <code>main</code> (Claude vous le dira), le lien devient :
-<code>https://github.com/jlchabbat/ComptaBB/archive/refs/heads/main.zip</code></p>
+<a href="https://github.com/jlchabbat/ComptaBB/archive/refs/heads/main.zip">https://github.com/jlchabbat/ComptaBB/archive/refs/heads/main.zip</a></p>
 
 <h3><span class="etape">B</span>Envoyer le ZIP sur PythonAnywhere</h3>
 <ol>
-<li>Se connecter à <b>https://www.pythonanywhere.com</b> (identifiant ComptaBB).</li>
-<li>Onglet <b>Files</b> (en haut à droite), bouton <b>Upload a file</b>, choisir le ZIP dans Téléchargements.</li>
+<li>Se connecter à <b><a href="https://www.pythonanywhere.com">https://www.pythonanywhere.com</a></b> (identifiant ComptaBB).</li>
+<li>Onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB">Files</a></b> (en haut à droite), bouton <b>Upload a file</b>, choisir le ZIP dans Téléchargements.</li>
 <li>Le fichier apparaît dans la liste de droite. Si un ancien ZIP ComptaBB y traîne encore, le supprimer (icône corbeille).</li>
 </ol>
 
 <h3><span class="etape">C</span>Ouvrir une console</h3>
 <ol>
-<li>Aller sur <code>https://www.pythonanywhere.com/user/ComptaBB/consoles/</code></li>
+<li>Aller sur <a href="https://www.pythonanywhere.com/user/ComptaBB/consoles/">https://www.pythonanywhere.com/user/ComptaBB/consoles/</a></li>
 <li>Rubrique <b>Your consoles</b> : fermer toutes les anciennes consoles avec la <b>croix ✕</b> (l'offre gratuite en permet 2).</li>
 <li>En haut de la page, cliquer sur <b>Bash</b> : une fenêtre noire s'ouvre avec <code>~ $</code>.</li>
 </ol>
@@ -92,10 +103,10 @@ et le script en fait une <b>copie de sauvegarde</b> avant tout changement.</li>
 <tr><td>5/5 Rechargement du site</td><td>Redémarre le site automatiquement.</td></tr>
 </table>
 <div class="cadre ok">Tout va bien si la dernière ligne est : <b>MISE À JOUR TERMINÉE. Ouvrez le site et appuyez sur Ctrl+F5.</b><br>
-Si le script affiche « Onglet Web &gt; bouton vert Reload », faire ce rechargement à la main : onglet <b>Web</b>, bouton vert <b>Reload comptabb.pythonanywhere.com</b>.</div>
+Si le script affiche « Onglet Web &gt; bouton vert Reload », faire ce rechargement à la main : onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/webapps/">Web</a></b>, bouton vert <b>Reload comptabb.pythonanywhere.com</b>.</div>
 
 <h3><span class="etape">E</span>Vérifier le site</h3>
-<p><span class="case"></span>Ouvrir <b>https://comptabb.pythonanywhere.com</b> (ou l'icône du Bureau) et appuyer sur <b>Ctrl+F5</b>.<br>
+<p><span class="case"></span>Ouvrir <b><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></b> (ou l'icône du Bureau) et appuyer sur <b>Ctrl+F5</b>.<br>
 <span class="case"></span>Se connecter : la page s'affiche normalement, avec le menu habituel.<br>
 <span class="case"></span>Tableau de bord : le nombre de mouvements et le résultat sont les mêmes qu'avant la mise à jour.<br>
 <span class="case"></span>Essayer la nouveauté annoncée par Claude.<br>
@@ -110,7 +121,7 @@ Si le script affiche « Onglet Web &gt; bouton vert Reload », faire ce recharge
 <tr><td>« ÉCHEC de la mise à jour »</td><td>Taper <code>bash ~/maj.sh --retour</code> (retour à la version précédente, données intactes), puis
 envoyer à Claude une copie de ce qui s'est affiché.</td></tr>
 <tr><td>Le site affiche « Something went wrong » ou une page d'erreur</td><td>1. Taper <code>bash ~/maj.sh --retour</code>.<br>
-2. Onglet <b>Web</b> › Log files › <b>Error log</b> : copier les 20 dernières lignes et les envoyer à Claude.</td></tr>
+2. Onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/webapps/">Web</a></b> › Log files › <b>Error log</b> : copier les 20 dernières lignes et les envoyer à Claude.</td></tr>
 <tr><td>L'ancienne présentation s'affiche encore</td><td>Appuyer sur <b>Ctrl+F5</b> (ou vider le cache du navigateur).</td></tr>
 <tr><td>Les chiffres ont changé sans raison</td><td>Ne rien saisir. Prévenir Claude ; une sauvegarde d'avant la mise à jour existe (chapitre 5).</td></tr>
 </table>
@@ -120,7 +131,7 @@ envoyer à Claude une copie de ce qui s'est affiché.</td></tr>
 <h2>5. Sauvegardes</h2>
 <ul>
 <li><b>Automatiques</b> : à chaque mise à jour, dans <code>comptabb-data/sauvegardes</code> (10 dernières).</li>
-<li><b>À faire chaque mois</b> (et avant une clôture) : onglet <b>Files</b> › dossier <code>comptabb-data</code> › cliquer sur
+<li><b>À faire chaque mois</b> (et avant une clôture) : onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB/comptabb-data">Files › comptabb-data</a></b> › cliquer sur
 <code>comptabb.sqlite3</code> pour le <b>télécharger</b> ; le ranger sur OneDrive sous un nom daté, par exemple
 <code>ComptaBB_2026-10-31.sqlite3</code>.</li>
 <li><b>Revenir à une sauvegarde</b> (seulement sur conseil de Claude) : dans une console Bash, taper
@@ -131,7 +142,7 @@ envoyer à Claude une copie de ce qui s'est affiché.</td></tr>
 
 <h2>6. À ne pas oublier</h2>
 <ul>
-<li><b>Tous les 3 mois</b> (offre gratuite) : onglet <b>Web</b> › bouton <b>Run until 3 months from today</b>, sinon le site s'arrête.
+<li><b>Tous les 3 mois</b> (offre gratuite) : onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/webapps/">Web</a></b> › bouton <b>Run until 3 months from today</b>, sinon le site s'arrête.
 PythonAnywhere envoie un e-mail de rappel une semaine avant.</li>
 <li>Après la mise à jour, l'icône du Bureau reste valable : rien à refaire.</li>
 <li>Garder ce protocole à portée de main ; Claude le mettra à jour si la procédure change.</li>
