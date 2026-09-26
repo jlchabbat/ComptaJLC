@@ -504,7 +504,7 @@ class EcransFiches(TestCase):
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
 
 from . import releves as rap  # noqa: E402
-from .models import LigneReleve, ParametreReleve, Rapprochement, Traduction  # noqa: E402
+from .models import LigneReleve, ParametreReleve, Traduction  # noqa: E402
 
 CSV_MODELE = ("﻿Date;Référence;Opération (relevé);Montant;Solde relevé\n"
               "05/01/2026;11;עמלת מסלול;-10,00;990,00\n"
