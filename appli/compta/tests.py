@@ -499,3 +499,130 @@ class EcransFiches(TestCase):
         f = Fiche.objects.get(titre="Aides")
         self.assertRedirects(r, f"/fiches/{f.pk}/")
         self.assertEqual(list(f.benevoles.all()), [david])
+
+
+# ---------------------------------------------------------------- W3 : rapprochement bancaire
+
+from . import releves as rap  # noqa: E402
+from .models import LigneReleve, ParametreReleve, Rapprochement, Traduction  # noqa: E402
+
+CSV_MODELE = ("﻿Date;Référence;Opération (relevé);Montant;Solde relevé\n"
+              "05/01/2026;11;עמלת מסלול;-10,00;990,00\n"
+              "10/01/2026;12;הפקדת שיק;1 550,00;2 540,00\n"
+              "20/01/2026;14;העברה באינטרנט;-400,00;2 140,00\n").encode("utf-8")
+
+
+class Rapprochements(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        self.b1 = Journal.objects.get(code="B1")
+        ParametreReleve.objects.create(journal=self.b1, date_reprise=dt.date(2026, 1, 1))
+        Traduction.objects.create(cle=Traduction.cle_de("עמלת מסלול"), hebreu="עמלת מסלול", traduction="Frais de forfait")
+        self.u = User.objects.create_user("t")
+        # compta : à-nouveau 1 000 au 01/01, frais 10, deux chèques remis ensemble, un virement de 400 daté 3 jours plus tôt
+        n = 500
+        for d, lignes in ((dt.date(2026, 1, 1), [("512000", 1000, 0), ("580000", 0, 1000)]),
+                          (dt.date(2026, 1, 5), [("600100", 10, 0), ("512000", 0, 10)]),
+                          (dt.date(2026, 1, 9), [("512000", 1250, 0), ("411TAIEB001", 0, 1250)]),
+                          (dt.date(2026, 1, 9), [("512000", 300, 0), ("411TAIEB001", 0, 300)]),
+                          (dt.date(2026, 1, 17), [("600000", 400, 0), ("512000", 0, 400)]),
+                          (dt.date(2026, 1, 30), [("600000", 55, 0), ("512000", 0, 55)])):
+            m = Mouvement.objects.create(numero=n, date=d, journal=self.b1, piece=n, origine="saisie")
+            for i, (c, db, cr) in enumerate(lignes):
+                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
+            n += 1
+
+    def importer(self, contenu=CSV_MODELE, nom="releve.csv", **k):
+        return rap.importer(self.b1, rap.lire(nom, contenu), source=nom, **k)
+
+    def test_lecture_et_import_sans_doublon(self):
+        lignes = rap.lire("r.csv", CSV_MODELE)
+        self.assertEqual([(l["date"].day, l["montant"]) for l in lignes], [(5, D("-10")), (10, D("1550")), (20, D("-400"))])
+        self.assertEqual(self.importer(), (3, 0, 0))
+        ouverture = LigneReleve.objects.get(ouverture=True)
+        self.assertEqual((ouverture.montant, ouverture.date), (D("1000"), dt.date(2026, 1, 4)))   # déduit du premier solde
+        self.assertEqual(self.importer(), (0, 3, 0))                                              # réimport : rien en double
+        self.assertEqual(LigneReleve.objects.get(reference="11").traduction, "Frais de forfait")
+        self.assertEqual(LigneReleve.objects.get(reference="14").traduction, "À traduire")
+
+    def test_colonnes_hebreu_credit_debit_et_ordre_inverse(self):
+        rangees = [["Relevé Mizrahi"], ["תאריך", "סוג תנועה", "זכות", "חובה", "יתרה", "אסמכתה"],
+                   ["20/01/26", "העברה באינטרנט", "", "400.00", "2,140.00", "14"],
+                   ["10/01/26", "הפקדת שיק", "1,250.00", "", "2,540.00", "12"]]
+        lignes = rap.normaliser(rangees)
+        self.assertEqual([(l["date"], l["montant"], l["solde"]) for l in lignes],
+                         [(dt.date(2026, 1, 10), D("1250.00"), D("2540.00")), (dt.date(2026, 1, 20), D("-400.00"), D("2140.00"))])
+        # PDF lu à l'envers (ordre visuel) : en-têtes et libellés retournés
+        inverses = [[c[::-1] if isinstance(c, str) and rap.HEBREU.search(c) else c for c in r] for r in rangees]
+        self.assertEqual(rap.normaliser(inverses)[1]["operation"], "העברה באינטרנט")
+
+    def test_premier_import_sans_solde(self):
+        with self.assertRaises(ValueError):
+            rap.importer(self.b1, [{"date": dt.date(2026, 1, 5), "reference": "", "operation": "x", "montant": D(5), "solde": None}])
+
+    def test_automatique_manuel_et_etat(self):
+        self.importer()
+        LigneReleve.objects.create(journal=self.b1, date=dt.date(2025, 12, 20), rang=1, reference="9", operation="avant", montant=D(0.01))
+        LigneReleve.objects.filter(ouverture=True).update(montant=D("999.99"))  # ouverture + ligne avant reprise = à-nouveau
+        self.assertEqual(rap.automatique(self.b1, self.u), 3)   # à-nouveau, frais, virement (± 3 jours)
+        e = rap.etat(self.b1, dt.date(2026, 1, 31))
+        self.assertEqual((len(e["releve_non_pointe"]), len(e["ecritures_non_pointees"])), (1, 3))
+        self.assertEqual((e["ecart"], e["ecart_explique"]), (D("55.00"), D("0.00")))
+        # une remise de chèques au relevé = deux règlements en compta ; totaux différents refusés
+        rel = LigneReleve.objects.filter(rapprochement__isnull=True, ouverture=False)
+        cheques = rap.ecritures(self.b1).filter(debit__in=[1250, 300])
+        with self.assertRaises(ValueError):
+            rap.pointer(self.b1, rel, cheques[:1], self.u)
+        r = rap.pointer(self.b1, rel, cheques, self.u)
+        self.assertEqual((r.releves.count(), r.ecritures.count(), r.total), (1, 2, D("1550")))
+        e = rap.etat(self.b1, dt.date(2026, 1, 31))
+        self.assertEqual([x.debit - x.credit for x in e["ecritures_non_pointees"]], [D("-55")])
+        rap.depointer(r)
+        self.assertEqual(Ligne.objects.filter(rapprochement__isnull=False).count(), 3)
+        mois = rap.par_mois(self.b1)
+        self.assertEqual((mois[0]["compta"], mois[-1]["ecart"]), (None, D("0.00")))   # arrêté au dernier jour du relevé
+
+
+class EcransRapprochement(TestCase):
+    def setUp(self):
+        Rapprochements.setUp(self)
+        call_command("migrate", verbosity=0)
+        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(self.u)
+
+    def test_pages_import_et_creation_d_ecriture(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        r = self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        self.assertRedirects(r, "/rapprochement/B1/")
+        self.assertEqual(LigneReleve.objects.count(), 4)
+        self.client.post("/rapprochement/B1/automatique/")
+        grand = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 1, 25), rang=1, pk=1234, montant=D(1))
+        self.assertContains(self.client.get("/rapprochement/B1/pointage/"), 'value="1234"')
+        grand.delete()
+        for url in ("/rapprochement/", "/rapprochement/B1/", "/rapprochement/B1/pointage/", "/rapprochement/traductions/"):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        # traduction d'une opération
+        self.client.post("/rapprochement/traductions/", {"h_1": "הפקדת שיק", "t_1": "Remise de chèque"})
+        self.assertEqual(LigneReleve.objects.get(reference="12").traduction, "Remise de chèque")
+        # ligne du relevé sans écriture : créer l'écriture depuis le relevé, pointée à l'enregistrement
+        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 1, 31), rang=1, reference="15", operation="עמלת מסלול",
+                                       montant=D("-10"))
+        r = self.client.get(f"/rapprochement/releve/{l.pk}/ecriture/")
+        self.assertIn("/saisie/?", r["Location"])
+        page = self.client.get(r["Location"])
+        self.assertContains(page, 'name="releve" value="%d"' % l.pk)
+        self.assertContains(page, 'value="FRAIS DE FORFAIT"')
+        frais = ModeleOperation.objects.get(type="Frais bancaires")
+        r = self.client.post("/saisie/", {"date": "2026-01-31", "modele": frais.pk, "montant": "10", "anal2": "GEN.004", "releve": l.pk,
+                                          "paiement": MoyenPaiement.objects.get(journal=self.b1).pk, "enregistrer": "1"})
+        self.assertEqual(r.status_code, 302)
+        l.refresh_from_db()
+        self.assertEqual(l.rapprochement.mode, "saisie")
+
+    def test_droits(self):
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/rapprochement/B1/").status_code, 200)
+        self.assertEqual(self.client.post("/rapprochement/B1/automatique/").status_code, 403)
+        self.assertNotContains(self.client.get("/rapprochement/B1/pointage/"), 'type="checkbox"')

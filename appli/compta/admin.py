@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    MoyenPaiement, NatureFiche, Prefixe, Reglage, TiersProvisoire, TypeTiers,
+    MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers,
 )
 
 
@@ -134,3 +134,19 @@ class LigneFicheAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False    # les lignes se modifient depuis la fiche (contrôles et verrou après report)
+
+
+@admin.register(Traduction)
+class TraductionAdmin(admin.ModelAdmin):
+    list_display = ("hebreu", "traduction")
+    search_fields = ("hebreu", "traduction")
+    fields = ("hebreu", "traduction")
+
+    def save_model(self, request, obj, form, change):
+        obj.cle = Traduction.cle_de(obj.hebreu)[:120]
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ParametreReleve)
+class ParametreReleveAdmin(admin.ModelAdmin):
+    list_display = ("journal", "date_reprise", "libelle")

@@ -173,6 +173,7 @@ class Ligne(models.Model):
     anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
                               verbose_name="axe 2")
     lettrage = models.CharField(max_length=10, blank=True)
+    rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
     class Meta:
         ordering = ["mouvement", "ordre"]
@@ -441,3 +442,95 @@ class LigneFiche(models.Model):
         if self.provisoire_id:
             return str(self.provisoire)
         return self.autre
+
+
+# ---------------------------------------------------------------- rapprochement bancaire (Lot 3)
+
+class Traduction(models.Model):
+    """Libellé d'opération du relevé (hébreu) → traduction française."""
+
+    cle = models.CharField("clé", max_length=120, unique=True, help_text="Texte hébreu sans espaces ni parenthèses.")
+    hebreu = models.CharField("opération (hébreu)", max_length=120)
+    traduction = models.CharField(max_length=120)
+
+    class Meta:
+        ordering = ["traduction"]
+        verbose_name = "traduction (relevé)"
+        verbose_name_plural = "traductions (relevés)"
+
+    def __str__(self):
+        return f"{self.hebreu} → {self.traduction}"
+
+    @staticmethod
+    def cle_de(texte):
+        invisibles = dict.fromkeys(map(ord, "\u200e\u200f\u202a\u202b\u202c\u202d\u202e() <>"))
+        return (texte or "").translate(invisibles).strip()
+
+    @classmethod
+    def traduire(cls, texte):
+        cle = cls.cle_de(texte)
+        t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
+        return t.traduction if t else ""
+
+
+class ParametreReleve(models.Model):
+    """Paramètres du rapprochement d'un journal de trésorerie."""
+
+    journal = models.OneToOneField(Journal, on_delete=models.CASCADE, primary_key=True)
+    date_reprise = models.DateField("date de reprise en compta", null=True, blank=True,
+                                    help_text="Les lignes du relevé antérieures sont couvertes par l'à-nouveau.")
+    libelle = models.CharField("description du relevé", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "paramètres de relevé"
+        verbose_name_plural = "paramètres de relevés"
+
+    def __str__(self):
+        return str(self.journal)
+
+
+class Rapprochement(models.Model):
+    """Pointage : un groupe de lignes du relevé et d'écritures de même total."""
+
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name="rapprochements")
+    mode = models.CharField(max_length=10, choices=[("auto", "Automatique"), ("manuel", "Manuel"), ("saisie", "Écriture créée")])
+    cree_le = models.DateTimeField(auto_now_add=True)
+    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-id"]
+        permissions = [("pointer_releve", "Importer les relevés et pointer")]
+
+    def __str__(self):
+        return f"R{self.pk}"
+
+    @property
+    def total(self):
+        return sum((l.montant for l in self.releves.all()), ZERO)
+
+
+class LigneReleve(models.Model):
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name="releve")
+    date = models.DateField()
+    rang = models.PositiveSmallIntegerField(default=1, help_text="Rang dans la journée (ordre du relevé).")
+    reference = models.CharField("référence", max_length=40, blank=True)
+    operation = models.CharField("opération (relevé)", max_length=200, blank=True)
+    montant = models.DecimalField(max_digits=14, decimal_places=2, help_text="Positif = crédit en banque (entrée).")
+    solde = models.DecimalField("solde relevé", max_digits=14, decimal_places=2, null=True, blank=True)
+    ouverture = models.BooleanField("solde d'ouverture", default=False)
+    rapprochement = models.ForeignKey(Rapprochement, on_delete=models.SET_NULL, null=True, blank=True, related_name="releves")
+    source = models.CharField(max_length=120, blank=True)
+    importe_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["journal", "date", "rang"]
+        unique_together = [("journal", "date", "reference", "montant", "rang")]
+        verbose_name = "ligne de relevé"
+        verbose_name_plural = "lignes de relevés"
+
+    def __str__(self):
+        return f"{self.journal_id} {self.date:%d/%m/%Y} {self.montant}"
+
+    @property
+    def traduction(self):
+        return "Solde d'ouverture" if self.ouverture else (Traduction.traduire(self.operation) or "À traduire")

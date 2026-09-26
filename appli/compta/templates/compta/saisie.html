@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Saisie{% endblock %}{% block contenu %}
 <h1>Saisie d'une opération</h1>
 <p class="aide">Prochain mouvement : Mvt {{ numero }} · pièce {{ piece }}. Dans les listes, tapez une partie du code ou du libellé.</p>
-<form method="post" class="carte">{% csrf_token %}
+<form method="post" class="carte">{% csrf_token %}{% if releve %}<input type="hidden" name="releve" value="{{ releve }}"><p class="aide">Écriture créée depuis une ligne du relevé : elle sera pointée automatiquement.</p>{% endif %}
 <div class="formulaire">
 {% with f=form.date %}{% include "compta/_champ.html" %}{% endwith %}
 {% with f=form.modele %}{% include "compta/_champ.html" %}{% endwith %}

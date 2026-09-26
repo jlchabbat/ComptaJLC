@@ -1,0 +1,51 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Pointage {{ journal.code }}{% endblock %}{% block contenu %}
+<p><a href="{% url 'rapprochement_journal' journal.code %}">← Rapprochement {{ journal.code }}</a></p>
+<h1>Pointage {{ journal.code }} – {{ journal.intitule }}</h1>
+{% if peut %}<form method="post" action="{% url 'rapprochement_auto' journal.code %}" class="boutons">{% csrf_token %}<button>Rapprochement automatique</button>
+<span class="aide">Puis cochez à gauche et à droite des lignes de même total (une remise de chèques = plusieurs règlements, des frais regroupés…).</span></form>{% endif %}
+<form method="post" id="pointage">{% csrf_token %}
+<div class="pointage"><div><h2>Relevé non pointé ({{ releve|length }})</h2><div class="defile"><table>
+<tr><th></th><th>Date</th><th>Opération</th><th class="n">Montant</th><th></th></tr>
+{% for l in releve %}<tr><td>{% if peut %}<input type="checkbox" name="releve" value="{{ l.pk|stringformat:"d" }}" data-montant="{{ l.montant|stringformat:'s' }}">{% endif %}</td>
+<td>{{ l.date|date:"d/m/Y" }}</td><td title="{{ l.operation }}">{{ l.traduction }}</td><td class="n">{{ l.montant|shekel }}</td>
+<td>{% if peut and not l.ouverture %}<a href="{% url 'releve_ecriture' l.pk %}">Créer l'écriture</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="5">Tout est pointé.</td></tr>{% endfor %}</table></div></div>
+<div><h2>Écritures non pointées ({{ ecritures|length }})</h2><div class="defile"><table>
+<tr><th></th><th>Date</th><th>Mvt</th><th>Libellé</th><th class="n">Montant</th></tr>
+{% for e in ecritures %}<tr><td>{% if peut %}<input type="checkbox" name="ecriture" value="{{ e.pk|stringformat:"d" }}" data-montant="{% if e.debit %}{{ e.debit|stringformat:'s' }}{% else %}-{{ e.credit|stringformat:'s' }}{% endif %}">{% endif %}</td>
+<td>{{ e.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a></td><td>{{ e.libelle }}</td>
+<td class="n">{% if e.debit %}{{ e.debit|shekel }}{% else %}-{{ e.credit|shekel }}{% endif %}</td></tr>{% empty %}<tr><td colspan="5">Tout est pointé.</td></tr>{% endfor %}</table></div></div></div>
+{% if peut %}<div class="barre-selection">Relevé : <b id="total-r">0,00</b> Écritures : <b id="total-e">0,00</b> <span id="compare"></span>
+<button class="principal" id="bouton-pointer" disabled>Pointer la sélection</button></div>{% endif %}
+</form>
+<h2>Rapprochements faits</h2>
+<table><tr><th>N°</th><th>Mode</th><th>Relevé</th><th>Écritures</th><th class="n">Montant</th>{% if peut %}<th></th>{% endif %}</tr>
+{% for r in faits %}<tr><td>R{{ r.pk|stringformat:"d" }}</td><td>{{ r.get_mode_display }}</td>
+<td>{% for l in r.releves.all %}{{ l.date|date:"d/m/Y" }} {{ l.traduction }} {{ l.montant|shekel }}<br>{% endfor %}</td>
+<td>{% for e in r.ecritures.all %}Mvt {{ e.mouvement.numero }} {{ e.libelle|truncatechars:40 }}<br>{% endfor %}</td>
+<td class="n">{{ r.total|shekel }}</td>
+{% if peut %}<td><form method="post">{% csrf_token %}<button name="depointer" value="{{ r.pk|stringformat:"d" }}">Dépointer</button></form></td>{% endif %}</tr>
+{% empty %}<tr><td colspan="6">Aucun.</td></tr>{% endfor %}</table>
+<script>
+(function () {
+  var f = document.getElementById("pointage"), bouton = document.getElementById("bouton-pointer");
+  if (!bouton) return;
+  var fmt = function (c) { return (c / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 }); };
+  function total(nom) {
+    var t = 0;
+    f.querySelectorAll("input[name=" + nom + "]:checked").forEach(function (c) { t += Math.round(parseFloat(c.dataset.montant) * 100); });
+    return t;
+  }
+  function maj(e) {
+    if (e && e.target.type === "checkbox") e.target.closest("tr").classList.toggle("choisi", e.target.checked);
+    var r = total("releve"), c = total("ecriture"), n = f.querySelectorAll("input:checked").length;
+    document.getElementById("total-r").textContent = fmt(r);
+    document.getElementById("total-e").textContent = fmt(c);
+    var cmp = document.getElementById("compare");
+    var ok = r === c && f.querySelector("input[name=releve]:checked") && f.querySelector("input[name=ecriture]:checked");
+    cmp.textContent = n ? (ok ? "égal : prêt à pointer" : "écart " + fmt(r - c)) : "";
+    cmp.className = ok ? "egal" : "diff";
+    bouton.disabled = !ok;
+  }
+  f.addEventListener("change", maj);
+})();
+</script>{% endblock %}

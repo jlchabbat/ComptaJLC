@@ -59,3 +59,14 @@ tr.reportee td { color: #777; }
 details.carte summary { cursor: pointer; font-weight: 600; color: var(--bleu); }
 .formulaire div.radios { display: flex; gap: 4px 20px; flex-wrap: wrap; }
 .formulaire div.radios label { font-weight: normal; }
+.message.warning { background: var(--avf); color: var(--av); }
+.onglets { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+.onglets a { padding: 6px 12px; border: 1px solid var(--ligne); border-radius: 6px; background: #fff; text-decoration: none; color: var(--bleu); }
+.onglets a.actif { background: var(--bleu); color: #fff; }
+.pointage { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .pointage { grid-template-columns: 1fr; } }
+.pointage .defile { max-height: 60vh; overflow-y: auto; border: 1px solid var(--ligne); }
+.barre-selection { position: sticky; bottom: 0; background: #fff; border: 1px solid var(--ligne); border-radius: 8px; padding: 10px 16px;
+  margin-top: 12px; display: flex; gap: 24px; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,.08); }
+.barre-selection .egal { color: var(--ok); font-weight: 600; } .barre-selection .diff { color: var(--ko); font-weight: 600; }
+tr.choisi td { background: #ddebf7; }

@@ -167,7 +167,10 @@ from .models import ModeleOperation, Prefixe, TypeTiers  # noqa: E402
 @login_required
 @permission_required("compta.add_mouvement", raise_exception=True)
 def saisie(request):
-    form = SaisieForm(request.POST or None, initial={"date": dt.date.today()})
+    initial = {"date": dt.date.today()}
+    initial.update({k: request.GET[k] for k in ("date", "montant", "paiement", "libelle") if request.GET.get(k)})
+    releve = request.POST.get("releve") or request.GET.get("releve") or ""
+    form = SaisieForm(request.POST or None, initial=initial)
     resultat = op = None
     if request.method == "POST" and form.is_valid():
         c = form.cleaned_data
@@ -179,12 +182,19 @@ def saisie(request):
         if "enregistrer" in request.POST and (resultat.ok or doublon_seul):
             crees = moteur.enregistrer(op, request.user, forcer_doublon=doublon_seul)
             messages.success(request, "Enregistré : " + ", ".join(f"Mvt {m.numero}" for m in crees) + f" · {resultat.libelle}")
+            if releve.isdigit():
+                from .vues_rapprochement import pointer_apres_saisie
+                r = pointer_apres_saisie(int(releve), crees, request.user)
+                if r:
+                    messages.success(request, f"Ligne du relevé pointée ({r}).")
+                else:
+                    messages.warning(request, "Aucune écriture de banque de même montant : ligne du relevé non pointée.")
             return redirect("mouvement", crees[0].numero)
     numero, piece = Mouvement.prochain_numero(), Mouvement.prochaine_piece()
     modeles = {m.pk: {"aide": m.aide, "prefixe": m.tiers.prefixe if m.tiers else "", "vi": m.schema == "VI"}
                for m in ModeleOperation.objects.select_related("tiers")}
     return render(request, "compta/saisie.html", {"form": form, "resultat": resultat, "numero": numero, "piece": piece,
-                                                  "modeles": modeles})
+                                                  "modeles": modeles, "releve": releve})
 
 
 def _journaliser(request, action, objet, avant="", apres=""):

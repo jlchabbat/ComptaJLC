@@ -68,6 +68,28 @@ Tant que l'application tourne seulement sur le PC du trésorier, un bénévole
 à distance n'y a pas accès : le trésorier saisit pour lui, ou l'accès distant
 arrive avec l'hébergement.
 
+## Rapprochement bancaire (W3)
+
+Par journal de trésorerie (B1, B2, B3, CA) :
+
+- **Import du relevé** : PDF Mizrahi en hébreu, Excel ou CSV (modèle
+  `Imports/modeles/10_releve_B1.csv`). Les lignes déjà importées sont
+  ignorées (clé : date, référence, montant, rang dans la journée). Au premier
+  import, un solde d'ouverture est déduit du premier solde du relevé.
+  Les opérations sont traduites (Rapprochement › Traductions).
+- **Rapprochement automatique** : même montant, date à ± tolérance
+  (réglage `tolerance_rapprochement`, 7 jours repris du classeur) ;
+  l'à-nouveau est pointé contre le solde d'ouverture et les lignes du relevé
+  antérieures à la date de reprise.
+- **Pointage manuel** : cocher à gauche et à droite des lignes de même total
+  (remise de chèques, frais regroupés) ; dépointage possible. L'identifiant
+  (R…) est stocké côté relevé et côté écriture.
+- **Créer l'écriture** depuis une ligne du relevé non pointée : la saisie
+  s'ouvre pré-remplie et l'écriture est pointée à l'enregistrement.
+- **État de rapprochement** à une date (écart non expliqué = 0) et écart par
+  mois. La reprise du classeur reproduit l'onglet Banque1 : écart 2 910,00
+  au 24/09/2026, 42 lignes du relevé et 38 écritures non pointées.
+
 ## Développement
 
 ```

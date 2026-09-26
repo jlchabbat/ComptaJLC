@@ -65,9 +65,9 @@ class Command(BaseCommand):
         if Mouvement.objects.exists() and not remplacer:
             raise CommandError("La base contient déjà des écritures : relancer avec --remplacer pour les effacer.")
         if remplacer:
-            from compta.models import (Fiche, LigneFiche, LigneSchema, ModeFiche, ModeleOperation, MoyenPaiement, NatureFiche,
-                                       TiersProvisoire, TypeTiers)
-            for m in (LigneFiche, Fiche, TiersProvisoire, NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
+            from compta.models import (Fiche, LigneFiche, LigneReleve, LigneSchema, ModeFiche, ModeleOperation, MoyenPaiement,
+                                       NatureFiche, ParametreReleve, Rapprochement, TiersProvisoire, Traduction, TypeTiers)
+            for m in (LigneReleve, Rapprochement, ParametreReleve, Traduction, LigneFiche, Fiche, TiersProvisoire, NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
                       Prefixe, CodeAnalytique, Exercice, Reglage):
                 m.objects.all().delete()
         wb = openpyxl.load_workbook(classeur, data_only=True)
@@ -133,6 +133,7 @@ class Command(BaseCommand):
 
         from compta.saisie import initialiser_parametres
         initialiser_parametres()
+        self.reprendre_releve(wb, t)
 
         # vérification
         d_x = sum(montant(r["Débit"]) for r in lignes)
@@ -142,6 +143,38 @@ class Command(BaseCommand):
             raise CommandError(f"Totaux différents du classeur : {d}/{c} contre {d_x}/{c_x}")
         _, _, charges = soldes(Ligne.objects.filter(compte__numero__startswith="6"))
         _, _, produits = soldes(Ligne.objects.filter(compte__numero__startswith="7"))
+        from compta.models import LigneReleve
+        if LigneReleve.objects.exists():
+            self.stdout.write(f"Relevé : {LigneReleve.objects.filter(ouverture=False).count()} lignes reprises")
         self.stdout.write(self.style.SUCCESS(
             f"{Mouvement.objects.count()} mouvements, {Ligne.objects.count()} lignes, débit = crédit = {d:,.2f}, "
             f"résultat {-(charges + produits):,.2f}"))
+
+    def reprendre_releve(self, wb, t):
+        """Relevé Banque 1 (T_Banque1), traductions (T_TradBanque) et paramètres de l'onglet Banque1, repérés par libellé."""
+        from compta import releves
+        from compta.models import ParametreReleve, Traduction
+        for r in t.get("T_TradBanque", []):
+            h, tr = texte(r.get("Opération (hébreu)")), texte(r.get("Traduction"))
+            if h and tr and Traduction.cle_de(h):
+                Traduction.objects.get_or_create(cle=Traduction.cle_de(h)[:120], defaults={"hebreu": h[:120], "traduction": tr[:120]})
+        if "T_Banque1" not in t or "Banque1" not in wb.sheetnames:
+            return
+        params = {}
+        for a, b in wb["Banque1"].iter_rows(min_col=1, max_col=2, values_only=True):
+            if isinstance(a, str):
+                params[a.split("(")[0].strip().lower()] = b
+        journal = Journal.objects.filter(compte_id=texte(params.get("compte comptable de la banque"))).first()
+        if not journal:
+            return
+        lignes = [{"date": jour(r["Date"]), "reference": texte(r["Référence"])[:40], "operation": texte(r["Opération (relevé)"])[:200],
+                   "montant": montant(r["Montant"]), "solde": montant(r["Solde relevé"]) if r.get("Solde relevé") is not None else None}
+                  for r in t["T_Banque1"] if r.get("Date") and r.get("Montant") not in (None, "")]
+        releves.importer(journal, lignes, source="Reprise du classeur (T_Banque1)",
+                         solde_ouverture=montant(params.get("solde d'ouverture du relevé")) if params.get("solde d'ouverture du relevé") else None)
+        ParametreReleve.objects.update_or_create(journal=journal, defaults={
+            "date_reprise": jour(params.get("date de reprise en compta")), "libelle": texte(wb["Banque1"]["A2"].value)[:200]})
+        tol = params.get("tolérance de date pour le rapprochement")
+        if isinstance(tol, (int, float)):
+            Reglage.objects.update_or_create(cle="tolerance_rapprochement",
+                                             defaults={"valeur": str(int(tol)), "description": "Tolérance de date du rapprochement (jours)"})
