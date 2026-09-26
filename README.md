@@ -68,6 +68,7 @@ Contrôles OK. Photographies : `tests/reference/`.
 - [Imports : formats, ordre, reprise](Imports/README.md)
 - [Livraison du Lot 0](docs/livraison-lot0.md)
 - [Livraison du Lot 1](docs/livraison-lot1.md)
+- [Fichier de liaison pour un bénévole](docs/fichier-liaison.md)
 
 Le classeur est reproductible depuis `Fusion.xlsm` :
 
@@ -76,6 +77,8 @@ python src/lot0_preparation.py Fusion.xlsm lot0.xlsm
 python src/lot1_saisie.py lot0.xlsm lot1.xlsm
 python src/lot1_distance.py lot1.xlsm ComptaBB.xlsm
 python src/classeur_saisie.py ComptaBB.xlsm ComptaBB_Saisie.xlsx   classeur du saisisseur
+python src/classeur_liaison.py ComptaBB.xlsm ComptaBB_Liaison.xlsx  fichier de liaison (activité, gestion)
+python tests/recette_liaison.py ComptaBB.xlsm       recette LibreOffice (liaison)
 python tests/recette_lot1.py lot0.xlsm              recette LibreOffice (15 scénarios)
 python tests/recette_lot1_distance.py lot1.xlsm     recette LibreOffice (saisie à distance)
 ```

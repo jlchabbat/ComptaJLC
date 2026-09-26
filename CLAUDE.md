@@ -25,6 +25,8 @@ ComptaBB » du classeur fait foi).
   protection sans mot de passe des onglets de consultation (pas des onglets
   dont les tables s'agrandissent). `src/classeur_saisie.py` : classeur du
   saisisseur à distance (T_Envoi, référentiels en valeurs, sans grand livre).
+- `src/classeur_liaison.py` : fichier de liaison bénévole (Activité, Gestion, Tiers,
+  Export vers Transmission), formules simples testées par `tests/recette_liaison.py`.
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
 - `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
