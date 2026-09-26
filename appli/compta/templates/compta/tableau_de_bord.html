@@ -1,0 +1,15 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Tableau de bord{% endblock %}{% block contenu %}
+<h1>Tableau de bord</h1>{% include "compta/_periode.html" %}
+<div class="chiffres">
+<div class="chiffre"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} ₪</div></div>
+<div class="chiffre"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} ₪</div></div>
+<div class="chiffre"><div class="lib">Résultat</div><div class="val {% if resultat < 0 %}neg{% endif %}">{{ resultat|shekel }} ₪</div></div>
+<div class="chiffre"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} ₪</div></div>
+<div class="chiffre"><div class="lib">Contrôles</div><div class="val"><a href="{% url 'controles' %}"><span class="statut {% if etat == 'OK' %}OK{% else %}Anomalie{% endif %}">{{ etat }}</span></a>{% if a_verifier %} <span class="statut Àvérifier">{{ a_verifier }} à vérifier</span>{% endif %}</div></div>
+<div class="chiffre"><div class="lib">Mouvements sur la période</div><div class="val">{{ nb_mouvements }}</div></div>
+</div>
+<h2>Trésorerie</h2><table><tr><th>Journal</th><th>Compte</th><th class="n">Solde</th></tr>
+{% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td><a href="{% url 'grand_livre' %}?compte={{ t.journal.compte_id }}">{{ t.journal.compte }}</a></td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}</table>
+<div class="deux"><div>{% include "compta/_axe.html" with titre="Résultat par activité (axe 1)" lignes=axe1 %}</div>
+<div>{% include "compta/_axe.html" with titre="Résultat par événement / projet (axe 2)" lignes=axe2 %}</div></div>
+{% endblock %}

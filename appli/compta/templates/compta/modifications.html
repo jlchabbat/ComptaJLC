@@ -1,0 +1,5 @@
+{% extends "compta/base.html" %}{% block titre %}Journal des modifications{% endblock %}{% block contenu %}
+<h1>Journal des modifications</h1>
+<table><tr><th>Date</th><th>Auteur</th><th>Lot</th><th>Action</th><th>Objet</th><th>Avant</th><th>Après</th></tr>
+{% for m in page %}<tr><td>{{ m.date|date:"d/m/Y H:i" }}</td><td>{{ m.auteur }}</td><td>{{ m.lot }}</td><td>{{ m.action }}</td><td>{{ m.objet }}</td><td>{{ m.avant }}</td><td>{{ m.apres }}</td></tr>{% endfor %}</table>
+{% include "compta/_pages.html" %}{% endblock %}

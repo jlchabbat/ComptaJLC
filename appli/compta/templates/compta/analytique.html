@@ -1,0 +1,4 @@
+{% extends "compta/base.html" %}{% block titre %}Analytique{% endblock %}{% block contenu %}
+<h1>Analytique</h1>{% include "compta/_periode.html" %}
+{% include "compta/_axe.html" with titre="Axe 1 – nature" lignes=axe1 %}
+{% include "compta/_axe.html" with titre="Axe 2 – événement ou projet" lignes=axe2 %}{% endblock %}

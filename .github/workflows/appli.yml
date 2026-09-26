@@ -1,0 +1,42 @@
+name: Application ComptaBB
+
+# Tests à chaque envoi ; construction de ComptaBB.exe (Windows) à la demande
+# (bouton « Run workflow ») ou à chaque mise à jour de main. L'exécutable se
+# récupère en pièce jointe de l'exécution (Artifacts).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r appli/requirements.txt pyflakes
+      - run: python -m pyflakes appli/compta appli/comptabb appli/lanceur.py src tests
+      - run: python manage.py test compta
+        working-directory: appli
+        env:
+          COMPTABB_DATA: ${{ runner.temp }}/data
+      - run: python -m unittest discover tests
+
+  exe:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r appli/requirements.txt pyinstaller
+      - run: pyinstaller build.spec
+        working-directory: appli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ComptaBB
+          path: appli/dist/ComptaBB

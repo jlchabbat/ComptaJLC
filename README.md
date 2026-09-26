@@ -1,5 +1,7 @@
 # ComptaBB
 
+> **Application web** : dossier [`appli/`](appli/README.md) (Django, lancée sur le PC par `ComptaBB.exe`). Le classeur Excel des Lots 0 et 1 sert de transition jusqu'à sa mise en service.
+
 Comptabilité de l'association (Loge Bnei Brith, Israël, comptes en ₪),
 tenue directement dans un classeur Excel : saisie guidée pour bénévoles,
 suivi des membres, rapprochement bancaire, clôture et états annuels.

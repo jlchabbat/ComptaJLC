@@ -1,0 +1,14 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Écritures{% endblock %}{% block contenu %}
+<h1>Écritures</h1>
+<form class="filtres" method="get">
+<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
+<label>Journal <select name="journal"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j.code }}</option>{% endfor %}</select></label>
+<label>Compte (début) <input name="compte" value="{{ filtres.compte }}" size="10"></label>
+<label>Axe 2 <select name="anal2"><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+<label>Recherche <input name="q" value="{{ filtres.q }}"></label><button class="principal">Filtrer</button></form>
+<p>{{ page.paginator.count }} lignes · débit {{ total_debit|shekel }} · crédit {{ total_credit|shekel }}</p>
+<table><tr><th>Date</th><th>Jnl</th><th>Mvt</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 1</th><th>Axe 2</th></tr>
+{% for l in page %}<tr><td>{{ l.mouvement.date|date:"d/m/Y" }}</td><td>{{ l.mouvement.journal_id }}</td><td><a href="{% url 'mouvement' l.mouvement.numero %}">{{ l.mouvement.numero }}</a></td><td>{{ l.mouvement.piece }}</td>
+<td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td>
+<td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td><td title="{{ l.anal2.libelle }}">{{ l.anal2_id }}</td></tr>{% endfor %}</table>
+{% include "compta/_pages.html" %}{% endblock %}
