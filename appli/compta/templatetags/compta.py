@@ -18,3 +18,8 @@ def shekel(v, signe=""):
 @register.filter
 def zero_vide(v):
     return "" if v in (None, "", 0) else shekel(v)
+
+
+@register.filter
+def sub(a, b):
+    return Decimal(a or 0) - Decimal(b or 0)

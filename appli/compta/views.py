@@ -9,6 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 
 from . import controles as ctrl
+from . import etats
 from .models import ZERO, arrondi, CodeAnalytique, Compte, Exercice, Journal, Ligne, Modification, Mouvement, soldes
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
@@ -55,7 +56,7 @@ def tableau_de_bord(request):
     _, _, produits = soldes(ls.filter(compte__numero__startswith="7"))
     tresorerie = []
     for j in Journal.objects.filter(compte__isnull=False).select_related("compte"):
-        _, _, s = soldes(Ligne.objects.filter(compte=j.compte, mouvement__date__lte=fin))
+        s = etats.solde_cumule(j.compte, fin)
         tresorerie.append({"journal": j, "solde": s})
     res = ctrl.executer()
     etat, a_verifier = ctrl.etat_general(res)
@@ -105,9 +106,20 @@ def grand_livre(request):
     compte = Compte.objects.filter(numero=numero).first()
     lignes, ouverture = [], ZERO
     if compte:
-        _, _, ouverture = soldes(Ligne.objects.filter(compte=compte, mouvement__date__lt=debut))
+        o = etats.origine(debut)
+        avant = Ligne.objects.filter(compte=compte, mouvement__date__lt=debut)
+        if compte.numero[0] in "67":         # gestion : depuis le début de l'exercice de la période
+            ex = Exercice.objects.filter(debut__lte=debut, fin__gte=debut).first()
+            avant = avant.filter(mouvement__date__gte=ex.debut) if ex else avant
+        elif o:
+            avant = avant.filter(mouvement__date__gte=o)
+        _, _, ouverture = soldes(avant)
         cumul = ouverture
-        for l in (Ligne.objects.filter(compte=compte, mouvement__date__range=(debut, fin))
+        periode_ls = Ligne.objects.filter(compte=compte, mouvement__date__range=(debut, fin))
+        o_fin = etats.origine(fin)
+        if o_fin and o_fin > debut:          # la période enjambe une clôture : l'historique continue, sans les à-nouveaux
+            periode_ls = periode_ls.exclude(mouvement__origine="cloture")
+        for l in (periode_ls
                   .select_related("mouvement", "anal2").order_by("mouvement__date", "mouvement__numero", "ordre")):
             cumul += l.debit - l.credit
             lignes.append((l, cumul))

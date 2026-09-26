@@ -626,3 +626,113 @@ class EcransRapprochement(TestCase):
         self.assertEqual(self.client.get("/rapprochement/B1/").status_code, 200)
         self.assertEqual(self.client.post("/rapprochement/B1/automatique/").status_code, 403)
         self.assertNotContains(self.client.get("/rapprochement/B1/pointage/"), 'type="checkbox"')
+
+
+# ---------------------------------------------------------------- W4 : états annuels et clôture
+
+from . import cloture as clot  # noqa: E402
+from . import etats  # noqa: E402
+from .models import Budget  # noqa: E402
+from django.test import override_settings  # noqa: E402
+
+ARCHIVES_TEST = Path(tempfile.mkdtemp())
+
+
+@override_settings(DATA_DIR=ARCHIVES_TEST)
+class Cloture(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        Exercice.objects.all().delete()
+        self.e25 = Exercice.objects.create(libelle="Exercice 2025", debut=dt.date(2025, 1, 1), fin=dt.date(2025, 12, 31))
+        self.e26 = Exercice.objects.create(libelle="Exercice 2026", debut=dt.date(2026, 1, 1), fin=dt.date(2026, 12, 31))
+        Journal.objects.create(code="AN", intitule="A-NOUVEAUX", type="AN")
+        Compte.objects.create(numero="110000", libelle="REPORT A NOUVEAU", anal1_id="BIL.4")
+        self.u = User.objects.create_user("t")
+        self.n = 1
+        self.mvt(dt.date(2025, 3, 1), [("512000", 1000, 0), ("700000", 0, 1000)])      # cotisations 2025
+        self.mvt(dt.date(2025, 6, 1), [("600000", 300, 0), ("512000", 0, 300)])        # achats 2025
+        self.mvt(dt.date(2025, 9, 1), [("411TAIEB001", 50, 0), ("700000", 0, 50)])     # cotisation due
+        self.mvt(dt.date(2026, 2, 1), [("512000", 200, 0), ("700000", 0, 200)])       # 2026
+
+    def mvt(self, date, lignes):
+        m = Mouvement.objects.create(numero=self.n, date=date, journal_id="B1", piece=self.n)
+        for i, (c, d, cr) in enumerate(lignes):
+            Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle="T", debit=D(d), credit=D(cr), anal2_id="GEN.001")
+        self.n += 1
+
+    def test_etats(self):
+        cr = etats.compte_de_resultat(self.e26, self.e25)
+        self.assertEqual((cr["resultat_n"], cr["resultat_n1"]), (D(600), D(750)))   # 2026 : + la facture 421 des référentiels
+        b = etats.bilan(self.e25.fin, self.e25.debut)
+        self.assertEqual((b["total_actif"], b["resultat"], b["equilibre"]), (D(750), D(750), True))
+        Budget.objects.create(exercice=self.e25, nature="C", compte_id="600000", montant=D(500))
+        Budget.objects.create(exercice=self.e25, nature="P", anal2_id="GEN.001", montant=D(1000))
+        self.assertEqual([(x["realise"], x["ecart"], x["pourcent"]) for x in etats.budget(self.e25)],
+                         [(D(300), D(-200), D("-40.0")), (D(1050), D(50), D("5.0"))])
+
+    def test_ordre_des_clotures(self):
+        p = clot.preparer(self.e26)
+        self.assertIn("Un exercice antérieur n'est pas clos : le clôturer d'abord.", p.bloquants)
+
+    def test_cloture(self):
+        p = clot.preparer(self.e25)
+        self.assertEqual(p.bloquants, [])
+        self.assertEqual(p.lignes, [("110000", D(0), D(750)), ("411TAIEB001", D(50), D(0)), ("512000", D(700), D(0))])
+        clot.cloturer(self.e25, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+        self.e25.refresh_from_db()
+        an = self.e25.mouvement_an
+        self.assertEqual((self.e25.clos, self.e25.resultat, an.date, an.journal_id), (True, D(750), dt.date(2026, 1, 1), "AN"))
+        self.assertTrue((clot.dossier_archives() / self.e25.archive).exists())
+        # soldes : l'exercice 2026 repart des à-nouveaux (pas de double compte)
+        self.assertEqual(etats.solde_cumule(Compte.objects.get(numero="512000"), dt.date(2026, 6, 30)), D(900))
+        b = etats.bilan(self.e26.fin, self.e26.debut)
+        self.assertEqual((b["total_actif"], b["resultat"], b["resultats_anterieurs"], b["equilibre"]), (D(1350), D(600), D(0), True))
+        # 2025 verrouillé pour la saisie
+        op = operation(date=dt.date(2025, 12, 1), modele="Frais bancaires", montant=5, paiement="Mizrahi compte courant", anal2="GEN.004")
+        self.assertIn("Date", moteur.controler(op).erreurs)
+        # le rapprochement ignore les à-nouveaux de clôture
+        self.assertFalse(rap.ecritures(Journal.objects.get(code="B1")).filter(mouvement=an).exists())
+        # deuxième clôture impossible
+        with self.assertRaises(ValueError):
+            clot.cloturer(self.e25, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+        # clôture de 2026 : crée l'exercice 2027
+        clot.cloturer(self.e26, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+        self.assertTrue(Exercice.objects.filter(debut=dt.date(2027, 1, 1), fin=dt.date(2027, 12, 31), clos=False).exists())
+        self.assertEqual(etats.solde_cumule(Compte.objects.get(numero="110000"), dt.date(2027, 1, 1)), D(-1350))
+
+
+@override_settings(DATA_DIR=ARCHIVES_TEST)
+class EcransEtats(TestCase):
+    def setUp(self):
+        Cloture.setUp(self)
+        call_command("migrate", verbosity=0)
+        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(self.u)
+
+    mvt = Cloture.mvt
+
+    def test_pages(self):
+        r = self.client.get(f"/etats/?exercice={self.e25.pk}")
+        self.assertContains(r, "Bilan simplifié")
+        self.assertContains(r, "équilibré")
+        r = self.client.post(f"/etats/?exercice={self.e25.pk}", {"budget-nature": "C", "budget-compte": "600000", "budget-montant": "500",
+                                                                 "ajouter_budget": "1"})
+        self.assertEqual(Budget.objects.count(), 1)
+        r = self.client.get(f"/etats/export/?exercice={self.e25.pk}")
+        self.assertEqual(r["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget"])
+        self.assertContains(self.client.get("/cloture/"), "À-nouveaux qui seront créés")
+        self.client.post("/cloture/", {"anal2": "GEN.001", "confirmation": "on"})
+        self.e25.refresh_from_db()
+        self.assertTrue(self.e25.clos)
+        self.assertEqual(self.client.get(f"/cloture/archive/{self.e25.pk}/").status_code, 200)
+        self.assertEqual(Reglage.lire("code_axe2_a_nouveaux"), "GEN.001")
+
+    def test_droits(self):
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/etats/").status_code, 200)
+        self.assertNotContains(self.client.get("/etats/"), "Ajouter une ligne de budget")
+        self.assertEqual(self.client.get("/cloture/").status_code, 403)

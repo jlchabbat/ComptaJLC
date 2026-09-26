@@ -189,9 +189,15 @@ def date_reprise(journal):
 
 def ecritures(journal):
     """Lignes d'écritures du compte de trésorerie du journal, à partir de la date de reprise."""
-    qs = Ligne.objects.filter(compte=journal.compte).select_related("mouvement", "mouvement__journal")
+    qs = (Ligne.objects.filter(compte=journal.compte).exclude(mouvement__origine="cloture")
+          .select_related("mouvement", "mouvement__journal"))
     reprise = date_reprise(journal)
     return qs.filter(mouvement__date__gte=reprise) if reprise else qs
+
+
+def sans_an(journal):
+    """Écritures du compte, hors à-nouveaux de clôture (déjà contenus dans l'historique)."""
+    return Ligne.objects.filter(compte=journal.compte).exclude(mouvement__origine="cloture")
 
 
 def montant(ecriture):
@@ -254,7 +260,7 @@ def etat(journal, jusquau):
     rel = LigneReleve.objects.filter(journal=journal, date__lte=jusquau)
     ecr = ecritures(journal).filter(mouvement__date__lte=jusquau)
     solde_releve = sum((l.montant for l in rel), ZERO)
-    _, _, solde_compta = soldes(Ligne.objects.filter(compte=journal.compte, mouvement__date__lte=jusquau))
+    _, _, solde_compta = soldes(sans_an(journal).filter(mouvement__date__lte=jusquau))
     # pointé = rapproché avec des lignes toutes datées au plus tard à cette date
     hors = set(Rapprochement.objects.filter(Q(releves__date__gt=jusquau) | Q(ecritures__mouvement__date__gt=jusquau))
                .values_list("pk", flat=True))
@@ -283,7 +289,7 @@ def par_mois(journal):
         s_rel = sum((m for d, m in rel if d <= fin_mois), ZERO)
         s_cpt = ecart = variation = None
         if not reprise or fin_mois >= reprise:
-            _, _, s_cpt = soldes(Ligne.objects.filter(compte=journal.compte, mouvement__date__lte=fin_mois))
+            _, _, s_cpt = soldes(sans_an(journal).filter(mouvement__date__lte=fin_mois))
             ecart = s_rel - s_cpt
             variation = ecart - (precedent or ZERO)
             precedent = ecart

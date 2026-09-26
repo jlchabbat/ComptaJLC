@@ -70,3 +70,13 @@ details.carte summary { cursor: pointer; font-weight: 600; color: var(--bleu); }
   margin-top: 12px; display: flex; gap: 24px; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,.08); }
 .barre-selection .egal { color: var(--ok); font-weight: 600; } .barre-selection .diff { color: var(--ko); font-weight: 600; }
 tr.choisi td { background: #ddebf7; }
+a.bouton { padding: 5px 10px; border: 1px solid #b9c0cc; border-radius: 6px; background: #fff; text-decoration: none; color: #222; align-self: end; }
+section { margin-bottom: 16px; scroll-margin-top: 12px; }
+header nav a { padding: 14px 6px; font-size: 13.5px; }
+@media print {
+  header, .ecran, .boutons, .message { display: none !important; }
+  body { background: #fff; font-size: 11px; } main { max-width: none; padding: 0; }
+  .carte { border: 0; padding: 0; } section { break-inside: avoid-page; }
+  th { position: static; }
+}
+.deux > table { align-self: start; }

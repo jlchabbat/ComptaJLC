@@ -94,6 +94,12 @@ class Exercice(models.Model):
     debut = models.DateField("début")
     fin = models.DateField()
     clos = models.BooleanField(default=False, help_text="Aucune écriture nouvelle dans un exercice clos (RG-04).")
+    mouvement_an = models.ForeignKey("Mouvement", on_delete=models.PROTECT, null=True, blank=True, related_name="+",
+                                     verbose_name="à-nouveaux générés", help_text="Mvt d'à-nouveaux créé par la clôture.")
+    resultat = models.DecimalField("résultat affecté", max_digits=14, decimal_places=2, null=True, blank=True)
+    cloture_le = models.DateTimeField("clôturé le", null=True, blank=True)
+    cloture_par = models.CharField("clôturé par", max_length=100, blank=True)
+    archive = models.CharField(max_length=200, blank=True, help_text="Classeur figé en valeurs (dossier data/archives).")
 
     class Meta:
         ordering = ["debut"]
@@ -130,7 +136,8 @@ class Reglage(models.Model):
 
 
 class Mouvement(models.Model):
-    ORIGINES = [("import", "Reprise"), ("saisie", "Saisie"), ("liaison", "Fiche bénévole"), ("correction", "Correction")]
+    ORIGINES = [("import", "Reprise"), ("saisie", "Saisie"), ("liaison", "Fiche bénévole"), ("correction", "Correction"),
+                ("cloture", "À-nouveaux de clôture")]
     numero = models.PositiveIntegerField("Mvt", unique=True)
     date = models.DateField()
     journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
@@ -534,3 +541,32 @@ class LigneReleve(models.Model):
     @property
     def traduction(self):
         return "Solde d'ouverture" if self.ouverture else (Traduction.traduire(self.operation) or "À traduire")
+
+
+# ---------------------------------------------------------------- budget (Lot 4)
+
+class Budget(models.Model):
+    """Prévision d'un exercice, par compte, par code d'axe 1 ou par code d'axe 2."""
+
+    exercice = models.ForeignKey(Exercice, on_delete=models.CASCADE, related_name="budgets")
+    nature = models.CharField(max_length=1, choices=[("C", "Charges"), ("P", "Produits")])
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
+    anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
+                              limit_choices_to={"axe": 1}, verbose_name="axe 1")
+    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
+                              limit_choices_to={"axe": 2}, verbose_name="axe 2")
+    montant = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        ordering = ["exercice", "nature", "compte", "anal1", "anal2"]
+        constraints = [models.CheckConstraint(
+            condition=(Q(compte__isnull=False, anal1__isnull=True, anal2__isnull=True)
+                       | Q(compte__isnull=True, anal1__isnull=False, anal2__isnull=True)
+                       | Q(compte__isnull=True, anal1__isnull=True, anal2__isnull=False)), name="budget_une_cible")]
+
+    def __str__(self):
+        return f"{self.exercice} {self.cible} {self.montant}"
+
+    @property
+    def cible(self):
+        return self.compte or self.anal1 or self.anal2

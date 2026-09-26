@@ -90,6 +90,25 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   mois. La reprise du classeur reproduit l'onglet Banque1 : écart 2 910,00
   au 24/09/2026, 42 lignes du relevé et 38 écritures non pointées.
 
+## États annuels et clôture (W4)
+
+- **États** (menu États, exercice au choix, N comparé à N-1) : compte de
+  résultat par compte, résultat par axe 1 et par axe 2, bilan simplifié
+  (classes 1 à 5 ; résultat de l'exercice et résultats antérieurs non
+  reportés), budget et réalisé avec écarts en montant et en %. Impression et
+  téléchargement Excel.
+- **Budget** : par compte (6 ou 7), par code d'axe 1 ou par code d'axe 2.
+- **Clôture** (menu Clôture, trésorier) : exercices clôturés dans l'ordre ;
+  blocage si mouvement déséquilibré ou bilan déséquilibré ; avertissements
+  (contrôles, fiches non reportées, tiers provisoires). Crée **un** Mvt
+  d'à-nouveaux (journal AN, 1er jour de l'exercice suivant) : soldes des
+  classes 1 à 5, résultat affecté au compte de report (réglage
+  `compte_report_a_nouveau`, 110000 par défaut). Crée l'exercice suivant
+  s'il n'existe pas, verrouille l'exercice clos et enregistre une archive
+  Excel figée (`data/archives`). Aucune écriture existante n'est modifiée.
+- Après une clôture, les soldes des comptes de bilan repartent des
+  à-nouveaux ; le rapprochement bancaire ignore ces à-nouveaux.
+
 ## Hébergement
 
 Essai sur PythonAnywhere : `docs/hebergement-pythonanywhere.md`

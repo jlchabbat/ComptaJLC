@@ -1,0 +1,27 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Clôture{% endblock %}{% block contenu %}
+<h1>Clôture de l'exercice</h1>
+{% if not exercice %}<p class="carte">Aucun exercice ouvert.</p>{% else %}
+<div class="carte"><h2 style="margin-top:0">{{ exercice.libelle }} · du {{ exercice.debut|date:"d/m/Y" }} au {{ exercice.fin|date:"d/m/Y" }}</h2>
+<p>La clôture : vérifie l'exercice, crée <b>un</b> mouvement d'à-nouveaux (journal {{ prep.journal.code|default:"AN" }}) daté du
+{{ exercice.fin|date:"d/m/Y" }} + 1 jour qui reporte les soldes des comptes de bilan (classes 1 à 5) et affecte le résultat au compte
+{{ prep.compte_report|default:"110000" }}, puis <b>verrouille</b> l'exercice (plus aucune écriture possible) et enregistre une archive Excel figée.
+Aucune écriture existante n'est modifiée. <b>Elle est définitive.</b></p>
+{% if prep.bloquants %}<h3>À régler avant de clôturer</h3><ul class="erreurs">{% for b in prep.bloquants %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+{% if prep.avertissements %}<h3>À vérifier</h3><ul>{% for a in prep.avertissements %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+<p>Bilan au {{ exercice.fin|date:"d/m/Y" }} : actif {{ bilan.total_actif|shekel }} · passif {{ bilan.total_passif|shekel }}
+<span class="statut {% if bilan.equilibre %}OK{% else %}Anomalie{% endif %}">{% if bilan.equilibre %}équilibré{% else %}déséquilibré{% endif %}</span>
+· résultat à affecter : <b>{{ prep.resultat|shekel }}</b> · <a href="{% url 'etats' %}?exercice={{ exercice.pk|stringformat:'d' }}">voir les états</a></p></div>
+
+<div class="carte"><h2 style="margin-top:0">À-nouveaux qui seront créés ({{ prep.lignes|length }} lignes)</h2>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th></tr>
+{% for n, d, c in prep.lignes %}<tr><td>{{ n }}</td><td>{% for k, v in comptes.items %}{% if k == n %}{{ v }}{% endif %}{% endfor %}</td><td class="n">{{ d|zero_vide }}</td><td class="n">{{ c|zero_vide }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total</td><td class="n">{{ total_an|shekel }}</td><td class="n">{{ total_an|shekel }}</td></tr></table></div>
+
+{% if prep.ok %}<form method="post" class="carte">{% csrf_token %}<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" onclick="return confirm('Clôturer définitivement {{ exercice.libelle }} ?')">Clôturer l'exercice</button></div></form>{% endif %}
+{% endif %}
+<h2>Exercices clos</h2><table><tr><th>Exercice</th><th>Clos le</th><th>Par</th><th class="n">Résultat affecté</th><th>À-nouveaux</th><th>Archive</th></tr>
+{% for e in clos %}<tr><td><a href="{% url 'etats' %}?exercice={{ e.pk|stringformat:'d' }}">{{ e.libelle }}</a></td><td>{{ e.cloture_le|date:"d/m/Y H:i"|default:"avant l'application" }}</td><td>{{ e.cloture_par }}</td>
+<td class="n">{{ e.resultat|shekel }}</td><td>{% if e.mouvement_an %}<a href="{% url 'mouvement' e.mouvement_an.numero %}">Mvt {{ e.mouvement_an.numero }}</a>{% else %}<span class="aide">non générés</span>{% endif %}</td>
+<td>{% if e.archive %}<a href="{% url 'archive' e.pk %}">{{ e.archive }}</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="6">Aucun.</td></tr>{% endfor %}</table>
+{% endblock %}

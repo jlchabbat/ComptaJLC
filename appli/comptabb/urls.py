@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth
 from django.urls import path
 
-from compta import views, vues_fiches, vues_rapprochement as rap
+from compta import views, vues_etats, vues_fiches, vues_rapprochement as rap
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -30,6 +30,10 @@ urlpatterns = [
     path("rapprochement/<str:code>/parametres/", rap.parametres, name="releve_parametres"),
     path("rapprochement/<str:code>/automatique/", rap.automatique, name="rapprochement_auto"),
     path("rapprochement/<str:code>/pointage/", rap.pointage, name="pointage"),
+    path("etats/", vues_etats.etats_annuels, name="etats"),
+    path("etats/export/", vues_etats.export_etats, name="export_etats"),
+    path("cloture/", vues_etats.cloture, name="cloture"),
+    path("cloture/archive/<int:pk>/", vues_etats.archive, name="archive"),
     path("tiers-provisoires/", vues_fiches.provisoires, name="provisoires"),
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
