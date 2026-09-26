@@ -2,7 +2,10 @@
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
-<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864"><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
+<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
+<script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>
@@ -44,7 +47,9 @@
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données</a>{% endif %}
 </div></div>{% endif %}
 </nav>
-<span class="qui">{{ user.get_full_name|default:user.username }} ·
+<span class="qui"><span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
+<button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>
+{{ user.get_full_name|default:user.username }} ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
 <main>{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
