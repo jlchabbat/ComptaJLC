@@ -185,7 +185,12 @@ def controles(request):
 @login_required
 @consulter
 def modifications(request):
-    return render(request, "compta/modifications.html", {"page": Paginator(Modification.objects.all(), 100).get_page(request.GET.get("page"))})
+    q = request.GET.get("q", "").strip()
+    qs = Modification.objects.all()
+    if q:
+        qs = qs.filter(Q(auteur__icontains=q) | Q(action__icontains=q) | Q(objet__icontains=q) | Q(lot__icontains=q))
+    return render(request, "compta/modifications.html", {"page": Paginator(qs, 100).get_page(request.GET.get("page")), "q": q,
+                                                         "total": qs.count()})
 
 
 # ---------------------------------------------------------------- saisie guidée et codes (W1)

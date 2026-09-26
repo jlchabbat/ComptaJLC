@@ -1,5 +1,7 @@
 """Export Excel figé en valeurs (archive de clôture, téléchargement des états)."""
 
+import datetime as dt
+
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -66,6 +68,10 @@ def classeur_exercice(ex):
         feuille(wb, "Budget", ["Nature", "Cible", "Budget", "Réalisé", "Écart", "Écart %"],
                 [[x["budget"].get_nature_display(), str(x["budget"].cible), x["budget"].montant, x["realise"], x["ecart"],
                   x["pourcent"]] for x in bud], (3, 4, 5))
+    from .models import Modification
+    hist = Modification.objects.filter(date__date__range=(ex.debut, ex.fin + dt.timedelta(days=90)))
+    feuille(wb, "Historique", ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
+            [[m.date.replace(tzinfo=None), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres] for m in hist])
     for ws in wb.worksheets:
         for row in ws.iter_rows(min_row=2):
             for c in row:

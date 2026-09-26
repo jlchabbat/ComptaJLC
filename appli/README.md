@@ -108,6 +108,14 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   (même opération, puis premier règlement de même montant), annulable ;
   journalisé.
 
+## Journaux et historique
+
+- **Journaux** (menu Journaux) : journal de trésorerie (B1, B2, B3, caisse)
+  avec recette, dépense, contrepartie et solde progressif ; autres journaux
+  (VT, HA, OD, AN) par mouvement ; période au choix, impression, Excel.
+- **Historique** : toutes les opérations faites dans l'application (qui,
+  quand, quoi), recherche, export Excel ; repris dans l'archive de clôture.
+
 ## États annuels et clôture (W4)
 
 - **États** (menu États, exercice au choix, N comparé à N-1) : compte de

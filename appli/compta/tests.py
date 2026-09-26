@@ -730,7 +730,8 @@ class EcransEtats(TestCase):
         r = self.client.get(f"/etats/export/?exercice={self.e25.pk}")
         self.assertEqual(r["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
-        self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget"])
+        self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget",
+                                         "Historique"])
         self.assertContains(self.client.get("/cloture/"), "À-nouveaux qui seront créés")
         self.client.post("/cloture/", {"anal2": "GEN.001", "confirmation": "on"})
         self.e25.refresh_from_db()
@@ -979,3 +980,27 @@ class ImportTiers(TestCase):
         self.client.post("/membres/", {"fichier": SimpleUploadedFile("Tiers.xlsx", r.content)})
         self.assertTrue(Membre.objects.filter(compte_id="411COHEN001", ville="Netanya").exists())
         self.assertTrue(Membre.objects.filter(compte__numero__startswith="401TRAIT", type__libelle="Fournisseur").exists())
+
+
+class Journaux(TestCase):
+    def setUp(self):
+        Corrections.setUp(self)                   # Mvt 500 : frais 10 sur B1 (512000), + facture 421 en B1
+        call_command("migrate", verbosity=0)
+        self.u.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(self.u)
+
+    def test_journal_banque(self):
+        r = self.client.get("/journaux/?journal=B1&du=2026-01-01&au=2026-12-31")
+        self.assertTrue(r.context["tresorerie"])
+        self.assertEqual((r.context["depenses"], r.context["cloture"]), (D(10), D(-10)))
+        self.assertIn("600100", r.context["lignes"][0]["contrepartie"])
+        x = self.client.get("/journaux/?journal=B1&du=2026-01-01&au=2026-12-31&format=xlsx")
+        ws = openpyxl.load_workbook(__import__("io").BytesIO(x.content))["Journal B1"]
+        self.assertEqual([c.value for c in ws[1]], ["Date", "Mvt", "Pièce", "Libellé", "Contrepartie", "Recette", "Dépense", "Solde"])
+
+    def test_journal_ventes_et_historique(self):
+        r = self.client.get("/journaux/?journal=VT&du=2026-01-01&au=2026-12-31")
+        self.assertFalse(r.context["tresorerie"])
+        Modification.objects.create(auteur="t", action="Saisie", objet="Mvt 500")
+        self.assertContains(self.client.get("/modifications/?q=saisie"), "Mvt 500")
+        self.assertEqual(self.client.get("/modifications/excel/").status_code, 200)

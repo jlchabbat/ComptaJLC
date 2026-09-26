@@ -12,6 +12,7 @@
 {% if perms.compta.view_membre %}{% url 'membres' as u %}<a href="{{ u }}" {% if request.path|slice:":9" == "/membres/" %}class="actif"{% endif %}>Tiers</a>{% endif %}
 {% if perms.compta.view_mouvement %}{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écritures</a>
+{% url 'journaux' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journaux</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
 {% url 'analytique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analytique</a>
@@ -19,7 +20,7 @@
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture</a>{% endif %}
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" %}class="actif"{% endif %}>Rapprochement</a>
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
-{% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journal</a>{% endif %}
+{% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}</nav>
 <span class="qui">{{ user.get_full_name|default:user.username }} ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
