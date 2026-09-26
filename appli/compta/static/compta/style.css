@@ -96,3 +96,15 @@ header { gap: 0 16px; }
 header nav { flex: 1 1 600px; }
 header nav a { padding: 10px 5px; font-size: 13.5px; }
 header .marque { padding: 8px 0; }
+
+/* Affichage plus dense (demande du trésorier) : caractères réduits dans les tableaux et formulaires */
+body { font-size: 13px; }
+table { font-size: 12px; }
+th, td { padding: 3px 6px; }
+input, select, button, textarea { font-size: 12.5px; padding: 4px 7px; }
+.liste-cherchable li { padding: 3px 7px; font-size: 12.5px; }
+.chiffre .val { font-size: 18px; }
+.chiffre { padding: 8px 12px; }
+h1 { font-size: 19px; margin: 6px 0 12px; }
+h2 { font-size: 15px; }
+.aide { font-size: 11.5px; }
