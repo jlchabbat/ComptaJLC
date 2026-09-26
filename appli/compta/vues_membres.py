@@ -20,7 +20,8 @@ gerer = permission_required("compta.change_membre", raise_exception=True)
 class MembreFicheForm(forms.ModelForm):
     class Meta:
         model = Membre
-        fields = ["nom", "prenom", "telephone", "email", "date_adhesion", "statut", "cotisation"]
+        fields = ["type", "nom", "prenom", "adresse", "code_postal", "ville", "telephone", "email", "date_adhesion", "statut",
+                  "cotisation"]
         widgets = {"date_adhesion": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
 
@@ -47,16 +48,21 @@ def liste(request):
                                         objet=form.cleaned_data["fichier"].name[:200], apres=f"{maj} fiche(s)")
             messages.success(request, f"{maj} fiche(s) mise(s) à jour." + (f" Comptes inconnus ignorés : {', '.join(inconnus[:10])}." if inconnus else ""))
             return redirect("membres")
-    q, statut = request.GET.get("q", "").strip(), request.GET.get("statut", "")
-    qs = Membre.objects.select_related("compte")
+    q, statut, type_ = request.GET.get("q", "").strip(), request.GET.get("statut", ""), request.GET.get("type", "")
+    qs = Membre.objects.select_related("compte", "type")
     if q:
-        qs = qs.filter(Q(nom__icontains=q) | Q(prenom__icontains=q) | Q(compte__numero__icontains=q) | Q(email__icontains=q))
+        qs = qs.filter(Q(nom__icontains=q) | Q(prenom__icontains=q) | Q(compte__numero__icontains=q) | Q(email__icontains=q)
+                       | Q(ville__icontains=q))
     if statut:
         qs = qs.filter(statut=statut)
+    if type_.isdigit():
+        qs = qs.filter(type_id=type_)
     soldes = dict(Ligne.objects.filter(compte__in=[m.compte_id for m in qs]).exclude(mouvement__origine="cloture")
                   .values("compte").annotate(s=Sum("debit") - Sum("credit")).values_list("compte", "s"))
     lignes = [(m, arrondi(soldes.get(m.compte_id) or ZERO)) for m in qs]
+    from .models import TypeTiers
     return render(request, "compta/membres.html", {"lignes": lignes, "q": q, "statut": statut, "statuts": Membre.STATUTS,
+                                                    "type": type_, "types": TypeTiers.objects.all(),
                                                     "peut": peut, "import_form": form,
                                                     "total_du": sum((s for _, s in lignes if s > 0), ZERO)})
 

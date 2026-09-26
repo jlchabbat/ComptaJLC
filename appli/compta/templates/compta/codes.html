@@ -6,10 +6,11 @@
 <div class="formulaire">{% for f in code_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 <div class="boutons"><button class="principal" name="creer_code" value="1">Créer le code</button></div></form>
 
-<form method="post" class="carte">{% csrf_token %}<h2>Nouveau membre</h2>
-<p class="aide">Le compte est proposé à partir des 5 premières lettres du nom (411NOMXX001…).</p>
+<form method="post" class="carte">{% csrf_token %}<h2>Nouveau tiers</h2>
+<p class="aide">Membre, fournisseur… Le compte est proposé d'après le type et les 5 premières lettres du nom (411NOMXX001, 401NOMXX001…).
+Les coordonnées se complètent ensuite dans le menu Tiers.</p>
 <div class="formulaire">{% for f in membre_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="creer_membre" value="1">Créer le membre</button></div></form>
+<div class="boutons"><button class="principal" name="creer_membre" value="1">Créer le tiers</button></div></form>
 
 <form method="post" class="carte">{% csrf_token %}<h2>Statut d'un code (axe 2)</h2>
 <div class="formulaire">{% for f in statut_form %}{% include "compta/_champ.html" %}{% endfor %}</div>

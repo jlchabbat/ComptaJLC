@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ m }}{% endblock %}{% block contenu %}
-<p><a href="{% url 'membres' %}">← Membres</a></p>
-<div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.get_statut_display }}</span></div>
-<p>Compte {{ m.compte_id }}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
+<p><a href="{% url 'membres' %}">← Tiers</a></p>
+<div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.type|default:"Tiers" }}{% if m.est_membre %} · {{ m.get_statut_display }}{% endif %}</span></div>
+<p>Compte {{ m.compte_id }}{% if m.adresse_complete %} · {{ m.adresse_complete }}{% endif %}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
 {% if m.date_adhesion %} · membre depuis le {{ m.date_adhesion|date:"d/m/Y" }}{% endif %}{% if m.cotisation %} · cotisation {{ m.cotisation|shekel }}{% endif %}</p>
 <div class="chiffres"><div class="chiffre"><div class="lib">Facturé</div><div class="val">{{ s.facture|shekel }}</div></div>
 <div class="chiffre"><div class="lib">Réglé</div><div class="val">{{ s.regle|shekel }}</div></div>
@@ -26,7 +26,7 @@
 <div class="boutons"><button type="button" onclick="navigator.clipboard.writeText(document.getElementById('relance').value);this.textContent='Copié'">Copier le texte</button>
 {% if mailto %}<a class="bouton" href="{{ mailto }}">Ouvrir dans ma messagerie</a>{% else %}<span class="aide">Pas d'e-mail dans la fiche.</span>{% endif %}</div></div>{% endif %}
 
-{% if form %}<details class="carte"><summary>Modifier la fiche du membre</summary><form method="post">{% csrf_token %}
+{% if form %}<details class="carte"><summary>Modifier la fiche (type, coordonnées, adresse)</summary><form method="post">{% csrf_token %}
 <div class="formulaire" style="margin-top:12px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 <div class="boutons"><button class="principal" name="enregistrer" value="1">Enregistrer</button></div></form></details>{% endif %}
 <script>

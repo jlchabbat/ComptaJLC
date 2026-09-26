@@ -39,7 +39,7 @@ fichiers précédents.
 | 4 | `04_axe2.csv` | T_Axe2 | Code, Actif (0, 1 ou 2) | Libellé |
 | 5 | `05_prefixes.csv` | T_Prefixes | Préfixe, Axe (1 ou 2) | Libellé, Code suivant (recalculé) |
 | 6 | `06_plan_comptable.csv` | T_PlanComptable | Compte, Libellé compte, Axe 1 (Anal1) | Lettrable (`oui`/vide), Utilisé, Tva, Solde (ignoré) |
-| 7 | `07_membres.csv` | T_Membres (Lot 2) | Compte, Nom, Statut | Prénom, Téléphone, E-mail, Date d'adhésion, Cotisation annuelle |
+| 7 | `07_membres.csv` | Fiches tiers (membres, fournisseurs…) | Compte, Nom | Type, Prénom, Adresse, Code postal, Ville, Téléphone, E-mail, Date d'adhésion, Statut, Cotisation annuelle |
 | 8 | `08_trad_banque.csv` | T_TradBanque | Opération (hébreu), Traduction | |
 | 9 | `09_ecritures.csv` | T_Ecritures | Date, Jnl, Mvt, Pièce, Compte, Libellé, Débit ou Crédit | Anal2, Let |
 | 10 | `10_releve_<Jnl>.csv` | T_Banque<n> (Lot 3) | Date, Montant, Solde relevé | Référence, Opération (relevé) |

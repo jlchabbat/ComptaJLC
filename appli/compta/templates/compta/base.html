@@ -9,7 +9,7 @@
 <nav>{% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
-{% if perms.compta.view_membre %}{% url 'membres' as u %}<a href="{{ u }}" {% if request.path|slice:":9" == "/membres/" %}class="actif"{% endif %}>Membres</a>{% endif %}
+{% if perms.compta.view_membre %}{% url 'membres' as u %}<a href="{{ u }}" {% if request.path|slice:":9" == "/membres/" %}class="actif"{% endif %}>Tiers</a>{% endif %}
 {% if perms.compta.view_mouvement %}{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écritures</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>

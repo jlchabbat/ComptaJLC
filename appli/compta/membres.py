@@ -14,25 +14,57 @@ from .models import ZERO, Compte, Ligne, Membre, Modification, Reglage, TypeTier
 TRANCHES = [("0–30 j", 30), ("31–90 j", 90), ("> 90 j", None)]
 
 
-def prefixe_membres():
-    t = TypeTiers.objects.filter(libelle="Membre").first()
-    return t.prefixe if t else None
+def _cle_nom(nom):
+    s = unicodedata.normalize("NFKD", nom.upper())
+    return "".join(ch for ch in s if ch.isalpha() and ord(ch) < 128)[:5]
 
 
-def comptes_membres():
-    p = prefixe_membres()
-    return Compte.objects.filter(numero__startswith=p) if p else Compte.objects.none()
+def compte_propose(nom, type_tiers=None):
+    """Préfixe du type + 5 premières lettres du nom + rang : 411TAIEB001, 401PARTN001…"""
+    t = type_tiers or TypeTiers.objects.filter(libelle="Membre").first()
+    prefixe = (t.prefixe if t else "411") + _cle_nom(nom)
+    rang = 1
+    while Compte.objects.filter(numero=f"{prefixe}{rang:03d}").exists():
+        rang += 1
+    return f"{prefixe}{rang:03d}"
+
+
+@transaction.atomic
+def creer_tiers(type_tiers, nom, prenom="", **coordonnees):
+    """Crée le compte (axe 1 repris d'un compte du même type) et la fiche du tiers."""
+    libelle = f"{nom.strip().upper()} {prenom.strip().upper()}".strip()
+    modele = Compte.objects.filter(numero__startswith=type_tiers.prefixe, anal1__isnull=False).first()
+    compte = Compte.objects.create(numero=compte_propose(nom, type_tiers), libelle=libelle, lettrable=True,
+                                   anal1=modele.anal1 if modele else None)
+    Membre.objects.create(compte=compte, type=type_tiers, nom=nom.strip().upper(), prenom=prenom.strip(),
+                          **{k: (v or "").strip() for k, v in coordonnees.items()})
+    return compte
+
+
+def type_du_compte(numero):
+    """Type de tiers d'après le préfixe du compte (le plus long qui convient)."""
+    types = sorted(TypeTiers.objects.all(), key=lambda t: -len(t.prefixe))
+    return next((t for t in types if numero.startswith(t.prefixe)), None)
 
 
 def creer_manquants():
-    """Une fiche membre pour chaque compte de membre nominatif (les comptes collectifs, tout en chiffres, sont exclus)."""
+    """Une fiche pour chaque compte de tiers (membres, fournisseurs…) ; les comptes collectifs de membres (tout en chiffres)
+    sont exclus. Complète aussi le type des fiches qui n'en ont pas. Renvoie le nombre de fiches créées."""
     n = 0
-    for c in comptes_membres().filter(membre__isnull=True):
-        if c.numero.isdigit():
-            continue
-        mots = c.libelle.split()
-        Membre.objects.create(compte=c, nom=mots[0] if mots else c.libelle, prenom=" ".join(mots[1:]).title())
-        n += 1
+    for t in TypeTiers.objects.all():
+        for c in Compte.objects.filter(numero__startswith=t.prefixe, membre__isnull=True):
+            if t.libelle == "Membre" and c.numero.isdigit():
+                continue
+            mots = c.libelle.split()
+            if t.libelle == "Membre":
+                Membre.objects.create(compte=c, type=t, nom=mots[0] if mots else c.libelle, prenom=" ".join(mots[1:]).title())
+            else:
+                Membre.objects.create(compte=c, type=t, nom=c.libelle)
+            n += 1
+    for m in Membre.objects.filter(type__isnull=True).select_related("compte"):
+        m.type = type_du_compte(m.compte_id)
+        if m.type:
+            m.save(update_fields=["type"])
     return n
 
 
@@ -89,7 +121,7 @@ def cotisations(exercice):
     """Cotisations de l'exercice par membre : attendue (membre actif), facturée, reçue, restant dû."""
     compte_cot = Reglage.lire("compte_cotisations")
     res = []
-    for m in Membre.objects.select_related("compte"):
+    for m in Membre.objects.filter(type__libelle="Membre").select_related("compte"):
         mvts = Ligne.objects.filter(compte=m.compte, debit__gt=0, mouvement__date__range=(exercice.debut, exercice.fin)).values("mouvement")
         cot = Ligne.objects.filter(mouvement__in=mvts, compte_id=compte_cot)
         facturee = sum((l.credit - l.debit for l in cot), ZERO)
@@ -205,7 +237,8 @@ def cle(texte):
 
 
 def importer_csv(rangees):
-    """Met à jour (ou crée) les fiches à partir des colonnes du modèle Imports/modeles/07_membres.csv."""
+    """Met à jour (ou crée) les fiches à partir des colonnes du modèle Imports/modeles/07_membres.csv
+    (Type, Adresse, Code postal et Ville sont facultatifs)."""
     from .releves import date as lire_date, nombre
     entetes, maj, inconnus = None, 0, []
     for r in rangees:
@@ -219,9 +252,12 @@ def importer_csv(rangees):
                 inconnus.append(v["compte"].strip())
             continue
         statut = cle(v.get("statut"))
+        t = TypeTiers.objects.filter(libelle__iexact=(v.get("type") or "").strip()).first() or type_du_compte(compte.numero)
+        texte = lambda k: (v.get(k) or "").strip()  # noqa: E731
         Membre.objects.update_or_create(compte=compte, defaults={
-            "nom": (v.get("nom") or "").strip().upper() or compte.libelle, "prenom": (v.get("prenom") or "").strip(),
-            "telephone": (v.get("telephone") or "").strip(), "email": (v.get("email") or "").strip(),
+            "type": t, "nom": texte("nom").upper() or compte.libelle, "prenom": texte("prenom"),
+            "adresse": texte("adresse"), "code_postal": texte("codepostal") or texte("cp"), "ville": texte("ville"),
+            "telephone": texte("telephone"), "email": texte("email"),
             "date_adhesion": lire_date(v.get("datedadhesion")), "cotisation": nombre(v.get("cotisationannuelle")),
             "statut": statut if statut in dict(Membre.STATUTS) else "actif"})
         maj += 1

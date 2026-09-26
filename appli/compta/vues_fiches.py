@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from . import fiches as moteur
 from .forms import AttribuerForm, BenevoleForm, FicheForm, LigneFicheForm
-from .models import Compte, Fiche, LigneFiche, ModeFiche, Modification, NatureFiche, TiersProvisoire, TypeTiers
+from .models import Fiche, LigneFiche, ModeFiche, Modification, NatureFiche, TiersProvisoire
 
 voir_fiches = permission_required("compta.view_fiche", raise_exception=True)
 gerer = permission_required("compta.gerer_fiche", raise_exception=True)
@@ -165,7 +165,7 @@ def ligne(request, pk):
 @login_required
 @gerer
 def provisoires(request):
-    from .views import compte_membre_propose
+    from .membres import creer_tiers
     if request.method == "POST":
         p = get_object_or_404(TiersProvisoire, pk=request.POST.get("provisoire"), compte__isnull=True)
         form = AttribuerForm(request.POST, prefix=f"p{p.pk}")
@@ -173,13 +173,8 @@ def provisoires(request):
             with transaction.atomic():
                 compte = form.cleaned_data["compte"]
                 if compte is None:
-                    t = TypeTiers.objects.filter(libelle="Membre").first()
-                    modele = Compte.objects.filter(numero__startswith=t.prefixe if t else "411", anal1__isnull=False).first()
-                    compte = Compte.objects.create(numero=compte_membre_propose(p.nom), libelle=str(p).replace(" (provisoire)", ""),
-                                                   lettrable=True, anal1=modele.anal1 if modele else None)
+                    compte = creer_tiers(form.cleaned_data["type"], p.nom, p.prenom)
                     journaliser(request, "Création", f"compte {compte.numero}", apres=compte.libelle)
-                    from .models import Membre
-                    Membre.objects.create(compte=compte, nom=p.nom.strip().upper(), prenom=p.prenom.strip())
                 p.compte = compte
                 p.save(update_fields=["compte"])
                 journaliser(request, "Tiers provisoire", f"{p.nom} {p.prenom}", apres=f"compte {compte.numero}")

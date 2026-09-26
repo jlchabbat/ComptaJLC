@@ -320,7 +320,15 @@ class Ecrans(TestCase):
                                          "creer_code": "1"})
         self.assertRedirects(r, "/codes/")
         self.assertEqual(CodeAnalytique.objects.get(code="SOC.007").libelle, "AIDE AUX FAMILLES")
-        self.client.post("/codes/", {"membre-nom": "Taïeb", "membre-prenom": "Paul", "creer_membre": "1"})
+        membre, fournisseur = TypeTiers.objects.get(libelle="Membre"), TypeTiers.objects.get(libelle="Fournisseur")
+        self.client.post("/codes/", {"membre-type": membre.pk, "membre-nom": "Taïeb", "membre-prenom": "Paul", "membre-ville": "Netanya",
+                                     "creer_membre": "1"})
+        self.client.post("/codes/", {"membre-type": fournisseur.pk, "membre-nom": "Partner", "membre-adresse": "8 rue Ha-Barzel",
+                                     "membre-code_postal": "6971005", "membre-ville": "Tel Aviv", "creer_membre": "1"})
+        from .models import Membre
+        f = Membre.objects.get(compte_id="401PARTN001")
+        self.assertEqual((f.type, f.adresse_complete), (fournisseur, "8 rue Ha-Barzel, 6971005 Tel Aviv"))
+        self.assertEqual(Membre.objects.get(compte_id="411TAIEB002").ville, "Netanya")
         self.assertTrue(Compte.objects.filter(numero="411TAIEB002", libelle="TAÏEB PAUL").exists())
         r = self.client.post("/codes/", {"statut-code": "MAN.001", "statut-statut": "2", "changer_statut": "1"})
         self.assertContains(r, "cocher la confirmation")
@@ -331,7 +339,7 @@ class Ecrans(TestCase):
 # ---------------------------------------------------------------- W2 : fiches bénévoles (cas de la recette du fichier de liaison)
 
 from . import fiches as fiches_moteur  # noqa: E402
-from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
+from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire, TypeTiers  # noqa: E402
 
 
 def referentiels_fiches():
@@ -478,7 +486,8 @@ class EcransFiches(TestCase):
         self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
         self.assertFalse(Mouvement.objects.filter(origine="liaison").exists())
         p = TiersProvisoire.objects.get()
-        self.assertRedirects(self.client.post("/tiers-provisoires/", {"provisoire": p.pk, f"p{p.pk}-compte": ""}), "/tiers-provisoires/")
+        self.assertRedirects(self.client.post("/tiers-provisoires/", {"provisoire": p.pk, f"p{p.pk}-compte": "",
+                                                                  f"p{p.pk}-type": TypeTiers.objects.get(libelle="Membre").pk}), "/tiers-provisoires/")
         p.refresh_from_db()
         self.assertEqual((p.compte_id, p.compte.libelle), ("411COHEN001", "COHEN DAN"))
         self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
@@ -762,7 +771,8 @@ class Membres(TestCase):
             n += 1
 
     def test_fiches_creees(self):
-        self.assertEqual(list(Membre.objects.values_list("compte_id", "nom", "prenom")), [("411TAIEB001", "TAIEB", "Jeanne")])
+        self.assertEqual(list(Membre.objects.order_by("compte").values_list("compte_id", "nom", "prenom", "type__libelle")),
+                         [("401000", "FOURNIS DIVERS", "", "Fournisseur"), ("411TAIEB001", "TAIEB", "Jeanne", "Membre")])
         self.assertEqual(mbr.creer_manquants(), 0)
 
     def test_situation_et_anciennete(self):
@@ -771,7 +781,7 @@ class Membres(TestCase):
         # FIFO : les 500 réglés soldent la cotisation de janvier ; restent la manifestation de mars et la facture 421
         self.assertEqual([(l.mouvement.numero, r, j) for l, r, j in s.impayes], [(602, D(200), 214), (421, D(400), 7)])
         self.assertEqual(s.tranches, [("0–30 j", D(400)), ("31–90 j", D(0)), ("> 90 j", D(200))])
-        self.assertIn("600,00 ₪", mbr.texte_relance(Membre.objects.get(), s))
+        self.assertIn("600,00 ₪", mbr.texte_relance(Membre.objects.get(compte_id="411TAIEB001"), s))
 
     def test_lettrage(self):
         self.assertEqual(mbr.lettrage_automatique(self.c), 1)          # manifestation de mars : même mouvement
@@ -792,7 +802,7 @@ class Membres(TestCase):
                                         ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org", "01/09/2020", "honoraire", "500,00"],
                                         ["411XXX", "Inconnu", "", "", "", "", "actif", ""]])
         self.assertEqual((n, inconnus), (1, ["411XXX"]))
-        m = Membre.objects.get()
+        m = Membre.objects.get(compte_id="411TAIEB001")
         self.assertEqual((m.nom, m.statut, m.cotisation, m.date_adhesion), ("TAIEB", "honoraire", D(500), dt.date(2020, 9, 1)))
         lignes, tot = mbr.cotisations(ex)
         self.assertEqual((lignes[0]["attendue"], lignes[0]["facturee"], lignes[0]["recue"], lignes[0]["du"]), (D(0), D(500), D(500), D(0)))
@@ -818,7 +828,7 @@ class EcransMembres(TestCase):
         self.assertEqual(Ligne.objects.get(pk=cr.pk).lettrage, "A")
         self.client.post("/membres/411TAIEB001/", {"enregistrer": "1", "nom": "TAIEB", "prenom": "Jeanne", "statut": "actif",
                                                     "email": "jeanne@example.org", "cotisation": "450"})
-        self.assertEqual(Membre.objects.get().cotisation, D(450))
+        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").cotisation, D(450))
 
     def test_droits(self):
         b = User.objects.create_user("bureau")

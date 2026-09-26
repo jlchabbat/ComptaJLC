@@ -195,7 +195,7 @@ from django.db import transaction  # noqa: E402
 
 from . import saisie as moteur  # noqa: E402
 from .forms import CodeForm, MembreForm, SaisieForm, StatutForm  # noqa: E402
-from .models import ModeleOperation, Prefixe, TypeTiers  # noqa: E402
+from .models import ModeleOperation, Prefixe  # noqa: E402
 
 
 @login_required
@@ -235,21 +235,6 @@ def _journaliser(request, action, objet, avant="", apres=""):
     Modification.objects.create(auteur=request.user.get_username(), action=action, objet=objet, avant=avant, apres=apres)
 
 
-def _cle_nom(nom):
-    import unicodedata
-    s = unicodedata.normalize("NFKD", nom.upper())
-    return "".join(ch for ch in s if ch.isalpha() and ord(ch) < 128)[:5]
-
-
-def compte_membre_propose(nom):
-    t = TypeTiers.objects.filter(libelle="Membre").first()
-    prefixe = (t.prefixe if t else "411") + _cle_nom(nom)
-    rang = 1
-    while Compte.objects.filter(numero=f"{prefixe}{rang:03d}").exists():
-        rang += 1
-    return f"{prefixe}{rang:03d}"
-
-
 @login_required
 @permission_required("compta.add_codeanalytique", raise_exception=True)
 def codes(request):
@@ -272,18 +257,15 @@ def codes(request):
             if "creer_membre" in request.POST and membre_form.is_valid():
                 c = membre_form.cleaned_data
                 libelle = f"{c['nom'].strip().upper()} {c['prenom'].strip().upper()}".strip()
-                existant = Compte.objects.filter(libelle=libelle).first()
+                existant = Compte.objects.filter(libelle=libelle, numero__startswith=c["type"].prefixe).first()
                 if existant:
                     membre_form.add_error("nom", f"Un compte existe déjà à ce nom : {existant.numero}.")
                 else:
-                    t = TypeTiers.objects.filter(libelle="Membre").first()
-                    modele = Compte.objects.filter(numero__startswith=t.prefixe if t else "411", anal1__isnull=False).first()
-                    compte = Compte.objects.create(numero=compte_membre_propose(c["nom"]), libelle=libelle, lettrable=True,
-                                                   anal1=modele.anal1 if modele else None)
-                    _journaliser(request, "Création", f"compte {compte.numero}", apres=libelle)
-                    from .models import Membre
-                    Membre.objects.create(compte=compte, nom=c["nom"].strip().upper(), prenom=c["prenom"].strip())
-                    messages.success(request, f"Membre créé : {compte.numero} – {libelle}.")
+                    from .membres import creer_tiers
+                    compte = creer_tiers(c["type"], c["nom"], c["prenom"], **{k: c[k] for k in (
+                        "adresse", "code_postal", "ville", "telephone", "email")})
+                    _journaliser(request, "Création", f"compte {compte.numero}", apres=f"{c['type']} {libelle}")
+                    messages.success(request, f"{c['type']} créé : {compte.numero} – {libelle}.")
                     return redirect("codes")
             if "changer_statut" in request.POST and statut_form.is_valid():
                 c = statut_form.cleaned_data

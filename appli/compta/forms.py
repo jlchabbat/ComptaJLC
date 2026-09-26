@@ -52,8 +52,16 @@ class CodeForm(forms.Form):
 
 
 class MembreForm(forms.Form):
-    nom = forms.CharField(max_length=60)
+    """Nouveau tiers : membre, fournisseur… (le compte est proposé d'après le type et le nom)."""
+
+    type = forms.ModelChoiceField(TypeTiers.objects.all(), label="Type de tiers", empty_label=None)
+    nom = forms.CharField(max_length=60, label="Nom ou raison sociale")
     prenom = forms.CharField(max_length=60, required=False, label="Prénom")
+    adresse = forms.CharField(max_length=150, required=False)
+    code_postal = forms.CharField(max_length=12, required=False, label="Code postal")
+    ville = forms.CharField(max_length=60, required=False)
+    telephone = forms.CharField(max_length=40, required=False, label="Téléphone")
+    email = forms.EmailField(required=False, label="E-mail")
 
 
 class StatutForm(forms.Form):
@@ -193,11 +201,13 @@ class LigneFicheForm(forms.ModelForm):
 
 class AttribuerForm(forms.Form):
     compte = forms.ModelChoiceField(Compte.objects.none(), required=False, label="Compte existant",
-                                    help_text="Vide : un nouveau compte de membre est créé.")
+                                    help_text="Vide : un nouveau compte est créé, du type choisi ci-dessous.")
+    type = forms.ModelChoiceField(TypeTiers.objects.all(), label="Type (nouveau compte)", empty_label=None)
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["compte"].queryset = comptes_tiers()
+        self.fields["type"].initial = TypeTiers.objects.filter(libelle="Membre").first()
         cherchable(self)
 
 

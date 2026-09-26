@@ -575,10 +575,17 @@ class Budget(models.Model):
 # ---------------------------------------------------------------- suivi des membres (Lot 2)
 
 class Membre(models.Model):
+    """Fiche d'un tiers : membre, fournisseur ou tout autre type de tiers (Référentiels › Types de tiers).
+    Statut, adhésion et cotisation ne concernent que les membres."""
+
     STATUTS = [("actif", "Actif"), ("honoraire", "Honoraire"), ("demissionnaire", "Démissionnaire")]
     compte = models.OneToOneField(Compte, on_delete=models.PROTECT, primary_key=True, related_name="membre")
-    nom = models.CharField(max_length=60)
+    type = models.ForeignKey(TypeTiers, on_delete=models.PROTECT, null=True, blank=True, verbose_name="type de tiers")
+    nom = models.CharField("nom ou raison sociale", max_length=60)
     prenom = models.CharField("prénom", max_length=60, blank=True)
+    adresse = models.CharField(max_length=150, blank=True)
+    code_postal = models.CharField("code postal", max_length=12, blank=True)
+    ville = models.CharField(max_length=60, blank=True)
     telephone = models.CharField("téléphone", max_length=40, blank=True)
     email = models.EmailField("e-mail", blank=True)
     date_adhesion = models.DateField("date d'adhésion", null=True, blank=True)
@@ -587,6 +594,16 @@ class Membre(models.Model):
 
     class Meta:
         ordering = ["nom", "prenom"]
+        verbose_name = "fiche tiers"
+        verbose_name_plural = "fiches tiers"
 
     def __str__(self):
         return f"{self.nom} {self.prenom}".strip()
+
+    @property
+    def est_membre(self):
+        return bool(self.type and self.type.libelle == "Membre")
+
+    @property
+    def adresse_complete(self):
+        return ", ".join(x for x in (self.adresse, f"{self.code_postal} {self.ville}".strip()) if x)
