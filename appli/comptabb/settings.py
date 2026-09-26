@@ -3,8 +3,11 @@
 Les données (base SQLite, clé secrète) vivent dans un dossier `data` à côté
 de l'application — ou de l'exécutable une fois empaqueté — sauf si la
 variable d'environnement COMPTABB_DATA en désigne un autre. Aucun chemin
-absolu n'est codé en dur. Pour un hébergement, DATABASE_URL et
-COMPTABB_HOTES remplaceront ces valeurs locales.
+absolu n'est codé en dur.
+
+Hébergement (docs/hebergement-pythonanywhere.md) : COMPTABB_DATA (dossier des
+données), COMPTABB_HOTES (nom du site) et COMPTABB_HTTPS=1 (cookies sécurisés,
+redirection HTTPS) se règlent dans le fichier WSGI de l'hébergeur.
 """
 
 import os
@@ -31,6 +34,14 @@ def _cle_secrete():
 SECRET_KEY = _cle_secrete()
 DEBUG = os.environ.get("COMPTABB_DEBUG") == "1"
 ALLOWED_HOSTS = os.environ.get("COMPTABB_HOTES", "127.0.0.1,localhost").split(",")
+
+if os.environ.get("COMPTABB_HTTPS") == "1":
+    CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 3600
+    SESSION_COOKIE_AGE = 8 * 3600          # reconnexion après 8 heures
 
 INSTALLED_APPS = [
     "django.contrib.admin",

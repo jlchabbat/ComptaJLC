@@ -90,6 +90,12 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   mois. La reprise du classeur reproduit l'onglet Banque1 : écart 2 910,00
   au 24/09/2026, 42 lignes du relevé et 38 écritures non pointées.
 
+## Hébergement
+
+Essai sur PythonAnywhere : `docs/hebergement-pythonanywhere.md`
+(`python manage.py preparer`, `python manage.py creer_tresorier`,
+`deploiement/pythonanywhere_wsgi.py`).
+
 ## Développement
 
 ```
