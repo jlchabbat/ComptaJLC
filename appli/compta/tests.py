@@ -1004,3 +1004,53 @@ class Journaux(TestCase):
         Modification.objects.create(auteur="t", action="Saisie", objet="Mvt 500")
         self.assertContains(self.client.get("/modifications/?q=saisie"), "Mvt 500")
         self.assertEqual(self.client.get("/modifications/excel/").status_code, 200)
+
+
+# ---------------------------------------------------------------- base de données : sauvegarde, restauration, reprise
+
+from django.test import TransactionTestCase  # noqa: E402
+
+from . import base_donnees as bd  # noqa: E402
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class BaseDonnees(TransactionTestCase):
+    def setUp(self):
+        call_command("migrate", verbosity=0)
+        self.admin = User.objects.create_superuser("admin", "", "motdepasse-long")
+        self.client.force_login(self.admin)
+
+    def test_sauvegarde_et_restauration(self):
+        referentiels()
+        mouvement(1, dt.date(2026, 2, 1), [("512000", 100, 0), ("700000", 0, 100)])
+        s = bd.sauvegarder("test")
+        self.assertEqual(bd.verifier(s), 1)
+        mouvement(2, dt.date(2026, 2, 2), [("512000", 5, 0), ("700000", 0, 5)])
+        n, avant = bd.restaurer(s)
+        self.assertEqual((n, Mouvement.objects.count(), bd.verifier(avant)), (1, 1, 2))
+        faux = Path(tempfile.mkdtemp()) / "faux.sqlite3"
+        faux.write_bytes(b"pas une base")
+        with self.assertRaises(ValueError):
+            bd.restaurer(faux)
+
+    def test_page_et_reprise_du_classeur(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.assertContains(self.client.get("/base/"), "Remettre à zéro")
+        self.client.post("/base/", {"sauvegarder": "1"})
+        self.assertEqual(len(bd.liste()), 1)
+        self.assertEqual(self.client.get("/base/telecharger/").status_code, 200)
+        classeur = Reprise.classeur(self)
+        refuse = self.client.post("/base/", {"remplacer": "1", "confirmation": "non",
+                                             "fichier": SimpleUploadedFile("ComptaBB.xlsx", classeur.read_bytes())})
+        self.assertEqual(refuse.status_code, 200)                       # confirmation manquante : rien ne change
+        self.client.post("/base/", {"remplacer": "1", "confirmation": "REMPLACER",
+                                    "fichier": SimpleUploadedFile("ComptaBB.xlsx", classeur.read_bytes())})
+        self.assertEqual(Mouvement.objects.count(), 2)
+        self.assertTrue(User.objects.filter(username="admin").exists())      # utilisateurs gardés
+        self.assertTrue(Modification.objects.filter(action="Remise à zéro et reprise").exists())
+
+    def test_reserve_a_l_administrateur(self):
+        u = User.objects.create_user("tresorier")
+        u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(u)
+        self.assertEqual(self.client.get("/base/").status_code, 403)

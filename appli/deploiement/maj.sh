@@ -43,7 +43,7 @@ mkdir -p "$DATA/sauvegardes"
 SAUVE="$DATA/sauvegardes/comptabb_$(date +%Y-%m-%d_%H%M).sqlite3"
 python3 -c "import sqlite3, sys; s = sqlite3.connect(sys.argv[1]); d = sqlite3.connect(sys.argv[2]); s.backup(d); d.close()" \
   "$DATA/comptabb.sqlite3" "$SAUVE"
-ls -t "$DATA"/sauvegardes/*.sqlite3 | tail -n +11 | xargs -r -d '\n' rm --      # garde les 10 dernières
+ls -t "$DATA"/sauvegardes/*.sqlite3 | tail -n +31 | xargs -r -d '\n' rm --      # garde les 30 dernières
 echo "   $SAUVE"
 
 echo "2/5 Nouveau code : $(basename "$ZIP")"

@@ -108,6 +108,16 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   (même opération, puis premier règlement de même montant), annulable ;
   journalisé.
 
+## Base de données (administrateur)
+
+Menu **Base** (compte administrateur, par exemple le trésorier créé par
+`creer_tresorier`) : créer et télécharger des sauvegardes ; **remettre à zéro
+et recharger** depuis une sauvegarde `.sqlite3` (tout, utilisateurs compris)
+ou depuis le classeur `ComptaBB.xlsm` (plan, journaux, codes, écritures,
+exercices, relevé ; utilisateurs gardés ; tiers recréés d'après les comptes,
+coordonnées à réimporter avec Tiers.xlsx). Confirmation « REMPLACER » et
+sauvegarde automatique juste avant ; journalisé.
+
 ## Journaux et historique
 
 - **Journaux** (menu Journaux) : journal de trésorerie (B1, B2, B3, caisse)

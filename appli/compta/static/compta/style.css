@@ -109,3 +109,8 @@ h1 { font-size: 19px; margin: 6px 0 12px; }
 h2 { font-size: 15px; }
 .aide { font-size: 11.5px; }
 .message.info { background: #ddebf7; color: #1f4e78; }
+/* un peu plus gros (demande du trésorier) */
+body { font-size: 13.5px; }
+table { font-size: 13px; }
+input, select, button, textarea { font-size: 13px; }
+.liste-cherchable li { font-size: 13px; }

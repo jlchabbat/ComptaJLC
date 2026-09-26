@@ -21,7 +21,8 @@
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" %}class="actif"{% endif %}>Rapprochement</a>
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
 {% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>{% endif %}
-{% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}</nav>
+{% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
+{% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base</a>{% endif %}</nav>
 <span class="qui">{{ user.get_full_name|default:user.username }} ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
