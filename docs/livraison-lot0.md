@@ -13,10 +13,10 @@ réécrive. Il peut être relancé à l'identique sur le classeur d'origine.
 | 2 | **Chemin relatif** | `Requête1` lit `CheminReleveB1` (Paramètres!B3), calculé ainsi : dossier de l'application + `Releves\tnuot.pdf`. |
 | 3 | **Paramètres nommés** | Paramètres!D3:F16 : `P_DebutExercice` 01/01/2026, `P_FinExercice` 31/12/2026, `P_DateCloture` 31/12/2025, `P_DernierMvtClos` 421, `P_CompteVirement` 580000, `P_CompteAttente` 470000, `P_Dossier`, `P_ReleveB1`. |
 | 4 | **Isracard (décision Q2)** | Mvt 412 à 416 (B1) : la ligne 600000 devient 580000, soit 580000 contre 512000. Nouveaux Mvt 417 à 421 (OD, pièces 828 à 832) : 600000 contre 580000, mêmes dates, montants et codes Anal2. Lignes en orangé et commentées (RG-05). |
-| 5 | **Codes Anal2** | 13 codes sans libellé et jamais utilisés sont supprimés. SOC.005, SOC.006 et SOC.007 sont conservés (36 lignes d'écritures). SOC.005 = ENFANTS MALADES, SOC.006 = BOURSES ; le libellé de SOC.007 reste à saisir. |
+| 5 | **Codes Anal2** | 13 codes sans libellé et jamais utilisés sont supprimés. SOC.005, SOC.006 et SOC.007 sont conservés (36 lignes d'écritures). SOC.005 = ENFANTS MALADES, SOC.006 = BOURSES, SOC.007 = AIDE AUX FAMILLES. |
 | 6 | **Calculs** | T_PlanComptable[Solde] = solde des écritures. T_Prefixes[Code suivant] = préfixe + (plus grand numéro existant + 1), sur 1 chiffre pour l'axe 1 (`ACT.4`) et 3 chiffres pour l'axe 2 (`MAN.008`). |
 | 7 | **Contrôles** | La ligne 18 devient RG-04 (écritures nouvelles dans la période close) ; l'ancien contrôle « solde du plan ≠ écritures » est sans objet. M20:P23 suit les comptes de liaison 580000 et 470000. |
-| 8 | **Traçabilité** | Nouvel onglet **Journal des modifications** (table T_Journal, 40 lignes), lien depuis l'Accueil. Compte rendu : section 6 et actions à jour. |
+| 8 | **Traçabilité** | Nouvel onglet **Journal des modifications** (table T_Journal, 41 lignes), lien depuis l'Accueil. Compte rendu : section 6 et actions à jour. |
 | 9 | **Recalcul** | Excel recalcule tout le classeur à l'ouverture. |
 
 ## Vérifications faites
@@ -56,7 +56,6 @@ fait dans Excel.**
 
 ## Points ouverts
 
-- Libellé de SOC.007 (SOC.005 = ENFANTS MALADES et SOC.006 = BOURSES, reçus le 26/09/2026).
 - **580000 : solde débiteur de 149 655,84.** Les virements internes ne sont
   passés que d'un côté : 101 033,34 venus de B1, 38 122,50 de B3 et 10 500 de CA,
   alors que B2 (épargne) n'a aucune écriture. À traiter au Lot 3 avec le
