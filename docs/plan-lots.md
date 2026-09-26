@@ -63,7 +63,7 @@ relevé (date + montant + référence + rang), ne bouge pas.
 - Reporté au Lot 1 : colonnes « Libellé Axe1 / Axe2 » dans les vues qui
   n'en ont pas encore, exports de reprise dans `Imports/reprise/`.
 
-## Lot 1 — Saisie guidée (branche `lot-1-saisie`)
+## Lot 1 — Saisie guidée : **1re partie livrée le 26/09/2026** (voir `docs/livraison-lot1.md`)
 
 - **T_ModelesOperation** avec les 12 types minimum du §4. Les types à deux
   temps (cotisation puis règlement, virement interne 512x → 580000 →

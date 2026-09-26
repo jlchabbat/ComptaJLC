@@ -51,7 +51,7 @@ partagées, aucune erreur de formule.
 | Lot | Contenu | État |
 |---|---|---|
 | 0 | Dissociation de l'ancien logiciel, chemins relatifs, paramètres, Isracard, Journal des modifications | **livré le 26/09/2026** — recette dans Excel à faire ([livraison](docs/livraison-lot0.md)) |
-| 1 | Saisie guidée | — |
+| 1 | Saisie guidée | **1re partie livrée le 26/09/2026** : onglets Saisie, Codes, Modèles ([livraison](docs/livraison-lot1.md)) ; 2e partie : saisie à distance |
 | 2 | Suivi des membres | — |
 | 3 | Rapprochement bancaire | — |
 | 4 | Clôture et états annuels | — |
@@ -67,5 +67,12 @@ Contrôles OK. Photographies : `tests/reference/`.
 - [Plan par lots, décisions, accès à distance](docs/plan-lots.md)
 - [Imports : formats, ordre, reprise](Imports/README.md)
 - [Livraison du Lot 0](docs/livraison-lot0.md)
+- [Livraison du Lot 1, 1re partie](docs/livraison-lot1.md)
 
-Le Lot 0 est reproductible : `python src/lot0_preparation.py Fusion.xlsm ComptaBB.xlsm`.
+Le classeur est reproductible depuis `Fusion.xlsm` :
+
+```
+python src/lot0_preparation.py Fusion.xlsm lot0.xlsm
+python src/lot1_saisie.py lot0.xlsm ComptaBB.xlsm
+python tests/recette_lot1.py lot0.xlsm      recette par LibreOffice (15 scénarios)
+```

@@ -18,7 +18,12 @@ ComptaBB » du classeur fait foi).
   (`docs/historique/` : requêtes supprimées).
 - `src/lot0_preparation.py` : exemple d'édition directe du XML (tables,
   commentaires à thread, DataMashup, chaînes partagées).
+- `src/lot1_saisie.py` : onglets Saisie, Codes, Modèles (appliqué après le Lot 0).
+  Paramètres de saisie dans T_ModelesOperation / T_Schemas / T_Paiements /
+  T_TypesTiers ; calculs intermédiaires nommés `SA_*` (Saisie!Q:R masquées).
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
+- `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
+  (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas).
 - `Imports/` : modèles (`modeles/`, anonymisés, versionnés) et exports de
   reprise (`reprise/`, hors Git).
 - État détaillé du classeur : `docs/inventaire.md`. Plan : `docs/plan-lots.md`.
@@ -48,6 +53,10 @@ python -m unittest discover tests
 
 - Un Mvt = une opération équilibrée ; une ligne = débit **ou** crédit.
 - Nouveau Mvt = `MAX(T_Ecritures[Mvt])+1`, Pièce = `MAX(Pièce)+1`.
+- Une opération avec tiers = un Mvt de 4 lignes dans le journal du paiement
+  (facture puis règlement) ; sans règlement : 2 lignes en VT (recette) ou HA.
+- Pas de code de format de date dans TEXT (dépend de la langue d'Excel) :
+  `TEXT(DAY(d),"00")&"/"&TEXT(MONTH(d),"00")&"/"&YEAR(d)`.
 - Comptes membres `411` + 5 lettres du nom + rang (`411TAIEB001`).
 - Codes analytiques **proposés par l'application** : préfixe choisi +
   T_Prefixes[Code suivant] (plus grand numéro + 1 ; 1 chiffre axe 1 `ACT.4`,
