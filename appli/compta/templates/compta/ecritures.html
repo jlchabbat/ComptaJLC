@@ -1,5 +1,5 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Écritures{% endblock %}{% block contenu %}
-<h1>Écritures</h1>
+<h1>Écritures</h1>{% if perms.compta.add_mouvement %}<p><a href="{% url 'mouvement_nouveau' %}">+ Écriture libre</a> · pour modifier une écriture, ouvrir son mouvement (n° Mvt).</p>{% endif %}
 <form class="filtres" method="get">
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <label>Journal <select name="journal" data-cherchable="Code ou intitulé…"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
@@ -8,7 +8,7 @@
 <label>Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Recherche <input name="q" value="{{ filtres.q }}"></label><button class="principal">Filtrer</button></form>
 <p>{{ page.paginator.count }} lignes · débit {{ total_debit|shekel }} · crédit {{ total_credit|shekel }}</p>
-<table><tr><th>Date</th><th>Jnl</th><th>Mvt</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 1</th><th>Axe 2</th></tr>
+<table><tr>{% for e in entetes %}<th class="tri {% if e.n %}n{% endif %}" {% if e.sens %}data-sens="{{ e.sens }}"{% endif %}><a class="tri-lien" href="{{ e.url }}" title="Trier sur toutes les pages">{{ e.titre }}</a></th>{% endfor %}</tr>
 {% for l in page %}<tr><td>{{ l.mouvement.date|date:"d/m/Y" }}</td><td>{{ l.mouvement.journal_id }}</td><td><a href="{% url 'mouvement' l.mouvement.numero %}">{{ l.mouvement.numero }}</a></td><td>{{ l.mouvement.piece }}</td>
 <td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td>
 <td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td><td title="{{ l.anal2.libelle }}">{{ l.anal2_id }}</td></tr>{% endfor %}</table>

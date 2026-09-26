@@ -32,7 +32,7 @@
 <tr class="total"><td colspan="2">Total passif</td><td class="n">{{ bilan.total_passif|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ bilan_n1.total_passif|shekel }}</td>{% endif %}</tr></table></div></section>
 
 <section id="budget" class="carte"><h2 style="margin-top:0">Budget et réalisé</h2>
-<table><tr><th>Nature</th><th>Compte ou code</th><th class="n">Budget</th><th class="n">Réalisé</th><th class="n">Écart</th><th class="n">Écart %</th>{% if budget_form %}<th class="ecran"></th>{% endif %}</tr>
+<table class="triable"><tr><th>Nature</th><th>Compte ou code</th><th class="n">Budget</th><th class="n">Réalisé</th><th class="n">Écart</th><th class="n">Écart %</th>{% if budget_form %}<th class="ecran"></th>{% endif %}</tr>
 {% for x in budget %}<tr><td>{{ x.budget.get_nature_display }}</td><td>{{ x.budget.cible }}</td><td class="n">{{ x.budget.montant|shekel }}</td><td class="n">{{ x.realise|shekel }}</td>
 <td class="n {% if x.budget.nature == 'C' and x.ecart > 0 or x.budget.nature == 'P' and x.ecart < 0 %}neg{% endif %}">{{ x.ecart|shekel }}</td><td class="n">{% if x.pourcent is not None %}{{ x.pourcent }} %{% endif %}</td>
 {% if budget_form %}<td class="ecran"><form method="post">{% csrf_token %}<button name="supprimer_budget" value="{{ x.budget.pk|stringformat:'d' }}">Supprimer</button></form></td>{% endif %}</tr>

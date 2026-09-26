@@ -2,7 +2,7 @@
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
-<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864"><script src="{% static 'compta/liste.js' %}" defer></script></head>
+<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864"><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>

@@ -504,7 +504,7 @@ class EcransFiches(TestCase):
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
 
 from . import releves as rap  # noqa: E402
-from .models import LigneReleve, ParametreReleve, Traduction  # noqa: E402
+from .models import LigneReleve, ParametreReleve, Rapprochement, Traduction  # noqa: E402
 
 CSV_MODELE = ("﻿Date;Référence;Opération (relevé);Montant;Solde relevé\n"
               "05/01/2026;11;עמלת מסלול;-10,00;990,00\n"
@@ -828,3 +828,91 @@ class EcransMembres(TestCase):
         self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "Lettrer la sélection")
         self.client.post("/membres/", {"lettrage_auto": "1"})
         self.assertFalse(Ligne.objects.exclude(lettrage="").exists())
+
+
+# ---------------------------------------------------------------- W6 : corrections d'écritures, tri
+
+from . import corrections as corr  # noqa: E402
+from .models import Modification  # noqa: E402
+
+
+class Corrections(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        self.u = User.objects.create_user("t")
+        self.m = Mouvement.objects.create(numero=500, date=dt.date(2026, 3, 1), journal_id="B1", piece=500)
+        self.l1 = Ligne.objects.create(mouvement=self.m, ordre=0, compte_id="600100", libelle="FRAIS", debit=D(10), anal2_id="GEN.004")
+        self.l2 = Ligne.objects.create(mouvement=self.m, ordre=1, compte_id="512000", libelle="FRAIS", credit=D(10), anal2_id="GEN.004")
+        self.g = CodeAnalytique.objects.get(code="GEN.004")
+
+    def saisie(self, l, compte=None, d=None, c=None, id=True):
+        return corr.LigneSaisie(l.pk if id else None, Compte.objects.get(numero=compte or l.compte_id), l.libelle,
+                                D(d if d is not None else l.debit), D(c if c is not None else l.credit), self.g)
+
+    def test_modifier(self):
+        b1 = Journal.objects.get(code="B1")
+        with self.assertRaises(ValueError):                      # motif obligatoire
+            corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1), self.saisie(self.l2)], "", self.u)
+        with self.assertRaises(ValueError):                      # déséquilibré
+            corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, d=12), self.saisie(self.l2)], "erreur", self.u)
+        r = Rapprochement.objects.create(journal=b1, mode="manuel")
+        Ligne.objects.filter(pk=self.l2.pk).update(rapprochement=r)
+        corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, d=12), self.saisie(self.l2, c=12)], "montant réel 12", self.u)
+        self.m.refresh_from_db()
+        self.assertEqual([(l.compte_id, l.debit, l.credit, l.rapprochement_id) for l in self.m.lignes.all()],
+                         [("600100", D(12), D(0), None), ("512000", D(0), D(12), None)])   # dépointé
+        self.assertIn("montant réel 12", self.m.commentaire)
+        self.assertTrue(Modification.objects.filter(action="Modification", objet__contains="Mvt 500").exists())
+        # 3 lignes : une ajoutée, le compte d'une autre changé
+        corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, compte="600000", d=10), self.saisie(self.l1, d=2, id=False),
+                                                self.saisie(self.l2, c=12)], "ventilation", self.u)
+        self.assertEqual(self.m.lignes.count(), 3)
+
+    def test_verrou_exercice_clos(self):
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        self.assertIn("exercice clos", corr.verrou(self.m))
+        with self.assertRaises(ValueError):
+            corr.modifier(self.m, self.m.date, self.m.journal, [self.saisie(self.l1), self.saisie(self.l2)], "x", self.u)
+
+    def test_contrepasser_et_ecriture_libre(self):
+        inv = corr.contrepasser(self.m, dt.date(2026, 3, 5), "doublon", self.u)
+        self.assertEqual(soldes(Ligne.objects.filter(mouvement__in=[self.m, inv], compte_id="512000"))[2], D(0))
+        self.assertEqual(inv.origine, "correction")
+        self.assertIn(f"contrepassé par le Mvt {inv.numero}", Mouvement.objects.get(pk=self.m.pk).commentaire)
+        m = corr.creer(dt.date(2026, 4, 1), Journal.objects.get(code="OD"),
+                       [corr.LigneSaisie(None, Compte.objects.get(numero="470000") if Compte.objects.filter(numero="470000").exists()
+                                         else Compte.objects.get(numero="600000"), "RECLASSEMENT", D(5), D(0), self.g),
+                        corr.LigneSaisie(None, Compte.objects.get(numero="600100"), "RECLASSEMENT", D(0), D(5), self.g)],
+                       "reclassement", self.u)
+        self.assertEqual((m.journal_id, m.lignes.count()), ("OD", 2))
+
+
+class EcransCorrections(TestCase):
+    def setUp(self):
+        Corrections.setUp(self)
+        call_command("migrate", verbosity=0)
+        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(self.u)
+
+    def test_formulaire(self):
+        self.assertContains(self.client.get("/mouvement/500/"), "Modifier")
+        self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 200)
+        data = {"date": "2026-03-01", "journal": "B1", "motif": "montant", "l-TOTAL_FORMS": "3", "l-INITIAL_FORMS": "2",
+                "l-MIN_NUM_FORMS": "0", "l-MAX_NUM_FORMS": "1000",
+                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15", "l-0-anal2": "GEN.004",
+                "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15", "l-1-anal2": "GEN.004"}
+        self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
+        self.assertEqual(Ligne.objects.get(pk=self.l1.pk).debit, D(15))
+        r = self.client.post("/mouvement/500/contrepasser/", {"date": "2026-03-10", "motif": "erreur"})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
+
+    def test_tri_et_droits(self):
+        r = self.client.get("/ecritures/?tri=debit&ordre=desc")
+        self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête
+        self.assertContains(r, 'data-sens="desc"')
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertNotContains(self.client.get("/mouvement/500/"), "Modifier")
+        self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 403)

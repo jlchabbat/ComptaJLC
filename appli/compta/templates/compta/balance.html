@@ -1,5 +1,5 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Balance{% endblock %}{% block contenu %}
 <h1>Balance</h1>{% include "compta/_periode.html" %}
-<table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="n">Solde</th></tr>
+<table class="triable"><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="n">Solde</th></tr>
 {% for l in lignes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ l.numero }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ l.numero }}</a></td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|shekel }}</td><td class="n">{{ l.credit|shekel }}</td><td class="n {% if l.solde < 0 %}neg{% endif %}">{{ l.solde|shekel }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ total_debit|shekel }}</td><td class="n">{{ total_credit|shekel }}</td><td></td></tr></table>{% endblock %}

@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 
-from compta import views, vues_etats, vues_fiches, vues_membres, vues_rapprochement as rap
+from compta import views, vues_corrections, vues_etats, vues_fiches, vues_membres, vues_rapprochement as rap
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -13,6 +13,9 @@ urlpatterns = [
     path("", views.tableau_de_bord, name="tableau_de_bord"),
     path("ecritures/", views.ecritures, name="ecritures"),
     path("mouvement/<int:numero>/", views.mouvement, name="mouvement"),
+    path("mouvement/<int:numero>/modifier/", vues_corrections.modifier, name="mouvement_modifier"),
+    path("mouvement/<int:numero>/contrepasser/", vues_corrections.contrepasser, name="mouvement_contrepasser"),
+    path("mouvement/nouveau/", vues_corrections.nouveau, name="mouvement_nouveau"),
     path("grand-livre/", views.grand_livre, name="grand_livre"),
     path("balance/", views.balance, name="balance"),
     path("analytique/", views.analytique, name="analytique"),

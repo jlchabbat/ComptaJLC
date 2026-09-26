@@ -68,6 +68,14 @@ def tableau_de_bord(request):
     })
 
 
+TRIS_ECRITURES = {
+    "date": ("Date", "mouvement__date"), "jnl": ("Jnl", "mouvement__journal_id"), "mvt": ("Mvt", "mouvement__numero"),
+    "piece": ("Pièce", "mouvement__piece"), "compte": ("Compte", "compte_id"), "libelle": ("Libellé", "libelle"),
+    "debit": ("Débit", "debit"), "credit": ("Crédit", "credit"), "anal1": ("Axe 1", "compte__anal1_id"),
+    "anal2": ("Axe 2", "anal2_id"),
+}
+
+
 @login_required
 @consulter
 def ecritures(request):
@@ -84,9 +92,21 @@ def ecritures(request):
     if f["q"]:
         qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
     d, c, _ = soldes(qs)
+    # tri par colonne (sur toutes les pages) : ?tri=<colonne>&ordre=asc|desc
+    tri, ordre = request.GET.get("tri", ""), request.GET.get("ordre", "asc")
+    if tri in TRIS_ECRITURES:
+        champ = TRIS_ECRITURES[tri][1]
+        qs = qs.order_by(("-" if ordre == "desc" else "") + champ, "-mouvement__numero", "ordre")
+    entetes = []
+    for cle, (titre, _) in TRIS_ECRITURES.items():
+        params = request.GET.copy()
+        params.pop("page", None)
+        params["tri"], params["ordre"] = cle, "desc" if (tri == cle and ordre == "asc") else "asc"
+        entetes.append({"titre": titre, "url": "?" + params.urlencode(), "sens": ordre if tri == cle else "",
+                        "n": cle in ("debit", "credit")})
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
     return render(request, "compta/ecritures.html", {
-        "page": page, "filtres": f, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
+        "page": page, "filtres": f, "entetes": entetes, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
         "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2), "comptes": Compte.objects.all(),
     })
 
@@ -95,7 +115,9 @@ def ecritures(request):
 @consulter
 def mouvement(request, numero):
     m = get_object_or_404(Mouvement.objects.select_related("journal"), numero=numero)
-    return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2")})
+    from .corrections import verrou
+    return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2"),
+                                                     "verrou": verrou(m)})
 
 
 @login_required

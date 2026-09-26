@@ -1,7 +1,7 @@
 from django import forms
 from django.db.models import Q
 
-from .models import CodeAnalytique, Compte, ModeleOperation, MoyenPaiement, Prefixe, TypeTiers
+from .models import CodeAnalytique, Compte, Journal, ModeleOperation, MoyenPaiement, Prefixe, TypeTiers
 
 
 CHERCHABLE = {"data-cherchable": "Code ou libellé…"}
@@ -199,3 +199,50 @@ class AttribuerForm(forms.Form):
         super().__init__(*a, **k)
         self.fields["compte"].queryset = comptes_tiers()
         cherchable(self)
+
+
+# ---------------------------------------------------------------- corrections d'écritures
+
+class EnteteMouvementForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    journal = forms.ModelChoiceField(Journal.objects.filter(actif=True))
+    motif = forms.CharField(max_length=150, label="Motif (obligatoire, gardé dans l'historique)")
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        cherchable(self)
+
+
+class LigneMouvementForm(forms.Form):
+    id = forms.IntegerField(required=False, widget=forms.HiddenInput)
+    compte = forms.ModelChoiceField(Compte.objects.none(), required=False)
+    libelle = forms.CharField(max_length=200, required=False, label="Libellé")
+    debit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Débit")
+    credit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Crédit")
+    anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Axe 2")
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fields["compte"].queryset = Compte.objects.filter(actif=True)
+        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
+        cherchable(self)
+        self.fields["libelle"].widget.attrs["size"] = 30
+        for n in ("debit", "credit"):
+            self.fields[n].widget.attrs.update({"class": "montant", "step": "0.01"})
+
+    def vide(self):
+        c = self.cleaned_data
+        return not (c.get("compte") or c.get("debit") or c.get("credit") or (c.get("libelle") or "").strip())
+
+    def clean(self):
+        c = super().clean()
+        if c.get("DELETE") or self.vide():
+            return c
+        if not c.get("compte"):
+            self.add_error("compte", "Choisir le compte.")
+        if not c.get("anal2"):
+            self.add_error("anal2", "Choisir le code axe 2.")
+        return c
+
+
+LignesMouvementFormSet = forms.formset_factory(LigneMouvementForm, extra=2, can_delete=True)

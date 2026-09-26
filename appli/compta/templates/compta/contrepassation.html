@@ -1,0 +1,9 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Annuler le Mvt {{ m.numero }}{% endblock %}{% block contenu %}
+<p><a href="{% url 'mouvement' m.numero %}">← Mouvement {{ m.numero }}</a></p>
+<h1>Annuler le mouvement {{ m.numero }} par une écriture inverse</h1>
+<p>Un nouveau mouvement reprend chaque ligne avec le débit et le crédit inversés : le mouvement d'origine reste visible, et leur total s'annule.
+C'est la façon d'annuler une écriture d'un exercice clos ou déjà pointée.</p>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th></tr>
+{% for l in m.lignes.all %}<tr><td>{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td></tr>{% endfor %}</table>
+<form method="post" class="carte" style="margin-top:12px">{% csrf_token %}<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal">Créer l'écriture inverse</button></div></form>{% endblock %}

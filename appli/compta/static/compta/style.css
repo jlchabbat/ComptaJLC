@@ -80,3 +80,19 @@ header nav a { padding: 14px 6px; font-size: 13.5px; }
   th { position: static; }
 }
 .deux > table { align-self: start; }
+.lignes-edition td { vertical-align: top; }
+.lignes-edition .liste-cherchable { min-width: 220px; }
+.lignes-edition input.montant { width: 110px; text-align: right; }
+.egal { color: var(--ok); font-weight: 600; }
+th.tri { cursor: pointer; user-select: none; white-space: nowrap; }
+th.tri:hover { background: #dde4ef; }
+th.tri::after { content: " ↕"; color: #9aa6b8; font-weight: normal; }
+th.tri[data-sens=asc]::after { content: " ▲"; color: var(--bleu); }
+th.tri[data-sens=desc]::after { content: " ▼"; color: var(--bleu); }
+th a.tri-lien { color: inherit; text-decoration: none; }
+.barre-filtre { display: flex; gap: 12px; align-items: center; margin: 6px 0; }
+.filtre-tableau { width: 260px; }
+header { gap: 0 16px; }
+header nav { flex: 1 1 600px; }
+header nav a { padding: 10px 5px; font-size: 13.5px; }
+header .marque { padding: 8px 0; }

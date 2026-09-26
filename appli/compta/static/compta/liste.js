@@ -105,6 +105,9 @@
     sel.majListe = function () { champ.value = texteChoisi(); };
   }
 
-  function tout() { document.querySelectorAll("select[data-cherchable]").forEach(ameliorer); }
+  function tout(racine) {
+    (racine || document).querySelectorAll("select[data-cherchable]").forEach(function (s) { if (!s.majListe) ameliorer(s); });
+  }
+  window.listesCherchables = tout;       // pour les lignes ajoutées après coup
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tout); else tout();
 })();

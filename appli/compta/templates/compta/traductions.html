@@ -8,5 +8,5 @@
 {% empty %}<tr><td colspan="3">Tout est traduit.</td></tr>{% endfor %}</table>
 {% if a_traduire %}<div class="boutons"><button class="principal">Enregistrer</button></div>{% endif %}</form>
 <h2>Traductions connues ({{ connues|length }})</h2><p class="aide">Modifiables dans Référentiels › Traductions.</p>
-<table><tr><th>Hébreu</th><th>Traduction</th></tr>{% for t in connues %}<tr><td dir="rtl">{{ t.hebreu }}</td><td>{{ t.traduction }}</td></tr>{% endfor %}</table>
+<table class="triable"><tr><th>Hébreu</th><th>Traduction</th></tr>{% for t in connues %}<tr><td dir="rtl">{{ t.hebreu }}</td><td>{{ t.traduction }}</td></tr>{% endfor %}</table>
 {% endblock %}

@@ -1,2 +1,2 @@
-{% load compta %}<h2>{{ titre }}</h2><table><tr><th>Code</th><th>Libellé</th><th class="n">Produits</th><th class="n">Charges</th><th class="n">Résultat</th></tr>
+{% load compta %}<h2>{{ titre }}</h2><table class="triable"><tr><th>Code</th><th>Libellé</th><th class="n">Produits</th><th class="n">Charges</th><th class="n">Résultat</th></tr>
 {% for l in lignes %}<tr><td>{{ l.code }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.produits|zero_vide }}</td><td class="n">{{ l.charges|zero_vide }}</td><td class="n {% if l.resultat < 0 %}neg{% endif %}">{{ l.resultat|shekel }}</td></tr>{% endfor %}</table>

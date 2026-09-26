@@ -25,7 +25,7 @@
 {% else %}<p class="statut OK">Tous les contrôles sont OK : l'opération peut être enregistrée.</p>{% endif %}
 {% endif %}
 <div class="boutons"><button name="apercu" value="1">Aperçu et contrôles</button><button class="principal" name="enregistrer" value="1">Enregistrer</button>
-<a href="{% url 'saisie' %}">Nouvelle saisie</a></div>
+<a href="{% url 'saisie' %}">Nouvelle saisie</a> · <a href="{% url 'mouvement_nouveau' %}">Écriture libre (opération diverse)</a></div>
 </form>
 {{ modeles|json_script:"modeles" }}
 <script>

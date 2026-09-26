@@ -10,7 +10,7 @@
 <form class="filtres" method="get"><label>État au <input type="date" name="au" value="{{ etat.date|date:'Y-m-d' }}"></label><button class="principal">Afficher</button>
 <a href="{% url 'pointage' journal.code %}" style="align-self:center">Pointage des lignes →</a></form>
 <div class="deux"><div class="carte"><h2 style="margin-top:0">État de rapprochement au {{ etat.date|date:"d/m/Y" }}</h2>
-<table><tr><td>Solde du relevé</td><td class="n">{{ etat.solde_releve|shekel }}</td></tr>
+<table class="triable"><tr><td>Solde du relevé</td><td class="n">{{ etat.solde_releve|shekel }}</td></tr>
 <tr><td>− lignes du relevé non pointées ({{ etat.releve_non_pointe|length }})</td><td class="n">{{ etat.total_releve_np|shekel }}</td></tr>
 <tr><td>Solde comptable du compte {{ journal.compte_id }}</td><td class="n">{{ etat.solde_compta|shekel }}</td></tr>
 <tr><td>− écritures non pointées ({{ etat.ecritures_non_pointees|length }})</td><td class="n">{{ etat.total_ecr_np|shekel }}</td></tr>
@@ -19,17 +19,17 @@
 {% if peut %}<form method="post" action="{% url 'rapprochement_auto' journal.code %}" class="boutons">{% csrf_token %}<button class="principal">Rapprochement automatique</button>
 <span class="aide">Même montant, date à ± {{ tolerance }} jours ; l'à-nouveau est pointé contre les lignes antérieures à la reprise.</span></form>{% endif %}</div>
 <div class="carte"><h2 style="margin-top:0">Écart par mois (soldes de fin de mois)</h2>
-<table><tr><th>Mois</th><th class="n">Banque</th><th class="n">Compta</th><th class="n">Écart</th><th class="n">Variation</th></tr>
+<table class="triable"><tr><th>Mois</th><th class="n">Banque</th><th class="n">Compta</th><th class="n">Écart</th><th class="n">Variation</th></tr>
 {% for m in mois %}<tr><td>{{ m.mois|date:"m/Y" }}</td><td class="n">{{ m.releve|shekel }}</td><td class="n">{% if m.compta is not None %}{{ m.compta|shekel }}{% else %}<span class="aide">avant reprise</span>{% endif %}</td>
 <td class="n {% if m.ecart %}neg{% endif %}">{% if m.ecart is not None %}{{ m.ecart|shekel }}{% endif %}</td><td class="n">{% if m.variation %}{{ m.variation|shekel }}{% endif %}</td></tr>
 {% empty %}<tr><td colspan="5">Aucun relevé importé.</td></tr>{% endfor %}</table></div></div>
 
 <div class="deux"><div><h2>Relevé non pointé ({{ etat.releve_non_pointe|length }})</h2>
-<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th></th>{% endif %}</tr>
+<table class="triable"><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th></th>{% endif %}</tr>
 {% for l in etat.releve_non_pointe %}<tr><td>{{ l.date|date:"d/m/Y" }}</td><td title="{{ l.operation }}">{{ l.traduction }}</td><td class="n">{{ l.montant|shekel }}</td>
 {% if peut %}<td>{% if not l.ouverture %}<a href="{% url 'releve_ecriture' l.pk %}">Créer l'écriture</a>{% endif %}</td>{% endif %}</tr>{% endfor %}</table></div>
 <div><h2>Écritures non pointées ({{ etat.ecritures_non_pointees|length }})</h2>
-<table><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th class="n">Montant</th></tr>
+<table class="triable"><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th class="n">Montant</th></tr>
 {% for e in etat.ecritures_non_pointees %}<tr><td>{{ e.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a></td><td>{{ e.libelle }}</td>
 <td class="n">{% if e.debit %}{{ e.debit|shekel }}{% else %}-{{ e.credit|shekel }}{% endif %}</td></tr>{% endfor %}</table></div></div>
 

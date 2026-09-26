@@ -7,6 +7,6 @@
 <div class="formulaire" style="margin-top:8px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 <div class="boutons"><button class="principal">Attribuer le compte</button></div></form>
 {% empty %}<p class="carte">Aucun tiers provisoire en attente.</p>{% endfor %}
-{% if faits %}<h2>Déjà attribués</h2><table><tr><th>Tiers</th><th>Compte</th><th>Créé le</th></tr>
+{% if faits %}<h2>Déjà attribués</h2><table class="triable"><tr><th>Tiers</th><th>Compte</th><th>Créé le</th></tr>
 {% for p in faits %}<tr><td>{{ p.nom|upper }} {{ p.prenom|upper }}</td><td>{{ p.compte }}</td><td>{{ p.cree_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>{% endif %}
 {% endblock %}

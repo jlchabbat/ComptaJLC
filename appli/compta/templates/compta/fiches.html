@@ -2,7 +2,7 @@
 <h1>Fiches bénévoles</h1>
 {% if provisoires %}<p class="carte message">{{ provisoires }} nouveau(x) tiers attend(ent) un compte :
 <a href="{% url 'provisoires' %}">Tiers provisoires</a>.</p>{% endif %}
-<table><tr><th>Fiche</th><th>Type</th><th>Axe 2</th><th>Bénévoles</th><th>Statut</th><th class="n">Participants</th><th class="n">Recettes</th><th class="n">Dépenses</th><th class="n">Résultat</th></tr>
+<table class="triable"><tr><th>Fiche</th><th>Type</th><th>Axe 2</th><th>Bénévoles</th><th>Statut</th><th class="n">Participants</th><th class="n">Recettes</th><th class="n">Dépenses</th><th class="n">Résultat</th></tr>
 {% for f, t in fiches %}<tr><td><a href="{% url 'fiche' f.pk %}">{{ f.titre }}</a></td><td>{{ f.get_type_display }}</td><td>{{ f.anal2|default:"—" }}</td>
 <td>{% for u in f.benevoles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
 <td>{{ f.get_statut_display }}</td><td class="n">{% if f.type == "activite" %}{{ t.participants }}{% endif %}</td><td class="n">{{ t.recettes|zero_vide }}</td>

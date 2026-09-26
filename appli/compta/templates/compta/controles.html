@@ -1,5 +1,5 @@
 {% extends "compta/base.html" %}{% block titre %}Contrôles{% endblock %}{% block contenu %}
 <h1>Contrôles de cohérence</h1>
 <p>État général : <span class="statut {% if etat == 'OK' %}OK{% else %}Anomalie{% endif %}">{{ etat }}</span>{% if a_verifier %} · <span class="statut Àvérifier">{{ a_verifier }} point(s) à vérifier</span>{% endif %}</p>
-<table><tr><th>Règle</th><th>Contrôle</th><th class="n">Résultat</th><th>Statut</th><th>Détail</th></tr>
+<table class="triable"><tr><th>Règle</th><th>Contrôle</th><th class="n">Résultat</th><th>Statut</th><th>Détail</th></tr>
 {% for r in resultats %}<tr><td>{{ r.regle }}</td><td>{{ r.libelle }}</td><td class="n">{{ r.valeur }}</td><td><span class="statut {{ r.statut|cut:' ' }}">{{ r.statut }}</span></td><td>{{ r.details|join:", " }}</td></tr>{% endfor %}</table>{% endblock %}

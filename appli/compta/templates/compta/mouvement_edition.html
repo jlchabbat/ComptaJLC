@@ -1,0 +1,44 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}{% if m %}Modifier le Mvt {{ m.numero }}{% else %}Écriture libre{% endif %}{% endblock %}{% block contenu %}
+{% if m %}<p><a href="{% url 'mouvement' m.numero %}">← Mouvement {{ m.numero }}</a></p><h1>Modifier le mouvement {{ m.numero }}</h1>
+<p class="aide">La modification est tracée (motif, avant, après) dans le mouvement et dans le Journal. Une ligne dont le compte ou le montant change
+est dépointée du relevé et délettrée.</p>
+{% else %}<h1>Écriture libre</h1><p class="aide">Pour une opération diverse ou une correction que la saisie guidée ne couvre pas. Mouvement équilibré obligatoire.</p>{% endif %}
+<form method="post" class="carte" id="edition">{% csrf_token %}
+<div class="formulaire">{% for f in entete %}{% include "compta/_champ.html" %}{% endfor %}</div>
+{{ formset.management_form }}{% if formset.non_form_errors %}<ul class="erreurs">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<table class="lignes-edition" style="margin-top:12px"><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 2</th><th>Suppr.</th></tr>
+<tbody id="lignes">{% for f in formset %}<tr>{% include "compta/_ligne_edition.html" %}</tr>{% endfor %}</tbody>
+<tr class="total"><td colspan="2"><button type="button" id="ajouter">+ Ajouter une ligne</button></td><td class="n" id="total-d"></td><td class="n" id="total-c"></td><td colspan="2" id="ecart"></td></tr></table>
+<template id="modele-ligne"><tr>{% with f=formset.empty_form %}{% include "compta/_ligne_edition.html" %}{% endwith %}</tr></template>
+<div class="boutons"><button class="principal">Enregistrer</button></div></form>
+<script>
+(function () {
+  var f = document.getElementById("edition"), total = document.getElementById("id_l-TOTAL_FORMS");
+  function nb(v) { v = (v || "").replace(/\s/g, "").replace(",", "."); return Math.round((parseFloat(v) || 0) * 100); }
+  function fmt(c) { return (c / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 }); }
+  function maj() {
+    var d = 0, c = 0;
+    document.querySelectorAll("#lignes tr").forEach(function (tr) {
+      var sup = tr.querySelector("input[name$=DELETE]");
+      tr.style.opacity = sup && sup.checked ? .4 : 1;
+      if (sup && sup.checked) return;
+      d += nb((tr.querySelector("input[name$=debit]") || {}).value);
+      c += nb((tr.querySelector("input[name$=credit]") || {}).value);
+    });
+    document.getElementById("total-d").textContent = fmt(d);
+    document.getElementById("total-c").textContent = fmt(c);
+    var e = document.getElementById("ecart");
+    e.textContent = d === c ? "équilibré" : "écart " + fmt(d - c);
+    e.className = d === c ? "egal" : "neg";
+  }
+  document.getElementById("ajouter").addEventListener("click", function () {
+    var n = parseInt(total.value, 10);
+    var html = document.getElementById("modele-ligne").innerHTML.replace(/__prefix__/g, n);
+    var tb = document.getElementById("lignes");
+    tb.insertAdjacentHTML("beforeend", html);
+    total.value = n + 1;
+    if (window.listesCherchables) window.listesCherchables(tb.lastElementChild);
+  });
+  f.addEventListener("input", maj); f.addEventListener("change", maj); maj();
+})();
+</script>{% endblock %}
