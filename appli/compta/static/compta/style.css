@@ -37,7 +37,7 @@ button.principal { background: var(--bleu); color: #fff; border-color: var(--ble
 .message.success { background: var(--okf); color: var(--ok); border-color: #b6d7a8; }
 .formulaire { display: grid; grid-template-columns: 260px 1fr; gap: 8px 16px; align-items: center; }
 .formulaire label { font-weight: 600; }
-.formulaire input:not([type=checkbox]), .formulaire select { width: 100%; max-width: 460px; background: #fff2cc; color: #0000cc; }
+.formulaire input:not([type=checkbox]):not([type=radio]), .formulaire select { width: 100%; max-width: 460px; background: #fff2cc; color: #0000cc; }
 .aide { color: #666; font-size: 12px; }
 .erreurs li { color: var(--ko); }
 .boutons { display: flex; gap: 8px; margin-top: 16px; }
@@ -51,3 +51,11 @@ form.filtres .liste-cherchable { min-width: 260px; }
 .liste-cherchable li.choisi { font-weight: 600; }
 .liste-cherchable li.vide { color: #888; cursor: default; }
 .apercu td { font-variant-numeric: tabular-nums; }
+.message.error { background: var(--kof); color: var(--ko); border-color: #f4b183; }
+td.ctrl { font-size: 12px; color: var(--ko); }
+td.ctrl.ok { color: var(--ok); }
+tr.reportee td { color: #777; }
+.entete-fiche { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+details.carte summary { cursor: pointer; font-weight: 600; color: var(--bleu); }
+.formulaire div.radios { display: flex; gap: 4px 20px; flex-wrap: wrap; }
+.formulaire div.radios label { font-weight: normal; }

@@ -5,7 +5,8 @@ import datetime as dt
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator
 from django.db.models import Case, F, Q, Sum, Value, When
-from django.shortcuts import get_object_or_404, render
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404, redirect, render
 
 from . import controles as ctrl
 from .models import ZERO, arrondi, CodeAnalytique, Compte, Exercice, Journal, Ligne, Modification, Mouvement, soldes
@@ -43,8 +44,11 @@ def resultat_par_axe(lignes, axe):
 
 
 @login_required
-@consulter
 def tableau_de_bord(request):
+    if not request.user.has_perm("compta.view_mouvement"):
+        if request.user.has_perm("compta.view_fiche"):
+            return redirect("fiches")     # bénévole : ses fiches
+        raise PermissionDenied
     debut, fin = periode(request)
     ls = lignes_periode(debut, fin)
     _, _, charges = soldes(ls.filter(compte__numero__startswith="6"))
@@ -154,7 +158,6 @@ def modifications(request):
 
 from django.contrib import messages  # noqa: E402
 from django.db import transaction  # noqa: E402
-from django.shortcuts import redirect  # noqa: E402
 
 from . import saisie as moteur  # noqa: E402
 from .forms import CodeForm, MembreForm, SaisieForm, StatutForm  # noqa: E402

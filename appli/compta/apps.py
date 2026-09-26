@@ -6,7 +6,9 @@ ROLES = {
     "Trésorier": "tout",
     "Bureau": "consultation",
     "Vérificateur": "consultation",
-    "Bénévole": "aucun",          # fiches de liaison : lot suivant
+    # fiches bénévoles : le bénévole ne voit que les fiches qui lui sont confiées
+    "Bénévole": ["view_fiche", "add_lignefiche", "change_lignefiche", "delete_lignefiche", "view_tiersprovisoire",
+                 "add_tiersprovisoire"],
 }
 
 
@@ -19,6 +21,8 @@ def creer_roles(sender, **kwargs):
             groupe.permissions.set(perms)
         elif portee == "consultation":
             groupe.permissions.set(perms.filter(codename__startswith="view_"))
+        elif isinstance(portee, list):
+            groupe.permissions.set(perms.filter(codename__in=portee))
 
 
 class ComptaConfig(AppConfig):

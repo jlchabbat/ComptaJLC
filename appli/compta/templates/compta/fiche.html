@@ -1,0 +1,33 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ fiche.titre }}{% endblock %}{% block contenu %}
+<p><a href="{% url 'fiches' %}">← Fiches bénévoles</a></p>
+<div class="entete-fiche"><h1>{{ fiche.titre }}</h1><span class="statut {% if fiche.statut == 'reportee' %}OK{% else %}Info{% endif %}">{{ fiche.get_statut_display }}</span></div>
+<p>{{ fiche.get_type_display }}{% if fiche.type == "activite" %} · code axe 2 : <b>{{ fiche.anal2|default:"à fixer par le trésorier" }}</b>{% endif %}
+· bénévoles : {% for u in fiche.benevoles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}aucun{% endfor %}</p>
+<div class="chiffres">{% if fiche.type == "activite" %}<div class="chiffre"><div class="lib">Participants</div><div class="val">{{ totaux.participants }}</div></div>{% endif %}
+<div class="chiffre"><div class="lib">Recettes</div><div class="val">{{ totaux.recettes|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Dépenses</div><div class="val">{{ totaux.depenses|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Résultat</div><div class="val {% if totaux.resultat < 0 %}neg{% endif %}">{{ totaux.resultat|shekel }}</div></div></div>
+
+{% if fiche.type == "gestion" %}{% include "compta/_lignes_fiche.html" with titre="Dons et aides reçus" lignes=recettes sens="R" %}{% else %}{% include "compta/_lignes_fiche.html" with titre="Recettes" lignes=recettes sens="R" %}{% endif %}
+{% if fiche.type == "gestion" %}{% include "compta/_lignes_fiche.html" with titre="Dons et aides versés" lignes=depenses sens="D" %}
+{% else %}{% include "compta/_lignes_fiche.html" with titre="Dépenses" lignes=depenses sens="D" %}{% endif %}
+
+{% if form %}<form method="post" class="carte" style="margin-top:16px">{% csrf_token %}<h2>Ajouter une ligne</h2>
+<p class="aide">Dans les listes, tapez une partie du nom ou du code. Un tiers absent de la liste : remplissez « Nouveau tiers » (le trésorier lui
+attribuera un compte) ou « Autre payeur ou bénéficiaire » pour une personne extérieure.</p>
+<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="ajouter" value="1">Ajouter la ligne</button></div></form>
+{% include "compta/_js_fiche.html" %}{% endif %}
+
+<form method="post" class="boutons">{% csrf_token %}
+{% if saisie and fiche.statut == "ouverte" %}<button name="transmettre" value="1" onclick="return confirm('Transmettre la fiche au trésorier ? Les bénévoles ne pourront plus la modifier.')">Transmettre au trésorier</button>{% endif %}
+{% if tresorier %}{% if fiche.statut != "ouverte" %}<button name="rouvrir" value="1">Rouvrir aux bénévoles</button>{% endif %}
+{% if a_reporter %}<button class="principal" name="reporter" value="1" {% if a_corriger %}disabled title="{{ a_corriger }} ligne(s) à corriger"{% endif %}
+ onclick="return confirm('Créer {{ a_reporter }} mouvement(s) en comptabilité ?')">Reporter en comptabilité ({{ a_reporter }} ligne{{ a_reporter|pluralize }})</button>
+{% if a_corriger %}<span class="aide">{{ a_corriger }} ligne(s) à corriger avant le report.</span>{% endif %}{% endif %}{% endif %}
+</form>
+
+{% if fiche_form %}<details class="carte"><summary>Modifier la fiche (titre, code axe 2, bénévoles)</summary>
+<form method="post" action="{% url 'fiche_modifier' fiche.pk %}">{% csrf_token %}<div class="formulaire" style="margin-top:12px">{% for f in fiche_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal">Enregistrer</button></div></form></details>{% endif %}
+{% endblock %}

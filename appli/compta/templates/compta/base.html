@@ -6,13 +6,14 @@
 <header><span class="marque">ComptaBB</span>
 <nav>{% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes</a>{% endif %}
-{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
+{% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
+{% if perms.compta.view_mouvement %}{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écritures</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
 {% url 'analytique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analytique</a>
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
-{% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journal</a>
+{% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journal</a>{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}</nav>
 <span class="qui">{{ user.get_full_name|default:user.username }} ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>

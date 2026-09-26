@@ -306,3 +306,138 @@ class ModeleOperation(models.Model):
 
     def lignes_schema(self, regle):
         return [l for l in LigneSchema.objects.filter(schema=self.schema) if regle or not l.si_regle]
+
+
+# ---------------------------------------------------------------- fiches bénévoles (liaison)
+
+FICHE_TYPES = [("activite", "Activité"), ("gestion", "Gestion")]
+SENS_FICHE = [("R", "Recette"), ("D", "Dépense")]
+
+
+class NatureFiche(models.Model):
+    """Nature d'une ligne de fiche : donne le compte proposé et le début du libellé d'écriture."""
+
+    type_fiche = models.CharField("fiche", max_length=10, choices=FICHE_TYPES)
+    sens = models.CharField(max_length=1, choices=SENS_FICHE)
+    libelle = models.CharField("libellé", max_length=60)
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT)
+    libelle_ecriture = models.CharField("libellé d'écriture", max_length=40)
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["type_fiche", "sens", "ordre"]
+        unique_together = [("type_fiche", "sens", "libelle")]
+        verbose_name = "nature (fiche bénévole)"
+        verbose_name_plural = "natures (fiches bénévoles)"
+
+    def __str__(self):
+        return self.libelle
+
+
+class ModeFiche(models.Model):
+    """Mode de paiement d'une fiche : journal et compte de trésorerie, ou cas particulier."""
+
+    GENRES = [("TRESO", "banque, caisse ou carte"), ("NON_PAYE", "non payé : reste dû par le membre"),
+              ("AVANCE", "avance d'un membre : dette envers lui")]
+    type_fiche = models.CharField("fiche", max_length=10, choices=FICHE_TYPES)
+    sens = models.CharField(max_length=1, choices=SENS_FICHE + [("*", "Les deux")], default="*")
+    libelle = models.CharField("libellé", max_length=40)
+    genre = models.CharField(max_length=10, choices=GENRES, default="TRESO")
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, help_text="Vide sauf pour TRESO.")
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["type_fiche", "ordre"]
+        unique_together = [("type_fiche", "sens", "libelle")]
+        verbose_name = "mode de paiement (fiche bénévole)"
+        verbose_name_plural = "modes de paiement (fiches bénévoles)"
+
+    def __str__(self):
+        return self.libelle
+
+
+class Fiche(models.Model):
+    STATUTS = [("ouverte", "Ouverte : saisie du bénévole"), ("transmise", "Transmise au trésorier"),
+               ("reportee", "Reportée en comptabilité")]
+    type = models.CharField(max_length=10, choices=FICHE_TYPES)
+    titre = models.CharField(max_length=100)
+    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
+                              verbose_name="code axe 2", help_text="Activité : fixé d'avance par le trésorier.")
+    benevoles = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="fiches", verbose_name="bénévoles")
+    statut = models.CharField(max_length=10, choices=STATUTS, default="ouverte")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-cree_le"]
+        permissions = [("gerer_fiche", "Compléter et reporter les fiches bénévoles")]
+
+    def __str__(self):
+        return self.titre
+
+
+class TiersProvisoire(models.Model):
+    """Tiers créé par un bénévole ; le trésorier lui attribue un compte."""
+
+    nom = models.CharField(max_length=60)
+    prenom = models.CharField("prénom", max_length=60, blank=True)
+    remarque = models.CharField(max_length=100, blank=True, help_text="Téléphone, e-mail…")
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
+    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nom", "prenom"]
+        verbose_name = "tiers provisoire"
+        verbose_name_plural = "tiers provisoires"
+
+    def __str__(self):
+        return f"{self.nom.upper()} {self.prenom.upper()}".strip() + ("" if self.compte_id else " (provisoire)")
+
+
+class LigneFiche(models.Model):
+    fiche = models.ForeignKey(Fiche, on_delete=models.CASCADE, related_name="lignes")
+    sens = models.CharField(max_length=1, choices=SENS_FICHE)
+    date = models.DateField()
+    tiers = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes_fiche",
+                              verbose_name="membre")
+    provisoire = models.ForeignKey(TiersProvisoire, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes",
+                                   verbose_name="nouveau tiers")
+    autre = models.CharField("autre payeur ou bénéficiaire", max_length=60, blank=True)
+    personnes = models.PositiveSmallIntegerField("nombre de personnes", null=True, blank=True)
+    nature = models.ForeignKey(NatureFiche, on_delete=models.PROTECT)
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    mode = models.ForeignKey(ModeFiche, on_delete=models.PROTECT, null=True, blank=True, verbose_name="mode de paiement")
+    justificatif = models.CharField(max_length=60, blank=True)
+    remarque = models.CharField(max_length=100, blank=True)
+    # colonnes du trésorier
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
+                               verbose_name="compte de contrepartie", help_text="Vide = compte de la nature.")
+    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
+                              related_name="+", verbose_name="code axe 2", help_text="Gestion : choisi par le trésorier.")
+    mouvement = models.ForeignKey(Mouvement, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes_fiche")
+    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["date", "id"]
+        verbose_name = "ligne de fiche"
+        verbose_name_plural = "lignes de fiches"
+
+    def __str__(self):
+        return f"{self.fiche} · {self.date:%d/%m/%Y} · {self.montant}"
+
+    @property
+    def membre(self):
+        """Compte du membre : choisi directement ou attribué au tiers provisoire."""
+        if self.tiers_id:
+            return self.tiers
+        return self.provisoire.compte if self.provisoire_id else None
+
+    @property
+    def qui(self):
+        if self.tiers_id:
+            return self.tiers.libelle
+        if self.provisoire_id:
+            return str(self.provisoire)
+        return self.autre

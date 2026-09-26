@@ -65,8 +65,9 @@ class Command(BaseCommand):
         if Mouvement.objects.exists() and not remplacer:
             raise CommandError("La base contient déjà des écritures : relancer avec --remplacer pour les effacer.")
         if remplacer:
-            from compta.models import LigneSchema, ModeleOperation, MoyenPaiement, TypeTiers
-            for m in (Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
+            from compta.models import (Fiche, LigneFiche, LigneSchema, ModeFiche, ModeleOperation, MoyenPaiement, NatureFiche,
+                                       TiersProvisoire, TypeTiers)
+            for m in (LigneFiche, Fiche, TiersProvisoire, NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
                       Prefixe, CodeAnalytique, Exercice, Reglage):
                 m.objects.all().delete()
         wb = openpyxl.load_workbook(classeur, data_only=True)

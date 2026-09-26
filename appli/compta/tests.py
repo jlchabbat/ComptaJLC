@@ -117,7 +117,8 @@ class Droits(TestCase):
 
     def test_benevole_refuse(self):
         self.client_pour("Bénévole")
-        self.assertEqual(self.client.get("/").status_code, 403)
+        self.assertRedirects(self.client.get("/"), "/fiches/")
+        self.assertEqual(self.client.get("/ecritures/").status_code, 403)
 
     def test_anonyme_redirige(self):
         self.assertEqual(self.client.get("/").status_code, 302)
@@ -325,3 +326,176 @@ class Ecrans(TestCase):
         self.assertContains(r, "cocher la confirmation")
         self.client.post("/codes/", {"statut-code": "MAN.001", "statut-statut": "2", "statut-confirmation": "on", "changer_statut": "1"})
         self.assertEqual(CodeAnalytique.objects.get(code="MAN.001").statut, 2)
+
+
+# ---------------------------------------------------------------- W2 : fiches bénévoles (cas de la recette du fichier de liaison)
+
+from . import fiches as fiches_moteur  # noqa: E402
+from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
+
+
+def referentiels_fiches():
+    referentiels_saisie()
+    for n, lib in (("600200", "LOCATION DE SALLE"), ("625000", "DONS EMIS"), ("630000", "DEPENSES SOCIALES")):
+        Compte.objects.create(numero=n, libelle=lib, anal1_id="FON.1")
+    moteur.initialiser_parametres()
+
+
+def ligne_fiche(fiche, sens, nature, montant, mode=None, tiers=None, autre="", personnes=None, date=dt.date(2026, 10, 15), **k):
+    return LigneFiche.objects.create(
+        fiche=fiche, sens=sens, date=date, nature=NatureFiche.objects.get(type_fiche=fiche.type, sens=sens, libelle=nature),
+        montant=D(montant), mode=ModeFiche.objects.get(type_fiche=fiche.type, libelle=mode) if mode else None,
+        tiers=Compte.objects.get(numero=tiers) if tiers else None, autre=autre, personnes=personnes, **k)
+
+
+def ecritures(l):
+    journal, lignes = fiches_moteur.generer(l)
+    return journal.code, [(x.compte.numero, x.debit, x.credit) for x in lignes]
+
+
+class Fiches(TestCase):
+    def setUp(self):
+        referentiels_fiches()
+        self.act = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        self.ges = Fiche.objects.create(type="gestion", titre="Dons 2026")
+
+    def remplir(self):
+        a = self.act
+        return [ligne_fiche(a, "R", "Participation", 200, "Bit", tiers="411TAIEB001", personnes=2),
+                ligne_fiche(a, "R", "Don", 50, "Espèces", autre="M. Levy", personnes=1),
+                ligne_fiche(a, "R", "Participation", 200, "Non payé", tiers="411TAIEB001"),
+                ligne_fiche(a, "D", "Location de salle", 150, "Carte Isracard", autre="Salle Beit Ha'am"),
+                ligne_fiche(a, "D", "Frais divers", 140, "Avance d'un membre", tiers="411TAIEB001"),
+                ligne_fiche(self.ges, "R", "Don reçu", 1000, "Virement BIT", autre="Fondation X", anal2_id="SOC.006"),
+                ligne_fiche(self.ges, "D", "Aide versée", 300, "Espèces", autre="Famille Y", anal2_id="SOC.007"
+                            if CodeAnalytique.objects.filter(code="SOC.007").exists() else "SOC.006")]
+
+    def test_parametres(self):
+        self.assertEqual((NatureFiche.objects.count(), ModeFiche.objects.count()), (13, 10))
+        self.assertEqual(ModeFiche.objects.get(libelle="Carte Isracard").compte_id, "580000")
+
+    def test_ecritures(self):
+        ls = self.remplir()
+        attendu = [
+            ("B3", [("411TAIEB001", 200, 0), ("710000", 0, 200), ("512200", 200, 0), ("411TAIEB001", 0, 200)]),
+            ("CA", [("530000", 50, 0), ("725000", 0, 50)]),
+            ("VT", [("411TAIEB001", 200, 0), ("710000", 0, 200)]),
+            ("OD", [("600200", 150, 0), ("580000", 0, 150)]),
+            ("OD", [("600000", 140, 0), ("411TAIEB001", 0, 140)]),
+            ("B3", [("512200", 1000, 0), ("725000", 0, 1000)]),
+            ("CA", [("630000", 300, 0), ("530000", 0, 300)]),
+        ]
+        for l, (j, e) in zip(ls, attendu):
+            with self.subTest(l.nature.libelle):
+                self.assertEqual(fiches_moteur.controler(l).erreurs, {})
+                self.assertEqual(ecritures(l), (j, [(c, D(d), D(cr)) for c, d, cr in e]))
+        self.assertEqual(fiches_moteur.totaux(self.act),
+                         {"participants": 3, "recettes": D(450), "depenses": D(290), "resultat": D(160)})
+        self.assertEqual(fiches_moteur.controler(ls[0]).libelle, "PARTICIPATION - TAIEB JEANNE")
+
+    def test_controles(self):
+        l = ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")
+        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Mode de paiement", "Axe 2"})
+        l = ligne_fiche(self.act, "R", "Participation", 100, "Non payé", autre="Inconnu")
+        self.assertIn("demande un membre", fiches_moteur.controler(l).erreurs["Mode de paiement"])
+        p = TiersProvisoire.objects.create(nom="Nouveau")
+        l = ligne_fiche(self.act, "R", "Participation", 100, "Bit", provisoire=p)
+        self.assertIn("Tiers", fiches_moteur.controler(l).erreurs)
+        sans_code = Fiche.objects.create(type="activite", titre="Sans code")
+        l = ligne_fiche(sans_code, "D", "Frais divers", 10, "Espèces", date=dt.date(2025, 11, 2))
+        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Axe 2", "Date"})
+
+    def test_report(self):
+        self.remplir()
+        u = User.objects.create_user("t")
+        crees = fiches_moteur.reporter(self.act, u)
+        self.assertEqual([m.numero for m in crees], [422, 423, 424, 425, 426])
+        self.assertEqual(Ligne.objects.filter(mouvement__origine="liaison").count(), 12)
+        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison").values_list("anal2_id", flat=True)), {"MAN.001"})
+        self.assertEqual(self.act.statut, "reportee")
+        self.assertEqual(fiches_moteur.reporter(self.act, u), [])     # rien de nouveau
+        ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")         # gestion : colonnes du trésorier vides
+        with self.assertRaises(ValueError):
+            fiches_moteur.reporter(self.ges, u)
+        self.assertFalse(Mouvement.objects.filter(numero=427).exists())
+
+
+class EcransFiches(TestCase):
+    def setUp(self):
+        referentiels_fiches()
+        call_command("migrate", verbosity=0)
+        self.tresorier = User.objects.create_user("tresorier")
+        self.tresorier.groups.add(Group.objects.get(name="Trésorier"))
+        self.benevole = User.objects.create_user("rachel")
+        self.benevole.groups.add(Group.objects.get(name="Bénévole"))
+        self.act = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        self.act.benevoles.add(self.benevole)
+        self.autre = Fiche.objects.create(type="gestion", titre="Pas à elle")
+
+    def ligne_post(self, **k):
+        data = {"ajouter": "1", "sens": "R", "date": "2026-10-15", "nature": NatureFiche.objects.get(type_fiche="activite", libelle="Participation").pk,
+                "montant": "120", "mode": ModeFiche.objects.get(type_fiche="activite", libelle="Bit").pk, "personnes": "2"}
+        data.update(k)
+        return data
+
+    def test_benevole(self):
+        self.client.force_login(self.benevole)
+        self.assertRedirects(self.client.get("/"), "/fiches/")
+        r = self.client.get("/fiches/")
+        self.assertContains(r, "Rallye")
+        self.assertNotContains(r, "Pas à elle")
+        self.assertNotContains(r, "Nouvelle fiche")
+        self.assertEqual(self.client.get(f"/fiches/{self.autre.pk}/").status_code, 403)
+        for url in ("/ecritures/", "/saisie/", "/tiers-provisoires/"):
+            self.assertEqual(self.client.get(url).status_code, 403, url)
+        r = self.client.get(f"/fiches/{self.act.pk}/")
+        self.assertContains(r, "411TAIEB001")         # recherche des membres existants
+        self.assertNotContains(r, "Compte de contrepartie")
+        # membre existant, puis nouveau tiers provisoire
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(nouveau_nom="Cohen", nouveau_prenom="Dan"))
+        self.assertEqual(self.act.lignes.count(), 2)
+        p = TiersProvisoire.objects.get()
+        self.assertEqual((str(p), p.cree_par), ("COHEN DAN (provisoire)", self.benevole))
+        self.assertContains(self.client.get(f"/fiches/{self.act.pk}/"), "compte à attribuer par le trésorier")
+        # transmission : plus de saisie
+        self.client.post(f"/fiches/{self.act.pk}/", {"transmettre": "1"})
+        self.act.refresh_from_db()
+        self.assertEqual(self.act.statut, "transmise")
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
+        self.assertEqual(self.act.lignes.count(), 2)
+        self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.first().pk}/").status_code, 403)
+
+    def test_tresorier(self):
+        self.client.force_login(self.benevole)
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(nouveau_nom="Cohen", nouveau_prenom="Dan"))
+        self.client.force_login(self.tresorier)
+        for url in ("/fiches/", f"/fiches/{self.act.pk}/", "/tiers-provisoires/", f"/fiches/ligne/{self.act.lignes.get().pk}/"):
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            self.assertContains(r, "data-cherchable", msg_prefix=url)
+        # report refusé tant que le tiers est provisoire
+        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
+        self.assertFalse(Mouvement.objects.filter(origine="liaison").exists())
+        p = TiersProvisoire.objects.get()
+        self.assertRedirects(self.client.post("/tiers-provisoires/", {"provisoire": p.pk, f"p{p.pk}-compte": ""}), "/tiers-provisoires/")
+        p.refresh_from_db()
+        self.assertEqual((p.compte_id, p.compte.libelle), ("411COHEN001", "COHEN DAN"))
+        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
+        m = Mouvement.objects.get(origine="liaison")
+        self.assertEqual(list(m.lignes.values_list("compte_id", flat=True)), ["411COHEN001", "710000", "512200", "411COHEN001"])
+        self.assertEqual(m.cree_par, self.tresorier)
+        self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.get().pk}/").status_code, 403)   # verrouillée
+
+    def test_creations_par_le_tresorier(self):
+        self.client.force_login(self.tresorier)
+        r = self.client.post("/fiches/", {"benevole-identifiant": "david", "benevole-prenom": "David", "benevole-nom": "Levy",
+                                          "benevole-mot_de_passe": "motdepasse-8", "creer_benevole": "1"})
+        self.assertRedirects(r, "/fiches/")
+        david = User.objects.get(username="david")
+        self.assertTrue(david.groups.filter(name="Bénévole").exists())
+        r = self.client.post("/fiches/", {"fiche-type": "gestion", "fiche-titre": "Aides", "fiche-benevoles": [david.pk],
+                                          "creer_fiche": "1"})
+        f = Fiche.objects.get(titre="Aides")
+        self.assertRedirects(r, f"/fiches/{f.pk}/")
+        self.assertEqual(list(f.benevoles.all()), [david])

@@ -231,3 +231,5 @@ def initialiser_parametres():
         ModeleOperation.objects.get_or_create(type=t, defaults=dict(
             schema=s, compte_id=compte, journal_defaut_id=jnl, tiers=TypeTiers.objects.filter(libelle=tiers).first(),
             paiement_obligatoire=oblig, classe=classe, libelle_type=lib, aide=aide, ordre=i))
+    from .fiches import initialiser as initialiser_fiches
+    initialiser_fiches()

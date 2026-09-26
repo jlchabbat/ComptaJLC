@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from .models import (
-    CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneSchema, Modification, ModeleOperation, Mouvement, MoyenPaiement, Prefixe,
-    Reglage, TypeTiers,
+    CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
+    MoyenPaiement, NatureFiche, Prefixe, Reglage, TiersProvisoire, TypeTiers,
 )
 
 
@@ -98,3 +98,39 @@ class ModeleOperationAdmin(admin.ModelAdmin):
     list_display = ("type", "schema", "compte", "journal_defaut", "tiers", "paiement_obligatoire", "classe", "ordre", "actif")
     search_fields = ("type", "libelle_type")
     autocomplete_fields = ("compte", "journal_defaut")
+
+
+@admin.register(NatureFiche)
+class NatureFicheAdmin(admin.ModelAdmin):
+    list_display = ("libelle", "type_fiche", "sens", "compte", "libelle_ecriture", "ordre")
+    list_filter = ("type_fiche", "sens")
+    autocomplete_fields = ("compte",)
+
+
+@admin.register(ModeFiche)
+class ModeFicheAdmin(admin.ModelAdmin):
+    list_display = ("libelle", "type_fiche", "sens", "genre", "journal", "compte", "ordre")
+    list_filter = ("type_fiche",)
+    autocomplete_fields = ("journal", "compte")
+
+
+@admin.register(Fiche)
+class FicheAdmin(admin.ModelAdmin):
+    list_display = ("titre", "type", "anal2", "statut", "cree_le")
+    list_filter = ("type", "statut")
+    autocomplete_fields = ("anal2",)
+
+
+@admin.register(TiersProvisoire)
+class TiersProvisoireAdmin(admin.ModelAdmin):
+    list_display = ("nom", "prenom", "compte", "cree_par", "cree_le")
+    autocomplete_fields = ("compte",)
+
+
+@admin.register(LigneFiche)
+class LigneFicheAdmin(admin.ModelAdmin):
+    list_display = ("fiche", "sens", "date", "nature", "montant", "mode", "mouvement")
+    list_filter = ("fiche",)
+
+    def has_change_permission(self, request, obj=None):
+        return False    # les lignes se modifient depuis la fiche (contrôles et verrou après report)

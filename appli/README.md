@@ -26,9 +26,10 @@ partager). Hors de Git.
 |---|---|
 | Trésorier | tout, y compris les référentiels (menu Référentiels) |
 | Bureau, Vérificateur | consultation : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
-| Bénévole | fiches de liaison (lot suivant) |
+| Bénévole | ses fiches bénévoles seulement : saisie des lignes, nouveaux tiers provisoires, transmission |
 
-Les comptes se créent dans Référentiels › Utilisateurs, avec leur groupe.
+Les comptes se créent dans Référentiels › Utilisateurs, avec leur groupe ;
+un bénévole se crée aussi depuis Fiches bénévoles › Nouveau bénévole.
 
 ## Pages (socle W0)
 
@@ -37,6 +38,35 @@ résultat par axe 1 et 2, état des contrôles) · Écritures (filtres journal,
 compte, axe 2, recherche) · Mouvement · Grand livre (solde cumulé) ·
 Balance · Analytique · Contrôles (RG-01 à RG-04, comptes de liaison) ·
 Journal des modifications (repris du classeur).
+
+## Saisie (W1)
+
+Saisie guidée d'une opération (aperçu des écritures, 11 contrôles bloquants,
+un ou deux Mvt) · Codes (nouveau code analytique d'après le préfixe, nouveau
+membre, statut d'un code axe 2). Toutes les listes se cherchent en tapant une
+partie du code ou du libellé.
+
+## Fiches bénévoles (W2)
+
+Remplacent le fichier de liaison Excel (même conventions d'écritures, voir
+`compta/fiches.py`).
+
+1. Le trésorier crée la fiche : **Activité** (code axe 2 fixé d'avance) ou
+   **Gestion** (dons et aides reçus ou versés), et lui attribue un ou
+   plusieurs bénévoles.
+2. Le bénévole se connecte, note ses recettes et dépenses ; il cherche un
+   membre existant ou crée un **nouveau tiers provisoire** ; puis il
+   **transmet** la fiche.
+3. Le trésorier attribue un compte aux tiers provisoires (Tiers provisoires),
+   complète en Gestion le mode de paiement, le compte de contrepartie et le
+   code axe 2, puis **reporte** : un Mvt par ligne (origine « Fiche
+   bénévole »). Le report est refusé tant qu'une ligne est signalée ; les
+   lignes reportées sont verrouillées.
+
+Natures et modes de paiement des fiches : Référentiels (modifiables).
+Tant que l'application tourne seulement sur le PC du trésorier, un bénévole
+à distance n'y a pas accès : le trésorier saisit pour lui, ou l'accès distant
+arrive avec l'hébergement.
 
 ## Développement
 

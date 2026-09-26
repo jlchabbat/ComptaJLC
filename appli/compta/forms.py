@@ -65,3 +65,137 @@ class StatutForm(forms.Form):
         super().__init__(*a, **k)
         self.fields["code"].queryset = CodeAnalytique.objects.filter(axe=2).order_by("code")
         cherchable(self)
+
+
+# ---------------------------------------------------------------- fiches bénévoles
+
+from django.contrib.auth.models import User  # noqa: E402
+
+from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
+
+
+def comptes_tiers():
+    prefixes = Q()
+    for t in TypeTiers.objects.all():
+        prefixes |= Q(numero__startswith=t.prefixe)
+    return Compte.objects.filter(prefixes, actif=True).order_by("libelle") if prefixes else Compte.objects.none()
+
+
+class ChoixBenevoles(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, u):
+        return u.get_full_name() or u.username
+
+
+class FicheForm(forms.ModelForm):
+    benevoles = ChoixBenevoles(User.objects.none(), required=False, widget=forms.CheckboxSelectMultiple(attrs={"class": "radios"}),
+                                label="Bénévoles")
+
+    class Meta:
+        model = Fiche
+        fields = ["type", "titre", "anal2", "benevoles"]
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
+        self.fields["benevoles"].queryset = User.objects.filter(groups__name="Bénévole", is_active=True).order_by("username")
+        if self.instance.pk:
+            del self.fields["type"]
+        cherchable(self)
+
+
+class BenevoleForm(forms.Form):
+    identifiant = forms.SlugField(max_length=30, help_text="Pour se connecter, sans espace ni accent.")
+    prenom = forms.CharField(max_length=60, label="Prénom")
+    nom = forms.CharField(max_length=60)
+    mot_de_passe = forms.CharField(min_length=8, widget=forms.PasswordInput(render_value=True), label="Mot de passe",
+                                   help_text="8 caractères au moins ; à transmettre au bénévole.")
+
+    def clean_identifiant(self):
+        v = self.cleaned_data["identifiant"]
+        if User.objects.filter(username__iexact=v).exists():
+            raise forms.ValidationError("Cet identifiant existe déjà.")
+        return v
+
+
+class LigneFicheForm(forms.ModelForm):
+    """Ligne saisie par le bénévole ; le trésorier voit en plus ses colonnes (mode en gestion, compte, axe 2)."""
+
+    sens = forms.ChoiceField(choices=[("R", "Recette"), ("D", "Dépense")], widget=forms.RadioSelect(attrs={"class": "radios"}))
+    qui = forms.ChoiceField(required=False, label="Membre ou tiers",
+                            help_text="Tapez le nom ; s'il n'existe pas, remplissez « Nouveau tiers » ou « Autre ».")
+    nouveau_nom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : nom")
+    nouveau_prenom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : prénom")
+
+    class Meta:
+        model = LigneFiche
+        fields = ["sens", "date", "autre", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "compte", "anal2"]
+        widgets = {"date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
+
+    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "autre", "personnes", "nature", "montant", "mode",
+                   "justificatif", "remarque", "compte", "anal2"]
+
+    def __init__(self, *a, fiche, tresorier, **k):
+        super().__init__(*a, **k)
+        self.fiche = fiche
+        t = fiche.type
+        f = self.fields
+        f["nature"].queryset = NatureFiche.objects.filter(type_fiche=t)
+        f["mode"].queryset = ModeFiche.objects.filter(type_fiche=t)
+        f["montant"].min_value = 0
+        choix = [("", "—")]
+        choix += [(f"c:{c.numero}", f"{c.libelle} – {c.numero}") for c in comptes_tiers()]
+        choix += [(f"p:{p.pk}", f"{p} – nouveau tiers") for p in TiersProvisoire.objects.filter(compte__isnull=True)]
+        f["qui"].choices = choix
+        if self.instance.pk:
+            i = self.instance
+            f["qui"].initial = f"c:{i.tiers_id}" if i.tiers_id else (f"p:{i.provisoire_id}" if i.provisoire_id else "")
+        if t == "gestion":
+            for n in ("personnes", "justificatif"):
+                del f[n]
+            if not tresorier:
+                del f["mode"]
+        if tresorier:
+            f["compte"].queryset = Compte.objects.filter(Q(numero__startswith="6") | Q(numero__startswith="7"), actif=True)
+            f["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
+            if t == "activite":
+                del f["anal2"]
+        else:
+            del f["compte"], f["anal2"]
+        if fiche.type == "gestion":
+            f["sens"].choices = [("R", "Reçu"), ("D", "Versé")]
+        cherchable(self)
+        f["qui"].widget.attrs.update(CHERCHABLE)
+
+    def clean(self):
+        c = super().clean()
+        qui, nom = c.get("qui"), (c.get("nouveau_nom") or "").strip()
+        if qui and nom:
+            self.add_error("nouveau_nom", "Choisir un membre OU créer un nouveau tiers, pas les deux.")
+        return c
+
+    def save(self, utilisateur):
+        l = super().save(commit=False)
+        l.fiche = self.fiche
+        qui, nom = self.cleaned_data.get("qui"), (self.cleaned_data.get("nouveau_nom") or "").strip()
+        l.tiers = l.provisoire = None
+        if qui.startswith("c:"):
+            l.tiers = Compte.objects.get(numero=qui[2:])
+        elif qui.startswith("p:"):
+            l.provisoire = TiersProvisoire.objects.get(pk=qui[2:])
+        elif nom:
+            l.provisoire = TiersProvisoire.objects.create(nom=nom, prenom=(self.cleaned_data.get("nouveau_prenom") or "").strip(),
+                                                          cree_par=utilisateur)
+        if not l.pk:
+            l.cree_par = utilisateur
+        l.save()
+        return l
+
+
+class AttribuerForm(forms.Form):
+    compte = forms.ModelChoiceField(Compte.objects.none(), required=False, label="Compte existant",
+                                    help_text="Vide : un nouveau compte de membre est créé.")
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fields["compte"].queryset = comptes_tiers()
+        cherchable(self)

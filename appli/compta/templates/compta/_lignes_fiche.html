@@ -1,0 +1,10 @@
+{% load compta %}<h2>{{ titre }}</h2>
+<table><tr><th>Date</th><th>Qui</th>{% if fiche.type == "activite" and sens == "R" %}<th class="n">Pers.</th>{% endif %}<th>Nature</th><th class="n">Montant</th><th>Mode</th>
+{% if fiche.type == "activite" and sens == "D" %}<th>Justificatif</th>{% endif %}<th>Remarque</th>{% if tresorier %}<th>Compte</th>{% if fiche.type == "gestion" %}<th>Axe 2</th>{% endif %}{% endif %}<th>Contrôle</th><th></th></tr>
+{% for l, r in lignes %}<tr {% if l.mouvement_id %}class="reportee"{% endif %}><td>{{ l.date|date:"d/m/Y" }}</td><td>{{ l.qui|default:"—" }}</td>
+{% if fiche.type == "activite" and sens == "R" %}<td class="n">{{ l.personnes|default:"" }}</td>{% endif %}<td>{{ l.nature }}</td><td class="n">{{ l.montant|shekel }}</td><td>{{ l.mode|default:"—" }}</td>
+{% if fiche.type == "activite" and sens == "D" %}<td>{{ l.justificatif }}</td>{% endif %}<td>{{ l.remarque }}</td>
+{% if tresorier %}<td title="{{ l.compte.libelle|default:l.nature.compte.libelle }}">{{ l.compte_id|default:l.nature.compte_id }}{% if not l.compte_id and not l.mouvement_id %} <span class="aide">(proposé)</span>{% endif %}</td>{% if fiche.type == "gestion" %}<td>{{ l.anal2_id|default:"—" }}</td>{% endif %}{% endif %}
+<td class="ctrl {% if r.ok or l.mouvement_id %}ok{% endif %}">{% if l.mouvement_id %}<a href="{% url 'mouvement' l.mouvement.numero %}">Mvt {{ l.mouvement.numero }}</a>{% elif r.ok %}OK{% else %}{% for k, v in r.erreurs.items %}{{ v }}<br>{% endfor %}{% endif %}</td>
+<td>{% if saisie and not l.mouvement_id %}<a href="{% url 'ligne_fiche' l.pk %}">Modifier</a>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="12">Aucune ligne.</td></tr>{% endfor %}</table>
