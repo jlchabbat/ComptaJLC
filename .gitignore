@@ -1,0 +1,27 @@
+# Classeurs : données de l'association (noms des membres), hors Git
+# tant que leur versionnement n'est pas autorisé (§12 du cahier)
+*.xlsm
+*.xlsx
+!Imports/modeles/*.xlsx
+
+# Exports réels de reprise (données personnelles)
+Imports/reprise/*
+!Imports/reprise/.gitkeep
+
+# Fichiers temporaires Excel et Office
+~$*
+*.tmp
+*.bak
+
+# Sauvegardes datées
+Sauvegardes/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets
+.env
+*.key
+*.pem
