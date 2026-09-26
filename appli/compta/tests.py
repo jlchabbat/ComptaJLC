@@ -1075,3 +1075,11 @@ class EffacerHistorique(TransactionTestCase):
         u.groups.add(Group.objects.get(name="Trésorier"))
         self.client.force_login(u)
         self.assertEqual(self.client.post("/modifications/effacer/", {"confirmation": "EFFACER"}).status_code, 403)
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class CommandeSauvegarder(TransactionTestCase):
+    def test_commande(self):
+        call_command("migrate", verbosity=0)
+        call_command("sauvegarder", stdout=open("/dev/null", "w"))
+        self.assertTrue(bd.liste()[0].name.endswith("_auto.sqlite3"))
