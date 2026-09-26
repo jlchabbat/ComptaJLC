@@ -101,3 +101,46 @@ def historique_excel(request):
     for row in wb["Historique"].iter_rows(min_row=2):
         row[0].number_format = "DD/MM/YYYY HH:MM"
     return reponse_excel(wb, "ComptaBB_historique.xlsx")
+
+
+@login_required
+def effacer_historique(request):
+    """Efface l'historique jusqu'à une date (administrateur) ; copie Excel et sauvegarde de la base faites avant."""
+    from django.conf import settings
+    from django.contrib import messages
+    from django.core.exceptions import PermissionDenied
+    from django.shortcuts import redirect
+
+    from . import base_donnees as bd
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    if request.method != "POST":
+        return redirect("modifications")
+    if request.POST.get("confirmation", "").strip().upper() != "EFFACER":
+        messages.error(request, "Historique non effacé : tapez EFFACER pour confirmer.")
+        return redirect("modifications")
+    try:
+        jusquau = dt.date.fromisoformat(request.POST.get("jusquau", ""))
+    except ValueError:
+        jusquau = dt.date.today()
+    qs = Modification.objects.filter(date__date__lte=jusquau)
+    n = qs.count()
+    if not n:
+        messages.info(request, "Aucune opération à effacer jusqu'à cette date.")
+        return redirect("modifications")
+    import openpyxl
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    feuille(wb, "Historique", ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
+            [[m.date.replace(tzinfo=None), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres] for m in qs])
+    archives = settings.DATA_DIR / "archives"
+    archives.mkdir(parents=True, exist_ok=True)
+    copie = archives / f"Historique_jusqu_au_{jusquau:%Y-%m-%d}_efface_le_{dt.date.today():%Y-%m-%d}.xlsx"
+    wb.save(copie)
+    sauvegarde = bd.sauvegarder("avant-effacement-historique")
+    qs.delete()
+    Modification.objects.create(auteur=request.user.get_username(), lot="Base de données", action="Historique effacé",
+                                objet=f"{n} opération(s) jusqu'au {jusquau:%d/%m/%Y}",
+                                apres=f"copie {copie.name} ; sauvegarde {sauvegarde.name}"[:300])
+    messages.success(request, f"{n} opération(s) effacée(s). Copie Excel gardée : {copie.name} (Administration › Base de données › Archives).")
+    return redirect("modifications")

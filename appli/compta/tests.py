@@ -1054,3 +1054,24 @@ class BaseDonnees(TransactionTestCase):
         u.groups.add(Group.objects.get(name="Trésorier"))
         self.client.force_login(u)
         self.assertEqual(self.client.get("/base/").status_code, 403)
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class EffacerHistorique(TransactionTestCase):
+    def test_effacer(self):
+        call_command("migrate", verbosity=0)
+        admin = User.objects.create_superuser("admin", "", "motdepasse-long")
+        for i in range(3):
+            Modification.objects.create(auteur="t", action="Saisie", objet=f"Mvt {i}")
+        self.client.force_login(admin)
+        self.client.post("/modifications/effacer/", {"jusquau": dt.date.today().isoformat(), "confirmation": "non"})
+        self.assertEqual(Modification.objects.count(), 3)                       # pas confirmé
+        self.client.post("/modifications/effacer/", {"jusquau": dt.date.today().isoformat(), "confirmation": "effacer"})
+        self.assertEqual(list(Modification.objects.values_list("action", flat=True)), ["Historique effacé"])
+        from django.conf import settings
+        self.assertEqual(len(list((settings.DATA_DIR / "archives").glob("Historique_*.xlsx"))), 1)
+        self.assertEqual(len(bd.liste()), 1)
+        u = User.objects.create_user("tresorier")
+        u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(u)
+        self.assertEqual(self.client.post("/modifications/effacer/", {"confirmation": "EFFACER"}).status_code, 403)

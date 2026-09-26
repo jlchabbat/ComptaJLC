@@ -22,6 +22,7 @@ urlpatterns = [
     path("controles/", views.controles, name="controles"),
     path("modifications/", views.modifications, name="modifications"),
     path("modifications/excel/", vues_journaux.historique_excel, name="historique_excel"),
+    path("modifications/effacer/", vues_journaux.effacer_historique, name="effacer_historique"),
     path("journaux/", vues_journaux.journaux, name="journaux"),
     path("saisie/", views.saisie, name="saisie"),
     path("codes/", views.codes, name="codes"),
@@ -52,6 +53,7 @@ urlpatterns = [
     path("base/", vues_base.base, name="base"),
     path("base/telecharger/", vues_base.telecharger, name="base_telecharger"),
     path("base/telecharger/<str:nom>", vues_base.telecharger, name="base_telecharger_fichier"),
+    path("base/archive/<str:nom>", vues_base.telecharger_archive, name="base_archive"),
     path("admin/", admin.site.urls),
     path("favicon.ico", RedirectView.as_view(url=static("compta/favicon.ico"), permanent=True)),
 ]

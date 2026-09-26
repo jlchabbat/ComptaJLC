@@ -92,6 +92,7 @@ def base(request):
             return redirect("base")
     return render(request, "compta/base_donnees.html", {
         "form": form, "sauvegardes": [(p.name, p.stat().st_size // 1024) for p in bd.liste()],
+        "archives": [(p.name, p.stat().st_size // 1024) for p in archives()],
         "mouvements": Mouvement.objects.count(), "lignes": Ligne.objects.count(), "confirmation": CONFIRMATION})
 
 
@@ -105,4 +106,19 @@ def telecharger(request, nom=None):
         if not chemin:
             raise Http404
     journaliser(request, "Téléchargement de la base", chemin.name)
+    return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)
+
+
+def archives():
+    from django.conf import settings
+    d = settings.DATA_DIR / "archives"
+    return sorted(d.glob("*.xlsx"), key=lambda p: p.stat().st_mtime, reverse=True) if d.exists() else []
+
+
+@login_required
+@user_passes_test(administrateur)
+def telecharger_archive(request, nom):
+    chemin = next((p for p in archives() if p.name == nom), None)
+    if not chemin:
+        raise Http404
     return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)
