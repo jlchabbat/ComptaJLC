@@ -1,0 +1,20 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Membres{% endblock %}{% block contenu %}
+<h1>Membres</h1>{% include "compta/_nav_membres.html" %}
+<form class="filtres" method="get"><label>Recherche <input name="q" value="{{ q }}" placeholder="nom, prénom, compte, e-mail"></label>
+<label>Statut <select name="statut"><option value="">Tous</option>{% for k, v in statuts %}<option value="{{ k }}" {% if statut == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+<button class="principal">Filtrer</button></form>
+<p>{{ lignes|length }} membre{{ lignes|length|pluralize }} · total dû {{ total_du|shekel }}</p>
+<table><tr><th>Nom</th><th>Prénom</th><th>Compte</th><th>Statut</th><th>Téléphone</th><th>E-mail</th><th class="n">Cotisation</th><th class="n">Solde dû</th></tr>
+{% for m, solde in lignes %}<tr><td><a href="{% url 'membre' m.compte_id %}">{{ m.nom }}</a></td><td>{{ m.prenom }}</td><td>{{ m.compte_id }}</td><td>{{ m.get_statut_display }}</td>
+<td>{{ m.telephone }}</td><td>{% if m.email %}<a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}</td><td class="n">{{ m.cotisation|zero_vide }}</td>
+<td class="n {% if solde > 0 %}neg{% endif %}">{{ solde|zero_vide }}</td></tr>{% empty %}<tr><td colspan="8">Aucun membre.</td></tr>{% endfor %}</table>
+{% if peut %}<div class="deux" style="margin-top:16px">
+<form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer les fiches</h2>
+<p class="aide">Colonnes du modèle Imports/modeles/07_membres.csv : Compte ; Nom ; Prénom ; Téléphone ; E-mail ; Date d'adhésion ; Statut ; Cotisation annuelle.
+Les fiches existantes sont mises à jour.</p>
+<div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div><div class="boutons"><button class="principal">Importer</button></div></form>
+<form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Lettrage automatique</h2>
+<p class="aide">Pour tous les membres : facture et règlement de même montant dans une même opération, puis facture et premier règlement
+ultérieur de même montant. Les lettrages se vérifient et s'annulent depuis la fiche du membre.</p>
+<div class="boutons"><button class="principal" name="lettrage_auto" value="1">Lettrer automatiquement</button></div></form></div>{% endif %}
+{% endblock %}

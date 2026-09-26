@@ -178,6 +178,8 @@ def provisoires(request):
                     compte = Compte.objects.create(numero=compte_membre_propose(p.nom), libelle=str(p).replace(" (provisoire)", ""),
                                                    lettrable=True, anal1=modele.anal1 if modele else None)
                     journaliser(request, "Création", f"compte {compte.numero}", apres=compte.libelle)
+                    from .models import Membre
+                    Membre.objects.create(compte=compte, nom=p.nom.strip().upper(), prenom=p.prenom.strip())
                 p.compte = compte
                 p.save(update_fields=["compte"])
                 journaliser(request, "Tiers provisoire", f"{p.nom} {p.prenom}", apres=f"compte {compte.numero}")

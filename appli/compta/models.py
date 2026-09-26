@@ -570,3 +570,23 @@ class Budget(models.Model):
     @property
     def cible(self):
         return self.compte or self.anal1 or self.anal2
+
+
+# ---------------------------------------------------------------- suivi des membres (Lot 2)
+
+class Membre(models.Model):
+    STATUTS = [("actif", "Actif"), ("honoraire", "Honoraire"), ("demissionnaire", "Démissionnaire")]
+    compte = models.OneToOneField(Compte, on_delete=models.PROTECT, primary_key=True, related_name="membre")
+    nom = models.CharField(max_length=60)
+    prenom = models.CharField("prénom", max_length=60, blank=True)
+    telephone = models.CharField("téléphone", max_length=40, blank=True)
+    email = models.EmailField("e-mail", blank=True)
+    date_adhesion = models.DateField("date d'adhésion", null=True, blank=True)
+    statut = models.CharField(max_length=15, choices=STATUTS, default="actif")
+    cotisation = models.DecimalField("cotisation annuelle attendue", max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ["nom", "prenom"]
+
+    def __str__(self):
+        return f"{self.nom} {self.prenom}".strip()

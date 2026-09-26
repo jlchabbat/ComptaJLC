@@ -90,6 +90,22 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   mois. La reprise du classeur reproduit l'onglet Banque1 : écart 2 910,00
   au 24/09/2026, 42 lignes du relevé et 38 écritures non pointées.
 
+## Suivi des membres (W5)
+
+- **Fiches** (menu Membres) : une par compte de membre (créées automatiquement,
+  et à chaque nouveau membre) ; téléphone, e-mail, adhésion, statut (actif,
+  honoraire, démissionnaire), cotisation attendue ; import du modèle
+  `Imports/modeles/07_membres.csv`.
+- **Fiche membre** : facturé, réglé, solde dû, ancienneté des impayés (0–30,
+  31–90, > 90 jours ; règlements imputés sur les factures les plus
+  anciennes), historique, texte de relance à copier ou à ouvrir dans la
+  messagerie.
+- **Impayés** triés par montant ; **cotisations** de l'exercice attendues,
+  facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
+- **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique
+  (même opération, puis premier règlement de même montant), annulable ;
+  journalisé.
+
 ## États annuels et clôture (W4)
 
 - **États** (menu États, exercice au choix, N comparé à N-1) : compte de

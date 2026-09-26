@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers,
+    Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers,
 )
 
 
@@ -150,3 +150,10 @@ class TraductionAdmin(admin.ModelAdmin):
 @admin.register(ParametreReleve)
 class ParametreReleveAdmin(admin.ModelAdmin):
     list_display = ("journal", "date_reprise", "libelle")
+
+
+@admin.register(Membre)
+class MembreAdmin(admin.ModelAdmin):
+    list_display = ("nom", "prenom", "compte", "statut", "telephone", "email", "cotisation")
+    list_filter = ("statut",)
+    search_fields = ("nom", "prenom", "compte__numero", "email")

@@ -233,3 +233,8 @@ def initialiser_parametres():
             paiement_obligatoire=oblig, classe=classe, libelle_type=lib, aide=aide, ordre=i))
     from .fiches import initialiser as initialiser_fiches
     initialiser_fiches()
+    if Compte.objects.filter(numero="700000").exists():
+        Reglage.objects.get_or_create(cle="compte_cotisations", defaults={
+            "valeur": "700000", "description": "Compte des cotisations (suivi des membres)"})
+    from .membres import creer_manquants
+    creer_manquants()

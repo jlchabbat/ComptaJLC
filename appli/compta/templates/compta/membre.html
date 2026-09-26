@@ -1,0 +1,44 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ m }}{% endblock %}{% block contenu %}
+<p><a href="{% url 'membres' %}">← Membres</a></p>
+<div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.get_statut_display }}</span></div>
+<p>Compte {{ m.compte_id }}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
+{% if m.date_adhesion %} · membre depuis le {{ m.date_adhesion|date:"d/m/Y" }}{% endif %}{% if m.cotisation %} · cotisation {{ m.cotisation|shekel }}{% endif %}</p>
+<div class="chiffres"><div class="chiffre"><div class="lib">Facturé</div><div class="val">{{ s.facture|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Réglé</div><div class="val">{{ s.regle|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Solde dû</div><div class="val {% if s.solde > 0 %}neg{% endif %}">{{ s.solde|shekel }}</div></div>
+{% for lib, v in s.tranches %}<div class="chiffre"><div class="lib">Impayé {{ lib }}</div><div class="val {% if v %}neg{% endif %}">{{ v|shekel }}</div></div>{% endfor %}</div>
+{% if s.avance %}<p class="aide">Avance du membre (règlements non imputés) : {{ s.avance|shekel }}.</p>{% endif %}
+
+<h2>Historique</h2>
+<form method="post" id="lettrage">{% csrf_token %}
+<table><tr>{% if peut %}<th></th>{% endif %}<th>Date</th><th>Mvt</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="n">Solde</th><th>Let</th></tr>
+{% for l, cumul in historique %}<tr>{% if peut %}<td>{% if not l.lettrage %}<input type="checkbox" name="ligne" value="{{ l.pk|stringformat:'d' }}" data-d="{{ l.debit|stringformat:'s' }}" data-c="{{ l.credit|stringformat:'s' }}">{% endif %}</td>{% endif %}
+<td>{{ l.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' l.mouvement.numero %}">{{ l.mouvement.numero }}</a></td><td>{{ l.libelle }}</td>
+<td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td class="n">{{ cumul|shekel }}</td>
+<td>{% if l.lettrage %}{{ l.lettrage }}{% if peut %} <button name="delettrer" value="{{ l.lettrage }}" title="Annuler ce lettrage" style="padding:0 6px">×</button>{% endif %}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="8">Aucune écriture.</td></tr>{% endfor %}</table>
+{% if peut %}<div class="boutons"><button class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
+<span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>
+<button name="lettrage_auto" value="1">Lettrage automatique</button></div>{% endif %}</form>
+
+{% if relance %}<div class="carte" style="margin-top:16px"><h2 style="margin-top:0">Texte de relance</h2>
+<textarea id="relance" rows="12" style="width:100%;font:inherit">{{ relance }}</textarea>
+<div class="boutons"><button type="button" onclick="navigator.clipboard.writeText(document.getElementById('relance').value);this.textContent='Copié'">Copier le texte</button>
+{% if mailto %}<a class="bouton" href="{{ mailto }}">Ouvrir dans ma messagerie</a>{% else %}<span class="aide">Pas d'e-mail dans la fiche.</span>{% endif %}</div></div>{% endif %}
+
+{% if form %}<details class="carte"><summary>Modifier la fiche du membre</summary><form method="post">{% csrf_token %}
+<div class="formulaire" style="margin-top:12px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="enregistrer" value="1">Enregistrer</button></div></form></details>{% endif %}
+<script>
+(function () {
+  var f = document.getElementById("lettrage"), b = document.getElementById("bouton-lettrer");
+  if (!b) return;
+  f.addEventListener("change", function () {
+    var d = 0, c = 0, n = 0;
+    f.querySelectorAll("input[name=ligne]:checked").forEach(function (x) { d += Math.round(parseFloat(x.dataset.d) * 100); c += Math.round(parseFloat(x.dataset.c) * 100); n++; });
+    var fmt = function (v) { return (v / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 }); };
+    document.getElementById("total-lettrage").textContent = n ? "Débit " + fmt(d) + " · crédit " + fmt(c) + (d === c ? " : équilibré" : " : écart " + fmt(d - c)) : "";
+    b.disabled = !(n >= 2 && d === c);
+  });
+})();
+</script>{% endblock %}

@@ -736,3 +736,95 @@ class EcransEtats(TestCase):
         self.assertEqual(self.client.get("/etats/").status_code, 200)
         self.assertNotContains(self.client.get("/etats/"), "Ajouter une ligne de budget")
         self.assertEqual(self.client.get("/cloture/").status_code, 403)
+
+
+# ---------------------------------------------------------------- W5 : suivi des membres
+
+from . import membres as mbr  # noqa: E402
+from .models import Membre  # noqa: E402
+
+
+class Membres(TestCase):
+    def setUp(self):
+        referentiels_saisie()           # crée la fiche de 411TAIEB001 (et la facture 421 du 24/09/2026, 400 à 710000)
+        Compte.objects.create(numero="411000", libelle="ADHERENTS", anal1_id="BIL.4")
+        mbr.creer_manquants()
+        self.c = Compte.objects.get(numero="411TAIEB001")
+        self.u = User.objects.create_user("t")
+        n = 600
+        for d, lignes in ((dt.date(2026, 1, 10), [("411TAIEB001", 500, 0), ("700000", 0, 500)]),       # cotisation facturée
+                          (dt.date(2026, 2, 1), [("512000", 300, 0), ("411TAIEB001", 0, 300)]),       # acompte
+                          (dt.date(2026, 3, 1), [("411TAIEB001", 200, 0), ("710000", 0, 200),          # manifestation réglée
+                                                 ("512000", 200, 0), ("411TAIEB001", 0, 200)])):
+            m = Mouvement.objects.create(numero=n, date=d, journal_id="B1", piece=n)
+            for i, (c, db, cr) in enumerate(lignes):
+                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
+            n += 1
+
+    def test_fiches_creees(self):
+        self.assertEqual(list(Membre.objects.values_list("compte_id", "nom", "prenom")), [("411TAIEB001", "TAIEB", "Jeanne")])
+        self.assertEqual(mbr.creer_manquants(), 0)
+
+    def test_situation_et_anciennete(self):
+        s = mbr.situation(self.c, dt.date(2026, 10, 1))
+        self.assertEqual((s.facture, s.regle, s.solde), (D(1100), D(500), D(600)))
+        # FIFO : les 500 réglés soldent la cotisation de janvier ; restent la manifestation de mars et la facture 421
+        self.assertEqual([(l.mouvement.numero, r, j) for l, r, j in s.impayes], [(602, D(200), 214), (421, D(400), 7)])
+        self.assertEqual(s.tranches, [("0–30 j", D(400)), ("31–90 j", D(0)), ("> 90 j", D(200))])
+        self.assertIn("600,00 ₪", mbr.texte_relance(Membre.objects.get(), s))
+
+    def test_lettrage(self):
+        self.assertEqual(mbr.lettrage_automatique(self.c), 1)          # manifestation de mars : même mouvement
+        self.assertEqual(sorted(Ligne.objects.filter(compte=self.c, lettrage="A").values_list("debit", "credit")),
+                         [(D(0), D(200)), (D(200), D(0))])
+        cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
+        with self.assertRaises(ValueError):
+            mbr.lettrer(self.c, [cot, acompte])                       # 500 ≠ 300
+        s = mbr.situation(self.c, dt.date(2026, 10, 1))
+        self.assertEqual([(l.mouvement.numero, r) for l, r, _ in s.impayes], [(600, D(200)), (421, D(400))])
+        self.assertEqual(mbr.delettrer(self.c, "A"), 2)
+        self.assertEqual(mbr.code_suivant(self.c), "A")
+
+    def test_cotisations_et_import(self):
+        self.assertEqual(Reglage.lire("compte_cotisations"), "700000")      # créé par l'initialisation
+        ex = Exercice.objects.get(libelle="2026")
+        n, inconnus = mbr.importer_csv([["Compte", "Nom", "Prénom", "Téléphone", "E-mail", "Date d'adhésion", "Statut", "Cotisation annuelle"],
+                                        ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org", "01/09/2020", "honoraire", "500,00"],
+                                        ["411XXX", "Inconnu", "", "", "", "", "actif", ""]])
+        self.assertEqual((n, inconnus), (1, ["411XXX"]))
+        m = Membre.objects.get()
+        self.assertEqual((m.nom, m.statut, m.cotisation, m.date_adhesion), ("TAIEB", "honoraire", D(500), dt.date(2020, 9, 1)))
+        lignes, tot = mbr.cotisations(ex)
+        self.assertEqual((lignes[0]["attendue"], lignes[0]["facturee"], lignes[0]["recue"], lignes[0]["du"]), (D(0), D(500), D(500), D(0)))
+        self.assertEqual(tot["taux"], D("100.0"))
+
+
+class EcransMembres(TestCase):
+    def setUp(self):
+        Membres.setUp(self)
+        call_command("migrate", verbosity=0)
+        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(self.u)
+
+    def test_pages_et_lettrage_manuel(self):
+        for url in ("/membres/", "/membres/impayes/", "/membres/cotisations/", "/membres/411TAIEB001/", "/favicon.ico"):
+            self.assertIn(self.client.get(url).status_code, (200, 301), url)
+        self.assertContains(self.client.get("/membres/411TAIEB001/"), "Texte de relance")
+        cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
+        cr = Ligne.objects.get(compte=self.c, credit=200)
+        self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [cot.pk, acompte.pk]})
+        self.assertEqual(Ligne.objects.filter(compte=self.c).exclude(lettrage="").count(), 0)   # refusé : déséquilibré
+        self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [Ligne.objects.get(compte=self.c, debit=200).pk, cr.pk]})
+        self.assertEqual(Ligne.objects.get(pk=cr.pk).lettrage, "A")
+        self.client.post("/membres/411TAIEB001/", {"enregistrer": "1", "nom": "TAIEB", "prenom": "Jeanne", "statut": "actif",
+                                                    "email": "jeanne@example.org", "cotisation": "450"})
+        self.assertEqual(Membre.objects.get().cotisation, D(450))
+
+    def test_droits(self):
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/membres/411TAIEB001/").status_code, 200)
+        self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "Lettrer la sélection")
+        self.client.post("/membres/", {"lettrage_auto": "1"})
+        self.assertFalse(Ligne.objects.exclude(lettrage="").exists())

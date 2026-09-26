@@ -8,5 +8,5 @@ cachees = (collect_submodules("django") + collect_submodules("pdfplumber") + col
 
 a = Analysis(["lanceur.py"], pathex=["."], datas=donnees, hiddenimports=cachees, excludes=["tkinter"])
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="ComptaBB", console=True)
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="ComptaBB", console=True, icon="compta/static/compta/favicon.ico")
 coll = COLLECT(exe, a.binaries, a.datas, name="ComptaBB")

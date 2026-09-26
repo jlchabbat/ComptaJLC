@@ -1,12 +1,15 @@
 {% load static %}<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}"><script src="{% static 'compta/liste.js' %}" defer></script></head>
+<title>{% block titre %}ComptaBB{% endblock %} – ComptaBB</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
+<link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
+<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864"><script src="{% static 'compta/liste.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>
 <nav>{% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
+{% if perms.compta.view_membre %}{% url 'membres' as u %}<a href="{{ u }}" {% if request.path|slice:":9" == "/membres/" %}class="actif"{% endif %}>Membres</a>{% endif %}
 {% if perms.compta.view_mouvement %}{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écritures</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>

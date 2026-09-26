@@ -259,6 +259,8 @@ def codes(request):
                     compte = Compte.objects.create(numero=compte_membre_propose(c["nom"]), libelle=libelle, lettrable=True,
                                                    anal1=modele.anal1 if modele else None)
                     _journaliser(request, "Création", f"compte {compte.numero}", apres=libelle)
+                    from .models import Membre
+                    Membre.objects.create(compte=compte, nom=c["nom"].strip().upper(), prenom=c["prenom"].strip())
                     messages.success(request, f"Membre créé : {compte.numero} – {libelle}.")
                     return redirect("codes")
             if "changer_statut" in request.POST and statut_form.is_valid():

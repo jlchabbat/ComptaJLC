@@ -67,7 +67,8 @@ class Command(BaseCommand):
         if remplacer:
             from compta.models import (Fiche, LigneFiche, LigneReleve, LigneSchema, ModeFiche, ModeleOperation, MoyenPaiement,
                                        NatureFiche, ParametreReleve, Rapprochement, TiersProvisoire, Traduction, TypeTiers)
-            for m in (LigneReleve, Rapprochement, ParametreReleve, Traduction, LigneFiche, Fiche, TiersProvisoire, NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
+            from compta.models import Budget, Membre
+            for m in (Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, LigneFiche, Fiche, TiersProvisoire, NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers, Journal, Compte,
                       Prefixe, CodeAnalytique, Exercice, Reglage):
                 m.objects.all().delete()
         wb = openpyxl.load_workbook(classeur, data_only=True)

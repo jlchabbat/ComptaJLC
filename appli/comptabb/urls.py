@@ -1,8 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth import views as auth
+from django.templatetags.static import static
 from django.urls import path
+from django.views.generic import RedirectView
 
-from compta import views, vues_etats, vues_fiches, vues_rapprochement as rap
+from compta import views, vues_etats, vues_fiches, vues_membres, vues_rapprochement as rap
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -30,6 +32,10 @@ urlpatterns = [
     path("rapprochement/<str:code>/parametres/", rap.parametres, name="releve_parametres"),
     path("rapprochement/<str:code>/automatique/", rap.automatique, name="rapprochement_auto"),
     path("rapprochement/<str:code>/pointage/", rap.pointage, name="pointage"),
+    path("membres/", vues_membres.liste, name="membres"),
+    path("membres/impayes/", vues_membres.impayes, name="impayes"),
+    path("membres/cotisations/", vues_membres.cotisations, name="cotisations"),
+    path("membres/<str:numero>/", vues_membres.fiche, name="membre"),
     path("etats/", vues_etats.etats_annuels, name="etats"),
     path("etats/export/", vues_etats.export_etats, name="export_etats"),
     path("cloture/", vues_etats.cloture, name="cloture"),
@@ -38,4 +44,5 @@ urlpatterns = [
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
     path("admin/", admin.site.urls),
+    path("favicon.ico", RedirectView.as_view(url=static("compta/favicon.ico"), permanent=True)),
 ]

@@ -1,0 +1,13 @@
+{
+  "name": "ComptaBB – Loge Bnei Brith",
+  "short_name": "ComptaBB",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#1f3864",
+  "icons": [
+    {"src": "icone-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
