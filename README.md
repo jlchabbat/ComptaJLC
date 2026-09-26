@@ -11,6 +11,7 @@ Dépôt privé : https://github.com/jlchabbat/ComptaBB
 ```
 D:\OneDrive\Applications\ComptaBB\
     ComptaBB.xlsm          le classeur (hors Git : données de l'association)
+    Releves\               relevés bancaires téléchargés (hors Git), dont tnuot.pdf
     config.json            nom du classeur, dossier Imports
     docs\                  cahier des charges, inventaire, plan par lots
     Imports\               modèles d'import et exports de reprise
@@ -20,8 +21,9 @@ D:\OneDrive\Applications\ComptaBB\
 
 1. Cloner le dépôt dans `D:\OneDrive\Applications\ComptaBB` :
    `git clone https://github.com/jlchabbat/ComptaBB "D:\OneDrive\Applications\ComptaBB"`
-2. Y déposer le classeur sous le nom `ComptaBB.xlsm`. Pour l'instant, c'est
-   `Fusion.xlsm` renommé. Le nom se change dans `config.json`.
+2. Y déposer le classeur `ComptaBB.xlsm` (produit du Lot 0) et le relevé
+   Banque 1 sous `Releves\tnuot.pdf`. Le nom du classeur se change dans
+   `config.json`.
 3. Pour les outils de contrôle, installer Python 3 puis
    `pip install -r src/requirements.txt`.
 
@@ -48,19 +50,22 @@ partagées, aucune erreur de formule.
 
 | Lot | Contenu | État |
 |---|---|---|
-| 0 | Inventaire, dissociation des requêtes, chemins relatifs, Imports | inventaire fait — plan en attente de validation |
+| 0 | Dissociation de l'ancien logiciel, chemins relatifs, paramètres, Isracard, Journal des modifications | **livré le 26/09/2026** — recette dans Excel à faire ([livraison](docs/livraison-lot0.md)) |
 | 1 | Saisie guidée | — |
 | 2 | Suivi des membres | — |
 | 3 | Rapprochement bancaire | — |
 | 4 | Clôture et états annuels | — |
 
-État du classeur reçu le 26/09/2026 : 1 534 lignes, 416 mouvements
-équilibrés, 1 444 703,68 ₪ au débit comme au crédit, résultat
-−47 366,41 ₪, Contrôles OK.
+État après le Lot 0 : 1 544 lignes, 421 mouvements équilibrés,
+1 451 040,66 ₪ au débit comme au crédit, résultat −47 366,41 ₪ (inchangé),
+Contrôles OK. Photographies : `tests/reference/`.
 
 ## Documentation
 
 - [Cahier des charges](docs/cahier-des-charges.md)
 - [Inventaire du classeur](docs/inventaire.md)
-- [Plan par lots et arbitrages demandés](docs/plan-lots.md)
+- [Plan par lots, décisions, accès à distance](docs/plan-lots.md)
 - [Imports : formats, ordre, reprise](Imports/README.md)
+- [Livraison du Lot 0](docs/livraison-lot0.md)
+
+Le Lot 0 est reproductible : `python src/lot0_preparation.py Fusion.xlsm ComptaBB.xlsm`.

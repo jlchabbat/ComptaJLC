@@ -95,12 +95,15 @@ def controler(wb, t):
         if (d != 0) == (c != 0):
             anomalies.append(("RG-03", f"ligne {i} : débit {d} et crédit {c}"))
 
-    # RG-04 : rien dans une période clôturée (si P_DateCloture existe)
+    # RG-04 : aucune écriture nouvelle dans une période close. Les Mvt
+    # existants à la clôture (jusqu'à P_DernierMvtClos) y restent.
     cloture = nom_defini(wb, "P_DateCloture")
+    dernier_clos = nom_defini(wb, "P_DernierMvtClos") or 0
     if isinstance(cloture, dt.datetime):
         dernier = defaultdict(lambda: None)
         for i, l in enumerate(ecr, start=2):
-            if texte(l["Jnl"]) != "AN" and isinstance(l["Date"], dt.datetime) and l["Date"] <= cloture:
+            if (texte(l["Jnl"]) != "AN" and isinstance(l["Date"], dt.datetime) and l["Date"] <= cloture
+                    and isinstance(l["Mvt"], (int, float)) and l["Mvt"] > dernier_clos):
                 dernier[l["Mvt"]] = i
         for mvt, i in dernier.items():
             anomalies.append(("RG-04", f"Mvt {mvt} (ligne {i}) daté dans la période close au {cloture:%d/%m/%Y}"))
@@ -122,8 +125,9 @@ def controler(wb, t):
     return anomalies
 
 
-def photographier(t):
-    ecr = t["T_Ecritures"]
+def photographier(t, jusqu_a=None):
+    """Totaux de T_Ecritures ; jusqu_a limite aux Mvt existants à une photo antérieure."""
+    ecr = [l for l in t["T_Ecritures"] if jusqu_a is None or (isinstance(l["Mvt"], (int, float)) and l["Mvt"] <= jusqu_a)]
     par_jnl = defaultdict(lambda: [0.0, 0.0])
     par_classe = defaultdict(float)
     for l in ecr:
@@ -176,10 +180,16 @@ def main(argv=None):
         Path(a.photo).write_text(json.dumps(photo, ensure_ascii=False, indent=2), encoding="utf-8")
     diffs = []
     if a.compare:
-        diffs = comparer(json.loads(Path(a.compare).read_text(encoding="utf-8")), photo)
-        print("Totaux identiques à la photographie" if not diffs else "Totaux modifiés :")
+        avant = json.loads(Path(a.compare).read_text(encoding="utf-8"))
+        diffs = comparer(avant, photographier(t, jusqu_a=avant["mvt_max"]))
+        print(f"Mvt 1 à {avant['mvt_max']} : " + ("totaux identiques à la photographie" if not diffs else "totaux modifiés :"))
         for d in diffs:
             print(f"  {d}")
+        if photo["mvt_max"] > avant["mvt_max"]:
+            n = photographier(t)
+            print(f"Écritures nouvelles (Mvt {avant['mvt_max'] + 1} à {photo['mvt_max']}) : "
+                  f"{n['lignes'] - avant['lignes']} lignes, {n['total_debit'] - avant['total_debit']:,.2f} au débit et au crédit, "
+                  f"effet sur le résultat {n['resultat'] - avant['resultat']:,.2f}")
     return 1 if anomalies or diffs else 0
 
 

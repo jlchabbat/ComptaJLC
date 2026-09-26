@@ -25,3 +25,6 @@ __pycache__/
 .env
 *.key
 *.pem
+
+# Relevés bancaires téléchargés (données bancaires)
+Releves/

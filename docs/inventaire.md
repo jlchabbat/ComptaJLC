@@ -1,7 +1,7 @@
 # Inventaire du classeur de référence
 
 Classeur analysé : `Fusion.xlsm`, version transmise le 26/09/2026 (587 Ko).
-Inventaire établi en lecture seule : le classeur n'a pas été modifié.
+Inventaire établi en lecture seule, avant le Lot 0 ; les changements du Lot 0 sont décrits dans `docs/livraison-lot0.md`.
 
 ## Onglets (22)
 
@@ -127,8 +127,17 @@ sécurité des macros. À décider, sans urgence.
 
 ### 4. Codes Anal2 sans libellé
 
-19 des 34 codes de T_Axe2 ont un libellé vide (MAN.008 à MAN.012,
-PJT.002 à PJT.006, SOC.005 à SOC.010), tous au statut 0. Ils relèvent de Q4.
+16 des 34 codes de T_Axe2 ont un libellé vide, tous au statut 0 : MAN.008 à
+MAN.012, PJT.002 à PJT.006 et SOC.005 à SOC.010. Trois d'entre eux sont
+**utilisés** dans des écritures : SOC.005 (4 lignes), SOC.006 (24) et
+SOC.007 (8). Au Lot 0, les 13 autres ont été supprimés ; les trois
+utilisés attendent leur libellé.
+
+### 4 bis. Compte de virement interne
+
+580000 porte un solde débiteur de 149 655,84 : 101 033,34 venus de B1,
+38 122,50 de B3 et 10 500 de CA. Les virements internes ne sont passés que
+d'un côté, et B2 (épargne) n'a aucune écriture. À rapprocher au Lot 3.
 
 ### 5. Modification du classeur hors d'Excel
 

@@ -11,7 +11,13 @@ ComptaBB » du classeur fait foi).
 - `ComptaBB.xlsm` (nom dans `config.json`, hors Git) : tout le métier est en
   **formules** (réponse Q5 : ni VBA ni Office Scripts). Tables structurées
   T_* ; noms P_* pour les hypothèses ; onglet Contrôles = référence.
-- `src/powerquery/*.pq` : code M des requêtes, à tenir identique au classeur.
+- Depuis le Lot 0, les tables T_* sont de simples tables : plus aucune
+  n'est rechargée depuis l'ancien logiciel. Seule requête : `Requête1`
+  (relevé Banque 1, chemin `CheminReleveB1` = `P_Dossier` + `P_ReleveB1`).
+- `src/powerquery/*.pq` : code M des requêtes, à tenir identique au classeur
+  (`docs/historique/` : requêtes supprimées).
+- `src/lot0_preparation.py` : exemple d'édition directe du XML (tables,
+  commentaires à thread, DataMashup, chaînes partagées).
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
 - `Imports/` : modèles (`modeles/`, anonymisés, versionnés) et exports de
   reprise (`reprise/`, hors Git).
@@ -43,14 +49,22 @@ python -m unittest discover tests
 - Un Mvt = une opération équilibrée ; une ligne = débit **ou** crédit.
 - Nouveau Mvt = `MAX(T_Ecritures[Mvt])+1`, Pièce = `MAX(Pièce)+1`.
 - Comptes membres `411` + 5 lettres du nom + rang (`411TAIEB001`).
-- Codes analytiques : préfixe + numéro sur 3 chiffres (`MAN.013`) ; statut
-  T_Axe2[Actif] : 0 Non affecté, 1 En cours, 2 Terminé.
+- Codes analytiques **proposés par l'application** : préfixe choisi +
+  T_Prefixes[Code suivant] (plus grand numéro + 1 ; 1 chiffre axe 1 `ACT.4`,
+  3 chiffres axe 2 `MAN.008`) ; l'utilisateur ne saisit que le libellé.
+  T_Prefixes[Axe] : 1 = axe 1, 2 = axe 2. Statut T_Axe2[Actif] : 0 Non
+  affecté, 1 En cours, 2 Terminé.
+- Paramètres nommés dans Paramètres!D3:F16 (P_DebutExercice, P_FinExercice,
+  P_DateCloture, P_DernierMvtClos, P_CompteVirement 580000, P_CompteAttente
+  470000, P_Dossier, P_ReleveB1).
+- Toute modification est inscrite dans l'onglet Journal des modifications
+  (T_Journal).
 - Colonnes « Libellé Axe1/Axe2 » à côté de tout code affiché ; « Code
   introuvable » si le code est inconnu.
 - Saisie : cellules jaunes, texte bleu ; formats `₪ #,##0.00`, `jj/mm/aaaa` ;
   messages en français.
 - Écriture ajoutée hors saisie guidée : fond coloré + commentaire (date,
-  origine, motif), comme les lignes Isracard (Mvt 412 à 416).
+  origine, motif), comme les lignes Isracard (Mvt 412 à 421).
 
 ## Git
 

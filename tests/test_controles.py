@@ -19,7 +19,7 @@ import controles  # noqa: E402
 COLS = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal1", "Anal2", "Let"]
 
 
-def classeur(ecritures, cloture=None):
+def classeur(ecritures, cloture=None, dernier_clos=None):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
@@ -40,6 +40,9 @@ def classeur(ecritures, cloture=None):
     if cloture:
         wb["T_Journaux"]["J1"] = cloture
         wb.defined_names["P_DateCloture"] = DefinedName("P_DateCloture", attr_text="T_Journaux!$J$1")
+    if dernier_clos is not None:
+        wb["T_Journaux"]["J2"] = dernier_clos
+        wb.defined_names["P_DernierMvtClos"] = DefinedName("P_DernierMvtClos", attr_text="T_Journaux!$J$2")
     chemin = Path(tempfile.mkdtemp()) / "test.xlsx"
     wb.save(chemin)
     return openpyxl.load_workbook(chemin, data_only=True)
@@ -82,6 +85,9 @@ class Controles(unittest.TestCase):
     def test_rg04_periode_close(self):
         self.assertEqual(regles(COTISATION, cloture=dt.datetime(2025, 12, 31)), [])
         self.assertEqual(regles(COTISATION, cloture=dt.datetime(2026, 1, 31)), ["RG-04", "RG-04"])
+        # les Mvt existants à la clôture restent dans la période close
+        self.assertEqual(regles(COTISATION, cloture=dt.datetime(2026, 1, 31), dernier_clos=1), ["RG-04"])
+        self.assertEqual(regles(COTISATION, cloture=dt.datetime(2026, 1, 31), dernier_clos=2), [])
 
     def test_piece_partagee(self):
         e = [l[:] for l in COTISATION]

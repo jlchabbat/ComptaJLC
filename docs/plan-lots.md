@@ -34,7 +34,7 @@ position de ligne, pas à la ligne elle-même ; au rafraîchissement suivant,
 elle se décale. Une table séparée, indexée sur une clé stable de la ligne de
 relevé (date + montant + référence + rang), ne bouge pas.
 
-## Lot 0 — Préparation (branche `lot-0-preparation`)
+## Lot 0 — Préparation : **livré le 26/09/2026** (voir `docs/livraison-lot0.md`)
 
 - Inventaire du classeur → `docs/inventaire.md` (fait).
 - **Sortir le grand livre de l'ancien logiciel.** T_Ecritures, T_PlanComptable,
@@ -54,12 +54,14 @@ relevé (date + montant + référence + rang), ne bouge pas.
   lignes et de Mvt, Σ débit, Σ crédit, résultat, totaux par journal et par
   classe. Celle du classeur reçu est dans
   `tests/reference/2026-09-26-fusion.json`.
-- Nommage des hypothèses (RG-06) : P_Debut, P_Fin, P_DebutExercice,
-  P_FinExercice, P_DateCloture, P_Tolerance… dans Paramètres.
-- Colonnes « Libellé Axe1 » / « Libellé Axe2 » dans toutes les tables et
-  vues qui affichent un code (§3), avec « Code introuvable ».
-- Exports de reprise dans `Imports/reprise/` et modèles dans
-  `Imports/modeles/` (§6).
+- Nommage des hypothèses (RG-06) : P_DebutExercice, P_FinExercice,
+  P_DateCloture, P_DernierMvtClos, P_CompteVirement, P_CompteAttente,
+  P_Dossier, P_ReleveB1 dans Paramètres (fait).
+- Reclassement Isracard, suppression des codes Anal2 vides, soldes et
+  « Code suivant » calculés, contrôle RG-04, Journal des modifications
+  (fait).
+- Reporté au Lot 1 : colonnes « Libellé Axe1 / Axe2 » dans les vues qui
+  n'en ont pas encore, exports de reprise dans `Imports/reprise/`.
 
 ## Lot 1 — Saisie guidée (branche `lot-1-saisie`)
 
@@ -75,15 +77,20 @@ relevé (date + montant + référence + rang), ne bouge pas.
   équilibre, compte / journal / Anal2 existants, montant > 0, date dans
   l'exercice ouvert. Zone « Lignes à reporter » vide tant qu'un contrôle
   échoue.
-- **Création de codes** : prochain code proposé = préfixe + (numéro
-  maximal existant + 1) sur trois chiffres (ex. `MAN.013`), contrôle
-  anti-doublon ; nouveau membre = compte `411` + 5 premières lettres du nom
+- **Création de codes** : l'utilisateur choisit le préfixe et saisit le
+  libellé ; le code est proposé par T_Prefixes[Code suivant] (numéro
+  maximal existant + 1, sur 1 chiffre pour l'axe 1, 3 pour l'axe 2),
+  avec contrôle anti-doublon ; nouveau membre = compte `411` + 5 premières lettres du nom
   + rang sur trois chiffres (schéma existant : `411TAIEB001`) + ligne de
   fiche membre à coller.
 - **Statut Anal2** : liste 0/1/2 dans T_Axe2, avertissement si code
   utilisé, ligne de journal préparée.
-- **Journal des modifications** : table T_Journal (date, auteur, action,
-  objet, ancien, nouveau).
+- **Journal des modifications** : table T_Journal, créée au Lot 0 ; lignes
+  de journal préparées par l'écran, à coller.
+- **Classeur de saisie externe** `ComptaBB_Saisie.xlsx` et zone
+  « Transmission » du maître (voir « Accès à distance »).
+- Modèle d'opération « Paiement carte Isracard » : 6xx contre 580000, puis
+  580000 contre 512000 au prélèvement (décision Q2).
 - Tests : une saisie de chaque type d'opération, totaux inchangés hors
   écritures nouvelles.
 
@@ -134,33 +141,70 @@ anomalie et totaux identiques à la photographie précédente (hors écritures
 nouvelles) → README, CLAUDE.md, Compte rendu et Journal des modifications
 à jour → pull request vers main → fusion après votre validation.
 
-## Arbitrages demandés
+## Décisions du trésorier (26/09/2026)
 
-0. **Dissocier les six tables de leur requête** (Lot 0 ci-dessus) : c'est
-   le passage de relais de l'ancien logiciel à Excel. Après cela, l'ancien
-   logiciel ne doit plus être utilisé pour saisir, sinon les deux
-   divergent. D'accord ?
-1. **Q1 — exercices.** Les soldes d'ouverture sont passés au 01/01/2026
-   en B1 et CA contre 110000, sans journal AN, et 52 lignes datent d'avant
-   (du 25/10 au 31/12/2025). Lecture proposée : ces 52 lignes forment un
-   premier exercice court, clos au 31/12/2025, et l'exercice 2026 va du
-   01/01 au 31/12/2026. Deux points à confirmer : les soldes d'ouverture de
-   B1 et CA tiennent-ils déjà compte de ces 52 lignes ? Faut-il réaliser
-   la clôture 2025 dès maintenant (ce qui avancerait une partie du Lot 4) ?
-2. **Q2 — Isracard.** Lecture proposée : chaque dépense carte en 6xx
-   contre 580000 ; le prélèvement mensuel Isracard en 580000 contre 512.
-   580000 se solde ainsi à chaque relevé. Est-ce bien cela ? Les cinq
-   paiements Isracard déjà intégrés (Mvt 412 à 416) sont passés en 600000
-   contre 512000, compte que l'onglet « Écritures à passer » dit
-   « validé » : faut-il les laisser ainsi, ou les reclasser (ce qui
-   modifie des écritures existantes) ?
-3. **Q3 — mise en attente.** Sur quel compte : 470000 « CPTES
-   D'ATTENTE » (existe déjà), ou le 580000 ?
-4. **Q5 — limites du 100 % formules** (tableau plus haut) : acceptez-vous
-   le copier-coller en valeurs pour reporter les écritures, le statut et
-   la ligne de journal ?
-5. **Q6 — plusieurs saisisseurs.** Proposition : un mode consultation =
-   onglets protégés sans mot de passe ; un saisisseur externe travaille
-   sur une copie et transmet sa zone « Lignes à reporter », que le
-   trésorier colle après vérification. Suffisant ?
-6. **Q4 — libellés Anal2** : toujours à fournir.
+| Question | Décision | Où c'est appliqué |
+|---|---|---|
+| Ancien logiciel | Les 6 tables sont dissociées ; Excel est la seule référence | Lot 0 |
+| Q1 — exercices | Exercice court 25/10/2025 → 31/12/2025, à clôturer au 31/12/2025 ; exercice 2026 du 01/01 au 31/12 | Lot 0 (paramètres, verrou RG-04) ; à-nouveaux au Lot 4 |
+| Q2 — Isracard | Dépenses en 6xx contre 580000, prélèvement mensuel en 580000 contre 512 ; Mvt 412 à 416 reclassés | Lot 0 (Mvt 417 à 421) ; modèle d'opération au Lot 1 |
+| Q3 — attente | Compte 470000 | Lot 0 (P_CompteAttente) ; écritures d'attente au Lot 3 |
+| Q4 — codes Anal2 | Codes vides supprimés. **Le code est proposé par l'application d'après le préfixe choisi ; l'utilisateur ne saisit que le libellé.** Colonne Axe de T_Prefixes : 1 = axe 1, 2 = axe 2 | Lot 0 (suppression, « Code suivant » calculé) ; écran de création au Lot 1 |
+| Q5 — macros | 100 % formules, report par collage en valeurs | Tous les lots |
+| Q6 — saisisseurs | Onglets protégés en consultation ; un saisisseur externe envoie ses lignes au trésorier | Lot 1 (classeur de saisie), voir « Accès à distance » |
+| Mode de travail | Le classeur `.xlsm` est modifié directement ; Claude Code sera aussi installé sur le PC (section 13 du cahier) | — |
+
+Points encore ouverts : voir `docs/livraison-lot0.md`.
+
+## Accès à distance : consultation et transmission
+
+**Principe : le dossier `ComptaBB` n'est jamais partagé en entier**, car il
+contient le classeur maître et les relevés bancaires. On ouvre deux accès
+distincts par OneDrive, chacun limité à ce qu'il faut. La protection des
+onglets (sans mot de passe, §9) évite les erreurs de manipulation. **Ce sont
+les droits OneDrive qui contrôlent réellement l'accès.**
+
+### 1. Consultation (bureau, vérificateur) : lecture seule
+
+| | Option A : lien vers le classeur maître | Option B : copie de consultation |
+|---|---|---|
+| Quoi | Lien OneDrive « Peut afficher » sur `ComptaBB.xlsm` | `Consultation\ComptaBB_Consultation.xlsx`, copie figée en valeurs, sans les onglets de données personnelles |
+| Fraîcheur | Toujours à jour | Mise à jour par le trésorier (après chaque clôture mensuelle, par exemple) |
+| Ouverture | Excel pour le web, dans le navigateur, sans rien installer | Idem |
+| Limite | Le lecteur voit tous les onglets (dont les membres au Lot 2) et peut télécharger une copie | Travail manuel : pas de macro d'export (Q5) |
+
+Recommandation : **A pour le bureau tant qu'il n'y a pas de données
+personnelles**, puis **B dès le Lot 2** (fiches membres), ou pour toute
+personne extérieure au bureau.
+
+Réglages du lien, dans OneDrive › Partager :
+- choisir « Personnes spécifiques » (adresses e-mail), jamais « Toute
+  personne disposant du lien » ;
+- droit « Peut afficher » ;
+- date d'expiration, et mot de passe avec un abonnement Microsoft 365
+  Personnel ou Famille ;
+- retrait à tout moment par « Gérer l'accès ».
+
+### 2. Transmission (saisisseur externe) : dossier partagé en modification
+
+1. Un dossier `Transmissions\` est partagé en « Peut modifier » avec le
+   seul saisisseur.
+2. Il contient un **classeur de saisie** `ComptaBB_Saisie.xlsx` (livré au
+   Lot 1). On y trouve l'onglet Saisie, les modèles d'opération et les listes
+   de référence (comptes, journaux, codes Anal2) copiées en valeurs, mais
+   **aucune écriture** du grand livre.
+3. Le saisisseur remplit ses opérations ; les contrôles bloquants
+   s'appliquent comme dans le maître. OneDrive synchronise à
+   l'enregistrement.
+4. Le trésorier ouvre le fichier et vérifie. Il colle les lignes prêtes
+   dans la zone « Transmission » du classeur maître. **La numérotation
+   définitive (Mvt, Pièce) se fait dans le maître** au moment du report, ce
+   qui évite les doublons. Le report passe ensuite en valeurs sous
+   T_Ecritures.
+5. Une ligne est ajoutée au Journal des modifications (« Transmission de …
+   du … »), puis le fichier de transmission est archivé et remis à zéro.
+
+**Pourquoi pas la coédition du classeur maître :** l'accès simultané est
+exclu par le cahier (§2). Sans macro, rien n'empêcherait non plus un
+collage erroné dans T_Ecritures : seuls les contrôles a posteriori le
+détecteraient.

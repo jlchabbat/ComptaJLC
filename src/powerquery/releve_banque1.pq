@@ -1,7 +1,8 @@
-// Requête « Requête1 » — extraite de Fusion.xlsm le 26/09/2026 (état d'origine)
+// Requête « Requête1 » — état après le Lot 0 (26/09/2026) : chemin lu dans
+// Paramètres!B3 (nom CheminReleveB1), relatif au dossier de l'application.
 let
     // ===== 1. Paramètres =====
-    Chemin   = "D:\OneDrive\Compta Bnei Brith\tnuot.pdf",
+    Chemin   = Excel.CurrentWorkbook(){[Name="CheminReleveB1"]}[Content]{0}[Column1],
     TradBrut = Excel.CurrentWorkbook(){[Name="T_TradBanque"]}[Content],
 
     // ===== 2. Fonctions de nettoyage =====

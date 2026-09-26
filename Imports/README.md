@@ -53,6 +53,9 @@ recalcule.
 - `Anal1` n'est pas importé avec les écritures : il vient du compte, via
   T_PlanComptable.
 - Statut Anal2 (`Actif`) : 0 = Non affecté, 1 = En cours, 2 = Terminé.
+- Codes analytiques : on n'importe que des codes **utilisés** ou dotés d'un
+  libellé. Les nouveaux codes sont proposés par l'application (préfixe +
+  numéro suivant), jamais créés d'avance.
 - Compte membre : `411` + 5 premières lettres du nom + rang sur 3
   chiffres (`411TAIEB001`).
 - Relevés en hébreu : l'opération est traduite par T_TradBanque ; toute
