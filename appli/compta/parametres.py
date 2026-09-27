@@ -235,6 +235,15 @@ FEUILLES = [
         Colonne("Journal", "journal", JOURNAL, False, 10, "vide = non réglé (facture seule)"),
         Colonne("Ordre", "ordre", Entier(), False, 8),
     ], "Moyens de paiement proposés à la saisie guidée."),
+    Feuille("Schémas", LigneSchema, ["schema", "ligne"], [
+        Colonne("Schéma", "schema", Texte(4, majuscules=True), True, 9),
+        Colonne("Ligne", "ligne", Entier(), True, 8),
+        Colonne("Mvt", "mvt", Entier(), False, 7),
+        Colonne("Rôle", "role", Choix(LigneSchema.ROLES), True, 28),
+        Colonne("Sens", "sens", Choix([("D", "Débit"), ("C", "Crédit")]), True, 9, "Débit ou Crédit"),
+        Colonne("Seulement si réglé", "si_regle", Booleen(), False, 12, "Oui ou Non"),
+        Colonne("Journal", "journal", Choix(LigneSchema.JOURNAUX), True, 44),
+    ], "Lignes d'écritures générées par chaque schéma de la saisie guidée (à modifier avec prudence)."),
     Feuille("Modèles d'opération", ModeleOperation, ["type"], [
         Colonne("Type d'opération", "type", Texte(60), True, 34),
         Colonne("Schéma", "schema", Texte(4, majuscules=True), True, 9, "RT, DT, RS, DS, RM, RF, VI, CB"),
@@ -380,7 +389,7 @@ def _affiche(v):
     return str(v)
 
 
-def _importer_feuille(f, rangees, rapport, auteur):
+def _importer_feuille(f, rangees, rapport, auteur, tracer=True):
     entetes = [cle(e) for e in (rangees[0] if rangees else [])]
     positions = {}
     for c in f.colonnes:
@@ -446,13 +455,13 @@ def _importer_feuille(f, rangees, rapport, auteur):
         if nouveau:
             obj.save()
             rapport.crees.append(nom)
-            Modification.objects.create(auteur=auteur, lot="Paramètres", action="Création (import)", objet=nom[:200],
+            tracer and Modification.objects.create(auteur=auteur, lot="Paramètres", action="Création (import)", objet=nom[:200],
                                         apres=" · ".join(f"{par_champ[ch].entete} = {_affiche(par_champ[ch].type.vers_excel(v))}"
                                                          for ch, v in valeurs.items())[:300])
         elif changes:
             obj.save()
             rapport.modifies.append(nom)
-            Modification.objects.create(
+            tracer and Modification.objects.create(
                 auteur=auteur, lot="Paramètres", action="Modification (import)", objet=nom[:200],
                 avant=" · ".join(f"{par_champ[ch].entete} = {_affiche(par_champ[ch].type.vers_excel(avant[ch]))}" for ch in changes)[:300],
                 apres=" · ".join(f"{par_champ[ch].entete} = {_affiche(par_champ[ch].type.vers_excel(getattr(obj, ch)))}"
@@ -461,8 +470,10 @@ def _importer_feuille(f, rangees, rapport, auteur):
             rapport.inchanges += 1
 
 
-def importer(contenu, auteur=""):
-    """Importe un classeur Parametres.xlsx (octets). Tout ou rien : en cas d'erreur, la base reste inchangée."""
+def importer(contenu, auteur="", tracer=True):
+    """Importe un classeur Parametres.xlsx (octets). Tout ou rien : en cas d'erreur, la base reste inchangée.
+
+    tracer=False : pas de ligne d'historique (réinjection d'un export complet, qui restaure l'historique d'origine)."""
     import openpyxl
     try:
         wb = openpyxl.load_workbook(io.BytesIO(contenu), data_only=True, read_only=True)
@@ -474,12 +485,13 @@ def importer(contenu, auteur=""):
         with transaction.atomic():
             for f in FEUILLES:                          # ordre : un code est créé avant d'être cité
                 if cle(f.nom) in noms:
-                    _importer_feuille(f, [list(r) for r in wb[noms[cle(f.nom)]].iter_rows(values_only=True)], rapport, auteur)
+                    _importer_feuille(f, [list(r) for r in wb[noms[cle(f.nom)]].iter_rows(values_only=True)], rapport, auteur,
+                                      tracer)
             if not rapport.feuilles and not rapport.erreurs:
                 rapport.erreurs.append("Aucune feuille de paramètres reconnue (Réglages, Plan comptable, Journaux…).")
             if rapport.erreurs:
                 raise _Annulation
-            Modification.objects.create(auteur=auteur, lot="Paramètres", action="Import Parametres.xlsx",
+            tracer and Modification.objects.create(auteur=auteur, lot="Paramètres", action="Import Parametres.xlsx",
                                         objet=", ".join(rapport.feuilles)[:200], apres=rapport.resume)
     except _Annulation:
         rapport.crees, rapport.modifies, rapport.inchanges = [], [], 0

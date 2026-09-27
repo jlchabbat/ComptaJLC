@@ -314,13 +314,23 @@ et chaque changement est inscrit dans l'Historique.</li></ul>
 l'application ne dépend d'aucun fichier. Le dossier <b>Exports</b> contient :</p>
 <ul><li><b>Sauvegardes</b> : les copies de la base (30 dernières) ;</li>
 <li><b>Archives</b> : les classeurs de clôture et les copies d'historique effacé ;</li>
-<li>la dernière copie de <b>Parametres.xlsx</b> téléchargée, et les anciennes versions remplacées.</li></ul>
+<li>la dernière copie de <b>Parametres.xlsx</b> téléchargée, et les anciennes versions remplacées ;</li>
+<li>les <b>exports complets</b> (Export_complet_….zip).</li></ul>
 <p>Sur le PC, Imports et Exports sont à côté de ComptaBB ; sur PythonAnywhere, dans <code>comptabb-data</code> (ils survivent aux mises à jour).</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes et remise à zéro.</figcaption></figure>
+<p><b>Tout exporter</b> (export complet, en une seule opération) : crée dans Exports un fichier <b>Export_complet_….zip</b> avec
+la sauvegarde de la base, Parametres.xlsx, Tiers.xlsx, Donnees.xlsx (écritures, exercices, relevés, pointages, budget,
+fiches bénévoles, historique), les états de chaque exercice et un fichier de contrôle. Les 20 derniers sont gardés ; téléchargez-les
+(liste « Exports complets ») pour les ranger sur le PC ou OneDrive.</p>
+<p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus (saisies, clôture…) ;
+3. <b>Remettre à zéro et recharger</b> en choisissant l'export complet (taper REMPLACER). La comptabilité est vidée puis rechargée
+depuis les fichiers Excel de l'export, et l'application vérifie que tout est <b>identique</b> à l'export (nombres, totaux et contenu
+cellule par cellule). Au moindre écart, rien n'est modifié. Les comptes utilisateurs sont gardés.</p>
 <ul><li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture, et à ranger sur le PC ou OneDrive.</li>
 <li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis :
 <ul><li>une <b>sauvegarde</b> .sqlite3 : tout redevient comme à ce moment-là (utilisateurs compris) ;</li>
+<li>un <b>export complet</b> .zip : la comptabilité est rechargée depuis ses fichiers Excel puis contrôlée (voir ci-dessus) ;</li>
 <li>le <b>classeur ComptaBB.xlsm</b> : plan, journaux, codes, écritures, exercices, relevé Banque 1 ; les utilisateurs sont gardés ; les tiers sont recréés d'après les comptes (coordonnées à réimporter avec Tiers.xlsx), les fiches bénévoles, budgets, pointages et lettrages sont à refaire.</li></ul>
 Une sauvegarde de la base actuelle est faite juste avant.</li>
 <li><b>Archives Excel</b> : archives de clôture et copies d'historique effacé.</li></ul>

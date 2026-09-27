@@ -56,6 +56,7 @@ urlpatterns = [
     path("base/telecharger/", vues_base.telecharger, name="base_telecharger"),
     path("base/telecharger/<str:nom>", vues_base.telecharger, name="base_telecharger_fichier"),
     path("base/archive/<str:nom>", vues_base.telecharger_archive, name="base_archive"),
+    path("base/export/<str:nom>", vues_base.telecharger_export, name="base_export"),
     path("admin/", admin.site.urls),
     path("favicon.ico", RedirectView.as_view(url=static("compta/favicon.ico"), permanent=True)),
 ]

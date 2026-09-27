@@ -11,6 +11,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
 
 from . import base_donnees as bd
+from . import export_complet as ec
 from .models import Ligne, Modification, Mouvement
 
 CONFIRMATION = "REMPLACER"
@@ -23,13 +24,14 @@ def administrateur(u):
 
 
 class RemplacementForm(forms.Form):
-    fichier = forms.FileField(required=False, label="Fichier (.sqlite3 ou ComptaBB.xlsm)")
-    sauvegarde = forms.ChoiceField(required=False, label="…ou une sauvegarde du site")
+    fichier = forms.FileField(required=False, label="Fichier (.sqlite3, export complet .zip ou ComptaBB.xlsm)")
+    sauvegarde = forms.ChoiceField(required=False, label="…ou une sauvegarde ou un export complet du site")
     confirmation = forms.CharField(label=f"Tapez {CONFIRMATION} pour confirmer")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.fields["sauvegarde"].choices = [("", "—")] + [(p.name, p.name) for p in bd.liste()]
+        self.fields["sauvegarde"].choices = ([("", "—")] + [(p.name, f"Export complet · {p.name}") for p in ec.liste()]
+                                             + [(p.name, f"Sauvegarde · {p.name}") for p in bd.liste()])
 
     def clean(self):
         c = super().clean()
@@ -50,6 +52,10 @@ def journaliser(request, action, objet, apres=""):
 def base(request):
     form = RemplacementForm(request.POST or None, request.FILES or None) if "remplacer" in request.POST else RemplacementForm()
     if request.method == "POST":
+        if "export_complet" in request.POST:
+            chemin = ec.exporter(auteur=request.user.get_username())
+            messages.success(request, f"Export complet créé dans Exports : {chemin.name}.")
+            return redirect("base")
         if "sauvegarder" in request.POST:
             p = bd.sauvegarder()
             journaliser(request, "Sauvegarde", p.name)
@@ -60,7 +66,7 @@ def base(request):
             auteur = request.user.get_username()
             try:
                 if c["sauvegarde"]:
-                    chemin = next((p for p in bd.liste() if p.name == c["sauvegarde"]), None)
+                    chemin = next((p for p in ec.liste() + bd.liste() if p.name == c["sauvegarde"]), None)
                     if not chemin:
                         raise ValueError("Sauvegarde introuvable.")
                     nom = chemin.name
@@ -68,14 +74,17 @@ def base(request):
                     f = c["fichier"]
                     nom = f.name
                     suffixe = Path(nom).suffix.lower()
-                    if suffixe not in (".sqlite3", ".sqlite", ".db", ".xlsm", ".xlsx"):
-                        raise ValueError("Fichier .sqlite3 (sauvegarde) ou .xlsm (classeur ComptaBB) attendu.")
+                    if suffixe not in (".sqlite3", ".sqlite", ".db", ".zip", ".xlsm", ".xlsx"):
+                        raise ValueError("Fichier .sqlite3 (sauvegarde), .zip (export complet) ou .xlsm (classeur ComptaBB) attendu.")
                     tmp = Path(tempfile.mkdtemp()) / f"import{suffixe}"
                     with open(tmp, "wb") as sortie:
                         for morceau in f.chunks():
                             sortie.write(morceau)
                     chemin = tmp
-                if chemin.suffix.lower() in (".xlsm", ".xlsx"):
+                if chemin.suffix.lower() == ".zip":
+                    resume, avant = ec.reinjecter(chemin, auteur=auteur)
+                    messages.success(request, f"Base remise à zéro et rechargée depuis {nom}. {resume} Sauvegarde d'avant : {avant.name}.")
+                elif chemin.suffix.lower() in (".xlsm", ".xlsx"):
                     resume, avant = bd.reprendre_classeur(chemin)
                     Modification.objects.create(auteur=auteur, lot="Base de données", action="Remise à zéro et reprise",
                                                 objet=nom[:200], apres=f"{resume} ; sauvegarde {avant.name}"[:300])
@@ -85,7 +94,7 @@ def base(request):
                     Modification.objects.create(auteur=auteur, lot="Base de données", action="Restauration", objet=nom[:200],
                                                 apres=f"{n} mouvements ; sauvegarde d'avant {avant.name}"[:300])
                     messages.success(request, f"Base restaurée depuis {nom} ({n} mouvements). Sauvegarde d'avant : {avant.name}.")
-            except ValueError as e:
+            except ValueError as e:                     # dont ExportInvalide : la réinjection est annulée
                 messages.error(request, f"Rien n'a été remplacé : {e}")
             except Exception as e:                       # reprise refusée par ses contrôles, fichier illisible…
                 messages.error(request, f"Échec : {e}. Si les données semblent incomplètes, restaurez la sauvegarde d'avant.")
@@ -93,6 +102,7 @@ def base(request):
     return render(request, "compta/base_donnees.html", {
         "form": form, "sauvegardes": [(p.name, p.stat().st_size // 1024) for p in bd.liste()],
         "archives": [(p.name, p.stat().st_size // 1024) for p in archives()],
+        "exports": [(p.name, p.stat().st_size // 1024) for p in ec.liste()],
         "mouvements": Mouvement.objects.count(), "lignes": Ligne.objects.count(), "confirmation": CONFIRMATION})
 
 
@@ -120,4 +130,14 @@ def telecharger_archive(request, nom):
     chemin = next((p for p in archives() if p.name == nom), None)
     if not chemin:
         raise Http404
+    return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)
+
+
+@login_required
+@user_passes_test(administrateur)
+def telecharger_export(request, nom):
+    chemin = next((p for p in ec.liste() if p.name == nom), None)
+    if not chemin:
+        raise Http404
+    journaliser(request, "Téléchargement d'un export complet", chemin.name)
     return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)

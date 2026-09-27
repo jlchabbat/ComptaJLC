@@ -5,6 +5,7 @@
 
 import datetime as dt
 import tempfile
+import zipfile
 from decimal import Decimal
 from pathlib import Path
 
@@ -1230,3 +1231,99 @@ class EcranParametres(TransactionTestCase):
         wb.save(chemin)
         call_command("parametres", "importer", str(chemin), stdout=open("/dev/null", "w"))
         self.assertEqual(TypeTiers.objects.get(libelle="Donateur").prefixe, "412")
+
+
+from . import export_complet as ec  # noqa: E402
+
+
+@override_settings(**temporaire())
+class ExportComplet(TransactionTestCase):
+    """Tout exporter, remettre à zéro, réinjecter : la base doit redevenir identique."""
+
+    def setUp(self):
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        moteur.initialiser_parametres()
+        self.u = User.objects.create_user("tresorier", is_superuser=True, is_staff=True)
+        benevole = User.objects.create_user("rachel")
+        ex = Exercice.objects.create(libelle="2026", debut=dt.date(2026, 1, 1), fin=dt.date(2026, 12, 31))
+        m = Mouvement.objects.create(numero=1, date=dt.date(2026, 2, 1), journal_id="B1", piece=1, origine="saisie",
+                                     commentaire="Cotisation", cree_par=self.u)
+        p = Rapprochement.objects.create(journal_id="B1", mode="manuel", cree_par=self.u)
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="411TAIEB001", libelle="COTISATION", credit=D(400), lettrage="A",
+                             anal2_id="GEN.002")
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="COTISATION", debit=D(400), rapprochement=p,
+                             anal2_id="GEN.002")
+        LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 2, 2), rang=0, operation="העברה", montant=D(400),
+                                   solde=D(1400), rapprochement=p)
+        Budget.objects.create(exercice=ex, nature="P", compte_id="700000", montant=D(5000))
+        t = TiersProvisoire.objects.create(nom="Lévy", prenom="Rachel", cree_par=benevole)
+        f = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        f.benevoles.add(benevole)
+        nature = NatureFiche.objects.filter(type_fiche="activite", sens="R").first()
+        mode = ModeFiche.objects.filter(type_fiche="activite").first()
+        LigneFiche.objects.create(fiche=f, sens="R", date=dt.date(2026, 3, 1), provisoire=t, nature=nature, montant=D(80),
+                                  mode=mode, cree_par=benevole)
+        Membre.objects.filter(compte_id="411TAIEB001").update(ville="Netanya", cotisation=D(400))
+        Modification.objects.create(auteur="tresorier", action="Essai", objet="avant export")
+
+    def test_aller_retour_identique(self):
+        avant = ec.empreinte()
+        chemin = ec.exporter(auteur="tresorier")
+        with zipfile.ZipFile(chemin) as z:
+            self.assertTrue({"comptabb.sqlite3", "Parametres.xlsx", "Tiers.xlsx", "Donnees.xlsx", "Etats_2026.xlsx",
+                             "controle.json"} <= set(z.namelist()))
+        Mouvement.objects.create(numero=2, date=dt.date(2026, 4, 1), journal_id="OD", piece=2)      # après l'export
+        Compte.objects.filter(numero="600000").update(libelle="MODIFIÉ")
+        message, _ = ec.reinjecter(chemin, auteur="tresorier")
+        self.assertIn("identique", message)
+        self.assertTrue(Modification.objects.filter(action="Réinjection d'un export complet").exists())
+        Modification.objects.filter(action="Réinjection d'un export complet").delete()
+        self.assertEqual(ec.ecarts(avant, ec.empreinte()), [])          # même contenu, historique compris
+        self.assertFalse(Mouvement.objects.filter(numero=2).exists())
+        self.assertEqual(Compte.objects.get(numero="600000").libelle, "ACHATS")
+        self.assertEqual(LigneReleve.objects.get().rang, 0)
+        l = Ligne.objects.get(compte_id="512000")
+        self.assertEqual(l.rapprochement.releves.get().montant, D(400))
+        self.assertEqual(Fiche.objects.get().benevoles.get().username, "rachel")
+        self.assertEqual(LigneFiche.objects.get().provisoire.nom, "Lévy")
+        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").ville, "Netanya")
+        self.assertEqual(Mouvement.objects.get(numero=1).cree_par, self.u)
+
+    def test_export_altere_rien_n_est_modifie(self):
+        chemin = ec.exporter()
+        altere = chemin.with_name("Export_complet_altere.zip")
+        with zipfile.ZipFile(chemin) as z, zipfile.ZipFile(altere, "w") as sortie:
+            for n in z.namelist():
+                contenu = z.read(n)
+                if n == "Donnees.xlsx":
+                    wb = openpyxl.load_workbook(__import__("io").BytesIO(contenu))
+                    wb["Écritures"]["K2"] = "LIBELLÉ CHANGÉ"
+                    tampon = __import__("io").BytesIO()
+                    wb.save(tampon)
+                    contenu = tampon.getvalue()
+                sortie.writestr(n, contenu)
+        Compte.objects.filter(numero="600000").update(libelle="GARDÉ")
+        with self.assertRaises(ec.ExportInvalide):
+            ec.reinjecter(altere)
+        self.assertEqual(Compte.objects.get(numero="600000").libelle, "GARDÉ")              # tout ou rien
+        with self.assertRaises(ec.ExportInvalide):
+            ec.reinjecter(b"pas un zip")
+
+    def test_page_base(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.u)
+        self.client.post("/base/", {"export_complet": "1"})
+        nom = ec.liste()[0].name
+        r = self.client.get(f"/base/export/{nom}")
+        contenu = b"".join(r.streaming_content)
+        Mouvement.objects.create(numero=9, date=dt.date(2026, 4, 1), journal_id="OD", piece=9)
+        self.client.post("/base/", {"remplacer": "1", "sauvegarde": nom, "confirmation": "REMPLACER"})
+        self.assertFalse(Mouvement.objects.filter(numero=9).exists())
+        Mouvement.objects.create(numero=9, date=dt.date(2026, 4, 1), journal_id="OD", piece=9)
+        self.client.post("/base/", {"remplacer": "1", "fichier": SimpleUploadedFile(nom, contenu), "confirmation": "REMPLACER"})
+        self.assertFalse(Mouvement.objects.filter(numero=9).exists())
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get(f"/base/export/{nom}").status_code, 403)
