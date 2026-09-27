@@ -1638,3 +1638,52 @@ class Echanges(TransactionTestCase):
         r = self.client.post("/echanges/", {"reinjecter": "1", "confirmation": "REMPLACER"}, follow=True)
         self.assertContains(r, "compte 999999 inconnu")
         self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [600])
+
+
+# ---------------------------------------------------------------- dossiers paramétrables, jeu complet d'exports
+
+from . import dossiers  # noqa: E402
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class DossiersEtExportComplet(TransactionTestCase):
+    def setUp(self):
+        self.racine = Path(tempfile.mkdtemp())
+        self.reglage = override_settings(IMPORTS_DIR=self.racine / "Imports", EXPORTS_DIR=self.racine / "Exports")
+        self.reglage.enable()
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+
+    def tearDown(self):
+        self.reglage.disable()
+
+    def test_chemins_du_pc_ignores_sur_le_site(self):
+        from django.apps import apps
+        __import__("importlib").import_module("compta.migrations.0012_dossiers_pc").dossiers_pc(apps, None)
+        self.assertEqual(Reglage.lire("dossier_exports"), r"D:\OneDrive\Applications\ComptaBB\Exports")    # migration 0012
+        self.assertEqual(Reglage.lire("dossier_sauvegardes"), r"D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes")
+        self.assertFalse(dossiers.valable(r"D:\OneDrive\Applications\ComptaBB\Exports"))                  # tests : Linux
+        self.assertEqual(dossiers.exports(), self.racine / "Exports")
+        self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")
+        with self.assertRaises(ech.Refus):
+            ech.changer_dossiers({"dossier_sauvegardes": r"E:\Sauvegardes"})
+        with self.assertRaises(ech.Refus):
+            ech.changer_dossiers({"dossier_exports": "relatif/Exports"})
+
+    def test_tout_exporter_et_sauvegarder(self):
+        exp, sauv = self.racine / "Mes exports", self.racine / "Mes sauvegardes"
+        ech.changer_dossiers({"dossier_exports": str(exp), "dossier_sauvegardes": str(sauv)}, auteur="t")
+        u = User.objects.create_user("admin")
+        donner_role(u, "Administrateur")
+        self.client.force_login(u)
+        page = self.client.get("/echanges/")
+        self.assertContains(page, str(sauv))
+        self.client.post("/echanges/", {"tout_sauvegarder": "1"})
+        noms = [p.name for p in exp.iterdir()]
+        for f in ech.FORMATS:
+            self.assertTrue(any(n.startswith(f.nom + "_") for n in noms), f.nom)
+        self.assertTrue(any(n.startswith("Parametres_") for n in noms))
+        self.assertEqual([p.suffix for p in sauv.iterdir()], [".sqlite3"])
+        self.assertEqual(bd.dossier(), sauv)
+        call_command("exporter_tout", stdout=open("/dev/null", "w"))
+        self.assertEqual(len(list(sauv.glob("*.sqlite3"))), 2)

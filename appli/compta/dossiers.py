@@ -1,12 +1,44 @@
-"""Emplacement des fichiers échangés : dossiers Imports et Exports (réglages IMPORTS_DIR et EXPORTS_DIR).
+"""Emplacement des fichiers échangés : dossiers Imports, Exports et Sauvegardes.
 
-Exports/Sauvegardes : copies de la base ; Exports/Archives : classeurs de clôture et historiques effacés ;
-Exports/Parametres.xlsx : paramètres exportés. Les fichiers des anciens emplacements (data/sauvegardes,
-data/archives) y sont déplacés au premier accès."""
+Chacun se paramètre (Administration › Imports / Exports, ou Reglages.xlsx) par les réglages dossier_imports,
+dossier_exports et dossier_sauvegardes ; vide = valeur par défaut (IMPORTS_DIR, EXPORTS_DIR, Exports/Sauvegardes).
+Un chemin Windows (D:\\…) n'a de sens que sur le PC : sur le site, il est ignoré (dossier par défaut).
 
+Exports/Archives : classeurs de clôture et historiques effacés ; Exports/Parametres.xlsx : paramètres exportés.
+Les fichiers des anciens emplacements (data/sauvegardes, data/archives) sont déplacés au premier accès."""
+
+import os
+import re
 import shutil
+from pathlib import Path
 
 from django.conf import settings
+
+REGLAGES = {
+    "dossier_imports": "Dossier des fichiers à importer (référentiels, écritures, relevés)",
+    "dossier_exports": "Dossier où l'application écrit ses exports",
+    "dossier_sauvegardes": "Dossier des sauvegardes de la base (copies .sqlite3)",
+}
+WINDOWS = re.compile(r"^([A-Za-z]:|\\\\)")
+
+
+def valable(chemin):
+    """Un chemin Windows n'est utilisable que sous Windows (PC) ; un chemin relatif n'est jamais accepté."""
+    chemin = (chemin or "").strip().strip('"')
+    if not chemin:
+        return False
+    if os.name == "nt":
+        return bool(WINDOWS.match(chemin)) or Path(chemin).is_absolute()
+    return not WINDOWS.match(chemin) and Path(chemin).is_absolute()
+
+
+def reglage(cle):
+    from .models import Reglage
+    try:
+        v = Reglage.lire(cle).strip().strip('"')
+    except Exception:                                   # base pas encore créée
+        return None
+    return Path(v) if valable(v) else None
 
 
 def _dossier(chemin, ancien=None):
@@ -22,17 +54,26 @@ def _dossier(chemin, ancien=None):
     return chemin
 
 
+def defaut(cle):
+    return {"dossier_imports": Path(settings.IMPORTS_DIR), "dossier_exports": Path(settings.EXPORTS_DIR),
+            "dossier_sauvegardes": (reglage("dossier_exports") or Path(settings.EXPORTS_DIR)) / "Sauvegardes"}[cle]
+
+
+def chemin(cle):
+    return reglage(cle) or defaut(cle)
+
+
 def imports():
-    return _dossier(settings.IMPORTS_DIR)
+    return _dossier(chemin("dossier_imports"))
 
 
 def exports():
-    return _dossier(settings.EXPORTS_DIR)
+    return _dossier(chemin("dossier_exports"))
 
 
 def sauvegardes():
-    return _dossier(settings.EXPORTS_DIR / "Sauvegardes", settings.DATA_DIR / "sauvegardes")
+    return _dossier(chemin("dossier_sauvegardes"), settings.DATA_DIR / "sauvegardes")
 
 
 def archives():
-    return _dossier(settings.EXPORTS_DIR / "Archives", settings.DATA_DIR / "archives")
+    return _dossier(exports() / "Archives", settings.DATA_DIR / "archives")

@@ -16,7 +16,7 @@ import openpyxl
 from django.conf import settings
 from django.db import transaction
 
-from . import export, releves
+from . import dossiers, export, releves
 from .membres import ENTETES_MODELE, importer_tableau
 from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneFiche, LigneReleve, Membre,
                      Modification, Mouvement, Prefixe, Rapprochement, Reglage, Traduction)
@@ -26,18 +26,19 @@ IMPORTES = "Importés"
 
 # ---------------------------------------------------------------- dossiers
 
-REGLAGES_DOSSIERS = {"dossier_imports": ("Imports", "Dossier des fichiers à importer (référentiels, écritures, relevés)"),
-                     "dossier_exports": ("Exports", "Dossier où l'application écrit ses exports")}
+REGLAGES_DOSSIERS = {c: (c.split("_")[1].capitalize(), lib) for c, lib in dossiers.REGLAGES.items()}
 
 
 def defaut(cle):
-    """Dossiers Imports et Exports de l'application (réglages IMPORTS_DIR et EXPORTS_DIR, voir dossiers.py)."""
-    return Path(settings.IMPORTS_DIR if cle == "dossier_imports" else settings.EXPORTS_DIR)
+    return dossiers.defaut(cle)
 
 
-def chemin_reglage(cle):
-    """Chemin choisi dans les paramètres, sinon le dossier Imports (ou Exports) de l'application."""
-    return Path(Reglage.lire(cle) or defaut(cle))
+def imports():
+    return dossiers.imports()
+
+
+def exports():
+    return dossiers.exports()
 
 
 def _cree(d):
@@ -45,24 +46,20 @@ def _cree(d):
     return d
 
 
-def imports():
-    return _cree(chemin_reglage("dossier_imports"))
-
-
-def exports():
-    return _cree(chemin_reglage("dossier_exports"))
-
-
 def importes():
     return _cree(imports() / IMPORTES)
 
 
 def changer_dossiers(valeurs, auteur=""):
-    """Enregistre les chemins des dossiers Imports et Exports (vide = dossier par défaut) ; les crée au besoin."""
+    """Enregistre les chemins des dossiers Imports, Exports et Sauvegardes (vide = dossier par défaut) ; les crée au besoin."""
     erreurs = []
     for cle, v in valeurs.items():
         v = (v or "").strip().strip('"')
         if v:
+            if not dossiers.valable(v):
+                erreurs.append(f"{v} : chemin complet attendu" + (" ; un chemin Windows (D:\\…) ne vaut que sur le PC, pas sur le site."
+                                                                if dossiers.WINDOWS.match(v) else "."))
+                continue
             try:
                 _cree(Path(v))
             except OSError as e:
@@ -74,6 +71,23 @@ def changer_dossiers(valeurs, auteur=""):
             Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet=cle, avant=avant, apres=v)
     if erreurs:
         raise Refus(erreurs)
+
+
+def tout_exporter(auteur=""):
+    """Jeu complet : un fichier par format, Parametres.xlsx (classeur complet) et une sauvegarde de la base.
+
+    Renvoie (fichiers écrits, sauvegarde)."""
+    from . import base_donnees
+    from . import parametres as prm
+    ecrits = [exporter(f, auteur)[0] for f in FORMATS]
+    chemin = exports() / f"Parametres_{dt.datetime.now():%Y-%m-%d_%H%M%S}.xlsx"
+    chemin.write_bytes(prm.contenu_classeur())
+    ecrits.append(chemin)
+    ecrire_lexiques()
+    sauvegarde = base_donnees.sauvegarder("export")
+    Modification.objects.create(auteur=auteur, lot="Échanges", action="Tout exporter et sauvegarder", objet=str(exports())[:200],
+                                apres=f"{len(ecrits)} fichiers ; sauvegarde {sauvegarde.name}")
+    return ecrits, sauvegarde
 
 
 # ---------------------------------------------------------------- lecture des cellules

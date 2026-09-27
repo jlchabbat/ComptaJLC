@@ -23,7 +23,11 @@ def liste():
 def sauvegarder(motif="manuelle"):
     """Copie cohérente de la base (API de sauvegarde SQLite), même pendant que le site tourne."""
     connection.ensure_connection()
-    chemin = dossier() / f"comptabb_{dt.datetime.now():%Y-%m-%d_%H%M%S}_{motif}.sqlite3"
+    base = f"comptabb_{dt.datetime.now():%Y-%m-%d_%H%M%S}_{motif}"
+    chemin, n = dossier() / f"{base}.sqlite3", 1
+    while chemin.exists():                  # deux sauvegardes dans la même seconde : pas d'écrasement
+        n += 1
+        chemin = dossier() / f"{base}_{n}.sqlite3"
     dest = sqlite3.connect(chemin)
     with dest:
         connection.connection.backup(dest)

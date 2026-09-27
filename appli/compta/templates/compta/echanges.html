@@ -1,6 +1,7 @@
 {% extends "compta/base.html" %}{% block titre %}Imports / Exports{% endblock %}{% block contenu %}
 <h1>Imports / Exports</h1>
-<p>Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>.
+<p>Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>,
+les sauvegardes de la base dans <b>{{ sauvegardes }}</b> (dossiers modifiables en bas de page).
 Un fichier exporté se réimporte tel quel (même structure). Chaque dossier contient un <b>Lexique.xlsx</b> qui décrit les fichiers et leurs colonnes.</p>
 
 <h2>1. Fichiers à importer</h2>
@@ -33,14 +34,18 @@ indiqué (Tiers.xlsx, Tiers_2026-09-27.xlsx…) ; la ligne 1 contient exactement
 <table><tr><th>#</th><th>Fichier</th><th>Contenu</th><th>Colonnes (ligne 1)</th><th></th></tr>
 {% for f in formats %}<tr><td>{{ forloop.counter }}</td><td><b>{{ f.nom }}.xlsx</b></td><td>{{ f.contenu }}</td><td>{{ f.colonnes|join:" · " }}</td>
 <td><button name="exporter" value="{{ f.nom }}">Exporter</button></td></tr>{% endfor %}</table>
-<div class="boutons"><button class="principal" name="exporter" value="tout">Tout exporter</button></div></form>
+<div class="boutons"><button class="principal" name="exporter" value="tout">Tout exporter</button>
+<button class="principal" name="tout_sauvegarder" value="1">Tout exporter et sauvegarder la base</button></div>
+<p class="aide">« Tout exporter et sauvegarder la base » écrit le jeu complet (un fichier par format, plus Parametres.xlsx, le classeur complet
+des paramètres) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.</p></form>
 
 <h2>3. Paramètres des dossiers</h2>
 <form method="post" class="carte">{% csrf_token %}<div class="formulaire">
-{% for cle, lib, valeur, defaut in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
+{% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">
-<div class="aide">Vide = {{ defaut }}</div></div>{% endfor %}</div>
+<div class="aide">Vide = {{ defaut }}.{% if valeur and utilise|stringformat:"s" != valeur %} <b>Ici, ce chemin est ignoré (dossier du PC) : dossier utilisé {{ utilise }}.</b>{% endif %}</div></div>{% endfor %}</div>
 <div class="boutons"><button class="principal" name="dossiers" value="1">Enregistrer les dossiers</button></div>
-<p class="aide">Chemin complet, par exemple D:\OneDrive\Applications\ComptaBB\Imports. Le dossier est créé s'il n'existe pas.
-Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports et dossier_exports).</p></form>
+<p class="aide">Chemin complet, par exemple D:\OneDrive\Applications\ComptaBB\Exports et D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes
+(sur le PC). Un chemin D:\… ne vaut que sur le PC : sur le site (PythonAnywhere), laisser vide et télécharger les fichiers.
+Le dossier est créé s'il n'existe pas. Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports, dossier_exports, dossier_sauvegardes).</p></form>
 {% endblock %}

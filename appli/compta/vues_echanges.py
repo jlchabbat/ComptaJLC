@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import redirect, render
 
+from . import dossiers
 from . import echanges as moteur
 from .models import Reglage
 
@@ -30,6 +31,10 @@ def echanges(request):
                 f, texte = moteur.importer(request.POST["importer"], request.user)
                 messages.success(request, f"{request.POST['importer']} importé ({f.contenu}) : {texte}. "
                                           f"Le fichier est rangé dans Imports\\{moteur.IMPORTES}.")
+            elif "tout_sauvegarder" in request.POST:
+                ecrits, sauvegarde = moteur.tout_exporter(auteur)
+                messages.success(request, f"{len(ecrits)} fichiers exportés dans {moteur.exports()} ; "
+                                          f"sauvegarde de la base : {sauvegarde}.")
             elif "exporter" in request.POST:
                 noms = [f.nom for f in moteur.FORMATS] if request.POST["exporter"] == "tout" else [request.POST["exporter"]]
                 for nom in noms:
@@ -50,8 +55,8 @@ def echanges(request):
     moteur.ecrire_lexiques()
     fichiers = moteur.a_importer()
     return render(request, "compta/echanges.html", {
-        "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(),
-        "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
+        "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
+        "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
         "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() == ".xlsx"],
         "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
     })
