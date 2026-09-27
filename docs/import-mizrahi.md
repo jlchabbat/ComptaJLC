@@ -20,7 +20,8 @@ le site de Mizrahi-Tefahot (fichier de référence : `tnuot.pdf`,
 | `תנועות בחשבון מתאריך … עד …`                 | Période                     | 25/10/2025 → 26/09/2026  |
 | `יתרה קודמת נכון ל- … : ₪…`                   | Solde d'ouverture et sa date | 24/10/2025 : ₪38 053,70 |
 
-Le numéro de compte permet de savoir s'il s'agit de Banque 1 ou de Banque 2.
+Le numéro de compte permet de savoir s'il s'agit de Banque 1 ou de Banque 2 :
+`732-182029` = Banque 1 (le fichier de référence `tnuot.pdf` est un relevé de Banque 1).
 
 ### Tableau des mouvements
 
