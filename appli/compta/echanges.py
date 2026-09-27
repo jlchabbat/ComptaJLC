@@ -63,11 +63,12 @@ def changer_dossiers(valeurs, auteur=""):
             elif not dossiers.valable(v):
                 erreurs.append(f"{v} : chemin complet attendu (par exemple D:\\OneDrive\\Applications\\ComptaBB\\Exports).")
                 continue
-            try:
-                _cree(Path(v))
-            except OSError as e:
-                erreurs.append(f"{v} : dossier impossible à créer ({e.strerror or e}).")
-                continue
+            else:
+                try:
+                    _cree(Path(v))
+                except OSError as e:
+                    erreurs.append(f"{v} : dossier impossible à créer ({e.strerror or e}).")
+                    continue
         avant = Reglage.lire(cle)
         if v != avant:
             Reglage.objects.update_or_create(cle=cle, defaults={"valeur": v, "description": REGLAGES_DOSSIERS[cle][1]})
