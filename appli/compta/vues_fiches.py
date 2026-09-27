@@ -47,15 +47,23 @@ def liste(request):
         fiche_form = FicheForm(request.POST if "creer_fiche" in request.POST else None, prefix="fiche")
         benevole_form = BenevoleForm(request.POST if "creer_benevole" in request.POST else None, prefix="benevole")
         if "creer_fiche" in request.POST and fiche_form.is_valid():
-            f = fiche_form.save()
-            journaliser(request, "Création", f"fiche {f.pk} {f.titre}", apres=f.get_type_display())
+            with transaction.atomic():
+                nouveau_code = fiche_form.cleaned_data.get("nouveau_libelle")
+                f = fiche_form.save()
+                if nouveau_code:
+                    journaliser(request, "Création", f"code axe 2 {f.anal2_id}", apres=f.anal2.libelle)
+                journaliser(request, "Création", f"fiche {f.pk} {f.titre}", apres=f.get_type_display())
             messages.success(request, f"Fiche créée : {f.titre}.")
             return redirect("fiche", f.pk)
         if "creer_benevole" in request.POST and benevole_form.is_valid():
             c = benevole_form.cleaned_data
-            u = User.objects.create_user(c["identifiant"], password=c["mot_de_passe"], first_name=c["prenom"], last_name=c["nom"])
-            u.groups.add(Group.objects.get(name="Bénévole"))
-            journaliser(request, "Création", f"bénévole {u.username}", apres=u.get_full_name())
+            m = c["membre"]
+            with transaction.atomic():
+                u = User.objects.create_user(c["identifiant"], password=c["mot_de_passe"], first_name=m.prenom, last_name=m.nom)
+                u.groups.add(Group.objects.get(name="Bénévole"))
+                m.utilisateur = u
+                m.save(update_fields=["utilisateur"])
+            journaliser(request, "Création", f"bénévole {u.username}", apres=f"{u.get_full_name()} ({m.compte_id})")
             messages.success(request, f"Bénévole créé : {u.get_full_name()} (identifiant {u.username}).")
             return redirect("fiches")
     fiches = fiches_visibles(request.user).prefetch_related("benevoles", "lignes").select_related("anal2")

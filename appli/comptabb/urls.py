@@ -40,7 +40,6 @@ urlpatterns = [
     path("rapprochement/<str:code>/pointage/", rap.pointage, name="pointage"),
     path("membres/", vues_membres.liste, name="membres"),
     path("membres/modele-tiers.xlsx", vues_membres.modele_tiers, name="modele_tiers"),
-    path("membres/impayes/", vues_membres.impayes, name="impayes"),
     path("membres/cotisations/", vues_membres.cotisations, name="cotisations"),
     path("membres/<str:numero>/", vues_membres.fiche, name="membre"),
     path("etats/", vues_etats.etats_annuels, name="etats"),

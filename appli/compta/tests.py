@@ -340,6 +340,7 @@ class Ecrans(TestCase):
 # ---------------------------------------------------------------- W2 : fiches bénévoles (cas de la recette du fichier de liaison)
 
 from . import fiches as fiches_moteur  # noqa: E402
+from .forms import BenevoleForm  # noqa: E402
 from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire, TypeTiers  # noqa: E402
 
 
@@ -498,17 +499,40 @@ class EcransFiches(TestCase):
         self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.get().pk}/").status_code, 403)   # verrouillée
 
     def test_creations_par_le_tresorier(self):
+        from .membres import creer_manquants
+        from .models import Membre
+        creer_manquants()
+        Membre.objects.filter(compte_id="411TAIEB001").update(nom="Taieb", prenom="Jeanne")
         self.client.force_login(self.tresorier)
-        r = self.client.post("/fiches/", {"benevole-identifiant": "david", "benevole-prenom": "David", "benevole-nom": "Levy",
+        r = self.client.post("/fiches/", {"benevole-identifiant": "jeanne", "benevole-membre": "9999",
+                                          "benevole-mot_de_passe": "motdepasse-8", "creer_benevole": "1"})
+        self.assertFalse(User.objects.filter(username="jeanne").exists())          # le bénévole doit être un membre
+        r = self.client.post("/fiches/", {"benevole-identifiant": "jeanne", "benevole-membre": "411TAIEB001",
                                           "benevole-mot_de_passe": "motdepasse-8", "creer_benevole": "1"})
         self.assertRedirects(r, "/fiches/")
-        david = User.objects.get(username="david")
-        self.assertTrue(david.groups.filter(name="Bénévole").exists())
-        r = self.client.post("/fiches/", {"fiche-type": "gestion", "fiche-titre": "Aides", "fiche-benevoles": [david.pk],
+        jeanne = User.objects.get(username="jeanne")
+        self.assertTrue(jeanne.groups.filter(name="Bénévole").exists())
+        self.assertEqual((jeanne.first_name, jeanne.last_name, jeanne.membre.compte_id), ("Jeanne", "Taieb", "411TAIEB001"))
+        self.assertNotIn("411TAIEB001", [m.pk for m in BenevoleForm().fields["membre"].queryset])  # déjà bénévole
+        r = self.client.post("/fiches/", {"fiche-type": "gestion", "fiche-titre": "Aides", "fiche-benevoles": [jeanne.pk],
                                           "creer_fiche": "1"})
         f = Fiche.objects.get(titre="Aides")
         self.assertRedirects(r, f"/fiches/{f.pk}/")
-        self.assertEqual(list(f.benevoles.all()), [david])
+        self.assertEqual(list(f.benevoles.all()), [jeanne])
+        # code axe 2 choisi dans la liste, ou créé avec la fiche
+        Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
+        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Rallye 2", "fiche-anal2": "MAN.001",
+                                      "creer_fiche": "1"})
+        self.assertEqual(Fiche.objects.get(titre="Rallye 2").anal2_id, "MAN.001")
+        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Gala", "fiche-nouveau_prefixe": "MAN.",
+                                      "fiche-nouveau_libelle": "Gala 2026", "creer_fiche": "1"})
+        g = Fiche.objects.get(titre="Gala")
+        self.assertEqual((g.anal2_id, g.anal2.libelle, g.anal2.axe), ("MAN.002", "GALA 2026", 2))
+        r = self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Double", "fiche-anal2": "MAN.001",
+                                          "fiche-nouveau_prefixe": "MAN.", "fiche-nouveau_libelle": "Autre", "creer_fiche": "1"})
+        self.assertContains(r, "pas les deux")
+        self.assertFalse(Fiche.objects.filter(titre="Double").exists())
+        self.assertFalse(CodeAnalytique.objects.filter(libelle="AUTRE").exists())
 
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
@@ -823,7 +847,7 @@ class EcransMembres(TestCase):
         self.client.force_login(self.u)
 
     def test_pages_et_lettrage_manuel(self):
-        for url in ("/membres/", "/membres/impayes/", "/membres/cotisations/", "/membres/411TAIEB001/", "/favicon.ico"):
+        for url in ("/membres/", "/membres/cotisations/", "/membres/411TAIEB001/", "/favicon.ico"):
             self.assertIn(self.client.get(url).status_code, (200, 301), url)
         self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "relance")
         cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
@@ -1259,7 +1283,7 @@ class ExportComplet(TransactionTestCase):
         mode = ModeFiche.objects.filter(type_fiche="activite").first()
         LigneFiche.objects.create(fiche=f, sens="R", date=dt.date(2026, 3, 1), provisoire=t, nature=nature, montant=D(80),
                                   mode=mode, cree_par=benevole)
-        Membre.objects.filter(compte_id="411TAIEB001").update(ville="Netanya", cotisation=D(400))
+        Membre.objects.filter(compte_id="411TAIEB001").update(ville="Netanya", cotisation=D(400), utilisateur=benevole)
         Modification.objects.create(auteur="tresorier", action="Essai", objet="avant export")
 
     def test_aller_retour_identique(self):
@@ -1283,6 +1307,7 @@ class ExportComplet(TransactionTestCase):
         self.assertEqual(Fiche.objects.get().benevoles.get().username, "rachel")
         self.assertEqual(LigneFiche.objects.get().provisoire.nom, "Lévy")
         self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").ville, "Netanya")
+        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").utilisateur.username, "rachel")
         self.assertEqual(Mouvement.objects.get(numero=1).cree_par, self.u)
 
     def test_export_altere_rien_n_est_modifie(self):

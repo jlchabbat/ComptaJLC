@@ -43,7 +43,7 @@ Version du 26/09/2026</div>
 <li><a href="#c3">Saisir une opération (saisie guidée)</a></li>
 <li><a href="#c4">Écriture libre, modifier ou annuler une écriture</a></li>
 <li><a href="#c5">Codes analytiques et nouveaux tiers</a></li>
-<li><a href="#c6">Tiers : fiches, import, impayés, cotisations, lettrage</a></li>
+<li><a href="#c6">Tiers : fiches, import, solde, cotisations, lettrage</a></li>
 <li><a href="#c7">Fiches bénévoles</a></li>
 <li><a href="#c8">Consulter : tableau de bord, écritures, journaux, grand livre, balance</a></li>
 <li><a href="#c9">Rapprochement bancaire</a></li>
@@ -91,7 +91,7 @@ Le réglage est mémorisé sur l'appareil. On peut aussi utiliser Ctrl + / Ctrl 
 <figure><img src="images/02_accueil_menu.png"><figcaption>Tableau de bord, menu « Consulter » ouvert.</figcaption></figure>
 <table><tr><th style="width:18%">Menu</th><th>Pages</th></tr>
 <tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Modifier une écriture · Codes et nouveaux tiers · Fiches bénévoles</td></tr>
-<tr><td>Tiers</td><td>Liste des tiers · Impayés · Cotisations des membres · Tiers provisoires</td></tr>
+<tr><td>Tiers</td><td>Liste des tiers · Cotisations des membres · Tiers provisoires</td></tr>
 <tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analytique</td></tr>
 <tr><td>Banque</td><td>Rapprochement · Traductions du relevé</td></tr>
 <tr><td>Fin d'exercice</td><td>États annuels et budget · Clôture</td></tr>
@@ -175,7 +175,7 @@ Le compte est proposé d'après le type et le nom : 411COHEN001 pour un membre, 
 <p>Choisir le code et le nouveau statut ; si le code est déjà utilisé dans des écritures, cocher la confirmation.</p>
 
 <!-- 6 -->
-<h1 id="c6">6. Tiers : fiches, import, impayés, cotisations, lettrage</h1>
+<h1 id="c6">6. Tiers : fiches, import, solde, cotisations, lettrage</h1>
 <h2>Liste des tiers</h2>
 <p><span class="menu">Tiers › Liste des tiers</span> : membres, fournisseurs et autres types. Filtrer par type ou statut, rechercher (nom, compte, ville, e-mail).
 La colonne Solde indique ce que le tiers doit (positif) ou ce qui lui est dû (négatif).</p>
@@ -190,8 +190,8 @@ La colonne Solde indique ce que le tiers doit (positif) ou ce qui lui est dû (n
 <li><b>Importer</b> : un compte rendu indique les tiers créés, mis à jour, et les lignes en erreur.</li></ol>
 <div class="cadre">Un tiers déjà présent (même compte, ou même type + nom + prénom) est <b>mis à jour</b>, jamais en double.
 Une cellule vide n'efface rien. Rien n'est supprimé.</div>
-<h2>Impayés</h2>
-<p><span class="menu">Tiers › Impayés</span> : tiers qui doivent de l'argent, du plus gros montant au plus petit.</p>
+<h2>Ce que doit un tiers</h2>
+<p>Pas de suivi séparé des impayés : le <b>solde du compte tiers</b> suffit (colonne Solde de <span class="menu">Tiers › Liste des tiers</span>, triable, et fiche du tiers).</p>
 <h2>Cotisations</h2>
 <p><span class="menu">Tiers › Cotisations des membres</span> : pour l'exercice choisi, attendues (cotisation des membres actifs), facturées, reçues, reste dû et taux de recouvrement.</p>
 <h2>Lettrage</h2>
@@ -203,8 +203,8 @@ Une cellule vide n'efface rien. Rien n'est supprimé.</div>
 <h1 id="c7">7. Fiches bénévoles</h1>
 <p>Les bénévoles notent en ligne les recettes et dépenses d'une activité ; le trésorier complète et reporte en comptabilité.</p>
 <h2>Le trésorier prépare</h2>
-<ol><li><span class="menu">Saisie › Fiches bénévoles</span> › <b>Nouveau bénévole</b> : identifiant, prénom, nom, mot de passe à lui transmettre.</li>
-<li><b>Nouvelle fiche</b> : type <b>Activité</b> (fixer d'avance le code axe 2 de l'activité) ou <b>Gestion</b> (dons et aides reçus ou versés) ; choisir les bénévoles.</li></ol>
+<ol><li><span class="menu">Saisie › Fiches bénévoles</span> › <b>Nouveau bénévole</b> : choisir le <b>membre</b> dans la liste des fiches tiers (un bénévole est toujours un membre ; s'il est absent, créer d'abord sa fiche, type Membre), puis identifiant et mot de passe à lui transmettre.</li>
+<li><b>Nouvelle fiche</b> : type <b>Activité</b> (fixer d'avance le code axe 2 de l'activité : le choisir dans la liste, ou le créer en indiquant le préfixe et le libellé, numéro attribué automatiquement) ou <b>Gestion</b> (dons et aides reçus ou versés) ; choisir les bénévoles.</li></ol>
 <figure><img src="images/09_fiches.png"><figcaption>Liste des fiches avec leurs totaux.</figcaption></figure>
 <h2>Le bénévole saisit</h2>
 <ol><li>Il se connecte : il ne voit que ses fiches.</li>

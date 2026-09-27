@@ -1,4 +1,4 @@
-"""Suivi des membres (cahier des charges, Lot 2) : situation, impayés, cotisations et lettrage des comptes de membres."""
+"""Suivi des membres (cahier des charges, Lot 2) : situation (solde), cotisations et lettrage des comptes de membres."""
 
 import datetime as dt
 import re
@@ -96,16 +96,6 @@ def situation(compte, jusquau=None):
     restants, s.avance = allouer([l for l in ls if not l.lettrage])
     s.impayes = restants
     return s
-
-
-def impayes(jusquau=None):
-    """Membres avec un solde dû, du plus gros au plus petit."""
-    res = []
-    for m in Membre.objects.select_related("compte"):
-        s = situation(m.compte, jusquau)
-        if s.solde > 0:
-            res.append((m, s))
-    return sorted(res, key=lambda x: -x[1].solde)
 
 
 def cotisations(exercice):

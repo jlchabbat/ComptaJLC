@@ -18,8 +18,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
 </div></div>{% endif %}
 {% if perms.compta.view_membre %}<div class="menu"><button type="button">Tiers ▾</button><div class="sous">
-{% url 'membres' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":9" == "/membres/" and request.path|length > 9 and request.path != "/membres/impayes/" and request.path != "/membres/cotisations/" %}class="actif"{% endif %}>Liste des tiers</a>
-{% url 'impayes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Impayés</a>
+{% url 'membres' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":9" == "/membres/" and request.path|length > 9 and request.path != "/membres/cotisations/" %}class="actif"{% endif %}>Liste des tiers</a>
 {% url 'cotisations' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Cotisations des membres</a>
 {% if perms.compta.gerer_fiche %}{% url 'provisoires' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tiers provisoires</a>{% endif %}
 </div></div>{% endif %}

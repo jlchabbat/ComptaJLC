@@ -29,7 +29,7 @@ partager). Hors de Git.
 | Bénévole | ses fiches bénévoles seulement : saisie des lignes, nouveaux tiers provisoires, transmission |
 
 Les comptes se créent dans Référentiels › Utilisateurs, avec leur groupe ;
-un bénévole se crée aussi depuis Fiches bénévoles › Nouveau bénévole.
+un bénévole se crée aussi depuis Fiches bénévoles › Nouveau bénévole, en choisissant un membre (fiche tiers).
 
 ## Pages (socle W0)
 
@@ -51,7 +51,7 @@ partie du code ou du libellé.
 Remplacent le fichier de liaison Excel (même conventions d'écritures, voir
 `compta/fiches.py`).
 
-1. Le trésorier crée la fiche : **Activité** (code axe 2 fixé d'avance) ou
+1. Le trésorier crée la fiche : **Activité** (code axe 2 fixé d'avance, choisi ou créé sur place) ou
    **Gestion** (dons et aides reçus ou versés), et lui attribue un ou
    plusieurs bénévoles.
 2. Le bénévole se connecte, note ses recettes et dépenses ; il cherche un
@@ -99,7 +99,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   statut (actif, honoraire, démissionnaire), cotisation attendue ; import du
   modèle `Imports/modeles/07_membres.csv`.
 - **Fiche membre** : facturé, réglé, solde dû, historique.
-- **Impayés** triés par montant ; **cotisations** de l'exercice attendues,
+- Pas de suivi des impayés : le solde du compte tiers suffit ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique
   (même opération, puis premier règlement de même montant), annulable ;

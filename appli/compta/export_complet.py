@@ -186,6 +186,7 @@ FEUILLES = {
                          "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Axe 2", "Mvt", "Créé par",
                          "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
+    "Bénévoles": ["Compte", "Identifiant"],
 }
 
 
@@ -220,6 +221,8 @@ def _lignes_donnees():
                                .order_by("pk"))
     yield "Historique", ([_heure(m.date), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres]
                          for m in Modification.objects.order_by("date", "pk"))
+    yield "Bénévoles", ([m.compte_id, m.utilisateur.get_username()]
+                        for m in Membre.objects.filter(utilisateur__isnull=False).select_related("utilisateur").order_by("compte"))
 
 
 def classeur_donnees():
@@ -422,6 +425,9 @@ def _charger_donnees(wb):
         m.save()
         if quand:
             Modification.objects.filter(pk=m.pk).update(date=quand)
+    if "Bénévoles" in wb.sheetnames:                          # absente des exports antérieurs
+        for r in _rangees(wb, "Bénévoles"):
+            Membre.objects.filter(compte_id=_texte(r["Compte"])).update(utilisateur=qui(r["Identifiant"]))
 
 
 def lire_export(source):

@@ -1,4 +1,4 @@
-"""Suivi des membres : liste, fiche (situation, historique, lettrage), impayés, cotisations."""
+"""Suivi des membres : liste, fiche (situation, historique, lettrage), cotisations."""
 
 import io
 
@@ -114,14 +114,6 @@ def fiche(request, numero):
     return render(request, "compta/membre.html", {
         "m": m, "s": s, "form": form, "peut": peut, "historique": historique,
     })
-
-
-@login_required
-@voir
-def impayes(request):
-    lignes = moteur.impayes()
-    return render(request, "compta/impayes.html", {
-        "lignes": lignes, "total": sum((s.solde for _, s in lignes), ZERO)})
 
 
 @login_required

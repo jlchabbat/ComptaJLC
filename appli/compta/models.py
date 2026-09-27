@@ -593,6 +593,8 @@ class Membre(models.Model):
     date_adhesion = models.DateField("date d'adhésion", null=True, blank=True)
     statut = models.CharField(max_length=15, choices=STATUTS, default="actif")
     cotisation = models.DecimalField("cotisation annuelle attendue", max_digits=10, decimal_places=2, null=True, blank=True)
+    utilisateur = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name="membre", verbose_name="identifiant de bénévole")
 
     class Meta:
         ordering = ["nom", "prenom"]

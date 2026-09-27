@@ -79,7 +79,7 @@ class StatutForm(forms.Form):
 
 from django.contrib.auth.models import User  # noqa: E402
 
-from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
+from .models import Fiche, LigneFiche, Membre, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
 
 
 def comptes_tiers():
@@ -95,6 +95,11 @@ class ChoixBenevoles(forms.ModelMultipleChoiceField):
 
 
 class FicheForm(forms.ModelForm):
+    """Fiche : à la création, le code axe 2 se choisit dans la liste ou se crée (préfixe + libellé)."""
+
+    nouveau_prefixe = forms.ModelChoiceField(Prefixe.objects.none(), required=False, label="Ou nouveau code : préfixe")
+    nouveau_libelle = forms.CharField(max_length=100, required=False, label="Nouveau code : libellé",
+                                      help_text="Le code est numéroté automatiquement (ex. MAN.008).")
     benevoles = ChoixBenevoles(User.objects.none(), required=False, widget=forms.CheckboxSelectMultiple(attrs={"class": "radios"}),
                                 label="Bénévoles")
 
@@ -102,21 +107,56 @@ class FicheForm(forms.ModelForm):
         model = Fiche
         fields = ["type", "titre", "anal2", "benevoles"]
 
+    field_order = ["type", "titre", "anal2", "nouveau_prefixe", "nouveau_libelle", "benevoles"]
+
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
         self.fields["benevoles"].queryset = User.objects.filter(groups__name="Bénévole", is_active=True).order_by("username")
         if self.instance.pk:
-            del self.fields["type"]
+            del self.fields["type"], self.fields["nouveau_prefixe"], self.fields["nouveau_libelle"]
+        else:
+            prefixes = Prefixe.objects.filter(axe=2)
+            self.fields["nouveau_prefixe"].queryset = prefixes
+            if prefixes.count() == 1:
+                self.fields["nouveau_prefixe"].initial = prefixes.get()
         cherchable(self)
+
+    def clean(self):
+        c = super().clean()
+        lib = (c.get("nouveau_libelle") or "").strip().upper()
+        c["nouveau_libelle"] = lib
+        if lib:
+            if c.get("anal2"):
+                self.add_error("nouveau_libelle", "Choisissez un code existant OU créez-en un, pas les deux.")
+            elif not c.get("nouveau_prefixe"):
+                self.add_error("nouveau_prefixe", "Préfixe obligatoire pour créer le code.")
+            elif CodeAnalytique.objects.filter(axe=2, libelle=lib).exists():
+                self.add_error("nouveau_libelle", "Ce libellé existe déjà sur l'axe 2 : choisissez-le dans la liste.")
+        return c
+
+    def save(self, commit=True):
+        lib = self.cleaned_data.get("nouveau_libelle")
+        if lib:
+            self.instance.anal2 = CodeAnalytique.objects.create(code=self.cleaned_data["nouveau_prefixe"].code_suivant(), axe=2,
+                                                                libelle=lib, statut=1)
+        return super().save(commit)
 
 
 class BenevoleForm(forms.Form):
+    """Un bénévole est toujours un membre : on le choisit dans les fiches tiers."""
+
+    membre = forms.ModelChoiceField(Membre.objects.none(), label="Membre",
+                                    help_text="Tapez le nom. Absent ? Créez d'abord sa fiche (Tiers, type Membre).")
     identifiant = forms.SlugField(max_length=30, help_text="Pour se connecter, sans espace ni accent.")
-    prenom = forms.CharField(max_length=60, label="Prénom")
-    nom = forms.CharField(max_length=60)
     mot_de_passe = forms.CharField(min_length=8, widget=forms.PasswordInput(render_value=True), label="Mot de passe",
                                    help_text="8 caractères au moins ; à transmettre au bénévole.")
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fields["membre"].queryset = (Membre.objects.filter(type__libelle="Membre", utilisateur__isnull=True)
+                                          .exclude(statut="demissionnaire").order_by("nom", "prenom"))
+        cherchable(self)
 
     def clean_identifiant(self):
         v = self.cleaned_data["identifiant"]
