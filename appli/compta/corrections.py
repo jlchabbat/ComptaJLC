@@ -1,7 +1,6 @@
-"""Corrections d'écritures par le trésorier (RG-05) : modification d'un mouvement, contrepassation,
-écriture libre. Tout est contrôlé (RG-01 à RG-04) et tracé (commentaire du mouvement et journal)."""
+"""Corrections d'écritures par le trésorier (RG-05) : modification d'un mouvement
+(rappelé par son numéro), écriture libre. Tout est contrôlé (RG-01 à RG-04) et tracé (commentaire du mouvement et journal)."""
 
-import datetime as dt
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -120,26 +119,3 @@ def creer(date, journal, lignes, motif, utilisateur):
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",
                                 objet=f"Mvt {m.numero} – {motif.strip()}"[:200], apres=resume(m.lignes.all()))
     return m
-
-
-@transaction.atomic
-def contrepasser(m, date, motif, utilisateur):
-    """Annule un mouvement par l'écriture inverse, datée dans l'exercice ouvert ; l'original reste intact."""
-    if m.origine == "cloture":
-        raise ValueError("À-nouveaux de clôture : ne se contrepassent pas.")
-    lignes = [LigneSaisie(None, l.compte, f"ANNULATION MVT {m.numero} - {l.libelle}"[:200], l.credit, l.debit, l.anal2)
-              for l in m.lignes.select_related("compte", "anal2")]
-    erreurs = controler(date, m.journal, lignes) + ([] if motif.strip() else ["Indiquer le motif de l'annulation."])
-    if erreurs:
-        raise ValueError(" ".join(erreurs))
-    inverse = creer(date, m.journal, lignes, f"contrepassation du Mvt {m.numero} – {motif.strip()}", utilisateur)
-    trace(m, f"contrepassé par le Mvt {inverse.numero} – {motif.strip()}", utilisateur)
-    m.save(update_fields=["commentaire"])
-    return inverse
-
-
-def date_par_defaut(m):
-    ex = Exercice.ouvert()
-    if ex and not (ex.debut <= m.date <= ex.fin):
-        return max(ex.debut, min(dt.date.today(), ex.fin))
-    return m.date

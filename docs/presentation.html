@@ -36,7 +36,7 @@ rapprochement bancaire, journaux, états annuels et clôture. Elle s'ouvre depui
 <ul>
 <li><b>Saisir sans être comptable</b> : on choisit un type d'opération (cotisation, don, facture, frais, virement, carte Isracard…) et l'application génère les écritures équilibrées ; écriture libre, modification ou annulation par écriture inverse restent possibles, avec motif et trace.</li>
 <li><b>Faire participer les bénévoles</b> : chacun note en ligne les recettes et dépenses de son activité ; le trésorier complète et reporte.</li>
-<li><b>Suivre les tiers</b> : membres, fournisseurs et autres, avec adresse ; import d'un fichier Tiers.xlsx ; solde dû, impayés, cotisations, relance, lettrage.</li>
+<li><b>Suivre les tiers</b> : membres, fournisseurs et autres, avec adresse ; import d'un fichier Tiers.xlsx ; solde dû, impayés, cotisations, lettrage.</li>
 <li><b>Rapprocher la banque</b> : import du relevé Mizrahi (PDF en hébreu), pointage automatique, état de rapprochement.</li>
 <li><b>Tenir les journaux</b> : banque et caisse avec solde progressif, imprimables et exportables en Excel.</li>
 <li><b>Produire les états et clôturer</b> : compte de résultat, bilan, budget, comparaison avec l'année précédente, à-nouveaux, archive figée.</li>
@@ -54,8 +54,8 @@ rapprochement bancaire, journaux, états annuels et clôture. Elle s'ouvre depui
 <h2>Fonctionnalités</h2>
 <p>Les pages sont rangées en sept menus ; dans toutes les listes, on cherche en tapant une partie du code ou du libellé, et les tableaux se trient d'un clic sur l'en-tête.</p>
 <table><tr><th>Menu</th><th>Ce qu'on y fait</th></tr>
-<tr><td>Saisie</td><td>Saisie guidée (aperçu et 11 contrôles), écriture libre, codes analytiques et nouveaux tiers, fiches bénévoles</td></tr>
-<tr><td>Tiers</td><td>Liste et fiches (adresse, CP, ville), import Tiers.xlsx, impayés et relances, cotisations et taux de recouvrement, lettrage, tiers provisoires</td></tr>
+<tr><td>Saisie</td><td>Saisie guidée (aperçu et 11 contrôles), écriture libre, modification d'une écriture rappelée par son numéro, codes analytiques et nouveaux tiers, fiches bénévoles</td></tr>
+<tr><td>Tiers</td><td>Liste et fiches (adresse, CP, ville), import Tiers.xlsx, impayés, cotisations et taux de recouvrement, lettrage, tiers provisoires</td></tr>
 <tr><td>Consulter</td><td>Tableau de bord, écritures, journaux de banque et de caisse, grand livre, balance, analytique</td></tr>
 <tr><td>Banque</td><td>Import du relevé, traductions, pointage automatique et manuel, écriture créée depuis le relevé, écart par mois</td></tr>
 <tr><td>Fin d'exercice</td><td>Compte de résultat, bilan, budget et réalisé, année N et N-1 ; clôture avec à-nouveaux et archive Excel</td></tr>
@@ -77,7 +77,7 @@ Les mises à jour se font en une commande, avec sauvegarde automatique et retour
 <ul>
 <li>Chaque mouvement est équilibré (débit = crédit) et chaque ligne porte soit un débit, soit un crédit.</li>
 <li>Comptes, journaux et codes doivent exister ; la date doit tomber dans l'exercice ouvert ; un exercice clôturé est verrouillé.</li>
-<li>Une correction exige un motif ; l'avant et l'après sont gardés ; une écriture d'un exercice clos s'annule par une écriture inverse.</li>
+<li>Une correction exige un motif ; l'avant et l'après sont gardés ; une écriture se modifie en la rappelant par son numéro ; une erreur d'un exercice clos se corrige par une écriture libre dans l'exercice ouvert.</li>
 <li>L'historique note qui a fait quoi et quand ; son effacement laisse une copie Excel et une trace.</li>
 <li>Connexion chiffrée (HTTPS), mot de passe par personne, droits selon le rôle.</li>
 <li>Sauvegardes à chaque mise à jour, chaque nuit et à la demande ; téléchargement mensuel conseillé ; archive Excel figée à chaque clôture.</li>

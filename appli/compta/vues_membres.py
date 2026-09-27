@@ -1,7 +1,6 @@
-"""Suivi des membres : liste, fiche (situation, historique, lettrage, relance), impayés, cotisations."""
+"""Suivi des membres : liste, fiche (situation, historique, lettrage), impayés, cotisations."""
 
 import io
-from urllib.parse import quote
 
 from django import forms
 from django.contrib import messages
@@ -112,10 +111,8 @@ def fiche(request, numero):
               .order_by("mouvement__date", "mouvement__numero", "ordre")):
         cumul += l.debit - l.credit
         historique.append((l, cumul))
-    relance = moteur.texte_relance(m, s) if s.solde > 0 else ""
     return render(request, "compta/membre.html", {
-        "m": m, "s": s, "form": form, "peut": peut, "historique": historique, "relance": relance,
-        "mailto": f"mailto:{m.email}?subject={quote('Loge Bnei Brith – votre compte')}&body={quote(relance)}" if relance and m.email else "",
+        "m": m, "s": s, "form": form, "peut": peut, "historique": historique,
     })
 
 
@@ -124,8 +121,7 @@ def fiche(request, numero):
 def impayes(request):
     lignes = moteur.impayes()
     return render(request, "compta/impayes.html", {
-        "lignes": lignes, "total": sum((s.solde for _, s in lignes), ZERO),
-        "tranches": [(lib, sum((s.tranches[i][1] for _, s in lignes), ZERO)) for i, (lib, _) in enumerate(moteur.TRANCHES)]})
+        "lignes": lignes, "total": sum((s.solde for _, s in lignes), ZERO)})
 
 
 @login_required

@@ -1,9 +1,6 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Impayés{% endblock %}{% block contenu %}
 <h1>Impayés des tiers</h1>{% include "compta/_nav_membres.html" %}
-<div class="chiffres"><div class="chiffre"><div class="lib">Total dû</div><div class="val neg">{{ total|shekel }}</div></div>
-{% for lib, v in tranches %}<div class="chiffre"><div class="lib">{{ lib }}</div><div class="val">{{ v|shekel }}</div></div>{% endfor %}</div>
-<table class="triable" style="margin-top:12px"><tr><th>Tiers</th><th>Compte</th><th>Téléphone</th><th class="n">Solde dû</th>{% for lib, v in tranches %}<th class="n">{{ lib }}</th>{% endfor %}<th></th></tr>
-{% for m, s in lignes %}<tr><td><a href="{% url 'membre' m.compte_id %}">{{ m }}</a></td><td>{{ m.compte_id }}</td><td>{{ m.telephone }}</td><td class="n neg">{{ s.solde|shekel }}</td>
-{% for lib, v in s.tranches %}<td class="n">{{ v|zero_vide }}</td>{% endfor %}<td><a href="{% url 'membre' m.compte_id %}#relance">Relance</a></td></tr>
-{% empty %}<tr><td colspan="8">Aucun impayé.</td></tr>{% endfor %}</table>
-<p class="aide">Ancienneté : les règlements sont imputés sur les factures les plus anciennes (les lignes lettrées sont soldées).</p>{% endblock %}
+<div class="chiffres"><div class="chiffre"><div class="lib">Total dû</div><div class="val neg">{{ total|shekel }}</div></div></div>
+<table class="triable" style="margin-top:12px"><tr><th>Tiers</th><th>Compte</th><th>Téléphone</th><th class="n">Solde dû</th></tr>
+{% for m, s in lignes %}<tr><td><a href="{% url 'membre' m.compte_id %}">{{ m }}</a></td><td>{{ m.compte_id }}</td><td>{{ m.telephone }}</td><td class="n neg">{{ s.solde|shekel }}</td></tr>
+{% empty %}<tr><td colspan="4">Aucun impayé.</td></tr>{% endfor %}</table>{% endblock %}

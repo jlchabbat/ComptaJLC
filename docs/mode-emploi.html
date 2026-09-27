@@ -90,7 +90,7 @@ Le réglage est mémorisé sur l'appareil. On peut aussi utiliser Ctrl + / Ctrl 
 <h2>Les menus</h2>
 <figure><img src="images/02_accueil_menu.png"><figcaption>Tableau de bord, menu « Consulter » ouvert.</figcaption></figure>
 <table><tr><th style="width:18%">Menu</th><th>Pages</th></tr>
-<tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Codes et nouveaux tiers · Fiches bénévoles</td></tr>
+<tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Modifier une écriture · Codes et nouveaux tiers · Fiches bénévoles</td></tr>
 <tr><td>Tiers</td><td>Liste des tiers · Impayés · Cotisations des membres · Tiers provisoires</td></tr>
 <tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analytique</td></tr>
 <tr><td>Banque</td><td>Rapprochement · Traductions du relevé</td></tr>
@@ -149,16 +149,13 @@ virement vers un autre compte, code axe 2, compte de la bonne classe, écritures
 <p>Cliquer sur un <b>n° Mvt</b> (Écritures, Journaux, Grand livre…). La page montre les lignes, le lettrage, le pointage bancaire et les commentaires.</p>
 <figure><img src="images/04_mouvement.png"><figcaption>Un mouvement et ses boutons de correction (trésorier).</figcaption></figure>
 <h2>Modifier</h2>
-<ol><li>Bouton <b>Modifier</b> : changer comptes, libellés, montants, axe 2, date ou journal ; ajouter une ligne (« + Ajouter une ligne ») ou en supprimer (case Suppr.).</li>
+<ol><li><span class="menu">Saisie › Modifier une écriture</span> : taper le <b>n° de mouvement</b> puis <b>Rappeler l'écriture</b> (ou bouton <b>Modifier</b> sur le mouvement). Changer comptes, libellés, montants, axe 2, date ou journal ; ajouter une ligne (« + Ajouter une ligne ») ou en supprimer (case Suppr.).</li>
 <li>Le total débit / crédit s'affiche en direct : le mouvement doit rester <b>équilibré</b>.</li>
 <li>Indiquer le <b>motif</b> (obligatoire), puis <b>Enregistrer</b>.</li></ol>
 <figure><img src="images/05_modifier.png"><figcaption>Modification d'un mouvement : totaux en direct, motif obligatoire.</figcaption></figure>
 <ul><li>Refusé dans un exercice clos.</li>
 <li>Une ligne dont le compte ou le montant change est dépointée du relevé et délettrée.</li>
 <li>Le motif, l'avant et l'après sont gardés dans le mouvement et dans l'Historique.</li></ul>
-<h2>Annuler par une écriture inverse (contrepassation)</h2>
-<p>Bouton <b>Annuler par une écriture inverse</b> : un nouveau mouvement reprend les lignes en inversant débit et crédit ;
-l'original reste visible et leur total s'annule. C'est la méthode à utiliser pour une écriture d'un exercice clos ou déjà pointée.</p>
 <h2>Écriture libre</h2>
 <p><span class="menu">Saisie › Écriture libre</span> : saisir un mouvement ligne par ligne (opération diverse, reclassement),
 avec journal, date et objet. Mêmes contrôles (équilibre, exercice ouvert).</p>
@@ -184,7 +181,7 @@ Le compte est proposé d'après le type et le nom : 411COHEN001 pour un membre, 
 La colonne Solde indique ce que le tiers doit (positif) ou ce qui lui est dû (négatif).</p>
 <figure><img src="images/07_tiers.png"><figcaption>Liste des tiers.</figcaption></figure>
 <h2>Fiche d'un tiers</h2>
-<p>Cliquer sur le nom : facturé, réglé, solde dû, ancienneté des impayés (0–30, 31–90, plus de 90 jours), historique des écritures.
+<p>Cliquer sur le nom : facturé, réglé, solde dû, historique des écritures.
 <b>Modifier la fiche</b> (en bas) : type, coordonnées, adresse ; pour un membre : statut, date d'adhésion, cotisation attendue.</p>
 <figure><img src="images/08_fiche_tiers.png"><figcaption>Fiche d'un membre.</figcaption></figure>
 <h2>Importer un fichier Tiers.xlsx</h2>
@@ -193,9 +190,8 @@ La colonne Solde indique ce que le tiers doit (positif) ou ce qui lui est dû (n
 <li><b>Importer</b> : un compte rendu indique les tiers créés, mis à jour, et les lignes en erreur.</li></ol>
 <div class="cadre">Un tiers déjà présent (même compte, ou même type + nom + prénom) est <b>mis à jour</b>, jamais en double.
 Une cellule vide n'efface rien. Rien n'est supprimé.</div>
-<h2>Impayés et relances</h2>
-<p><span class="menu">Tiers › Impayés</span> : tiers qui doivent de l'argent, du plus gros montant au plus petit, avec l'ancienneté.
-Dans la fiche d'un membre qui doit, un <b>texte de relance</b> est prêt : <b>Copier le texte</b>, ou <b>Ouvrir dans ma messagerie</b> si l'e-mail est connu.</p>
+<h2>Impayés</h2>
+<p><span class="menu">Tiers › Impayés</span> : tiers qui doivent de l'argent, du plus gros montant au plus petit.</p>
 <h2>Cotisations</h2>
 <p><span class="menu">Tiers › Cotisations des membres</span> : pour l'exercice choisi, attendues (cotisation des membres actifs), facturées, reçues, reste dû et taux de recouvrement.</p>
 <h2>Lettrage</h2>
@@ -279,7 +275,7 @@ on peut réimporter un relevé qui chevauche le précédent. Au premier import d
 <li>Choisir le <b>code axe 2 des à-nouveaux</b>, cocher la confirmation, <b>Clôturer l'exercice</b>.</li></ol>
 <p>La clôture crée <b>un</b> mouvement d'à-nouveaux (journal AN) au 1er jour de l'exercice suivant : soldes des comptes de bilan et résultat affecté au compte 110000.
 Elle crée l'exercice suivant si besoin, <b>verrouille</b> l'exercice clos et enregistre une <b>archive Excel figée</b> (téléchargeable). Aucune écriture existante n'est modifiée.</p>
-<div class="cadre attention">La clôture est <b>définitive</b>. Une erreur découverte ensuite se corrige dans l'exercice ouvert (écriture libre ou contrepassation).</div>
+<div class="cadre attention">La clôture est <b>définitive</b>. Une erreur découverte ensuite se corrige dans l'exercice ouvert (écriture libre).</div>
 
 <!-- 12 -->
 <h1 id="c12">12. Contrôles et historique</h1>
@@ -347,7 +343,7 @@ taper <code>bash ~/maj.sh</code> dans une console, puis <b>Ctrl+F5</b> sur une p
 <h2>Problèmes fréquents</h2>
 <table><tr><th style="width:36%">Situation</th><th>Que faire</th></tr>
 <tr><td>Mot de passe oublié (site)</td><td>Un administrateur le change dans Référentiels › Utilisateurs ; ou en console : <code>python manage.py changepassword Tresorier</code>.</td></tr>
-<tr><td>« Date dans un exercice clos »</td><td>Choisir une date de l'exercice ouvert ; pour corriger le passé, contrepasser dans l'exercice ouvert.</td></tr>
+<tr><td>« Date dans un exercice clos »</td><td>Choisir une date de l'exercice ouvert ; pour corriger le passé, passer une écriture libre dans l'exercice ouvert.</td></tr>
 <tr><td>« Déjà enregistrée ? »</td><td>Une opération identique existe ; si c'est voulu, cocher « ce n'est pas un doublon ».</td></tr>
 <tr><td>Un tiers n'apparaît pas dans la liste de la saisie</td><td>Le type d'opération attend un autre type de tiers (membre / fournisseur), ou le tiers n'existe pas : le créer (Codes et nouveaux tiers).</td></tr>
 <tr><td>Report d'une fiche refusé</td><td>Lire la colonne Contrôle : tiers provisoire sans compte, mode ou axe 2 manquant (Gestion)…</td></tr>
@@ -365,7 +361,6 @@ taper <code>bash ~/maj.sh</code> dans une console, puis <b>Ctrl+F5</b> sur une p
 <tr><td>Tiers</td><td>Membre (411…), fournisseur (401…) ou autre type ; chacun a son compte et sa fiche.</td></tr>
 <tr><td>Lettrage</td><td>Lien entre une facture et son règlement sur le compte d'un tiers.</td></tr>
 <tr><td>Pointage</td><td>Lien entre une ligne du relevé bancaire et une écriture.</td></tr>
-<tr><td>Contrepassation</td><td>Annulation d'une écriture par l'écriture inverse.</td></tr>
 <tr><td>À-nouveaux</td><td>Soldes reportés au début de l'exercice suivant par la clôture.</td></tr>
 <tr><td>580000 / 470000</td><td>Compte de virements internes et paiements Isracard / compte d'attente.</td></tr>
 </table>

@@ -1,5 +1,4 @@
-"""Suivi des membres (cahier des charges, Lot 2) : situation, ancienneté des impayés, cotisations,
-relance et lettrage des comptes de membres."""
+"""Suivi des membres (cahier des charges, Lot 2) : situation, impayés, cotisations et lettrage des comptes de membres."""
 
 import datetime as dt
 import re
@@ -10,8 +9,6 @@ from decimal import Decimal
 from django.db import transaction
 
 from .models import ZERO, Compte, Ligne, Membre, Modification, Reglage, TypeTiers
-
-TRANCHES = [("0–30 j", 30), ("31–90 j", 90), ("> 90 j", None)]
 
 
 def _cle_nom(nom):
@@ -75,8 +72,7 @@ class Situation:
     facture: Decimal = ZERO
     regle: Decimal = ZERO
     solde: Decimal = ZERO
-    impayes: list = field(default_factory=list)       # (ligne, restant dû, jours)
-    tranches: list = field(default_factory=list)      # (libellé, montant)
+    impayes: list = field(default_factory=list)       # (ligne, restant dû)
     avance: Decimal = ZERO
 
 
@@ -98,12 +94,7 @@ def situation(compte, jusquau=None):
     s = Situation(facture=sum((l.debit for l in ls), ZERO), regle=sum((l.credit for l in ls), ZERO))
     s.solde = s.facture - s.regle
     restants, s.avance = allouer([l for l in ls if not l.lettrage])
-    s.impayes = [(l, r, (jusquau - l.mouvement.date).days) for l, r in restants]
-    bornes = []
-    for lib, jours in TRANCHES:
-        bas = bornes[-1] if bornes else -1
-        bornes.append(jours if jours is not None else 10 ** 6)
-        s.tranches.append((lib, sum((r for _, r, j in s.impayes if bas < j <= bornes[-1]), ZERO)))
+    s.impayes = restants
     return s
 
 
@@ -126,7 +117,7 @@ def cotisations(exercice):
         cot = Ligne.objects.filter(mouvement__in=mvts, compte_id=compte_cot)
         facturee = sum((l.credit - l.debit for l in cot), ZERO)
         s = situation(m.compte, exercice.fin)
-        du = sum((r for l, r, _ in s.impayes if l.mouvement.date >= exercice.debut
+        du = sum((r for l, r in s.impayes if l.mouvement.date >= exercice.debut
                   and l.mouvement.lignes.filter(compte_id=compte_cot).exists()), ZERO)
         attendue = (m.cotisation or ZERO) if m.statut == "actif" else ZERO
         if attendue or facturee:
@@ -135,26 +126,6 @@ def cotisations(exercice):
     tot["taux"] = round(tot["recue"] * 100 / tot["facturee"], 1) if tot["facturee"] else None
     tot["compte"] = compte_cot
     return res, tot
-
-
-# ---------------------------------------------------------------- relance
-
-TEXTE_RELANCE = """Bonjour {prenom} {nom},
-
-Sauf erreur de notre part, votre compte auprès de la Loge Bnei Brith présente un solde dû de {montant} :
-
-{detail}
-
-Nous vous remercions de bien vouloir régulariser ce montant, ou de nous signaler toute erreur.
-
-Bien cordialement,
-Le trésorier"""
-
-
-def texte_relance(membre, s):
-    modele = Reglage.lire("texte_relance") or TEXTE_RELANCE
-    detail = "\n".join(f"- {l.mouvement.date:%d/%m/%Y} {l.libelle} : {montant(r)}" for l, r, _ in s.impayes)
-    return modele.format(prenom=membre.prenom, nom=membre.nom.title(), montant=montant(s.solde), detail=detail)
 
 
 def montant(v):

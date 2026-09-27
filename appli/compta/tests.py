@@ -783,13 +783,11 @@ class Membres(TestCase):
                          [("401000", "FOURNIS DIVERS", "", "Fournisseur"), ("411TAIEB001", "TAIEB", "Jeanne", "Membre")])
         self.assertEqual(mbr.creer_manquants(), 0)
 
-    def test_situation_et_anciennete(self):
+    def test_situation(self):
         s = mbr.situation(self.c, dt.date(2026, 10, 1))
         self.assertEqual((s.facture, s.regle, s.solde), (D(1100), D(500), D(600)))
         # FIFO : les 500 réglés soldent la cotisation de janvier ; restent la manifestation de mars et la facture 421
-        self.assertEqual([(l.mouvement.numero, r, j) for l, r, j in s.impayes], [(602, D(200), 214), (421, D(400), 7)])
-        self.assertEqual(s.tranches, [("0–30 j", D(400)), ("31–90 j", D(0)), ("> 90 j", D(200))])
-        self.assertIn("600,00 ₪", mbr.texte_relance(Membre.objects.get(compte_id="411TAIEB001"), s))
+        self.assertEqual([(l.mouvement.numero, r) for l, r in s.impayes], [(602, D(200)), (421, D(400))])
 
     def test_lettrage(self):
         self.assertEqual(mbr.lettrage_automatique(self.c), 1)          # manifestation de mars : même mouvement
@@ -799,7 +797,7 @@ class Membres(TestCase):
         with self.assertRaises(ValueError):
             mbr.lettrer(self.c, [cot, acompte])                       # 500 ≠ 300
         s = mbr.situation(self.c, dt.date(2026, 10, 1))
-        self.assertEqual([(l.mouvement.numero, r) for l, r, _ in s.impayes], [(600, D(200)), (421, D(400))])
+        self.assertEqual([(l.mouvement.numero, r) for l, r in s.impayes], [(600, D(200)), (421, D(400))])
         self.assertEqual(mbr.delettrer(self.c, "A"), 2)
         self.assertEqual(mbr.code_suivant(self.c), "A")
 
@@ -827,7 +825,7 @@ class EcransMembres(TestCase):
     def test_pages_et_lettrage_manuel(self):
         for url in ("/membres/", "/membres/impayes/", "/membres/cotisations/", "/membres/411TAIEB001/", "/favicon.ico"):
             self.assertIn(self.client.get(url).status_code, (200, 301), url)
-        self.assertContains(self.client.get("/membres/411TAIEB001/"), "Texte de relance")
+        self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "relance")
         cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
         cr = Ligne.objects.get(compte=self.c, credit=200)
         self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [cot.pk, acompte.pk]})
@@ -892,11 +890,7 @@ class Corrections(TestCase):
         with self.assertRaises(ValueError):
             corr.modifier(self.m, self.m.date, self.m.journal, [self.saisie(self.l1), self.saisie(self.l2)], "x", self.u)
 
-    def test_contrepasser_et_ecriture_libre(self):
-        inv = corr.contrepasser(self.m, dt.date(2026, 3, 5), "doublon", self.u)
-        self.assertEqual(soldes(Ligne.objects.filter(mouvement__in=[self.m, inv], compte_id="512000"))[2], D(0))
-        self.assertEqual(inv.origine, "correction")
-        self.assertIn(f"contrepassé par le Mvt {inv.numero}", Mouvement.objects.get(pk=self.m.pk).commentaire)
+    def test_ecriture_libre(self):
         m = corr.creer(dt.date(2026, 4, 1), Journal.objects.get(code="OD"),
                        [corr.LigneSaisie(None, Compte.objects.get(numero="470000") if Compte.objects.filter(numero="470000").exists()
                                          else Compte.objects.get(numero="600000"), "RECLASSEMENT", D(5), D(0), self.g),
@@ -921,8 +915,9 @@ class EcransCorrections(TestCase):
                 "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15", "l-1-anal2": "GEN.004"}
         self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
         self.assertEqual(Ligne.objects.get(pk=self.l1.pk).debit, D(15))
-        r = self.client.post("/mouvement/500/contrepasser/", {"date": "2026-03-10", "motif": "erreur"})
-        self.assertEqual(r.status_code, 302)
+        self.assertRedirects(self.client.get("/mouvement/rappel/?numero=500"), "/mouvement/500/modifier/")
+        self.assertContains(self.client.get("/mouvement/rappel/?numero=9999"), "Aucun mouvement n° 9999")
+        self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
 
     def test_tri_et_droits(self):

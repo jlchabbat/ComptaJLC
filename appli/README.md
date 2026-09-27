@@ -98,10 +98,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   adresse, code postal, ville, téléphone, e-mail ; pour les membres : adhésion,
   statut (actif, honoraire, démissionnaire), cotisation attendue ; import du
   modèle `Imports/modeles/07_membres.csv`.
-- **Fiche membre** : facturé, réglé, solde dû, ancienneté des impayés (0–30,
-  31–90, > 90 jours ; règlements imputés sur les factures les plus
-  anciennes), historique, texte de relance à copier ou à ouvrir dans la
-  messagerie.
+- **Fiche membre** : facturé, réglé, solde dû, historique.
 - **Impayés** triés par montant ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique

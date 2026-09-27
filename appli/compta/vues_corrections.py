@@ -1,9 +1,8 @@
-"""Modifier ou contrepasser un mouvement, saisir une écriture libre (trésorier)."""
+"""Rappeler un mouvement pour le modifier, saisir une écriture libre (trésorier)."""
 
 import datetime as dt
 from decimal import Decimal
 
-from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -56,6 +55,18 @@ def editer(request, m=None):
 
 @login_required
 @corriger
+def rappeler(request):
+    """Modifier une écriture : on tape son numéro de mouvement, elle s'ouvre en modification."""
+    numero = request.GET.get("numero", "").strip()
+    if numero:
+        if numero.isdigit() and Mouvement.objects.filter(numero=int(numero)).exists():
+            return redirect("mouvement_modifier", int(numero))
+        messages.error(request, f"Aucun mouvement n° {numero}.")
+    return render(request, "compta/rappel.html", {"numero": numero})
+
+
+@login_required
+@corriger
 def modifier(request, numero):
     m = get_object_or_404(Mouvement, numero=numero)
     if moteur.verrou(m):
@@ -68,24 +79,3 @@ def modifier(request, numero):
 @permission_required("compta.add_mouvement", raise_exception=True)
 def nouveau(request):
     return editer(request)
-
-
-class ContrepassationForm(forms.Form):
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"), label="Date de l'annulation")
-    motif = forms.CharField(max_length=150)
-
-
-@login_required
-@corriger
-def contrepasser(request, numero):
-    m = get_object_or_404(Mouvement, numero=numero)
-    form = ContrepassationForm(request.POST or None, initial={"date": moteur.date_par_defaut(m)})
-    if request.method == "POST" and form.is_valid():
-        try:
-            inverse = moteur.contrepasser(m, form.cleaned_data["date"], form.cleaned_data["motif"], request.user)
-        except ValueError as e:
-            messages.error(request, str(e))
-        else:
-            messages.success(request, f"Mouvement {m.numero} annulé par le mouvement {inverse.numero}.")
-            return redirect("mouvement", inverse.numero)
-    return render(request, "compta/contrepassation.html", {"m": m, "form": form})
