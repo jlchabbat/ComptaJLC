@@ -112,6 +112,79 @@ def normaliser(rangees):
     return lignes
 
 
+DATE_COURTE = re.compile(r"^\d\d/\d\d/\d\d(\d\d)?$")
+NOMBRE = re.compile(r"^₪?-?[\d,]+\.\d\d-?$")
+MIROIR = str.maketrans("()<>", ")(><")
+
+
+def _logique(mot):
+    """Mot hébreu lu dans l'ordre visuel (PDF) → ordre logique ; les chiffres restent dans leur sens."""
+    return mot[::-1].translate(MIROIR) if HEBREU.search(mot) else mot
+
+
+def lire_pdf_mizrahi(contenu):
+    """Relevé PDF du site Mizrahi-Tefahot (עובר ושב - יתרה ותנועות בחשבון), lu par la position des mots.
+
+    Colonnes repérées sur la ligne d'en-tête de chaque page. Le solde, imprimé seulement sur la dernière ligne
+    de chaque date, est complété depuis le solde d'ouverture (יתרה קודמת) et vérifié contre les soldes imprimés.
+    Renvoie [] si le document n'a pas cette mise en page."""
+    import pdfplumber
+    lignes, ouverture = [], None
+    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
+        for page in pdf.pages:
+            mots = [dict(m, texte=_logique(m["text"])) for m in page.extract_words()]
+            rangs = defaultdict(list)
+            for m in mots:
+                rangs[round(m["top"] / 3)].append(m)
+            entete = next((r for r in rangs.values() if any(m["texte"] == "אסמכתה" for m in r)), None)
+            if not entete:
+                continue
+            x = lambda cond: max((m["x1"] for m in entete if cond(m["texte"])), default=None)  # noqa: E731
+            dates = sorted(m["x1"] for m in entete if m["texte"] == "תאריך")      # date, puis date de valeur
+            cols = {"date": dates[-1] if dates else None, "valeur": dates[0] if len(dates) > 1 else None, "montant": x(lambda t: "זכות" in t),
+                    "solde": x(lambda t: t in ("יתרה", 'בש"ח')), "reference": x(lambda t: t == "אסמכתה")}
+            if None in cols.values():
+                continue
+            haut = min(m["top"] for m in entete)
+            proche = lambda m, c: abs(m["x1"] - cols[c]) <= 15  # noqa: E731
+            for cle in sorted(rangs):
+                r = rangs[cle]
+                if any(m["texte"] == "קודמת" for m in r):                            # יתרה קודמת : solde d'ouverture
+                    v = next((m["texte"] for m in r if m["texte"].startswith("₪")), None)
+                    ouverture = nombre(v) if v else ouverture
+                    continue
+                if min(m["top"] for m in r) <= haut:
+                    continue
+                d = next((m for m in r if proche(m, "date") and DATE_COURTE.match(m["texte"])), None)
+                if not d:
+                    continue
+                l = {"date": date(d["texte"]), "reference": "", "montant": None, "solde": None}
+                texte = []
+                for m in r:
+                    t = m["texte"]
+                    if m is d or (proche(m, "valeur") and DATE_COURTE.match(t)) or t in ("<", ">"):
+                        continue
+                    if NOMBRE.match(t) and proche(m, "montant"):
+                        l["montant"] = nombre(t)
+                    elif NOMBRE.match(t) and proche(m, "solde"):
+                        l["solde"] = nombre(t)
+                    elif t.isdigit() and proche(m, "reference"):
+                        l["reference"] = t
+                    else:
+                        texte.append(m)
+                l["operation"] = " ".join(m["texte"] for m in sorted(texte, key=lambda m: -m["x1"]))[:200]
+                if l["montant"] is not None:
+                    lignes.append(l)
+    if lignes and ouverture is not None:
+        cumul = ouverture
+        for l in lignes:
+            cumul += l["montant"]
+            if l["solde"] is not None and l["solde"] != cumul:
+                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
+            l["solde"] = cumul
+    return lignes
+
+
 def lire(nom, contenu):
     """Lit un fichier de relevé (octets) selon son extension."""
     ext = nom.lower().rsplit(".", 1)[-1]
@@ -125,6 +198,9 @@ def lire(nom, contenu):
         return normaliser([list(r) for ws in wb.worksheets for r in ws.iter_rows(values_only=True)])
     if ext == "pdf":
         import pdfplumber
+        lignes = lire_pdf_mizrahi(contenu)
+        if lignes:
+            return lignes
         rangees = []
         with pdfplumber.open(io.BytesIO(contenu)) as pdf:
             for page in pdf.pages:

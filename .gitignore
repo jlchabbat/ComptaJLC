@@ -4,9 +4,14 @@
 *.xlsx
 !Imports/modeles/*.xlsx
 
-# Exports réels de reprise (données personnelles)
+# Fichiers échangés par l'application (données personnelles et bancaires)
+Imports/*
+!Imports/README.md
+!Imports/modeles/
+!Imports/reprise/
 Imports/reprise/*
 !Imports/reprise/.gitkeep
+Exports/
 
 # Fichiers temporaires Excel et Office
 ~$*

@@ -291,6 +291,20 @@ C'est la piste d'audit du vérificateur. Le trésorier peut <b>effacer l'histori
 
 <!-- 13 -->
 <h1 id="c13">13. Administration</h1>
+<h2>Imports / Exports</h2>
+<p><span class="menu">Administration › Imports / Exports</span> (administrateur, en complément des imports habituels des écrans Tiers et Rapprochement). Toutes les données s'échangent par fichiers <b>.xlsx</b>, un par nature
+(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse),
+de <b>même structure à l'import et à l'export</b>. Deux dossiers (les mêmes que pour Paramètres (Excel) et les sauvegardes), modifiables en bas de la page : <b>Imports</b> (fichiers à importer, relevés
+bancaires compris) et <b>Exports</b> (fichiers produits par l'application). Chacun contient un <b>Lexique.xlsx</b> : fichiers, colonnes, règles.</p>
+<ol><li><b>Importer</b> : déposer le fichier dans Imports ; il apparaît dans la liste ; bouton <b>Importer</b>. Tout ou rien : à la moindre
+erreur, rien n'est enregistré et les lignes en erreur s'affichent. Le fichier importé est rangé, daté, dans Imports\Importés.</li>
+<li><b>Exporter</b> : bouton de chaque ligne, ou <b>Tout exporter</b> ; les fichiers datés arrivent dans Exports.</li>
+<li><b>Corriger à la main</b> : exporter, modifier dans Excel, copier le fichier dans Imports et l'importer. Écritures : un Mvt modifié est mis
+à jour (tracé comme une correction), un Mvt nouveau est ajouté, un Mvt identique est ignoré.</li>
+<li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de
+leur nature ; les référentiels sont mis à jour. Pointages, à-nouveaux et fiches reportées sont recollés quand leurs écritures reviennent à
+l'identique.</li></ol>
+<div class="cadre">Une sauvegarde de la base est faite avant chaque import et chaque réinjection (Administration › Base de données).</div>
 <h2>Référentiels</h2>
 <p><span class="menu">Administration › Référentiels</span> (trésorier) : plan comptable, journaux, codes analytiques, préfixes, exercices, réglages
 (comptes 580000 et 470000, tolérance du rapprochement, compte des cotisations…), modèles d'opérations, moyens de paiement, types de tiers,

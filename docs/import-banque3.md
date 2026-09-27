@@ -34,8 +34,10 @@ L'import de Banque 3 doit respecter strictement cette structure :
    - exactement un montant renseigné, `Debit` **ou** `Credit`, nombre positif.
 4. Si une ligne est rejetée, l'import s'arrête et liste les lignes en erreur
    (numéro de ligne Excel et motif) : rien n'est enregistré.
-5. Un nouvel import de `Bit.xlsx` **remplace** les écritures `B3` existantes
-   (pas d'ajout à la suite, pas de doublons).
+5. Un nouvel import de `Bit.xlsx` **remplace** le relevé `B3` existant
+   (pas d'ajout à la suite, pas de doublons ; les pointages B3 sont annulés).
+6. Le fichier se dépose dans le dossier `Imports`, puis s'importe par
+   Administration › Imports / Exports ; l'export produit le même format.
 
 ## Règles observées
 

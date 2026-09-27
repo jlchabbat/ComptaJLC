@@ -1417,3 +1417,186 @@ class Utilisateurs(TestCase):
         r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Bureau", "actif": "on"})
         self.assertContains(r, "au moins un administrateur")
         self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)
+
+
+from . import echanges as ech  # noqa: E402
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class Echanges(TransactionTestCase):
+    """Imports et exports par fichiers .xlsx des dossiers Imports et Exports."""
+
+    def setUp(self):
+        self.dossier = Path(tempfile.mkdtemp())
+        self.reglage = override_settings(IMPORTS_DIR=self.dossier / "Imports", EXPORTS_DIR=self.dossier / "Exports")
+        self.reglage.enable()
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        mbr.creer_manquants()
+        Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
+        u = User.objects.create_user("admin")
+        donner_role(u, "Administrateur")                    # page réservée : elle importe le paramétrage de base
+        self.client.force_login(u)
+
+    def tearDown(self):
+        self.reglage.disable()
+
+    def fichier(self, nom, lignes, colonnes=None):
+        f = ech.format_de(nom)
+        wb = ech.classeur(f, lignes)
+        if colonnes:
+            for i, c in enumerate(colonnes, 1):
+                wb.active.cell(1, i, c)
+        wb.save(ech.imports() / nom)
+
+    def importer(self, nom):
+        return self.client.post("/echanges/", {"importer": nom}, follow=True)
+
+    def test_aller_retour_des_referentiels(self):
+        self.client.post("/echanges/", {"exporter": "tout"})
+        exportes = sorted(p.name for p in ech.exports().iterdir() if not p.name.startswith("Lexique"))
+        self.assertEqual(len(exportes), len(ech.FORMATS))
+        avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
+        for f in ech.FORMATS:
+            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions"):
+                continue                        # écritures : Mvt déjà présents ; relevés et budget vides
+            source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
+            (ech.imports() / source.name).write_bytes(source.read_bytes())
+            r = self.importer(source.name)
+            self.assertContains(r, f"{source.name} importé (", msg_prefix=f.nom)
+        self.assertEqual(avant, (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count()))
+        self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
+        self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 8)
+        wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
+        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"])
+        self.assertEqual(wb.active["C2"].value, 421)
+
+    def test_refus_tout_ou_rien(self):
+        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "", "non", "oui"]], colonnes=["Compte", "Intitule"])
+        r = self.importer("PlanComptable.xlsx")
+        self.assertContains(r, "En-têtes de la ligne 1 non conformes")
+        self.assertTrue((ech.imports() / "PlanComptable.xlsx").exists())            # reste dans Imports
+        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "", "non", "oui"], ["999001", "AUTRE", "XXX.9", "non", "oui"]])
+        self.assertContains(self.importer("PlanComptable.xlsx"), "Ligne 3 : code axe 1 « XXX.9 » inconnu")
+        self.assertFalse(Compte.objects.filter(numero="999000").exists())          # rien d'enregistré
+        openpyxl.Workbook().save(ech.imports() / "Inconnu.xlsx")
+        self.assertContains(self.client.get("/echanges/"), "nom non reconnu")
+
+    def test_ecritures(self):
+        d = dt.datetime(2026, 3, 1)
+        lignes = [[d, "B1", 900, 900, "600100", "FRAIS", 10, None, "GEN.004", ""],
+                  [d, "B1", 900, 900, "512000", "FRAIS", None, 9, "GEN.004", ""]]
+        self.fichier("Ecritures.xlsx", lignes)
+        self.assertContains(self.importer("Ecritures.xlsx"), "Mvt 900 déséquilibré")
+        lignes[1][7] = 10
+        self.fichier("Ecritures.xlsx", lignes)
+        self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s), 0 modifié(s), 0 inchangé(s)")
+        m = Mouvement.objects.get(numero=900)
+        self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
+
+    def test_ecritures_modifiees_a_la_main(self):
+        """Exporter, corriger le fichier dans Excel, le réinjecter : seuls les Mvt changés sont mis à jour."""
+        chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
+        wb = openpyxl.load_workbook(chemin)
+        ws = wb.active
+        ws["F2"], ws["F3"] = "FACTURE CORRIGEE", "FACTURE CORRIGEE"          # Mvt 421 : libellés
+        ws["G2"], ws["H3"] = 450, 450                                          # et montant
+        wb.save(ech.imports() / chemin.name)
+        r = self.importer(chemin.name)
+        self.assertContains(r, "0 mouvement(s) ajouté(s), 1 modifié(s), 0 inchangé(s)")
+        m = Mouvement.objects.get(numero=421)
+        self.assertEqual((m.total_debit, m.lignes.first().libelle), (D(450), "FACTURE CORRIGEE"))
+        self.assertIn("import Ecritures_", m.commentaire)
+        self.assertTrue(Modification.objects.filter(action="Modification", objet__startswith="Mvt 421").exists())
+        # réinjecter le même fichier : rien ne change
+        (ech.imports() / "Ecritures.xlsx").write_bytes(next(ech.importes().glob("Ecritures_*")).read_bytes())
+        self.assertContains(self.importer("Ecritures.xlsx"), "0 mouvement(s) ajouté(s), 0 modifié(s), 1 inchangé(s)")
+        # exercice clos : modification refusée
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        ws["G2"], ws["H3"] = 460, 460
+        wb.save(ech.imports() / "Ecritures.xlsx")
+        self.assertContains(self.importer("Ecritures.xlsx"), "non modifiable")
+        self.assertEqual(Mouvement.objects.get(numero=421).total_debit, D(450))
+        ws["G2"], ws["H3"] = 450, 450                                          # inchangé : accepté malgré la clôture
+        wb.save(ech.imports() / "Ecritures.xlsx")
+        self.assertContains(self.importer("Ecritures.xlsx"), "1 inchangé(s)")
+
+    def test_bit_remplace_le_releve(self):
+        d = dt.datetime(2026, 1, 11)
+        self.fichier("Bit.xlsx", [["B2", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None]])
+        self.assertContains(self.importer("Bit.xlsx"), "journal « B2 » : B3 attendu")
+        self.fichier("Bit.xlsx", [["B3", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None],
+                                  ["B3", d, "BANQUE - BANQUE - VIREMENT BIT VERS BANQUE", None, 6820]])
+        self.assertContains(self.importer("Bit.xlsx"), "2 ligne(s) importée(s), 0 ancienne(s) remplacée(s)")
+        self.assertEqual(sorted(LigneReleve.objects.filter(journal_id="B3", ouverture=False).values_list("montant", flat=True)),
+                         [D(-6820), D(440)])
+        self.fichier("Bit_2026-09-27.xlsx", [["B3", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None]])
+        self.assertContains(self.importer("Bit_2026-09-27.xlsx"), "1 ligne(s) importée(s), 2 ancienne(s) remplacée(s)")
+        self.assertEqual(LigneReleve.objects.filter(journal_id="B3").count(), 2)          # ouverture + 1 ligne
+        chemin, n = ech.exporter(ech.PAR_NOM["Bit"])
+        ws = openpyxl.load_workbook(chemin).active
+        self.assertEqual([c.value for c in ws[2]][:3] + [ws["D2"].value], ["B3", dt.datetime(2026, 1, 11), "TAIEB JEANNE - FETES - RACLETTE", 440])
+
+    def test_banque_sans_doublon(self):
+        d = dt.datetime(2026, 1, 5)
+        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990], [d, "12", "הפקדת שיק", 1550, 2540]])
+        self.assertContains(self.importer("Banque1.xlsx"), "2 ligne(s) ajoutée(s), 0 déjà présente(s)")
+        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990], [d, "12", "הפקדת שיק", 1550, 2540]])
+        self.assertContains(self.importer("Banque1.xlsx"), "0 ligne(s) ajoutée(s), 2 déjà présente(s)")
+        self.assertEqual(LigneReleve.objects.get(journal_id="B1", ouverture=True).montant, D(1000))
+
+    def test_droits(self):
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/echanges/").status_code, 403)
+
+    def test_lexique_et_dossiers(self):
+        self.client.get("/echanges/")
+        for d in (ech.imports(), ech.exports()):
+            wb = openpyxl.load_workbook(d / "Lexique.xlsx")
+            self.assertEqual(wb.sheetnames, ["Fichiers", "Colonnes", "Règles"])
+            self.assertEqual(wb["Fichiers"].max_row, len(ech.FORMATS) + 1)
+        self.assertEqual(ech.a_importer(), [])                                  # le lexique ne s'importe pas
+        autre = Path(tempfile.mkdtemp()) / "Mes imports"
+        self.client.post("/echanges/", {"dossiers": "1", "dossier_imports": str(autre), "dossier_exports": ""})
+        self.assertEqual((ech.imports(), ech.exports()), (autre, self.dossier / "Exports"))
+        self.assertTrue(autre.is_dir())
+        self.assertEqual(Reglage.lire("dossier_imports"), str(autre))
+
+    def test_tout_reinjecter(self):
+        """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""
+        d = dt.datetime(2026, 1, 5)
+        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990]])
+        self.importer("Banque1.xlsx")
+        b1 = Journal.objects.get(code="B1")
+        m = mouvement(600, dt.date(2026, 1, 5), [("600100", 10, 0), ("512000", 0, 10)])
+        rap.pointer(b1, LigneReleve.objects.filter(journal=b1, ouverture=False), m.lignes.filter(compte_id="512000"))
+        Mouvement.objects.filter(numero=421).update(origine="saisie", commentaire="saisi à la main")
+        self.client.post("/echanges/", {"exporter": "tout"})
+        for p in ech.exports().glob("*_*.xlsx"):
+            if ech.format_de(p).nom in ("Ecritures", "Banque1", "PlanComptable"):
+                (ech.imports() / p.name).write_bytes(p.read_bytes())
+        plan = next(ech.imports().glob("PlanComptable_*"))
+        wb = openpyxl.load_workbook(plan)
+        wb.active.append(["600200", "LOCATION DE SALLE", "FON.1", "non", "oui"])            # compte ajouté à la main
+        wb.save(plan)
+        ecr = next(ech.imports().glob("Ecritures_*"))
+        wb = openpyxl.load_workbook(ecr)
+        ws = wb.active
+        ws.delete_rows(2, 2)                                                                     # Mvt 421 supprimé à la main
+        wb.save(ecr)
+        self.assertContains(self.client.post("/echanges/", {"reinjecter": "1", "confirmation": "non"}, follow=True), "Taper REMPLACER")
+        r = self.client.post("/echanges/", {"reinjecter": "1", "confirmation": "remplacer"}, follow=True)
+        self.assertContains(r, "Réinjection terminée")
+        self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [600])
+        self.assertTrue(Compte.objects.filter(numero="600200").exists())
+        self.assertEqual(Rapprochement.objects.count(), 1)                                        # pointage recollé
+        self.assertEqual(Mouvement.objects.get(numero=600).origine, "saisie")                    # origine gardée
+        self.assertEqual(ech.a_importer(), [])
+        # un fichier en erreur : tout est annulé
+        ws.append([dt.datetime(2026, 2, 1), "B1", 700, 700, "999999", "X", 5, None, "GEN.001", ""])
+        wb.save(ech.imports() / "Ecritures.xlsx")
+        r = self.client.post("/echanges/", {"reinjecter": "1", "confirmation": "REMPLACER"}, follow=True)
+        self.assertContains(r, "compte 999999 inconnu")
+        self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [600])

@@ -109,6 +109,17 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   (même opération, puis premier règlement de même montant), annulable ;
   journalisé.
 
+## Imports / Exports (administrateur)
+
+Menu **Administration › Imports / Exports** (`compta/echanges.py`), en complément des imports des écrans Tiers
+et Rapprochement. Un fichier `.xlsx` par nature de données (Exercices, Reglages, Axe1, Axe2, Prefixes,
+PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse), de même
+structure à l'import et à l'export, décrit dans `Lexique.xlsx` et dans [`Imports/README.md`](../Imports/README.md).
+Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiables dans la page (réglages
+`dossier_imports`, `dossier_exports`). Import tout ou rien, sauvegarde avant ; fichier rangé dans
+`Imports/Importés`. Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
+remplace écritures, relevés et budget par les fichiers présents.
+
 ## Base de données (administrateur)
 
 Menu **Base** (compte administrateur, créé par `creer_administrateur`) : créer et télécharger des sauvegardes ; **remettre à zéro

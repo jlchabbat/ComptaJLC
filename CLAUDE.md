@@ -32,8 +32,9 @@ ComptaBB » du classeur fait foi).
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
   AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour
   la saisie à distance.
-- `Imports/` : modèles (`modeles/`, anonymisés, versionnés) et exports de
-  reprise (`reprise/`, hors Git).
+- `Imports/` et `Exports/` : échanges de l'application web par fichiers .xlsx
+  (`appli/compta/echanges.py`) ; `Imports/modeles/` : modèles vides et
+  Lexique.xlsx, versionnés ; le reste est hors Git (données réelles).
 - État détaillé du classeur : `docs/inventaire.md`. Plan : `docs/plan-lots.md`.
 
 ## Commandes

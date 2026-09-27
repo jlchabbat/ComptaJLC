@@ -1,12 +1,16 @@
-# Imports — initialisation et reprise de ComptaBB
+# Imports et Exports — échanges de ComptaBB par fichiers Excel
 
-Ce dossier sert à trois choses :
+L'application web lit ses données dans le dossier **`Imports`** et écrit ses
+exports dans le dossier **`Exports`**, tous deux dans le dossier ComptaBB du
+PC (`D:\OneDrive\Applications\ComptaBB`) ; sur PythonAnywhere, dans le dossier des données
+(`comptabb-data`), pour survivre aux mises à jour. Les chemins se modifient dans
+**Administration › Imports / Exports** (réglages `dossier_imports` et
+`dossier_exports`). Les dossiers sont créés automatiquement.
 
-- **paramétrer** l'application web : `Parametres.xlsx` (voir ci-dessous) ;
-- **initialiser** une comptabilité neuve à partir des modèles de
-  `modeles/` ;
-- **reprendre** la comptabilité existante à partir des exports de
-  `reprise/`.
+Chaque dossier contient un **`Lexique.xlsx`** (réécrit par l'application) :
+liste des fichiers, de leurs colonnes et des règles. `modeles/` contient un
+modèle vide de chaque fichier et le lexique ; c'est la seule partie versionnée.
+Tout le reste (données des membres, relevés bancaires) est hors Git.
 
 ## `Parametres.xlsx` (application web)
 
@@ -27,102 +31,57 @@ aucun changement, rien n'est supprimé (Actif = Non), et au moindre problème
 rien n'est enregistré. Une sauvegarde de la base est faite avant chaque
 import (dossier `Exports/Sauvegardes`).
 
-Réservé à l'administrateur et au trésorier : pour les autres utilisateurs,
+Réservé à l'administrateur (paramétrage de base) : pour les autres utilisateurs,
 l'application ne lit ni n'écrit rien dans `Imports/` et `Exports/`. Le
 fichier n'est pas versionné (règle `*.xlsx` du `.gitignore`).
 
-Tous les chemins sont relatifs à la racine du projet
-(`Applications/ComptaBB`).
-
-> Statut : **projet**. Les formats ci-dessous reprennent les colonnes des
-> tables du classeur actuel (voir `docs/inventaire.md`). Ils seront figés
-> au Lot 0, en même temps que la procédure d'import dans Excel.
-
-## Format commun
+## Page Imports / Exports (administrateur) : règles communes
 
 | | |
 |---|---|
-| Type de fichier | CSV, encodage UTF-8 avec BOM (l'hébreu et les accents restent lisibles dans Excel) |
-| Séparateur | point-virgule `;` |
-| Première ligne | en-têtes, **exactement** les noms de colonnes ci-dessous |
-| Dates | `jj/mm/aaaa` |
-| Montants | virgule décimale, pas de séparateur de milliers, pas de symbole ₪ : `1234,50` |
-| Montant absent | cellule vide (pas de 0 dans la colonne inutilisée débit/crédit) |
-| Codes | texte, sans espace avant ni après ; les comptes restent du texte (`411TAIEB001`, `512000`) |
+| Fichiers | un `.xlsx` par nature de données, une seule feuille |
+| Structure | **identique à l'import et à l'export** : un export se corrige dans Excel et se réimporte tel quel |
+| Ligne 1 | exactement les en-têtes ci-dessous ; données dès la ligne 2 |
+| Nom | commence par le nom du format : `Tiers.xlsx`, `Tiers_2026-09-27.xlsx`… (les exports sont datés) |
+| Dates | dates Excel (affichées jj/mm/aaaa) |
+| Montants | nombres, sans ₪ ; cellule vide quand il n'y a pas de montant |
+| Import | tout ou rien ; sauvegarde de la base avant ; fichier importé rangé, daté, dans `Imports\Importés` |
 
-## Fichiers, colonnes et ordre d'import
+## Fichiers, dans l'ordre d'import
 
-L'ordre compte : chaque fichier ne cite que des codes définis par les
-fichiers précédents.
+| # | Fichier | Colonnes | À l'import |
+|---|---|---|---|
+| 1 | `Exercices.xlsx` | Libellé, Début, Fin, Clos | mise à jour par libellé ; Clos indicatif |
+| 2 | `Reglages.xlsx` | Clé, Valeur, Description | mise à jour par clé |
+| 3 | `Axe1.xlsx` | Code, Libellé | mise à jour par code |
+| 4 | `Axe2.xlsx` | Code, Libellé, Statut (0, 1, 2) | mise à jour par code |
+| 5 | `Prefixes.xlsx` | Préfixe, Axe, Libellé | mise à jour par préfixe |
+| 6 | `PlanComptable.xlsx` | Compte, Libellé, Axe 1, Lettrable, Actif | mise à jour par compte |
+| 7 | `Journaux.xlsx` | Code, Intitulé, Type, Compte de trésorerie, Actif | mise à jour par code |
+| 8 | `Tiers.xlsx` | Compte, Type, Nom, Prénom, Adresse, Code postal, Ville, Téléphone, E-mail, Date d'adhésion, Statut, Cotisation annuelle | par compte, sinon type + nom + prénom ; cellule vide = rien d'effacé |
+| 9 | `Traductions.xlsx` | Opération (hébreu), Traduction | mise à jour par opération |
+| 10 | `Budget.xlsx` | Exercice, Nature, Compte, Axe 1, Axe 2, Montant | une seule cible par ligne |
+| 11 | `Ecritures.xlsx` | Date, Jnl, Mvt, Pièce, Compte, Libellé, Débit, Crédit, Anal2, Let | Mvt nouveau ajouté, Mvt modifié mis à jour (tracé), identique ignoré |
+| 12 | `Banque1.xlsx` | Date, Référence, Opération, Montant, Solde | relevé Mizrahi 732-182029 (B1) ; lignes déjà présentes ignorées |
+| 13 | `Banque2.xlsx` | idem | relevé Mizrahi (B2) |
+| 14 | `Bit.xlsx` | Journ, Date, Libelle, Debit, Credit | relevé Bit (B3), `Journ` = `B3` ; **remplace** le relevé B3 ([détail](../docs/import-banque3.md)) |
+| 15 | `Caisse.xlsx` | Date, Référence, Opération, Montant, Solde | caisse (CA) |
 
-| Ordre | Fichier | Table | Colonnes obligatoires | Colonnes facultatives |
-|---|---|---|---|---|
-| 1 | `01_parametres.csv` | cellules nommées de Paramètres | Nom, Valeur | Description |
-| 2 | `02_journaux.csv` | T_Journaux | Code, Intitulé, Type, Actif | Contrepartie, N° de compte, Compte bancaire |
-| 3 | `03_axe1.csv` | T_Axe1 | Code, Libellé, Actif | |
-| 4 | `04_axe2.csv` | T_Axe2 | Code, Actif (0, 1 ou 2) | Libellé |
-| 5 | `05_prefixes.csv` | T_Prefixes | Préfixe, Axe (1 ou 2) | Libellé, Code suivant (recalculé) |
-| 6 | `06_plan_comptable.csv` | T_PlanComptable | Compte, Libellé compte, Axe 1 (Anal1) | Lettrable (`oui`/vide), Utilisé, Tva, Solde (ignoré) |
-| 7 | `07_membres.csv` | Fiches tiers (membres, fournisseurs…) | Compte, Nom | Type, Prénom, Adresse, Code postal, Ville, Téléphone, E-mail, Date d'adhésion, Statut, Cotisation annuelle |
-| 8 | `08_trad_banque.csv` | T_TradBanque | Opération (hébreu), Traduction | |
-| 9 | `09_ecritures.csv` | T_Ecritures | Date, Jnl, Mvt, Pièce, Compte, Libellé, Débit ou Crédit | Anal2, Let |
-| 10 | `10_releve_<Jnl>.csv` | T_Banque<n> (Lot 3) | Date, Montant, Solde relevé | Référence, Opération (relevé) |
+Relevés Mizrahi : le PDF de la banque (`tnuot.pdf`, [détail](../docs/import-mizrahi.md))
+déposé dans `Imports` se convertit en `Banque1_date.xlsx` ou `Banque2_date.xlsx`
+par un bouton de la page ; le solde est complété sur chaque ligne et vérifié
+contre les soldes imprimés. Vérifier le fichier, puis l'importer.
 
-Les colonnes calculées du classeur (Intitulé, Anal1, Classe, Contrôle,
-Libellé Axe1, Libellé Axe2, État Axe2) ne s'importent pas : Excel les
-recalcule.
+## Tout réinjecter
 
-## Règles de mapping
+Bouton de la page (confirmation `REMPLACER`) : pour chaque fichier présent dans
+`Imports` (un seul par nature), `Ecritures`, `Banque1`, `Banque2`, `Bit`,
+`Caisse` et `Budget` **remplacent toutes** les données de leur nature ; les
+référentiels (1 à 9) sont mis à jour, jamais supprimés. Les pointages, les
+à-nouveaux de clôture et les fiches bénévoles reportées sont recollés quand
+leurs écritures et lignes de relevé reviennent à l'identique. Tout ou rien,
+avec une sauvegarde préalable.
 
-- `Anal1` n'est pas importé avec les écritures : il vient du compte, via
-  T_PlanComptable.
-- Statut Anal2 (`Actif`) : 0 = Non affecté, 1 = En cours, 2 = Terminé.
-- Codes analytiques : on n'importe que des codes **utilisés** ou dotés d'un
-  libellé. Les nouveaux codes sont proposés par l'application (préfixe +
-  numéro suivant), jamais créés d'avance.
-- Compte membre : `411` + 5 premières lettres du nom + rang sur 3
-  chiffres (`411TAIEB001`).
-- Relevés en hébreu : l'opération est traduite par T_TradBanque ; toute
-  opération inconnue apparaît « À traduire ».
-
-## Contrôles avant import
-
-Refuser le fichier si l'un de ces contrôles échoue :
-
-1. En-têtes conformes, dates et montants lisibles.
-2. Chaque `Mvt` est équilibré (RG-01) ; une ligne porte soit un débit soit
-   un crédit (RG-03).
-3. Tout compte, journal et code Anal2 existe dans les fichiers déjà
-   importés (RG-02).
-4. Aucune écriture datée au plus tard à `P_DateCloture` (RG-04), sauf le
-   journal AN.
-
-Après import, `python src/controles.py` doit répondre « Contrôles : OK ».
-
-## Doublons
-
-- Référentiels : le code est la clé. Un code déjà présent n'est **pas**
-  écrasé ; il est signalé.
-- Écritures : un `Mvt` déjà présent dans T_Ecritures n'est pas réimporté.
-  Pour ajouter des écritures, les renuméroter à partir de
-  `MAX(T_Ecritures[Mvt]) + 1`, et de même pour `Pièce`.
-- Relevés : clé = Date + Référence + Montant + rang dans la journée.
-
-## Reprise et annulation
-
-1. Enregistrer une copie datée du classeur (`ComptaBB_AAAA-MM-JJ_avant-import.xlsm`).
-2. `python src/controles.py --photo avant.json`.
-3. Importer dans l'ordre ci-dessus.
-4. `python src/controles.py --compare avant.json`. L'écart doit
-   correspondre exactement aux lignes importées.
-5. En cas de problème : fermer sans enregistrer, ou revenir à la copie
-   datée. Rien n'est supprimé du classeur par un import.
-
-## `reprise/`
-
-Destiné aux exports complets de la comptabilité existante, dans les
-formats ci-dessus. Ils contiennent des données personnelles (noms des
-membres, libellés). Ils sont donc **exclus de Git** par `.gitignore` tant
-que leur versionnement dans ce dépôt privé n'a pas été autorisé (§12 du
-cahier des charges). Sinon, les conserver dans une sauvegarde chiffrée
-séparée.
+Non échangés par fichier (Référentiels de l'application) : modèles
+d'opérations, moyens de paiement, types de tiers, natures et modes des fiches
+bénévoles, utilisateurs, historique.
