@@ -1,20 +1,21 @@
 {% extends "compta/base.html" %}{% block titre %}Codes{% endblock %}{% block contenu %}
 <h1>Codes analytiques et membres</h1>
+<div class="barre"><button form="f-code0" class="principal" name="creer_code" value="1">Créer le code</button><button form="f-code1" class="principal" name="creer_membre" value="1">Créer le tiers</button><button form="f-code2" name="changer_statut" value="1">Changer le statut</button></div>
 <div class="deux">
-<form method="post" class="carte">{% csrf_token %}<h2>Nouveau code analytique</h2>
+<form method="post" class="carte" id="f-code0">{% csrf_token %}<h2>Nouveau code analytique</h2>
 <p class="aide">Choisissez le préfixe : l'application propose le code suivant ; vous ne saisissez que le libellé.</p>
 <div class="formulaire">{% for f in code_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="creer_code" value="1">Créer le code</button></div></form>
+</form>
 
-<form method="post" class="carte">{% csrf_token %}<h2>Nouveau tiers</h2>
+<form method="post" class="carte" id="f-code1">{% csrf_token %}<h2>Nouveau tiers</h2>
 <p class="aide">Membre, fournisseur… Le compte est proposé d'après le type et les 5 premières lettres du nom (411NOMXX001, 401NOMXX001…).
 Les coordonnées se complètent ensuite dans le menu Tiers.</p>
 <div class="formulaire">{% for f in membre_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="creer_membre" value="1">Créer le tiers</button></div></form>
+</form>
 
-<form method="post" class="carte">{% csrf_token %}<h2>Statut d'un code (axe 2)</h2>
+<form method="post" class="carte" id="f-code2">{% csrf_token %}<h2>Statut d'un code (axe 2)</h2>
 <div class="formulaire">{% for f in statut_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="changer_statut" value="1">Changer le statut</button></div></form>
+</form>
 
 <div class="carte"><h2>Préfixes et prochain code</h2>
 <table><tr><th>Préfixe</th><th>Axe</th><th>Libellé</th><th>Prochain code</th></tr>

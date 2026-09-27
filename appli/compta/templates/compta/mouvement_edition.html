@@ -3,6 +3,7 @@
 <p class="aide">La modification est tracée (motif, avant, après) dans le mouvement et dans le Journal. Une ligne dont le compte ou le montant change
 est dépointée du relevé et délettrée.</p>
 {% else %}<h1>Écriture libre</h1><p class="aide">Pour une opération diverse ou une correction que la saisie guidée ne couvre pas. Mouvement équilibré obligatoire.</p>{% endif %}
+<div class="barre"><button form="edition" class="principal">Enregistrer</button></div>
 <form method="post" class="carte" id="edition">{% csrf_token %}
 <div class="formulaire">{% for f in entete %}{% include "compta/_champ.html" %}{% endfor %}</div>
 {{ formset.management_form }}{% if formset.non_form_errors %}<ul class="erreurs">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
@@ -10,7 +11,7 @@ est dépointée du relevé et délettrée.</p>
 <tbody id="lignes">{% for f in formset %}<tr>{% include "compta/_ligne_edition.html" %}</tr>{% endfor %}</tbody>
 <tr class="total"><td colspan="2"><button type="button" id="ajouter">+ Ajouter une ligne</button></td><td class="n" id="total-d"></td><td class="n" id="total-c"></td><td colspan="2" id="ecart"></td></tr></table>
 <template id="modele-ligne"><tr>{% with f=formset.empty_form %}{% include "compta/_ligne_edition.html" %}{% endwith %}</tr></template>
-<div class="boutons"><button class="principal">Enregistrer</button></div></form>
+</form>
 <script>
 (function () {
   var f = document.getElementById("edition"), total = document.getElementById("id_l-TOTAL_FORMS");

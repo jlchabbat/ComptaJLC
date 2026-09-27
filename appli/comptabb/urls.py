@@ -5,7 +5,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from compta import views, vues_base, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_utilisateurs, vues_rapprochement as rap
-from compta import vues_echanges
+from compta import vues_documentation, vues_echanges, vues_referentiels
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -51,6 +51,9 @@ urlpatterns = [
     path("utilisateurs/", vues_utilisateurs.utilisateurs, name="utilisateurs"),
     path("utilisateurs/<int:pk>/", vues_utilisateurs.utilisateur, name="utilisateur"),
     path("echanges/", vues_echanges.echanges, name="echanges"),
+    path("documentation/<str:nom>.pdf", vues_documentation.document, name="document"),
+    path("referentiels/", vues_referentiels.liste, name="referentiels"),
+    path("referentiels/<str:nom>.xlsx", vues_referentiels.exporter, name="referentiel_export"),
     path("base/", vues_base.base, name="base"),
     path("parametres/", vues_parametres.parametres, name="parametres"),
     path("parametres/Parametres.xlsx", vues_parametres.telecharger, name="parametres_telecharger"),

@@ -1,10 +1,10 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Mvt {{ m.numero }}{% endblock %}{% block contenu %}
 <h1>Mouvement {{ m.numero }}</h1>
+{% if perms.compta.change_mouvement %}<div class="barre">{% if verrou %}<span class="aide">{{ verrou }}</span>{% else %}
+<a class="bouton principal" href="{% url 'mouvement_modifier' m.numero %}">Modifier</a>{% endif %}</div>{% endif %}
 <div class="carte">Date {{ m.date|date:"d/m/Y" }} · journal {{ m.journal }} · pièce {{ m.piece }} · origine {{ m.get_origine_display }}{% if m.cree_par %} · saisi par {{ m.cree_par }}{% endif %}
 {% if m.commentaire %}<div class="aide" style="white-space:pre-line;margin-top:6px">{{ m.commentaire }}</div>{% endif %}</div>
 <table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 2</th><th>Let</th><th>Pointage</th></tr>
 {% for l in lignes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ l.compte_id }}">{{ l.compte }}</a></td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td>{{ l.anal2 }}</td><td>{{ l.lettrage }}</td><td>{% if l.rapprochement_id %}R{{ l.rapprochement_id|stringformat:"d" }}{% endif %}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ m.total_debit|shekel }}</td><td class="n">{{ m.total_credit|shekel }}</td><td colspan="3"></td></tr></table>
-{% if perms.compta.change_mouvement %}<div class="boutons">{% if verrou %}<span class="aide">{{ verrou }}</span>{% else %}
-<a class="bouton" href="{% url 'mouvement_modifier' m.numero %}">Modifier</a>{% endif %}</div>{% endif %}
 {% endblock %}

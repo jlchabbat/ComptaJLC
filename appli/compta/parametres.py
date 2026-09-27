@@ -289,8 +289,8 @@ FEUILLES = [
 
 # ---------------------------------------------------------------- export
 
-def classeur():
-    """Classeur des paramètres actuels (openpyxl.Workbook)."""
+def classeur(seulement=None):
+    """Classeur des paramètres actuels (openpyxl.Workbook) ; seulement = noms des feuilles à garder (un référentiel)."""
     import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
@@ -310,7 +310,7 @@ def classeur():
         ["   Une sauvegarde de la base est faite juste avant chaque import.", ""],
         ["", ""],
         ["Feuille", "Contenu"],
-    ] + [[f.nom, f.aide] for f in FEUILLES]
+    ] + [[f.nom, f.aide] for f in FEUILLES if not seulement or f.nom in seulement]
     for l in lignes:
         aide.append(l)
     for rangee in aide.iter_rows():
@@ -325,6 +325,8 @@ def classeur():
 
     titre, cle_fond = PatternFill("solid", fgColor="1F3864"), PatternFill("solid", fgColor="D9D9D9")
     for f in FEUILLES:
+        if seulement and f.nom not in seulement:
+            continue
         ws = wb.create_sheet(f.nom)
         ws.append([c.entete for c in f.colonnes])
         for c in ws[1]:
@@ -352,9 +354,9 @@ def classeur():
     return wb
 
 
-def contenu_classeur():
+def contenu_classeur(seulement=None):
     tampon = io.BytesIO()
-    classeur().save(tampon)
+    classeur(seulement).save(tampon)
     return tampon.getvalue()
 
 

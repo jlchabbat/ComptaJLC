@@ -17,7 +17,7 @@ h2 { font-size: 16px; color: var(--bleu); margin: 24px 0 8px; }
 .chiffre .lib { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 5px 8px; border-bottom: 1px solid var(--ligne); text-align: left; vertical-align: top; }
-th { background: #eef1f6; font-weight: 600; position: sticky; top: 0; }
+th { background: #eef1f6; font-weight: 600; position: sticky; top: var(--haut-barre, 0px); }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 tr.total td { font-weight: 700; border-top: 2px solid var(--bleu); }
 .neg { color: var(--ko); }
@@ -74,7 +74,7 @@ a.bouton { padding: 5px 10px; border: 1px solid #b9c0cc; border-radius: 6px; bac
 section { margin-bottom: 16px; scroll-margin-top: 12px; }
 header nav a { padding: 14px 6px; font-size: 13.5px; }
 @media print {
-  header, .ecran, .boutons, .message { display: none !important; }
+  header, .ecran, .boutons, .barre, .message { display: none !important; }
   body { background: #fff; font-size: 11px; } main { max-width: none; padding: 0; }
   .carte { border: 0; padding: 0; } section { break-inside: avoid-page; }
   th { position: static; }
@@ -160,3 +160,10 @@ header .qui, header .qui button { font-size: 15.5px; }
 header .qui .taille button { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35); padding: 3px 9px;
   font-weight: 700; cursor: pointer; border-radius: 6px; }
 header .qui .taille button:hover { background: rgba(255,255,255,.3); }
+
+/* Barre des boutons : toujours en haut à gauche de la page, sous le titre, et visible pendant le défilement */
+.barre { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-start; position: sticky; top: 0; z-index: 30;
+  background: var(--fond); padding: 8px 0; margin: 0 0 14px; border-bottom: 1px solid var(--ligne); }
+.carte .barre { position: static; background: none; border-bottom: 0; padding: 0; margin: 0 0 10px; }
+.barre a.bouton { align-self: auto; }
+a.bouton.principal { background: var(--bleu); color: #fff; border-color: var(--bleu); }

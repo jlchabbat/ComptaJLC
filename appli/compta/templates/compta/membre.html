@@ -1,6 +1,9 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ m }}{% endblock %}{% block contenu %}
 <p><a href="{% url 'membres' %}">← Tiers</a></p>
 <div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.type|default:"Tiers" }}{% if m.est_membre %} · {{ m.get_statut_display }}{% endif %}</span></div>
+<div class="barre">{% if peut %}<button form="lettrage" class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
+<button form="lettrage" name="lettrage_auto" value="1">Lettrage automatique</button>
+<span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>{% endif %}{% if form %}<button form="f-membre" name="enregistrer" value="1">Enregistrer la fiche</button>{% endif %}</div>
 <p>Compte {{ m.compte_id }}{% if m.adresse_complete %} · {{ m.adresse_complete }}{% endif %}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
 {% if m.date_adhesion %} · membre depuis le {{ m.date_adhesion|date:"d/m/Y" }}{% endif %}{% if m.cotisation %} · cotisation {{ m.cotisation|shekel }}{% endif %}</p>
 <div class="chiffres"><div class="chiffre"><div class="lib">Facturé</div><div class="val">{{ s.facture|shekel }}</div></div>
@@ -16,13 +19,11 @@
 <td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td class="n">{{ cumul|shekel }}</td>
 <td>{% if l.lettrage %}{{ l.lettrage }}{% if peut %} <button name="delettrer" value="{{ l.lettrage }}" title="Annuler ce lettrage" style="padding:0 6px">×</button>{% endif %}{% endif %}</td></tr>
 {% empty %}<tr><td colspan="8">Aucune écriture.</td></tr>{% endfor %}</table>
-{% if peut %}<div class="boutons"><button class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
-<span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>
-<button name="lettrage_auto" value="1">Lettrage automatique</button></div>{% endif %}</form>
+</form>
 
-{% if form %}<details class="carte"><summary>Modifier la fiche (type, coordonnées, adresse)</summary><form method="post">{% csrf_token %}
+{% if form %}<details class="carte"><summary>Modifier la fiche (type, coordonnées, adresse)</summary><form method="post" id="f-membre">{% csrf_token %}
 <div class="formulaire" style="margin-top:12px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="enregistrer" value="1">Enregistrer</button></div></form></details>{% endif %}
+</form></details>{% endif %}
 <script>
 (function () {
   var f = document.getElementById("lettrage"), b = document.getElementById("bouton-lettrer");

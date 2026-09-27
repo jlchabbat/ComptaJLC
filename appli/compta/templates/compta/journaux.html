@@ -1,10 +1,10 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Journaux{% endblock %}{% block contenu %}
 <h1>Journal {% if journal %}{{ journal }}{% endif %}</h1>
+<div class="barre">{% if journal %}<a class="bouton" href="?journal={{ journal.code }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a>{% endif %}<button type="button" onclick="window.print()">Imprimer</button></div>
 <form class="filtres ecran" method="get"><label>Journal <select name="journal" onchange="this.form.submit()">{% for j in journaux %}<option value="{{ j.code }}" {% if j == journal %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button>
-{% if journal %}<a class="bouton" href="?journal={{ journal.code }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a>{% endif %}
-<button type="button" onclick="window.print()">Imprimer</button></form>
+</form>
 <p class="aide">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }}{% if tresorerie %} · compte {{ journal.compte }} · solde progressif{% endif %}</p>
 {% if tresorerie %}
 <table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>Contrepartie</th><th class="n">Recette</th><th class="n">Dépense</th><th class="n">Solde</th></tr>

@@ -1,7 +1,9 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Saisie{% endblock %}{% block contenu %}
 <h1>Saisie d'une opération</h1>
+<div class="barre"><button form="f-saisie" name="apercu" value="1">Aperçu et contrôles</button><button form="f-saisie" class="principal" name="enregistrer" value="1">Enregistrer</button>
+<a class="bouton" href="{% url 'saisie' %}">Nouvelle saisie</a><a class="bouton" href="{% url 'mouvement_nouveau' %}">Écriture libre</a></div>
 <p class="aide">Prochain mouvement : Mvt {{ numero }} · pièce {{ piece }}. Dans les listes, tapez une partie du code ou du libellé.</p>
-<form method="post" class="carte">{% csrf_token %}{% if releve %}<input type="hidden" name="releve" value="{{ releve }}"><p class="aide">Écriture créée depuis une ligne du relevé : elle sera pointée automatiquement.</p>{% endif %}
+<form method="post" class="carte" id="f-saisie">{% csrf_token %}{% if releve %}<input type="hidden" name="releve" value="{{ releve }}"><p class="aide">Écriture créée depuis une ligne du relevé : elle sera pointée automatiquement.</p>{% endif %}
 <div class="formulaire">
 {% with f=form.date %}{% include "compta/_champ.html" %}{% endwith %}
 {% with f=form.modele %}{% include "compta/_champ.html" %}{% endwith %}
@@ -24,8 +26,6 @@
 {% if "Déjà enregistrée ?" in resultat.erreurs %}<p>{{ form.forcer }} <label for="{{ form.forcer.id_for_label }}">{{ form.forcer.label }}</label></p>{% endif %}
 {% else %}<p class="statut OK">Tous les contrôles sont OK : l'opération peut être enregistrée.</p>{% endif %}
 {% endif %}
-<div class="boutons"><button name="apercu" value="1">Aperçu et contrôles</button><button class="principal" name="enregistrer" value="1">Enregistrer</button>
-<a href="{% url 'saisie' %}">Nouvelle saisie</a> · <a href="{% url 'mouvement_nouveau' %}">Écriture libre (opération diverse)</a></div>
 </form>
 {{ modeles|json_script:"modeles" }}
 <script>

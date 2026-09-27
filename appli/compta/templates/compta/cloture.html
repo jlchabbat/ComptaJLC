@@ -1,5 +1,6 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Clôture{% endblock %}{% block contenu %}
 <h1>Clôture de l'exercice</h1>
+<div class="barre">{% if prep.ok %}<button form="f-cloture" class="principal" onclick="return confirm('Clôturer définitivement {{ exercice.libelle }} ?')">Clôturer l'exercice</button>{% endif %}</div>
 {% if not exercice %}<p class="carte">Aucun exercice ouvert.</p>{% else %}
 <div class="carte"><h2 style="margin-top:0">{{ exercice.libelle }} · du {{ exercice.debut|date:"d/m/Y" }} au {{ exercice.fin|date:"d/m/Y" }}</h2>
 <p>La clôture : vérifie l'exercice, crée <b>un</b> mouvement d'à-nouveaux (journal {{ prep.journal.code|default:"AN" }}) daté du
@@ -17,8 +18,8 @@ Aucune écriture existante n'est modifiée. <b>Elle est définitive.</b></p>
 {% for n, d, c in prep.lignes %}<tr><td>{{ n }}</td><td>{% for k, v in comptes.items %}{% if k == n %}{{ v }}{% endif %}{% endfor %}</td><td class="n">{{ d|zero_vide }}</td><td class="n">{{ c|zero_vide }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ total_an|shekel }}</td><td class="n">{{ total_an|shekel }}</td></tr></table></div>
 
-{% if prep.ok %}<form method="post" class="carte">{% csrf_token %}<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" onclick="return confirm('Clôturer définitivement {{ exercice.libelle }} ?')">Clôturer l'exercice</button></div></form>{% endif %}
+{% if prep.ok %}<form method="post" class="carte" id="f-cloture">{% csrf_token %}<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>{% endif %}
 {% endif %}
 <h2>Exercices clos</h2><table><tr><th>Exercice</th><th>Clos le</th><th>Par</th><th class="n">Résultat affecté</th><th>À-nouveaux</th><th>Archive</th></tr>
 {% for e in clos %}<tr><td><a href="{% url 'etats' %}?exercice={{ e.pk|stringformat:'d' }}">{{ e.libelle }}</a></td><td>{{ e.cloture_le|date:"d/m/Y H:i"|default:"avant l'application" }}</td><td>{{ e.cloture_par }}</td>

@@ -34,14 +34,17 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
 {% if perms.compta.pointer_releve %}{% url 'traductions' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Traductions du relevé</a>{% endif %}
 </div></div>
-<div class="menu"><button type="button">Fin d'exercice ▾</button><div class="sous">
-{% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
-{% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture</a>{% endif %}
-</div></div>
 <div class="menu"><button type="button">Contrôle ▾</button><div class="sous">
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
 {% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>
 </div></div>{% endif %}
+<div class="menu"><button type="button">Éditions ▾</button><div class="sous">
+{% if perms.compta.view_mouvement %}{% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
+{% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports des référentiels</a>{% endif %}
+<a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
+<a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
+</div></div>
 {% if user.is_staff or perms.compta.parametrer %}<div class="menu"><button type="button">Administration ▾</button><div class="sous">
 {% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
@@ -55,5 +58,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
+<script>addEventListener("DOMContentLoaded", function () {     // les en-têtes de tableau restent sous la barre des boutons
+  var b = document.querySelector("main > .barre"); if (b) document.documentElement.style.setProperty("--haut-barre", b.offsetHeight + "px"); });</script>
 <main>{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
 </body></html>

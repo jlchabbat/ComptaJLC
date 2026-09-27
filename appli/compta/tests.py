@@ -1155,6 +1155,21 @@ class CommandeSauvegarder(TransactionTestCase):
         call_command("sauvegarder", stdout=open("/dev/null", "w"))
         self.assertTrue(bd.liste()[0].name.endswith("_auto.sqlite3"))
 
+    def test_restaurer(self):
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        call_command("sauvegarder", stdout=open("/dev/null", "w"))
+        Mouvement.objects.all().delete()
+        sortie = __import__("io").StringIO()
+        call_command("restaurer", stdout=sortie)
+        self.assertIn("1. comptabb_", sortie.getvalue())
+        call_command("restaurer", "1", oui=True, stdout=sortie)
+        self.assertTrue(Mouvement.objects.filter(numero=421).exists())
+        self.assertTrue(Modification.objects.filter(action="Restauration").exists())
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            call_command("restaurer", "99", oui=True, stdout=sortie)
+
 
 from . import parametres as prm  # noqa: E402
 
@@ -1687,3 +1702,64 @@ class DossiersEtExportComplet(TransactionTestCase):
         self.assertEqual(bd.dossier(), sauv)
         call_command("exporter_tout", stdout=open("/dev/null", "w"))
         self.assertEqual(len(list(sauv.glob("*.sqlite3"))), 2)
+
+
+# ---------------------------------------------------------------- exports des référentiels, pages et barre des boutons
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class ReferentielsEtPages(TransactionTestCase):
+    def setUp(self):
+        self.racine = Path(tempfile.mkdtemp())
+        self.reglage = override_settings(IMPORTS_DIR=self.racine / "Imports", EXPORTS_DIR=self.racine / "Exports")
+        self.reglage.enable()
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        mbr.creer_manquants()
+
+    def tearDown(self):
+        self.reglage.disable()
+
+    def test_export_de_chaque_referentiel(self):
+        from .vues_referentiels import referentiels
+        t = User.objects.create_user("tresorier")
+        donner_role(t, "Trésorier")
+        self.client.force_login(t)
+        noms = [r[0] for r in referentiels(t)]
+        self.assertIn("PlanComptable", noms)
+        self.assertNotIn("Utilisateurs", noms)                                     # administrateur seulement
+        self.assertContains(self.client.get("/referentiels/"), "PlanComptable.xlsx")
+        for nom in noms + ["Parametres"]:
+            r = self.client.get(f"/referentiels/{nom}.xlsx")
+            self.assertEqual(r.status_code, 200, nom)
+            openpyxl.load_workbook(__import__("io").BytesIO(r.content))
+        r = self.client.get("/referentiels/PlanComptable.xlsx")
+        wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ["Mode d'emploi", "Plan comptable"])
+        self.assertIn("512000", [c.value for c in wb["Plan comptable"]["A"]])
+        self.assertEqual(prm.importer(r.content).erreurs, [])                      # se réimporte tel quel
+        self.assertTrue(list((self.racine / "Exports").glob("PlanComptable_*.xlsx")))
+        self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 403)
+        b = User.objects.create_user("bureau")
+        donner_role(b, "Bureau")
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/referentiels/").status_code, 403)
+
+    def test_toutes_les_pages_et_leur_barre(self):
+        import re as _re
+        a = User.objects.create_user("admin")
+        donner_role(a, "Administrateur")
+        self.client.force_login(a)
+        pages = ["/", "/saisie/", "/mouvement/421/", "/mouvement/421/modifier/", "/mouvement/nouveau/", "/mouvement/rappel/",
+                 "/codes/", "/fiches/", "/membres/", "/membres/411TAIEB001/", "/membres/cotisations/", "/tiers-provisoires/",
+                 "/ecritures/", "/journaux/", "/grand-livre/", "/balance/", "/analytique/", "/rapprochement/B1/",
+                 "/rapprochement/traductions/", "/etats/", "/cloture/", "/controles/", "/modifications/", "/mon-compte/",
+                 "/utilisateurs/", f"/utilisateurs/{a.pk}/", "/parametres/", "/echanges/", "/base/", "/referentiels/"]
+        for url in pages:
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            html = r.content.decode()
+            self.assertNotIn('class="boutons"', html, url)                        # plus de boutons en bas de page
+            ids = set(_re.findall(r'<form[^>]* id="([^"]+)"', html))
+            for cible in _re.findall(r'<button[^>]* form="([^"]+)"', html):
+                self.assertIn(cible, ids, f"{url} : bouton relié au formulaire absent {cible}")
+        self.assertContains(self.client.get("/"), "Mode d'emploi (PDF)")

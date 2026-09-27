@@ -1,12 +1,13 @@
 {% extends "compta/base.html" %}{% block titre %}Utilisateurs{% endblock %}{% block contenu %}
 <h1>Utilisateurs</h1>
+<div class="barre"><button form="f-nouveau" class="principal" name="creer" value="1">Créer l'utilisateur</button>{% if perms.compta.echanger_fichiers %}<a class="bouton" href="{% url 'referentiel_export' 'Utilisateurs' %}">Exporter (Excel)</a>{% endif %}</div>
 <p class="aide"><b>Administrateur</b> : tout, y compris le paramétrage de base (Référentiels, Paramètres Excel, codes d'axe 1,
 paramètres des relevés), les utilisateurs et la base de données. <b>Trésorier</b> : toute la tenue des comptes, sans le paramétrage de base.
 <b>Bureau</b> : consultation seule. <b>Bénévole</b> : la liaison seulement, ses fiches (se crée depuis Fiches bénévoles, parmi les membres).</p>
 <table class="triable"><tr><th>Identifiant</th><th>Nom</th><th>E-mail</th><th>Rôle</th><th>Actif</th><th>Dernière connexion</th></tr>
 {% for cible, r in lignes %}<tr><td><a href="{% url 'utilisateur' cible.pk %}">{{ cible.username }}</a></td><td>{{ cible.get_full_name }}</td><td>{{ cible.email }}</td>
 <td>{{ r }}</td><td>{{ cible.is_active|yesno:"Oui,Non" }}</td><td>{{ cible.last_login|date:"d/m/Y H:i"|default:"—" }}</td></tr>{% endfor %}</table>
-<form method="post" class="carte" style="margin-top:16px">{% csrf_token %}<h2 style="margin-top:0">Nouvel utilisateur</h2>
+<form method="post" class="carte" style="margin-top:16px" id="f-nouveau">{% csrf_token %}<h2 style="margin-top:0">Nouvel utilisateur</h2>
 <div class="formulaire">{% for f in nouveau %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<div class="boutons"><button class="principal" name="creer" value="1">Créer</button></div></form>
+</form>
 {% endblock %}

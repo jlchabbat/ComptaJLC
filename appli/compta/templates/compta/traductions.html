@@ -1,12 +1,13 @@
 {% extends "compta/base.html" %}{% block titre %}Traductions{% endblock %}{% block contenu %}
 <p><a href="{% url 'rapprochement' %}">← Rapprochement</a></p>
 <h1>Traductions des opérations du relevé</h1>
-<form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">À traduire ({{ a_traduire|length }})</h2>
+<div class="barre">{% if a_traduire %}<button form="f-trad" class="principal">Enregistrer les traductions</button>{% endif %}</div>
+<form method="post" class="carte" id="f-trad">{% csrf_token %}<h2 style="margin-top:0">À traduire ({{ a_traduire|length }})</h2>
 <table><tr><th>Opération (hébreu)</th><th>Exemple</th><th>Traduction</th></tr>
 {% for l in a_traduire %}<tr><td dir="rtl">{{ l.operation }}<input type="hidden" name="h_{{ forloop.counter }}" value="{{ l.operation }}"></td>
 <td>{{ l.date|date:"d/m/Y" }} · {{ l.montant }}</td><td><input name="t_{{ forloop.counter }}" size="40"></td></tr>
 {% empty %}<tr><td colspan="3">Tout est traduit.</td></tr>{% endfor %}</table>
-{% if a_traduire %}<div class="boutons"><button class="principal">Enregistrer</button></div>{% endif %}</form>
+</form>
 <h2>Traductions connues ({{ connues|length }})</h2><p class="aide">Modifiables dans Référentiels › Traductions.</p>
 <table class="triable"><tr><th>Hébreu</th><th>Traduction</th></tr>{% for t in connues %}<tr><td dir="rtl">{{ t.hebreu }}</td><td>{{ t.traduction }}</td></tr>{% endfor %}</table>
 {% endblock %}
