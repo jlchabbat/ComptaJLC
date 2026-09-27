@@ -24,11 +24,15 @@ partager). Hors de Git.
 
 | Rôle | Droits |
 |---|---|
-| Trésorier | tout, y compris les référentiels (menu Référentiels) |
-| Bureau, Vérificateur | consultation : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
-| Bénévole | ses fiches bénévoles seulement : saisie des lignes, nouveaux tiers provisoires, transmission |
+| Administrateur | tous les droits, dont le paramétrage de base : Référentiels (plan comptable, journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), codes d'axe 1, paramètres des relevés, utilisateurs, base de données |
+| Trésorier | tout, sauf le paramétrage de base |
+| Bureau | consultation seule : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
+| Bénévole | la liaison seulement : ses fiches bénévoles (saisie des lignes, nouveaux tiers provisoires, transmission) |
 
-Les comptes se créent dans Référentiels › Utilisateurs, avec leur groupe ;
+Il n'y a pas d'autre rôle. Chacun change son identifiant (un nom ou une
+adresse e-mail) et son mot de passe dans **Mon compte** (clic sur son nom en
+haut à droite) ; on se connecte avec l'identifiant ou l'e-mail enregistré.
+L'administrateur crée les comptes dans Administration › Utilisateurs ;
 un bénévole se crée aussi depuis Fiches bénévoles › Nouveau bénévole, en choisissant un membre (fiche tiers).
 
 ## Pages (socle W0)
@@ -107,8 +111,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 
 ## Base de données (administrateur)
 
-Menu **Base** (compte administrateur, par exemple le trésorier créé par
-`creer_tresorier`) : créer et télécharger des sauvegardes ; **remettre à zéro
+Menu **Base** (compte administrateur, créé par `creer_administrateur`) : créer et télécharger des sauvegardes ; **remettre à zéro
 et recharger** depuis une sauvegarde `.sqlite3` (tout, utilisateurs compris)
 ou depuis le classeur `ComptaBB.xlsm` (plan, journaux, codes, écritures,
 exercices, relevé ; utilisateurs gardés ; tiers recréés d'après les comptes,
@@ -145,7 +148,7 @@ sauvegarde automatique juste avant ; journalisé.
 ## Hébergement
 
 Essai sur PythonAnywhere : `docs/hebergement-pythonanywhere.md`
-(`python manage.py preparer`, `python manage.py creer_tresorier`,
+(`python manage.py preparer`, `python manage.py creer_administrateur`,
 `deploiement/pythonanywhere_wsgi.py`).
 
 ## Développement

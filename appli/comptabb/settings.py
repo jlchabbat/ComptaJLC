@@ -103,6 +103,7 @@ STATIC_ROOT = DATA_DIR / "static"
 STORAGES = {"staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"}}
 WHITENOISE_USE_FINDERS = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTHENTICATION_BACKENDS = ["compta.vues_utilisateurs.ConnexionParEmail"]
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "tableau_de_bord"
 LOGOUT_REDIRECT_URL = "login"

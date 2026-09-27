@@ -126,7 +126,8 @@ class Reglage(models.Model):
     class Meta:
         verbose_name = "réglage"
         # administrateur et rôle Trésorier seulement : les autres utilisateurs ne touchent pas aux dossiers d'échange
-        permissions = [("echanger_fichiers", "Importer et exporter des fichiers (dossiers Imports et Exports)")]
+        permissions = [("echanger_fichiers", "Importer et exporter des fichiers (dossiers Imports et Exports)"),
+                       ("parametrer", "Modifier le paramétrage de base (administrateur)")]
 
     def __str__(self):
         return self.cle

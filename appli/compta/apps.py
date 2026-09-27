@@ -1,11 +1,15 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
-# Rôles (cahier des charges §1) : droits Django attribués à chaque groupe
+# Paramétrage de base : réservé à l'administrateur (Référentiels, Paramètres Excel, codes axe 1, relevés, utilisateurs)
+PARAMETRAGE = ["journal", "prefixe", "typetiers", "moyenpaiement", "ligneschema", "modeleoperation", "naturefiche", "modefiche",
+               "reglage", "parametrereleve"]
+
+# Rôles (cahier des charges §1) : droits Django attribués à chaque groupe, du plus large au plus restreint
 ROLES = {
-    "Trésorier": "tout",           # seul rôle qui échange des fichiers (Imports, Exports) avec l'administrateur
+    "Administrateur": "tout",      # au-dessus du trésorier : paramétrage de base, utilisateurs, base de données
+    "Trésorier": "tenue",          # toute la tenue des comptes, sans le paramétrage de base
     "Bureau": "consultation",
-    "Vérificateur": "consultation",
     # fiches bénévoles : le bénévole ne voit que les fiches qui lui sont confiées
     "Bénévole": ["view_fiche", "add_lignefiche", "change_lignefiche", "delete_lignefiche", "view_tiersprovisoire",
                  "add_tiersprovisoire"],
@@ -19,6 +23,9 @@ def creer_roles(sender, **kwargs):
         groupe, _ = Group.objects.get_or_create(name=nom)
         if portee == "tout":
             groupe.permissions.set(perms)
+        elif portee == "tenue":
+            reserves = [f"{a}_{m}" for m in PARAMETRAGE for a in ("add", "change", "delete")] + ["parametrer"]
+            groupe.permissions.set(perms.exclude(codename__in=reserves))
         elif portee == "consultation":
             groupe.permissions.set(perms.filter(codename__startswith="view_"))
         elif isinstance(portee, list):

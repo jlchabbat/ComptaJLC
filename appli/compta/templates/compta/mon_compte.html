@@ -1,0 +1,13 @@
+{% extends "compta/base.html" %}{% block titre %}Mon compte{% endblock %}{% block contenu %}
+<h1>Mon compte</h1>
+<p>{{ user.get_full_name|default:user.username }} · rôle <b>{{ role }}</b></p>
+<div class="deux">
+<form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Identifiant de connexion</h2>
+<p class="aide">Un nom sans espace, ou votre adresse e-mail. Vous pouvez aussi vous connecter avec l'e-mail enregistré ici.</p>
+<div class="formulaire">{% for f in ident %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="identifiant_maj" value="1">Enregistrer</button></div></form>
+<form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Mot de passe</h2>
+{% if mdp.non_field_errors %}<ul class="erreurs">{% for e in mdp.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<div class="formulaire">{% for f in mdp %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal" name="mot_de_passe_maj" value="1">Changer le mot de passe</button></div></form>
+</div>{% endblock %}

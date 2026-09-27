@@ -46,8 +46,11 @@ class CodeForm(forms.Form):
     libelle = forms.CharField(max_length=100, label="Libellé")
     statut = forms.TypedChoiceField(choices=CodeAnalytique.STATUTS, coerce=int, initial=1, label="Statut (axe 2)")
 
-    def __init__(self, *a, **k):
+    def __init__(self, *a, axe1=False, **k):
         super().__init__(*a, **k)
+        if not axe1:                                     # axe 1 : paramétrage de base (administrateur)
+            self.fields["prefixe"].queryset = Prefixe.objects.filter(axe=2)
+            self.fields["prefixe"].help_text = "Axe 2 seulement ; les codes d'axe 1 sont créés par l'administrateur."
         cherchable(self)
 
 
@@ -80,6 +83,17 @@ class StatutForm(forms.Form):
 from django.contrib.auth.models import User  # noqa: E402
 
 from .models import Fiche, LigneFiche, Membre, ModeFiche, NatureFiche, TiersProvisoire  # noqa: E402
+
+
+def identifiant_libre(v, sauf=None):
+    """Identifiant de connexion : lettres, chiffres et @ . + - _ (une adresse e-mail convient), unique sans tenir compte des majuscules."""
+    from django.contrib.auth.validators import UnicodeUsernameValidator
+    v = v.strip()
+    UnicodeUsernameValidator()(v)
+    autres = User.objects.exclude(pk=sauf.pk) if sauf else User.objects.all()
+    if autres.filter(Q(username__iexact=v) | Q(email__iexact=v)).exists():
+        raise forms.ValidationError("Cet identifiant est déjà utilisé.")
+    return v
 
 
 def comptes_tiers():
@@ -148,7 +162,7 @@ class BenevoleForm(forms.Form):
 
     membre = forms.ModelChoiceField(Membre.objects.none(), label="Membre",
                                     help_text="Tapez le nom. Absent ? Créez d'abord sa fiche (Tiers, type Membre).")
-    identifiant = forms.SlugField(max_length=30, help_text="Pour se connecter, sans espace ni accent.")
+    identifiant = forms.CharField(max_length=150, help_text="Pour se connecter : un nom sans espace ou une adresse e-mail.")
     mot_de_passe = forms.CharField(min_length=8, widget=forms.PasswordInput(render_value=True), label="Mot de passe",
                                    help_text="8 caractères au moins ; à transmettre au bénévole.")
 
@@ -158,11 +172,7 @@ class BenevoleForm(forms.Form):
                                           .exclude(statut="demissionnaire").order_by("nom", "prenom"))
         cherchable(self)
 
-    def clean_identifiant(self):
-        v = self.cleaned_data["identifiant"]
-        if User.objects.filter(username__iexact=v).exists():
-            raise forms.ValidationError("Cet identifiant existe déjà.")
-        return v
+    clean_identifiant = lambda self: identifiant_libre(self.cleaned_data["identifiant"])  # noqa: E731
 
 
 class LigneFicheForm(forms.ModelForm):

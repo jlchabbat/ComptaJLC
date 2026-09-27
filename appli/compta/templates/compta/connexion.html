@@ -2,6 +2,6 @@
 <div class="carte connexion"><h1>ComptaBB</h1>
 {% if form.errors %}<p class="neg">Identifiant ou mot de passe incorrect.</p>{% endif %}
 <form method="post">{% csrf_token %}
-<label for="id_username">Identifiant</label>{{ form.username }}
+<label for="id_username">Identifiant ou e-mail</label>{{ form.username }}
 <label for="id_password">Mot de passe</label>{{ form.password }}
 <p><button class="principal">Se connecter</button></p></form></div>{% endblock %}

@@ -55,7 +55,7 @@ Choisir **une** des trois possibilités, puis lancer la préparation.
 cd ~/ComptaBB/appli && source ~/venv/bin/activate
 export COMPTABB_DATA=~/comptabb-data
 python manage.py preparer
-python manage.py creer_tresorier      # inutile avec la copie A si vos comptes existent déjà
+python manage.py creer_administrateur # inutile avec la copie A si vos comptes existent déjà
 ```
 
 ## 4. Créer le site

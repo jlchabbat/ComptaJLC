@@ -1200,8 +1200,9 @@ class EcranParametres(TransactionTestCase):
     def test_droits_et_dossier_imports(self):
         from django.conf import settings
         from django.core.files.uploadedfile import SimpleUploadedFile
-        for role in ("Bureau", "Vérificateur", "Bénévole"):
-            self.assertFalse(Group.objects.get(name=role).permissions.filter(codename="echanger_fichiers").exists())
+        self.assertEqual(set(Group.objects.values_list("name", flat=True)), {"Administrateur", "Trésorier", "Bureau", "Bénévole"})
+        for role in ("Bureau", "Trésorier", "Bénévole"):
+            self.assertFalse(Group.objects.get(name=role).permissions.filter(codename="parametrer").exists())
             u = User.objects.create_user(role)
             u.groups.add(Group.objects.get(name=role))
             self.client.force_login(u)
@@ -1209,8 +1210,9 @@ class EcranParametres(TransactionTestCase):
             self.assertEqual(self.client.get("/parametres/Parametres.xlsx").status_code, 403)
             self.assertEqual(self.client.post("/parametres/", {"preparer": "1"}).status_code, 403)
         self.assertFalse((settings.IMPORTS_DIR / "Parametres.xlsx").exists())
-        u = User.objects.create_user("tresorier")
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        from .vues_utilisateurs import donner_role
+        u = User.objects.create_user("admin")
+        donner_role(u, "Administrateur")
         self.client.force_login(u)
         self.assertContains(self.client.get("/"), "Paramètres (Excel)")
         r = self.client.get("/parametres/Parametres.xlsx")
@@ -1347,3 +1349,71 @@ class ExportComplet(TransactionTestCase):
         b.groups.add(Group.objects.get(name="Bureau"))
         self.client.force_login(b)
         self.assertEqual(self.client.get(f"/base/export/{nom}").status_code, 403)
+
+
+# ---------------------------------------------------------------- rôles et comptes de connexion
+
+from .vues_utilisateurs import donner_role  # noqa: E402
+
+
+class Utilisateurs(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        Prefixe.objects.create(prefixe="MAN.", axe=2)
+        Prefixe.objects.create(prefixe="COT.", axe=1)
+        self.admin = User.objects.create_user("admin", password="ancien-mot-de-passe-1")
+        donner_role(self.admin, "Administrateur")
+        self.tresorier = User.objects.create_user("tresorier", password="ancien-mot-de-passe-1")
+        donner_role(self.tresorier, "Trésorier")
+
+    def test_tresorier_sans_parametrage_de_base(self):
+        self.client.force_login(self.tresorier)
+        for url in ("/utilisateurs/", f"/utilisateurs/{self.admin.pk}/", "/parametres/", "/base/", "/admin/journal/"):
+            self.assertIn(self.client.get(url).status_code, (302, 403), url)
+        self.assertEqual(self.client.post("/rapprochement/B1/parametres/", {"date_reprise": "2026-01-01"}).status_code, 403)
+        r = self.client.get("/codes/")
+        self.assertNotContains(r, '<option value="COT."')                     # axe 1 : administrateur
+        self.client.post("/codes/", {"code-prefixe": "COT.", "code-libelle": "X", "code-statut": 1, "creer_code": "1"})
+        self.assertFalse(CodeAnalytique.objects.filter(libelle="X").exists())
+        self.client.post("/codes/", {"code-prefixe": "MAN.", "code-libelle": "Gala", "code-statut": 1, "creer_code": "1"})
+        self.assertTrue(CodeAnalytique.objects.filter(code="MAN.002").exists())       # axe 2 : trésorier
+        self.assertEqual(self.client.get("/saisie/").status_code, 200)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get("/codes/"), '<option value="COT."')
+        self.assertEqual(self.client.get("/utilisateurs/").status_code, 200)
+
+    def test_mon_compte_identifiant_email_et_mot_de_passe(self):
+        self.client.force_login(self.tresorier)
+        self.assertEqual(self.client.get("/mon-compte/").status_code, 200)
+        r = self.client.post("/mon-compte/", {"id-identifiant": "admin", "id-email": "", "identifiant_maj": "1"})
+        self.assertContains(r, "déjà utilisé")
+        self.client.post("/mon-compte/", {"id-identifiant": "tresor@exemple.org", "id-email": "tresor@exemple.org",
+                                          "identifiant_maj": "1"})
+        self.tresorier.refresh_from_db()
+        self.assertEqual(self.tresorier.username, "tresor@exemple.org")
+        self.client.post("/mon-compte/", {"mdp-old_password": "ancien-mot-de-passe-1", "mdp-new_password1": "Nouveau-mdp-2026!",
+                                          "mdp-new_password2": "Nouveau-mdp-2026!", "mot_de_passe_maj": "1"})
+        self.client.logout()
+        self.assertTrue(self.client.login(username="tresor@exemple.org", password="Nouveau-mdp-2026!"))
+        self.admin.email = "chef@exemple.org"
+        self.admin.save()
+        self.assertTrue(self.client.login(username="chef@exemple.org", password="ancien-mot-de-passe-1"))   # connexion par e-mail
+
+    def test_administrateur_gere_les_utilisateurs(self):
+        self.client.force_login(self.admin)
+        self.client.post("/utilisateurs/", {"n-identifiant": "bureau@exemple.org", "n-email": "bureau@exemple.org",
+                                            "n-role": "Bureau", "n-mot_de_passe": "Bureau-mdp-2026!", "creer": "1"})
+        b = User.objects.get(username="bureau@exemple.org")
+        self.assertEqual(list(b.groups.values_list("name", flat=True)), ["Bureau"])
+        self.assertFalse(b.has_perm("compta.add_mouvement"))
+        self.assertTrue(b.has_perm("compta.view_mouvement"))
+        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "email": "", "role": "Administrateur",
+                                                                 "actif": "on", "mot_de_passe": ""})
+        self.tresorier.refresh_from_db()
+        self.assertTrue(self.tresorier.is_superuser)
+        self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administrateur"])
+        # toujours au moins un administrateur actif
+        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Trésorier", "actif": "on"})
+        r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Bureau", "actif": "on"})
+        self.assertContains(r, "au moins un administrateur")
+        self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)

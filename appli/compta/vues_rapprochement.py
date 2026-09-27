@@ -60,7 +60,8 @@ def accueil(request, code=None):
         "ecarts_solde": moteur.ecarts_solde(journal), "parametres": parametres, "tolerance": moteur.tolerance(),
         "a_traduire": sum(1 for l in LigneReleve.objects.filter(journal=journal, ouverture=False) if l.traduction == "À traduire"),
         "peut": peut, "import_form": ImportForm() if peut else None,
-        "parametres_form": ParametresForm(instance=parametres or ParametreReleve(journal=journal)) if peut else None,
+        "parametres_form": (ParametresForm(instance=parametres or ParametreReleve(journal=journal))
+                            if request.user.has_perm("compta.parametrer") else None),
     })
 
 
@@ -89,7 +90,7 @@ def importer(request, code):
 
 
 @login_required
-@pointer
+@permission_required("compta.parametrer", raise_exception=True)
 def parametres(request, code):
     journal = get_object_or_404(Journal, code=code)
     instance = ParametreReleve.objects.filter(journal=journal).first() or ParametreReleve(journal=journal)

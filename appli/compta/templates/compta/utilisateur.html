@@ -1,0 +1,7 @@
+{% extends "compta/base.html" %}{% block titre %}{{ cible.username }}{% endblock %}{% block contenu %}
+<p><a href="{% url 'utilisateurs' %}">← Utilisateurs</a></p>
+<h1>{{ cible.get_full_name|default:cible.username }}</h1>
+<form method="post" class="carte">{% csrf_token %}
+{% if form.non_field_errors %}<ul class="erreurs">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="boutons"><button class="principal">Enregistrer</button></div></form>{% endblock %}
