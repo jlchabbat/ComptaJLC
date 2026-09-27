@@ -42,8 +42,9 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
 {% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>
 </div></div>{% endif %}
-{% if user.is_staff %}<div class="menu"><button type="button">Administration ▾</button><div class="sous">
-<a href="{% url 'admin:index' %}">Référentiels</a>
+{% if user.is_staff or perms.compta.echanger_fichiers %}<div class="menu"><button type="button">Administration ▾</button><div class="sous">
+{% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données</a>{% endif %}
 </div></div>{% endif %}
 </nav>

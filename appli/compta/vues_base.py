@@ -110,9 +110,8 @@ def telecharger(request, nom=None):
 
 
 def archives():
-    from django.conf import settings
-    d = settings.DATA_DIR / "archives"
-    return sorted(d.glob("*.xlsx"), key=lambda p: p.stat().st_mtime, reverse=True) if d.exists() else []
+    from .dossiers import archives as dossier
+    return sorted(dossier().glob("*.xlsx"), key=lambda p: p.stat().st_mtime, reverse=True)
 
 
 @login_required

@@ -33,6 +33,7 @@ Releves/
 *_Saisie.xlsx
 *_Liaison*.xlsx
 
-# Application web : données locales
+# Application web : données locales et fichiers échangés (sauvegardes, archives, Parametres.xlsx)
 appli/data/
 data/
+Exports/

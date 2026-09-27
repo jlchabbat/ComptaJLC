@@ -96,7 +96,7 @@ et le script en fait une <b>copie de sauvegarde</b> avant tout changement.</li>
 <pre>bash ~/maj.sh</pre>
 <p>Le script affiche 5 étapes, en 1 à 3 minutes :</p>
 <table><tr><th style="width:38%">Message</th><th>Ce qui se passe</th></tr>
-<tr><td>1/5 Sauvegarde de la base</td><td>Copie datée de la base dans <code>comptabb-data/sauvegardes</code> (les 10 dernières sont gardées).</td></tr>
+<tr><td>1/5 Sauvegarde de la base</td><td>Copie datée de la base dans <code>comptabb-data/Exports/Sauvegardes</code> (les 30 dernières sont gardées).</td></tr>
 <tr><td>2/5 Nouveau code</td><td>Décompresse le ZIP ; l'ancienne version est gardée dans <code>ComptaBB-ancien</code>.</td></tr>
 <tr><td>3/5 Bibliothèques Python</td><td>Installe ce que la nouvelle version demande (peut prendre une minute).</td></tr>
 <tr><td>4/5 Base de données et paramètres</td><td>Adapte la base ; doit afficher « <b>ComptaBB prêt : … mouvements dans la base</b> ».</td></tr>
@@ -130,13 +130,13 @@ envoyer à Claude une copie de ce qui s'est affiché.</td></tr>
 
 <h2>5. Sauvegardes</h2>
 <ul>
-<li><b>Automatiques</b> : à chaque mise à jour, dans <code>comptabb-data/sauvegardes</code> (10 dernières).</li>
+<li><b>Automatiques</b> : à chaque mise à jour, dans <code>comptabb-data/Exports/Sauvegardes</code> (30 dernières).</li>
 <li><b>À faire chaque mois</b> (et avant une clôture) : onglet <b><a href="https://www.pythonanywhere.com/user/ComptaBB/files/home/ComptaBB/comptabb-data">Files › comptabb-data</a></b> › cliquer sur
 <code>comptabb.sqlite3</code> pour le <b>télécharger</b> ; le ranger sur OneDrive sous un nom daté, par exemple
 <code>ComptaBB_2026-10-31.sqlite3</code>.</li>
 <li><b>Revenir à une sauvegarde</b> (seulement sur conseil de Claude) : dans une console Bash, taper
-<code>ls ~/comptabb-data/sauvegardes</code> pour voir les copies, puis
-<code>cp ~/comptabb-data/sauvegardes/NOM_DU_FICHIER ~/comptabb-data/comptabb.sqlite3</code> et recharger le site
+<code>ls ~/comptabb-data/Exports/Sauvegardes</code> pour voir les copies, puis
+<code>cp ~/comptabb-data/Exports/Sauvegardes/NOM_DU_FICHIER ~/comptabb-data/comptabb.sqlite3</code> et recharger le site
 (onglet Web › Reload). Les saisies faites après cette sauvegarde seront perdues.</li>
 </ul>
 

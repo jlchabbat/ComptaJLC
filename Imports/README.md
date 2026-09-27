@@ -1,11 +1,35 @@
 # Imports — initialisation et reprise de ComptaBB
 
-Ce dossier sert à deux choses :
+Ce dossier sert à trois choses :
 
+- **paramétrer** l'application web : `Parametres.xlsx` (voir ci-dessous) ;
 - **initialiser** une comptabilité neuve à partir des modèles de
   `modeles/` ;
 - **reprendre** la comptabilité existante à partir des exports de
   `reprise/`.
+
+## `Parametres.xlsx` (application web)
+
+Classeur des paramètres de ComptaBB, une feuille par sujet : Réglages,
+Axe 1, Axe 2, Préfixes, Plan comptable (hors comptes de tiers), Journaux,
+Types de tiers, Moyens de paiement, Modèles d'opération, Natures fiches,
+Modes fiches, Relevés, Traductions. Il reflète l'application au moment où
+il est écrit, se modifie dans Excel et se réinjecte :
+
+- dans l'application : *Administration › Paramètres (Excel)* — boutons
+  « Préparer Imports/Parametres.xlsx » puis « Importer » ;
+- ou en ligne de commande :
+  `python manage.py parametres exporter` puis
+  `python manage.py parametres importer`.
+
+Règles : clé connue = mise à jour, clé nouvelle = création, cellule vide =
+aucun changement, rien n'est supprimé (Actif = Non), et au moindre problème
+rien n'est enregistré. Une sauvegarde de la base est faite avant chaque
+import (dossier `Exports/Sauvegardes`).
+
+Réservé à l'administrateur et au trésorier : pour les autres utilisateurs,
+l'application ne lit ni n'écrit rien dans `Imports/` et `Exports/`. Le
+fichier n'est pas versionné (règle `*.xlsx` du `.gitignore`).
 
 Tous les chemins sont relatifs à la racine du projet
 (`Applications/ComptaBB`).

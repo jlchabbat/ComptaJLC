@@ -298,6 +298,24 @@ C'est la piste d'audit du vérificateur. Le trésorier peut <b>effacer l'histori
 (comptes 580000 et 470000, tolérance du rapprochement, compte des cotisations…), modèles d'opérations, moyens de paiement, types de tiers,
 natures et modes des fiches bénévoles, traductions, <b>utilisateurs</b> (mots de passe, groupes).
 Cliquer sur une ligne, modifier, <b>Enregistrer</b>. Les écritures ne se modifient pas ici (voir chapitre 4).</p>
+<h2>Paramètres (Excel) : le fichier Parametres.xlsx</h2>
+<p><span class="menu">Administration › Paramètres (Excel)</span> — <b>administrateur et trésorier seulement</b>. Tous les paramètres
+(réglages, codes axe 1 et axe 2, préfixes, plan comptable hors tiers, journaux, types de tiers, moyens de paiement, modèles d'opération,
+natures et modes des fiches, relevés, traductions) tiennent dans un classeur, une feuille par sujet.</p>
+<ul><li><b>Par le dossier Imports</b> (ComptaBB sur le PC) : <b>Préparer Imports/Parametres.xlsx</b>, le modifier dans Excel, l'enregistrer
+et le fermer, puis <b>Importer Imports/Parametres.xlsx</b>.</li>
+<li><b>Par le navigateur</b> (site hébergé) : <b>Télécharger Parametres.xlsx</b>, le modifier, puis l'envoyer avec <b>Importer le fichier</b>.</li>
+<li>Une ligne dont la clé (colonne grise) existe est mise à jour ; une clé nouvelle est créée ; une cellule vide ne change rien ;
+rien n'est supprimé (Actif = Non pour retirer).</li>
+<li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import,
+et chaque changement est inscrit dans l'Historique.</li></ul>
+<h2>Dossiers Imports et Exports</h2>
+<p>Seuls l'administrateur et le trésorier échangent des fichiers avec ComptaBB (Parametres.xlsx, Tiers.xlsx) ; pour les autres utilisateurs,
+l'application ne dépend d'aucun fichier. Le dossier <b>Exports</b> contient :</p>
+<ul><li><b>Sauvegardes</b> : les copies de la base (30 dernières) ;</li>
+<li><b>Archives</b> : les classeurs de clôture et les copies d'historique effacé ;</li>
+<li>la dernière copie de <b>Parametres.xlsx</b> téléchargée, et les anciennes versions remplacées.</li></ul>
+<p>Sur le PC, Imports et Exports sont à côté de ComptaBB ; sur PythonAnywhere, dans <code>comptabb-data</code> (ils survivent aux mises à jour).</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes et remise à zéro.</figcaption></figure>
 <ul><li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture, et à ranger sur le PC ou OneDrive.</li>
@@ -309,7 +327,7 @@ Une sauvegarde de la base actuelle est faite juste avant.</li>
 <h2>Sauvegarde automatique chaque nuit</h2>
 <p>Sur PythonAnywhere, onglet <b>Tasks</b> (<a href="https://www.pythonanywhere.com/user/ComptaBB/tasks_tab/">lien</a>), créer une tâche quotidienne avec la commande :</p>
 <p><code>COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</code></p>
-<p>Les 30 dernières sauvegardes sont gardées.</p>
+<p>Les 30 dernières sauvegardes sont gardées, dans <code>comptabb-data/Exports/Sauvegardes</code>.</p>
 
 <!-- 14 -->
 <h1 id="c14">14. Mises à jour, problèmes fréquents, glossaire</h1>

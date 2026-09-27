@@ -20,6 +20,12 @@ FIGE = getattr(sys, "frozen", False)
 RACINE = Path(sys.executable).resolve().parent if FIGE else BASE_DIR.parent
 DATA_DIR = Path(os.environ.get("COMPTABB_DATA", RACINE / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+# Dossiers d'échange (administrateur et trésorier seulement) : Imports (fichiers à réinjecter) et Exports
+# (sauvegardes, archives, paramètres). Sur le PC : à côté de l'application ; sur un hébergeur : dans le dossier
+# des données, pour survivre aux mises à jour du code.
+_ECHANGES = DATA_DIR if os.environ.get("COMPTABB_DATA") else RACINE
+IMPORTS_DIR = Path(os.environ.get("COMPTABB_IMPORTS", _ECHANGES / "Imports"))
+EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", _ECHANGES / "Exports"))
 
 
 def _cle_secrete():

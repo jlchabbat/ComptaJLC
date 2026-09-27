@@ -7,7 +7,6 @@ import datetime as dt
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -121,9 +120,8 @@ def cloturer(ex, utilisateur, anal2):
 
 
 def dossier_archives():
-    d = settings.DATA_DIR / "archives"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    from .dossiers import archives
+    return archives()
 
 
 def archiver(ex):

@@ -2,13 +2,13 @@
 
 Pour une sauvegarde automatique quotidienne sur PythonAnywhere (onglet Tasks) :
 COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder
-Les 30 dernières sauvegardes sont gardées dans comptabb-data/sauvegardes."""
+Les 30 dernières sauvegardes sont gardées dans Exports/Sauvegardes."""
 
 from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = "Crée une sauvegarde datée de la base dans data/sauvegardes."
+    help = "Crée une sauvegarde datée de la base dans Exports/Sauvegardes."
 
     def add_arguments(self, parser):
         parser.add_argument("--motif", default="auto")

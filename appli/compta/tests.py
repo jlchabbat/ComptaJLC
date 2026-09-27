@@ -644,10 +644,16 @@ from . import etats  # noqa: E402
 from .models import Budget  # noqa: E402
 from django.test import override_settings  # noqa: E402
 
+
+def temporaire(d=None):
+    """Dossiers de test : données, Imports et Exports hors du projet."""
+    d = Path(d or tempfile.mkdtemp())
+    return dict(DATA_DIR=d, IMPORTS_DIR=d / "Imports", EXPORTS_DIR=d / "Exports")
+
 ARCHIVES_TEST = Path(tempfile.mkdtemp())
 
 
-@override_settings(DATA_DIR=ARCHIVES_TEST)
+@override_settings(**temporaire(ARCHIVES_TEST))
 class Cloture(TestCase):
     def setUp(self):
         referentiels_saisie()
@@ -710,7 +716,7 @@ class Cloture(TestCase):
         self.assertEqual(etats.solde_cumule(Compte.objects.get(numero="110000"), dt.date(2027, 1, 1)), D(-1350))
 
 
-@override_settings(DATA_DIR=ARCHIVES_TEST)
+@override_settings(**temporaire(ARCHIVES_TEST))
 class EcransEtats(TestCase):
     def setUp(self):
         Cloture.setUp(self)
@@ -974,6 +980,13 @@ class ImportTiers(TestCase):
         self.client.force_login(u)
         r = self.client.get("/membres/modele-tiers.xlsx")
         self.assertEqual(r["Content-Disposition"], 'attachment; filename="Tiers.xlsx"')
+        from django.core.files.uploadedfile import SimpleUploadedFile as Fichier
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # rôle Bureau : pas d'import
+        self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
+        self.client.force_login(u)
         from django.core.files.uploadedfile import SimpleUploadedFile
         modele = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(modele["Tiers"]["C1"].value, "Nom")
@@ -1013,7 +1026,7 @@ from django.test import TransactionTestCase  # noqa: E402
 from . import base_donnees as bd  # noqa: E402
 
 
-@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+@override_settings(**temporaire())
 class BaseDonnees(TransactionTestCase):
     def setUp(self):
         call_command("migrate", verbosity=0)
@@ -1056,7 +1069,7 @@ class BaseDonnees(TransactionTestCase):
         self.assertEqual(self.client.get("/base/").status_code, 403)
 
 
-@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+@override_settings(**temporaire())
 class EffacerHistorique(TransactionTestCase):
     def test_effacer(self):
         call_command("migrate", verbosity=0)
@@ -1069,7 +1082,7 @@ class EffacerHistorique(TransactionTestCase):
         self.client.post("/modifications/effacer/", {"jusquau": dt.date.today().isoformat(), "confirmation": "effacer"})
         self.assertEqual(list(Modification.objects.values_list("action", flat=True)), ["Historique effacé"])
         from django.conf import settings
-        self.assertEqual(len(list((settings.DATA_DIR / "archives").glob("Historique_*.xlsx"))), 1)
+        self.assertEqual(len(list((settings.EXPORTS_DIR / "Archives").glob("Historique_*.xlsx"))), 1)
         self.assertEqual(len(bd.liste()), 1)
         u = User.objects.create_user("tresorier")
         u.groups.add(Group.objects.get(name="Trésorier"))
@@ -1077,9 +1090,143 @@ class EffacerHistorique(TransactionTestCase):
         self.assertEqual(self.client.post("/modifications/effacer/", {"confirmation": "EFFACER"}).status_code, 403)
 
 
-@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+@override_settings(**temporaire())
 class CommandeSauvegarder(TransactionTestCase):
     def test_commande(self):
         call_command("migrate", verbosity=0)
         call_command("sauvegarder", stdout=open("/dev/null", "w"))
         self.assertTrue(bd.liste()[0].name.endswith("_auto.sqlite3"))
+
+
+from . import parametres as prm  # noqa: E402
+
+
+@override_settings(**temporaire())
+class ImportParametres(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        moteur.initialiser_parametres()
+        call_command("migrate", verbosity=0)
+
+    def classeur(self):
+        return openpyxl.load_workbook(__import__("io").BytesIO(prm.contenu_classeur()))
+
+    def octets(self, wb):
+        tampon = __import__("io").BytesIO()
+        wb.save(tampon)
+        return tampon.getvalue()
+
+    def test_aller_retour_sans_changement(self):
+        wb = self.classeur()
+        self.assertIn("Plan comptable", wb.sheetnames)
+        comptes = [r[0] for r in wb["Plan comptable"].iter_rows(min_row=2, values_only=True)]
+        self.assertIn("512000", comptes)
+        self.assertNotIn("411TAIEB001", comptes)                 # comptes de tiers : fichier Tiers.xlsx
+        r = prm.importer(self.octets(wb))
+        self.assertEqual((r.erreurs, r.crees, r.modifies), ([], [], []))
+        self.assertGreater(r.inchanges, 30)
+
+    def test_modification_et_creation(self):
+        wb = self.classeur()
+        pc = wb["Plan comptable"]
+        for row in pc.iter_rows(min_row=2):
+            if row[0].value == "600100":
+                row[1].value, row[4].value = "FRAIS DE BANQUE", "Non"
+            if row[0].value == "610000":
+                row[1].value = None                               # cellule vide : rien ne change
+        pc.append([622000, "HONORAIRES", "FON.1", "Non", "Oui"])    # nombre lu par Excel
+        wb["Axe 2"].append(["MAN.002", "GALA", "En cours"])
+        wb["Traductions"].append(["עמלה", "COMMISSION"])
+        r = prm.importer(self.octets(wb), auteur="t")
+        self.assertEqual(r.erreurs, [])
+        self.assertEqual((len(r.crees), len(r.modifies)), (3, 1))
+        c = Compte.objects.get(numero="600100")
+        self.assertEqual((c.libelle, c.actif), ("FRAIS DE BANQUE", False))
+        self.assertEqual(Compte.objects.get(numero="610000").libelle, "SERVICES")
+        self.assertEqual(Compte.objects.get(numero="622000").anal1_id, "FON.1")
+        self.assertEqual(CodeAnalytique.objects.get(code="MAN.002").axe, 2)
+        self.assertEqual(Traduction.traduire("עמלה"), "COMMISSION")
+        m = Modification.objects.get(action="Modification (import)")
+        self.assertIn("SERVICES", Compte.objects.get(numero="610000").libelle)
+        self.assertIn("FRAIS BANCAIRES", m.avant)
+        self.assertTrue(Modification.objects.filter(action="Import Parametres.xlsx").exists())
+
+    def test_erreur_rien_n_est_enregistre(self):
+        wb = self.classeur()
+        wb["Plan comptable"].append(["623000", "PUBLICITE", "ZZZ.9", None, None])   # code axe 1 inconnu
+        wb["Axe 1"].append(["GEN.001", "DOUBLON", None])                            # code déjà sur l'axe 2
+        wb["Journaux"].append(["BQ", None, None, None, None])                       # intitulé manquant
+        wb["Réglages"].append(["compte_attente", "470000", "Compte d'attente"])     # ligne correcte
+        r = prm.importer(self.octets(wb))
+        self.assertEqual(len(r.erreurs), 3, r.erreurs)
+        self.assertTrue(any("Plan comptable, ligne" in e and "ZZZ.9" in e for e in r.erreurs))
+        self.assertFalse(Reglage.objects.filter(cle="compte_attente").exists())    # tout ou rien
+        self.assertFalse(Compte.objects.filter(numero="623000").exists())
+        self.assertEqual(CodeAnalytique.objects.get(code="GEN.001").libelle, "GENERAL")
+
+
+
+@override_settings(**temporaire())
+class EcranParametres(TransactionTestCase):
+    """Imports avec sauvegarde SQLite préalable : hors transaction de test (comme BaseDonnees)."""
+
+    def setUp(self):
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        moteur.initialiser_parametres()
+
+    octets = ImportParametres.octets
+
+    def test_droits_et_dossier_imports(self):
+        from django.conf import settings
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        for role in ("Bureau", "Vérificateur", "Bénévole"):
+            self.assertFalse(Group.objects.get(name=role).permissions.filter(codename="echanger_fichiers").exists())
+            u = User.objects.create_user(role)
+            u.groups.add(Group.objects.get(name=role))
+            self.client.force_login(u)
+            self.assertEqual(self.client.get("/parametres/").status_code, 403)
+            self.assertEqual(self.client.get("/parametres/Parametres.xlsx").status_code, 403)
+            self.assertEqual(self.client.post("/parametres/", {"preparer": "1"}).status_code, 403)
+        self.assertFalse((settings.IMPORTS_DIR / "Parametres.xlsx").exists())
+        u = User.objects.create_user("tresorier")
+        u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(u)
+        self.assertContains(self.client.get("/"), "Paramètres (Excel)")
+        r = self.client.get("/parametres/Parametres.xlsx")
+        self.assertEqual(r["Content-Disposition"], 'attachment; filename="Parametres.xlsx"')
+        self.assertTrue((settings.EXPORTS_DIR / "Parametres.xlsx").exists())
+        wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
+        self.assertEqual(wb["Plan comptable"]["A1"].font.size, 12)
+        wb["Réglages"].append(["compte_attente", "470000", ""])
+        self.client.post("/parametres/", {"fichier": SimpleUploadedFile("Parametres.xlsx", self.octets(wb))})
+        self.assertEqual(Reglage.objects.get(cle="compte_attente").valeur, "470000")
+        self.assertEqual(bd.dossier(), settings.EXPORTS_DIR / "Sauvegardes")
+        self.assertTrue(any(p.name.endswith("_avant_import_parametres.sqlite3") for p in bd.liste()))
+        # par le dossier Imports : préparer, modifier dans « Excel », importer
+        chemin = settings.IMPORTS_DIR / "Parametres.xlsx"
+        self.client.post("/parametres/", {"preparer": "1"})
+        self.client.post("/parametres/", {"preparer": "1"})           # l'ancien fichier est gardé dans Exports
+        self.assertEqual(len(list(settings.EXPORTS_DIR.glob("Parametres_*_remplace.xlsx"))), 1)
+        wb = openpyxl.load_workbook(chemin)
+        wb["Réglages"].append(["compte_don", "750000", "Dons"])
+        wb.save(chemin)
+        self.client.post("/parametres/", {"importer_dossier": "1"})
+        self.assertEqual(Reglage.objects.get(cle="compte_don").valeur, "750000")
+
+    def test_anciennes_sauvegardes_deplacees(self):
+        from django.conf import settings
+        ancien = settings.DATA_DIR / "sauvegardes"
+        ancien.mkdir(parents=True, exist_ok=True)
+        (ancien / "comptabb_ancienne.sqlite3").write_bytes(b"x")
+        self.assertIn("comptabb_ancienne.sqlite3", [p.name for p in bd.liste()])
+        self.assertFalse(ancien.exists())
+
+    def test_commande(self):
+        chemin = Path(tempfile.mkdtemp()) / "Parametres.xlsx"
+        call_command("parametres", "exporter", str(chemin), stdout=open("/dev/null", "w"))
+        wb = openpyxl.load_workbook(chemin)
+        wb["Types de tiers"].append(["Donateur", "412"])
+        wb.save(chemin)
+        call_command("parametres", "importer", str(chemin), stdout=open("/dev/null", "w"))
+        self.assertEqual(TypeTiers.objects.get(libelle="Donateur").prefixe, "412")

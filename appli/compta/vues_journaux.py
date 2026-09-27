@@ -106,7 +106,6 @@ def historique_excel(request):
 @login_required
 def effacer_historique(request):
     """Efface l'historique jusqu'à une date (administrateur) ; copie Excel et sauvegarde de la base faites avant."""
-    from django.conf import settings
     from django.contrib import messages
     from django.core.exceptions import PermissionDenied
     from django.shortcuts import redirect
@@ -133,8 +132,8 @@ def effacer_historique(request):
     wb.remove(wb.active)
     feuille(wb, "Historique", ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
             [[m.date.replace(tzinfo=None), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres] for m in qs])
-    archives = settings.DATA_DIR / "archives"
-    archives.mkdir(parents=True, exist_ok=True)
+    from .dossiers import archives as dossier_archives
+    archives = dossier_archives()
     copie = archives / f"Historique_jusqu_au_{jusquau:%Y-%m-%d}_efface_le_{dt.date.today():%Y-%m-%d}.xlsx"
     wb.save(copie)
     sauvegarde = bd.sauvegarder("avant-effacement-historique")

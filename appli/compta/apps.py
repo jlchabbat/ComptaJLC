@@ -3,7 +3,7 @@ from django.db.models.signals import post_migrate
 
 # Rôles (cahier des charges §1) : droits Django attribués à chaque groupe
 ROLES = {
-    "Trésorier": "tout",
+    "Trésorier": "tout",           # seul rôle qui échange des fichiers (Imports, Exports) avec l'administrateur
     "Bureau": "consultation",
     "Vérificateur": "consultation",
     # fiches bénévoles : le bénévole ne voit que les fiches qui lui sont confiées

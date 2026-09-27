@@ -99,7 +99,7 @@ class Exercice(models.Model):
     resultat = models.DecimalField("résultat affecté", max_digits=14, decimal_places=2, null=True, blank=True)
     cloture_le = models.DateTimeField("clôturé le", null=True, blank=True)
     cloture_par = models.CharField("clôturé par", max_length=100, blank=True)
-    archive = models.CharField(max_length=200, blank=True, help_text="Classeur figé en valeurs (dossier data/archives).")
+    archive = models.CharField(max_length=200, blank=True, help_text="Classeur figé en valeurs (dossier Exports/Archives).")
 
     class Meta:
         ordering = ["debut"]
@@ -125,6 +125,8 @@ class Reglage(models.Model):
 
     class Meta:
         verbose_name = "réglage"
+        # administrateur et rôle Trésorier seulement : les autres utilisateurs ne touchent pas aux dossiers d'échange
+        permissions = [("echanger_fichiers", "Importer et exporter des fichiers (dossiers Imports et Exports)")]
 
     def __str__(self):
         return self.cle

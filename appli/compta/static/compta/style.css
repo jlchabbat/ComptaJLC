@@ -140,7 +140,7 @@ table { font-size: 15px; }
 th, td { padding: 6px 9px; }
 input, select, button, textarea { font-size: 15px; padding: 6px 9px; }
 .liste-cherchable li { font-size: 15px; padding: 6px 9px; }
-.aide, td.ctrl, .barre-filtre .aide { font-size: 14px; color: #444; }
+.aide, td.ctrl, .barre-filtre .aide { font-size: 15px; color: #333; }
 h1 { font-size: 26px; margin: 8px 0 14px; }
 h2 { font-size: 20px; }
 h3 { font-size: 17px; }

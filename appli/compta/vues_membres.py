@@ -33,15 +33,16 @@ class ImportMembresForm(forms.Form):
 @voir
 def liste(request):
     peut = request.user.has_perm("compta.change_membre")
-    form = ImportMembresForm(request.POST or None, request.FILES or None) if peut else None
-    if request.method == "POST" and peut:
-        if "lettrage_auto" in request.POST:
+    peut_importer = request.user.has_perm("compta.echanger_fichiers")
+    form = ImportMembresForm(request.POST or None, request.FILES or None) if peut_importer else None
+    if request.method == "POST" and (peut or peut_importer):
+        if "lettrage_auto" in request.POST and peut:
             n = sum(moteur.lettrage_automatique(m.compte) for m in Membre.objects.select_related("compte"))
             Modification.objects.create(auteur=request.user.get_username(), lot="Membres", action="Lettrage automatique",
                                         objet="tous les membres", apres=f"{n} lettrage(s)")
             messages.success(request, f"{n} lettrage(s) automatique(s).")
             return redirect("membres")
-        if form.is_valid():
+        if form is not None and form.is_valid():
             f = form.cleaned_data["fichier"]
             try:
                 r = moteur.importer_tableau(moteur.lire_tableau(f.name, f.read()))
@@ -71,7 +72,7 @@ def liste(request):
     from .models import TypeTiers
     return render(request, "compta/membres.html", {"lignes": lignes, "q": q, "statut": statut, "statuts": Membre.STATUTS,
                                                     "type": type_, "types": TypeTiers.objects.all(),
-                                                    "peut": peut, "import_form": form,
+                                                    "peut": peut, "peut_importer": peut_importer, "import_form": form,
                                                     "total_du": sum((s for _, s in lignes if s > 0), ZERO)})
 
 

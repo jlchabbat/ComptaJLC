@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 
-from compta import views, vues_base, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_rapprochement as rap
+from compta import views, vues_base, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_rapprochement as rap
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -51,6 +51,8 @@ urlpatterns = [
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
     path("base/", vues_base.base, name="base"),
+    path("parametres/", vues_parametres.parametres, name="parametres"),
+    path("parametres/Parametres.xlsx", vues_parametres.telecharger, name="parametres_telecharger"),
     path("base/telecharger/", vues_base.telecharger, name="base_telecharger"),
     path("base/telecharger/<str:nom>", vues_base.telecharger, name="base_telecharger_fichier"),
     path("base/archive/<str:nom>", vues_base.telecharger_archive, name="base_archive"),

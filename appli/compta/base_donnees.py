@@ -1,11 +1,10 @@
 """Sauvegarde, restauration et remise à zéro de la base (trésorier, administrateur).
 
-Toute opération qui remplace les données commence par une sauvegarde datée dans data/sauvegardes."""
+Toute opération qui remplace les données commence par une sauvegarde datée dans Exports/Sauvegardes."""
 
 import datetime as dt
 import sqlite3
 
-from django.conf import settings
 from django.core.management import call_command
 from django.db import connection
 
@@ -13,9 +12,8 @@ TABLES_COMPTA = ("compta_mouvement", "compta_ligne", "compta_compte")
 
 
 def dossier():
-    d = settings.DATA_DIR / "sauvegardes"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    from .dossiers import sauvegardes
+    return sauvegardes()
 
 
 def liste():

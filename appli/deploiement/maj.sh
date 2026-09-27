@@ -2,10 +2,11 @@
 # Mise à jour de ComptaBB sur PythonAnywhere.
 #   bash ~/maj.sh            installe le dernier ZIP envoyé dans Files (sauvegarde de la base d'abord)
 #   bash ~/maj.sh --retour   remet la version précédente du code
-# Les données (dossier comptabb-data) ne sont jamais effacées.
+# Les données (dossier comptabb-data, avec Imports et Exports) ne sont jamais effacées.
 set -e
 cd ~
 DATA=~/comptabb-data
+SAUVEGARDES="$DATA/Exports/Sauvegardes"
 WSGI=$(ls /var/www/*_wsgi.py 2>/dev/null | head -1 || true)
 
 recharger() {
@@ -28,7 +29,7 @@ if [ "$1" = "--retour" ]; then
   echo "Version précédente du code remise en place."
   recharger
   echo "Les données n'ont pas été touchées. Dernières sauvegardes de la base :"
-  ls -t "$DATA"/sauvegardes/*.sqlite3 2>/dev/null | head -3 | sed 's/^/   /'
+  ls -t "$SAUVEGARDES"/*.sqlite3 2>/dev/null | head -3 | sed 's/^/   /'
   exit 0
 fi
 
@@ -39,11 +40,15 @@ if [ -z "$ZIP" ]; then
 fi
 
 echo "1/5 Sauvegarde de la base"
-mkdir -p "$DATA/sauvegardes"
-SAUVE="$DATA/sauvegardes/comptabb_$(date +%Y-%m-%d_%H%M).sqlite3"
+mkdir -p "$SAUVEGARDES"
+if [ -d "$DATA/sauvegardes" ]; then                              # ancien emplacement (avant Exports)
+  mv -n "$DATA"/sauvegardes/* "$SAUVEGARDES"/ 2>/dev/null || true
+  rmdir "$DATA/sauvegardes" 2>/dev/null || true
+fi
+SAUVE="$SAUVEGARDES/comptabb_$(date +%Y-%m-%d_%H%M).sqlite3"
 python3 -c "import sqlite3, sys; s = sqlite3.connect(sys.argv[1]); d = sqlite3.connect(sys.argv[2]); s.backup(d); d.close()" \
   "$DATA/comptabb.sqlite3" "$SAUVE"
-ls -t "$DATA"/sauvegardes/*.sqlite3 | tail -n +31 | xargs -r -d '\n' rm --      # garde les 30 dernières
+ls -t "$SAUVEGARDES"/*.sqlite3 | tail -n +31 | xargs -r -d '\n' rm --      # garde les 30 dernières
 echo "   $SAUVE"
 
 echo "2/5 Nouveau code : $(basename "$ZIP")"
