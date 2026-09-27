@@ -1761,8 +1761,9 @@ class DossiersEtExportComplet(TransactionTestCase):
         self.assertFalse(dossiers.valable(r"D:\OneDrive\Applications\ComptaBB\Exports"))                  # tests : Linux
         self.assertEqual(dossiers.exports(), self.racine / "Exports")
         self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")
-        with self.assertRaises(ech.Refus):
-            ech.changer_dossiers({"dossier_sauvegardes": r"E:\Sauvegardes"})
+        self.assertEqual(ech.changer_dossiers({"dossier_sauvegardes": r"E:\Sauvegardes"}), [r"E:\Sauvegardes"])    # pour le PC
+        self.assertEqual(Reglage.lire("dossier_sauvegardes"), r"E:\Sauvegardes")
+        self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")                   # ignoré ici
         with self.assertRaises(ech.Refus):
             ech.changer_dossiers({"dossier_exports": "relatif/Exports"})
 

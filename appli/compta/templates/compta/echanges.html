@@ -58,6 +58,6 @@ des paramètres) dans le dossier Exports, et une copie de la base dans le dossie
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">
 <div class="aide">Vide = {{ defaut }}.{% if valeur and utilise|stringformat:"s" != valeur %} <b>Ici, ce chemin est ignoré (dossier du PC) : dossier utilisé {{ utilise }}.</b>{% endif %}</div></div>{% endfor %}</div>
 <p class="aide">Chemin complet, par exemple D:\OneDrive\Applications\ComptaBB\Exports et D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes
-(sur le PC). Un chemin D:\… ne vaut que sur le PC : sur le site (PythonAnywhere), laisser vide et télécharger les fichiers.
+(sur le PC). Sur le site, un chemin D:\… est accepté et gardé pour le programme du PC (qui le reçoit avec « Recevoir la base du site ») ; le site, lui, écrit dans ses propres dossiers, d'où l'on télécharge les fichiers.
 Le dossier est créé s'il n'existe pas. Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports, dossier_exports, dossier_sauvegardes).</p></form>
 {% endblock %}

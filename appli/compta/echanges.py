@@ -50,14 +50,18 @@ def importes():
 
 
 def changer_dossiers(valeurs, auteur=""):
-    """Enregistre les chemins des dossiers Imports, Exports et Sauvegardes (vide = dossier par défaut) ; les crée au besoin."""
-    erreurs = []
+    """Enregistre les chemins des dossiers Imports, Exports et Sauvegardes (vide = dossier par défaut) ; les crée au besoin.
+
+    Sur le site, un chemin Windows (D:\\…) est enregistré pour le programme du PC (qui le reçoit avec la base) mais
+    ignoré sur place. Renvoie ces chemins réservés au PC."""
+    erreurs, pour_le_pc = [], []
     for cle, v in valeurs.items():
         v = (v or "").strip().strip('"')
         if v:
-            if not dossiers.valable(v):
-                erreurs.append(f"{v} : chemin complet attendu" + (" ; un chemin Windows (D:\\…) ne vaut que sur le PC, pas sur le site."
-                                                                if dossiers.WINDOWS.match(v) else "."))
+            if dossiers.WINDOWS.match(v) and not dossiers.valable(v):
+                pour_le_pc.append(v)                         # site : gardé pour le PC, sans créer de dossier
+            elif not dossiers.valable(v):
+                erreurs.append(f"{v} : chemin complet attendu (par exemple D:\\OneDrive\\Applications\\ComptaBB\\Exports).")
                 continue
             try:
                 _cree(Path(v))
@@ -70,6 +74,7 @@ def changer_dossiers(valeurs, auteur=""):
             Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet=cle, avant=avant, apres=v)
     if erreurs:
         raise Refus(erreurs)
+    return pour_le_pc
 
 
 def tout_exporter(auteur=""):
