@@ -24,10 +24,15 @@ ROLES_CREES_ICI = [r for r in ROLES if r != "Bénévole"]       # un bénévole 
 
 
 class ConnexionParEmail(ModelBackend):
-    """Connexion avec l'identifiant ou, à défaut, avec l'adresse e-mail enregistrée."""
+    """Connexion avec l'identifiant (majuscules indifférentes) ou, à défaut, avec l'adresse e-mail enregistrée."""
 
     def authenticate(self, request, username=None, password=None, **kwargs):
+        username = (username or "").strip()
         u = super().authenticate(request, username=username, password=password, **kwargs)
+        if u is None and username:
+            trouve = User.objects.filter(username__iexact=username).first()        # « Jean » pour « jean »
+            if trouve and trouve.check_password(password) and self.user_can_authenticate(trouve):
+                return trouve
         if u is None and username and "@" in username:
             trouve = User.objects.filter(email__iexact=username.strip()).first()
             if trouve and trouve.check_password(password) and self.user_can_authenticate(trouve):

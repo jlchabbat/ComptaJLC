@@ -1901,6 +1901,8 @@ class RecevoirLaBaseDuSite(TransactionTestCase):
     def test_refus(self):
         with self.assertRaisesRegex(ValueError, "refusé"):
             synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "chef", "mauvais", FauxNavigateur(self))
+        n, _ = synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, " Chef ", "Site-mdp-2026", FauxNavigateur(self))    # majuscules, espaces
+        self.assertEqual(n, 1)
         b = User.objects.create_user("bureau", password="Bureau-mdp-2026")
         donner_role(b, "Bureau")
         with self.assertRaisesRegex(ValueError, "administrateur"):
@@ -1909,9 +1911,22 @@ class RecevoirLaBaseDuSite(TransactionTestCase):
             synchro.adresse_valide("http://comptabb.pythonanywhere.com")
         self.assertTrue(Mouvement.objects.filter(numero=421).exists())             # rien de remplacé
 
+    def test_connexion_securisee_du_site(self):
+        """Sur le site (HTTPS, protection CSRF active), le PC se connecte avec l'en-tête Referer qu'il envoie."""
+        import re
+        from django.test import Client
+        hote = "comptabb.pythonanywhere.com"
+        with override_settings(ALLOWED_HOSTS=[hote], CSRF_TRUSTED_ORIGINS=[f"https://{hote}"], CSRF_COOKIE_SECURE=True):
+            c = Client(enforce_csrf_checks=True, HTTP_HOST=hote)
+            jeton = re.search(rb'name="csrfmiddlewaretoken" value="([^"]+)"', c.get("/connexion/", secure=True).content).group(1)
+            r = c.post("/connexion/", {"csrfmiddlewaretoken": jeton.decode(), "username": "chef", "password": "Site-mdp-2026"},
+                       secure=True, HTTP_REFERER=f"https://{hote}/connexion/")
+            self.assertEqual(r.status_code, 302)
+
     def test_bouton_seulement_sur_le_pc(self):
         self.client.force_login(self.chef)
         self.assertNotContains(self.client.get("/base/"), "Recevoir la base du site")          # sur le site
         r = self.client.get("/base/", HTTP_HOST="127.0.0.1:8765")
         self.assertContains(r, "Recevoir la base du site")
         self.assertContains(r, 'value="https://comptabb.pythonanywhere.com"')
+        self.assertContains(r, 'autocomplete="new-password"')                 # pas le mot de passe du PC pré-rempli

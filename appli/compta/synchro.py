@@ -60,9 +60,13 @@ def telecharger(adresse, identifiant, mot_de_passe, navigateur=None):
         if statut != 200 or not jeton:
             raise ValueError(f"Pas de page de connexion ComptaBB à l'adresse {adresse}.")
         statut, finale, _ = nav.post(adresse + "/connexion/", {"csrfmiddlewaretoken": jeton.group(1).decode(),
-                                                                "username": identifiant, "password": mot_de_passe})
-        if statut != 200 or finale.rstrip("/").endswith("/connexion"):
-            raise ValueError("Le site a refusé l'identifiant ou le mot de passe.")
+                                                                "username": identifiant.strip(), "password": mot_de_passe})
+        if statut == 200 and finale.rstrip("/").endswith("/connexion"):
+            raise ValueError(f"Le site a refusé l'identifiant « {identifiant.strip()} » ou son mot de passe. Vérifiez-les en vous "
+                             f"connectant au site dans le navigateur ({adresse}) : ce sont ceux du site, pas forcément ceux du PC.")
+        if statut != 200:
+            raise ValueError(f"Le site a refusé la connexion (erreur {statut}), sans lien avec le mot de passe. "
+                             "Mettre à jour le site et le PC avec la même version, puis réessayer.")
         statut, _, contenu = nav.get(adresse + "/base/telecharger/")
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise ValueError(f"Site injoignable ({getattr(e, 'reason', e)}). Vérifier la connexion internet et l'adresse.") from None

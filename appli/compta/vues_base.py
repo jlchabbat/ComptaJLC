@@ -25,8 +25,12 @@ def administrateur(u):
 
 class RecevoirForm(forms.Form):
     adresse = forms.CharField(label="Adresse du site", max_length=200)
-    identifiant = forms.CharField(label="Identifiant sur le site", max_length=150, help_text="Un administrateur du site (nom ou e-mail).")
-    mot_de_passe = forms.CharField(label="Mot de passe sur le site", widget=forms.PasswordInput, help_text="Il n'est pas enregistré.")
+    identifiant = forms.CharField(label="Identifiant sur le site", max_length=150,
+                                  widget=forms.TextInput(attrs={"autocomplete": "off"}),
+                                  help_text="Celui d'un administrateur du site (nom ou e-mail), pas forcément celui du PC.")
+    mot_de_passe = forms.CharField(label="Mot de passe sur le site", strip=False,
+                                   widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+                                   help_text="Celui du site, tapé à la main (le navigateur ne le remplit pas) ; il n'est pas enregistré.")
     confirmation = forms.CharField(label=f"Tapez {CONFIRMATION} pour confirmer")
 
     def clean_confirmation(self):
