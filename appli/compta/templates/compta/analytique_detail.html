@@ -1,0 +1,25 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique – {{ titre_axe }}{% endblock %}{% block contenu %}
+<p class="ecran"><a href="{% url 'analytique' %}?comptes={{ nature }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">← Synthèse analytique</a></p>
+<h1>Analytique – {{ titre_axe }}{% if code %} – {{ code }}{% endif %}</h1>
+<div class="barre"><a class="bouton" href="?comptes={{ nature }}&axe={{ axe }}&code={{ code|urlencode }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a><button type="button" onclick="window.print()">Imprimer / PDF</button></div>
+<form class="filtres ecran" method="get"><label>Comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<label>Axe <select name="axe" onchange="this.form.code.value='';this.form.submit()"><option value="1" {% if axe == 1 %}selected{% endif %}>Axe 1 – nature</option><option value="2" {% if axe == 2 %}selected{% endif %}>Axe 2 – événement ou projet</option></select></label>
+<label>Code <select name="code"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.code }} – {{ c.libelle }}</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
+<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
+<button class="principal">Afficher</button></form>
+<p class="aide">{{ titre_nature }} · période {{ periode_texte }}{% if nature == "bilan" %} · solde = débit − crédit des mouvements de la période{% endif %}.</p>
+{% if sections|length > 1 %}<section><h2>Récapitulatif</h2><table><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for s in sections %}<tr><td><a href="#code-{{ forloop.counter }}">{{ s.code }}</a></td><td>{{ s.libelle }}</td><td class="n">{{ s.total.a|zero_vide }}</td><td class="n">{{ s.total.b|zero_vide }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}">{{ s.total.s|shekel }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total</td><td class="n">{{ total.a|shekel }}</td><td class="n">{{ total.b|shekel }}</td><td class="n {% if total.s < 0 %}neg{% endif %}">{{ total.s|shekel }}</td></tr></table></section>{% endif %}
+{% for s in sections %}<section class="saut" id="code-{{ forloop.counter }}"><h2>{{ s.code }}{% if s.libelle %} – {{ s.libelle }}{% endif %}</h2>
+<p class="aide imprime">{{ titre_axe }} · {{ titre_nature }} · {{ periode_texte }}</p>
+<table><tr><th>Compte</th><th>Libellé du compte</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for x in s.comptes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a></td><td>{{ x.libelle }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td><td class="n {% if x.s < 0 %}neg{% endif %}">{{ x.s|shekel }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total {{ s.code }}</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}">{{ s.total.s|shekel }}</td></tr></table>
+<h3>Écritures</h3>
+<table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Jnl</th><th>Compte</th><th>Libellé</th><th>{% if axe == 1 %}Axe 2{% else %}Axe 1{% endif %}</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
+{% for e in s.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.mouvement.piece }}</td><td>{{ e.ligne.mouvement.journal_id }}</td>
+<td title="{{ e.ligne.compte.libelle }}">{{ e.ligne.compte_id }}</td><td>{{ e.ligne.libelle }}</td><td>{{ e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="7">Total {{ s.code }} ({{ s.ecritures|length }} ligne{{ s.ecritures|length|pluralize }})</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
+{% empty %}<p>Aucune opération sur la période.</p>{% endfor %}
+{% endblock %}

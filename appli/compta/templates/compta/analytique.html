@@ -1,4 +1,18 @@
-{% extends "compta/base.html" %}{% block titre %}Analytique{% endblock %}{% block contenu %}
-<h1>Analytique</h1>{% include "compta/_periode.html" %}
-{% include "compta/_axe.html" with titre="Axe 1 – nature" lignes=axe1 %}
-{% include "compta/_axe.html" with titre="Axe 2 – événement ou projet" lignes=axe2 %}{% endblock %}
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique{% endblock %}{% block contenu %}
+<h1>Analytique – {{ titre_nature }}</h1>
+<div class="barre"><a class="bouton" href="?comptes={{ nature }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a><button type="button" onclick="window.print()">Imprimer / PDF</button>
+<a class="bouton" href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe=1&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">Détail axe 1</a>
+<a class="bouton" href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe=2&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">Détail axe 2</a></div>
+<form class="filtres ecran" method="get"><label>Comptes <select name="comptes" onchange="this.form.submit()">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
+<button class="principal">Afficher</button></form>
+<p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %} par code ; clic sur un code pour son détail.</p>
+{% for a in axes %}<section><h2>{{ a.titre }}</h2>
+<table class="triable"><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for l in a.lignes %}<tr><td><a href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe={{ a.axe }}&code={{ l.code|urlencode }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ l.code }}</a></td>
+<td>{{ l.libelle }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
+<td class="n {% if l.s < 0 %}neg{% endif %}">{{ l.s|shekel }}</td></tr>
+{% empty %}<tr><td colspan="5">Aucune opération sur la période.</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total</td><td class="n">{{ a.total.a|shekel }}</td><td class="n">{{ a.total.b|shekel }}</td>
+<td class="n {% if a.total.s < 0 %}neg{% endif %}">{{ a.total.s|shekel }}</td></tr></table></section>{% endfor %}
+{% endblock %}

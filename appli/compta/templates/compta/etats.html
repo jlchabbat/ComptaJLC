@@ -1,6 +1,6 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}États annuels{% endblock %}{% block contenu %}
 <h1>États annuels{% if exercice %} · {{ exercice.libelle }}{% endif %}</h1>
-<div class="barre">{% if exercice %}<a class="bouton" href="{% url 'export_etats' %}?exercice={{ exercice.pk|stringformat:'d' }}">Télécharger en Excel</a>{% endif %}<button type="button" onclick="window.print()">Imprimer</button>{% if budget_form %}<button form="f-budget" class="principal" name="ajouter_budget" value="1">Ajouter la ligne de budget</button>{% endif %}</div>
+<div class="barre">{% if exercice %}<a class="bouton" href="{% url 'export_etats' %}?exercice={{ exercice.pk|stringformat:'d' }}">Télécharger en Excel</a>{% endif %}<button type="button" onclick="window.print()">Imprimer / PDF</button>{% if budget_form %}<button form="f-budget" class="principal" name="ajouter_budget" value="1">Ajouter la ligne de budget</button>{% endif %}</div>
 {% if not exercice %}<p class="carte">Aucun exercice.</p>{% else %}
 <form class="filtres ecran" method="get"><label>Exercice <select name="exercice" onchange="this.form.submit()">{% for e in exercices %}<option value="{{ e.pk|stringformat:'d' }}" {% if e == exercice %}selected{% endif %}>{{ e.libelle }}{% if e.clos %} (clos){% endif %}</option>{% endfor %}</select></label>
 </form>

@@ -54,12 +54,18 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données</a>{% endif %}
 </div></div>{% endif %}
 </nav>
-<span class="qui"><span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
+<span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
+<span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
 <button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
 <script>addEventListener("DOMContentLoaded", function () {     // les en-têtes de tableau restent sous la barre des boutons
-  var b = document.querySelector("main > .barre"); if (b) document.documentElement.style.setProperty("--haut-barre", b.offsetHeight + "px"); });</script>
+  var b = document.querySelector("main > .barre"); if (b) document.documentElement.style.setProperty("--haut-barre", b.offsetHeight + "px");
+  var propres = document.querySelector("main .barre [onclick*='print']");     // la page a déjà ses boutons Excel et PDF
+  if (propres) { var e = document.querySelector(".qui .editer"); if (e) e.hidden = true; }
+  var x = document.getElementById("vers-excel");                 // « Excel » : les tableaux de la page, mêmes filtres
+  if (x && document.querySelector("main table")) { var u = new URL(location.href); u.searchParams.delete("page");
+    u.searchParams.set("tout", "1"); u.searchParams.set("export", "xlsx"); x.href = u.pathname + u.search; x.hidden = false; } });</script>
 <main>{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
 </body></html>

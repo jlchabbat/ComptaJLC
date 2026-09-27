@@ -28,6 +28,11 @@ def periode(request):
     return debut, fin
 
 
+def par_page(request):
+    """100 lignes par page ; toutes pour l'export Excel ou l'impression (?tout=1)."""
+    return 10 ** 7 if request.GET.get("tout") else 100
+
+
 def lignes_periode(debut, fin):
     return Ligne.objects.filter(mouvement__date__range=(debut, fin))
 
@@ -104,7 +109,7 @@ def ecritures(request):
         params["tri"], params["ordre"] = cle, "desc" if (tri == cle and ordre == "asc") else "asc"
         entetes.append({"titre": titre, "url": "?" + params.urlencode(), "sens": ordre if tri == cle else "",
                         "n": cle in ("debit", "credit")})
-    page = Paginator(qs, 100).get_page(request.GET.get("page"))
+    page = Paginator(qs, par_page(request)).get_page(request.GET.get("page"))
     return render(request, "compta/ecritures.html", {
         "page": page, "filtres": f, "entetes": entetes, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
         "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2), "comptes": Compte.objects.all(),
@@ -167,15 +172,6 @@ def balance(request):
 
 @login_required
 @consulter
-def analytique(request):
-    debut, fin = periode(request)
-    ls = lignes_periode(debut, fin)
-    return render(request, "compta/analytique.html", {"debut": debut, "fin": fin, "axe1": resultat_par_axe(ls, 1),
-                                                      "axe2": resultat_par_axe(ls, 2)})
-
-
-@login_required
-@consulter
 def controles(request):
     res = ctrl.executer()
     etat, a_verifier = ctrl.etat_general(res)
@@ -189,7 +185,7 @@ def modifications(request):
     qs = Modification.objects.all()
     if q:
         qs = qs.filter(Q(auteur__icontains=q) | Q(action__icontains=q) | Q(objet__icontains=q) | Q(lot__icontains=q))
-    return render(request, "compta/modifications.html", {"page": Paginator(qs, 100).get_page(request.GET.get("page")), "q": q,
+    return render(request, "compta/modifications.html", {"page": Paginator(qs, par_page(request)).get_page(request.GET.get("page")), "q": q,
                                                          "total": qs.count()})
 
 

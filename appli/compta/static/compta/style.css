@@ -167,3 +167,16 @@ header .qui .taille button:hover { background: rgba(255,255,255,.3); }
 .carte .barre { position: static; background: none; border-bottom: 0; padding: 0; margin: 0 0 10px; }
 .barre a.bouton { align-self: auto; }
 a.bouton.principal { background: var(--bleu); color: #fff; border-color: var(--bleu); }
+
+/* ===== Rapports analytiques : un code par page à l'impression ===== */
+.imprime { display: none; }
+@media print {
+  .imprime { display: block; }
+  section.saut { break-inside: auto; }
+  section + section.saut { break-before: page; }
+  a { color: inherit; text-decoration: none; }
+}
+
+/* ===== Excel et Imprimer / PDF, dans l'en-tête de chaque page ===== */
+.qui .editer { margin-right: 10px; }
+.qui .editer .bouton, .qui .editer button { margin-left: 4px; }

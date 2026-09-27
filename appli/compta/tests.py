@@ -1947,3 +1947,97 @@ class RecevoirLaBaseDuSite(TransactionTestCase):
         self.assertContains(r, "Recevoir la base du site")
         self.assertContains(r, 'value="https://comptabb.pythonanywhere.com"')
         self.assertContains(r, 'autocomplete="new-password"')                 # pas le mot de passe du PC pré-rempli
+
+
+# ---------------------------------------------------------------- rapports analytiques (axe 1, axe 2)
+
+class RapportsAnalytiques(TestCase):
+    def setUp(self):
+        referentiels_saisie()                   # Mvt 421 : 400 de produit (710000, COT.2) sur MAN.001, contre 411TAIEB001
+        Compte.objects.create(numero="630000", libelle="AIDES")                                   # compte sans code d'axe 1
+        m = Mouvement.objects.create(numero=500, date=dt.date(2026, 3, 1), journal_id="CA", piece=500)
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="600000", libelle="LOCATION", debit=D(150), anal2_id="MAN.001")
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="630000", libelle="AIDE", debit=D(50), anal2_id="SOC.006")
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="530000", libelle="LOCATION", credit=D(200), anal2_id="MAN.001")
+        u = User.objects.create_user("bureau")
+        u.groups.add(Group.objects.get(name="Bureau"))                          # consultation seule suffit
+        self.client.force_login(u)
+
+    def test_synthese_gestion_avec_totaux(self):
+        r = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31")
+        axe1, axe2 = r.context["axes"]
+        self.assertEqual({l["code"]: l["s"] for l in axe2["lignes"]}, {"MAN.001": D(250), "SOC.006": D(-50)})
+        self.assertEqual(axe2["total"], {"a": D(400), "b": D(200), "s": D(200)})
+        self.assertEqual([l["code"] for l in axe1["lignes"]], ["(sans code)", "COT.2", "FON.1"])
+        self.assertContains(r, "Imprimer")
+        self.assertContains(r, "Résultat")
+        self.assertContains(r, "/analytique/detail/?comptes=gestion&axe=2&code=MAN.001")
+        x = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31&format=xlsx")
+        wb = openpyxl.load_workbook(io.BytesIO(x.content))
+        self.assertEqual(wb.sheetnames, ["Axe 1", "Axe 2"])
+        self.assertEqual([c.value for c in wb["Axe 2"][wb["Axe 2"].max_row]], ["TOTAL", None, 400, 200, 200])
+
+    def test_synthese_bilan_comptes_1_a_5(self):
+        r = self.client.get("/analytique/?comptes=bilan&du=2026-01-01&au=2026-12-31")
+        axe1, axe2 = r.context["axes"]
+        self.assertEqual({l["code"]: (l["a"], l["b"], l["s"]) for l in axe2["lignes"]},
+                         {"MAN.001": (D(400), D(200), D(200))})                    # 411 au débit, 530000 au crédit
+        self.assertEqual({l["code"]: l["s"] for l in axe1["lignes"]}, {"BIL.4": D(400), "BIL.5": D(-200)})
+        self.assertContains(r, "Solde")
+        self.assertNotContains(r, "Résultat")
+
+    def test_detail_par_code(self):
+        r = self.client.get("/analytique/detail/?axe=2&code=MAN.001&du=2026-01-01&au=2026-12-31")
+        (s,) = r.context["sections"]
+        self.assertEqual([(c["numero"], c["a"], c["b"]) for c in s["comptes"]], [("600000", D(0), D(150)), ("710000", D(400), D(0))])
+        self.assertEqual(s["total"]["s"], D(250))
+        self.assertEqual(len(s["ecritures"]), 2)                                   # classes 6 et 7 seulement
+        self.assertContains(r, "Total MAN.001")
+        tous = self.client.get("/analytique/detail/?axe=1&du=2026-01-01&au=2026-12-31").context["sections"]
+        self.assertEqual([s["code"] for s in tous], ["(sans code)", "COT.2", "FON.1"])
+        sans = self.client.get("/analytique/detail/?axe=1&code=(sans code)&du=2026-01-01&au=2026-12-31").context["sections"]
+        self.assertEqual(sans[0]["comptes"][0]["numero"], "630000")
+        bilan = self.client.get("/analytique/detail/?comptes=bilan&axe=2&code=MAN.001&du=2026-01-01&au=2026-12-31")
+        self.assertEqual([c["numero"] for c in bilan.context["sections"][0]["comptes"]], ["411TAIEB001", "530000"])
+        x = self.client.get("/analytique/detail/?axe=2&du=2026-01-01&au=2026-12-31&format=xlsx")
+        wb = openpyxl.load_workbook(io.BytesIO(x.content))
+        self.assertEqual(wb.sheetnames, ["Par compte", "Écritures"])
+        self.assertEqual(wb["Écritures"].max_row, 4)                                  # en-tête + 3 lignes
+
+
+# ---------------------------------------------------------------- Excel et PDF sur toutes les pages
+
+class ExcelDeToutesLesPages(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        mouvement(600, dt.date(2026, 2, 1), [("600000", 1234.5, 0), ("512000", 0, 1234.5)])
+        u = User.objects.create_user("admin", is_superuser=True, is_staff=True)
+        self.client.force_login(u)
+
+    def test_pages_en_excel(self):
+        for url in ("/balance/", "/grand-livre/?compte=512000", "/ecritures/", "/controles/", "/modifications/", "/membres/",
+                    "/membres/cotisations/", "/", "/analytique/", "/etats/", "/rapprochement/"):
+            page = self.client.get(url)
+            self.assertContains(page, "Imprimer / PDF", msg_prefix=url)
+            self.assertContains(page, 'id="vers-excel"', msg_prefix=url)
+            r = self.client.get(url + ("&" if "?" in url else "?") + "export=xlsx&tout=1")
+            self.assertEqual(r.status_code, 200, url)
+            self.assertIn("spreadsheetml", r["Content-Type"], url)
+            openpyxl.load_workbook(io.BytesIO(r.content))
+        wb = openpyxl.load_workbook(io.BytesIO(self.client.get("/balance/?export=xlsx&tout=1").content))
+        ws = wb.worksheets[0]
+        valeurs = [c.value for row in ws.iter_rows() for c in row]
+        self.assertIn(1234.5, valeurs)                                      # montant « 1 234,50 » devenu nombre
+        self.assertIn("Compte", valeurs)
+        from . import dossiers as dos
+        self.assertTrue(list(dos.exports().glob("Balance_*.xlsx")))            # copie dans Exports
+
+    def test_toutes_les_lignes_malgre_la_pagination(self):
+        for n in range(1, 131):
+            mouvement(1000 + n, dt.date(2026, 3, 1), [("600000", 1, 0), ("512000", 0, 1)])
+        self.assertEqual(len(self.client.get("/ecritures/").context["page"].object_list), 100)
+        self.assertGreater(len(self.client.get("/ecritures/?tout=1").context["page"].object_list), 130)
+
+    def test_page_sans_tableau(self):
+        r = self.client.get("/mon-compte/?export=xlsx")
+        self.assertIn("text/html", r["Content-Type"])                          # rien à exporter : la page s'affiche
