@@ -26,7 +26,9 @@ DOCS = APPLI.parent / "docs"
 IMAGES = DOCS / "images"
 SORTIE = APPLI / "compta" / "documentation"
 MOT_DE_PASSE = "Demo-ComptaBB-2026"
-DOCUMENTS = {"presentation.html": "ComptaBB_presentation.pdf", "mode-emploi.html": "ComptaBB_mode_emploi.pdf"}
+DOCUMENTS = {"presentation.html": ("Présentation", "ComptaBB_presentation.pdf"),
+             "mode-emploi.html": ("Mode d'emploi", "ComptaBB_mode_emploi.pdf"),
+             "installation.html": ("Installation et mises à jour", "ComptaBB_installation.pdf")}
 
 
 def preparer_django(dossier):
@@ -278,11 +280,10 @@ def imprimer():
             '<span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
         navigateur = p.chromium.launch(**chromium())
-        for source, pdf in DOCUMENTS.items():
+        for source, (titre, pdf) in DOCUMENTS.items():
             pg = navigateur.new_page()
             pg.goto((DOCS / source).as_uri())
             pg.wait_for_load_state("networkidle")
-            titre = "Présentation" if "presentation" in source else "Mode d'emploi"
             pg.pdf(path=str(SORTIE / pdf), format="A4", print_background=True, prefer_css_page_size=True,
                    display_header_footer=True, header_template="<span></span>",
                    footer_template=pied.format(titre=titre, date=f"{dt.date.today():%d/%m/%Y}"))

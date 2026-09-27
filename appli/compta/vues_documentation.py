@@ -1,4 +1,4 @@
-"""Documents intégrés à l'application (menu Éditions) : Présentation et Mode d'emploi en PDF.
+"""Documents intégrés à l'application (menu Éditions) : Présentation, Mode d'emploi, Installation et mises à jour, en PDF.
 
 Ils sont produits par deploiement/documentation.py et livrés avec le code : chaque mise à jour les met à jour."""
 
@@ -8,7 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404
 
 DOSSIER = Path(__file__).resolve().parent / "documentation"
-DOCUMENTS = {"presentation": "ComptaBB_presentation.pdf", "mode-emploi": "ComptaBB_mode_emploi.pdf"}
+DOCUMENTS = {"presentation": "ComptaBB_presentation.pdf", "mode-emploi": "ComptaBB_mode_emploi.pdf",
+             "installation": "ComptaBB_installation.pdf"}
 
 
 @login_required

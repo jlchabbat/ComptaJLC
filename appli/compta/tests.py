@@ -1763,7 +1763,7 @@ class ReferentielsEtPages(TransactionTestCase):
             for cible in _re.findall(r'<button[^>]* form="([^"]+)"', html):
                 self.assertIn(cible, ids, f"{url} : bouton relié au formulaire absent {cible}")
         self.assertContains(self.client.get("/"), "Mode d'emploi (PDF)")
-        for nom in ("presentation", "mode-emploi"):
+        for nom in ("presentation", "mode-emploi", "installation"):
             r = self.client.get(f"/documentation/{nom}.pdf")
             self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"), nom)
             self.assertTrue(b"".join(r.streaming_content).startswith(b"%PDF"))
