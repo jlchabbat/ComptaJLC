@@ -87,6 +87,8 @@ def export_etats(request):
     tampon = io.BytesIO()
     classeur_exercice(ex).save(tampon)
     nom = f"ComptaBB_etats_{ex.libelle}".replace(" ", "_").replace("/", "-").replace("–", "-") + ".xlsx"
+    from .dossiers import copier_export
+    copier_export(nom, tampon.getvalue())
     return HttpResponse(tampon.getvalue(), headers={
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": f'attachment; filename="{nom}"'})

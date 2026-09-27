@@ -798,6 +798,8 @@ class EcransEtats(TestCase):
                                                                  "ajouter_budget": "1"})
         self.assertEqual(Budget.objects.count(), 1)
         r = self.client.get(f"/etats/export/?exercice={self.e25.pk}")
+        from . import dossiers as dos
+        self.assertTrue(list(dos.exports().glob("ComptaBB_etats_*.xlsx")))                        # copie dans Exports
         self.assertEqual(r["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget",
@@ -1067,6 +1069,8 @@ class Journaux(TestCase):
         self.assertEqual((r.context["depenses"], r.context["cloture"]), (D(10), D(-10)))
         self.assertIn("600100", r.context["lignes"][0]["contrepartie"])
         x = self.client.get("/journaux/?journal=B1&du=2026-01-01&au=2026-12-31&format=xlsx")
+        from . import dossiers as dos
+        self.assertTrue((dos.exports() / "Journal_B1_2026-01-01_2026-12-31.xlsx").exists())      # copie dans Exports
         ws = openpyxl.load_workbook(__import__("io").BytesIO(x.content))["Journal B1"]
         self.assertEqual([c.value for c in ws[1]], ["Date", "Mvt", "Pièce", "Libellé", "Contrepartie", "Recette", "Dépense", "Solde"])
 
@@ -1815,6 +1819,14 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertIn("512000", [c.value for c in wb["Plan comptable"]["A"]])
         self.assertEqual(prm.importer(r.content).erreurs, [])                      # se réimporte tel quel
         self.assertTrue(list((self.racine / "Exports").glob("PlanComptable_*.xlsx")))
+        self.assertIn("Ecritures", noms)                                           # les écritures s'exportent aussi
+        r = self.client.get("/referentiels/Ecritures.xlsx")
+        self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active["C2"].value, 421)
+        r = self.client.get("/referentiels/Tout.xlsx")                               # Tout exporter : .zip
+        self.assertIn(".zip", r["Content-Disposition"])
+        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+            self.assertTrue({"Parametres.xlsx", "Ecritures.xlsx", "Tiers.xlsx", "Banque1.xlsx", "Lexique.xlsx"} <= set(z.namelist()))
+        self.assertTrue(list((self.racine / "Exports").glob("Exports_*.zip")))
         self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 403)
         b = User.objects.create_user("bureau")
         donner_role(b, "Bureau")

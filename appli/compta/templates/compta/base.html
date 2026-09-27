@@ -41,7 +41,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 <div class="menu"><button type="button">Éditions ▾</button><div class="sous">
 {% if perms.compta.view_mouvement %}{% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
-{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports des référentiels</a>{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports (référentiels, écritures)</a>{% endif %}
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
 <a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
 <a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>

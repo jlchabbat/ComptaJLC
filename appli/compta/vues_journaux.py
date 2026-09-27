@@ -18,8 +18,10 @@ consulter = permission_required("compta.view_mouvement", raise_exception=True)
 
 
 def reponse_excel(wb, nom):
+    from .dossiers import copier_export
     tampon = io.BytesIO()
     wb.save(tampon)
+    copier_export(nom, tampon.getvalue())
     return HttpResponse(tampon.getvalue(), headers={
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": f'attachment; filename="{nom}"'})

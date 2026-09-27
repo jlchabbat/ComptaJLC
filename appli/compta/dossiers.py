@@ -77,3 +77,12 @@ def sauvegardes():
 
 def archives():
     return _dossier(exports() / "Archives", settings.DATA_DIR / "archives")
+
+
+def copier_export(nom, contenu):
+    """Copie dans le dossier Exports d'un fichier téléchargé par le navigateur (tous les exports y aboutissent) ;
+    ignorée si le dossier est inaccessible ou le fichier ouvert dans Excel."""
+    try:
+        (exports() / nom).write_bytes(contenu)
+    except OSError:
+        pass

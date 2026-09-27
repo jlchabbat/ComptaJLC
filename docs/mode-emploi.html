@@ -109,7 +109,7 @@ un bénévole se crée dans <span class="menu">Saisie › Fiches bénévoles</sp
 <tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analytique</td></tr>
 <tr><td>Banque</td><td>Relevés à passer en compta · Traductions du relevé</td></tr>
 <tr><td>Contrôle</td><td>Contrôles · Historique</td></tr>
-<tr><td>Éditions</td><td>États annuels et budget · Clôture de l'exercice · Exports des référentiels · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
+<tr><td>Éditions</td><td>États annuels et budget · Clôture de l'exercice · Exports (référentiels, écritures) · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
 <tr><td>Administration</td><td>Utilisateurs · Référentiels · Paramètres (Excel) · Imports / Exports · Base de données (administrateur)</td></tr></table>
 <p>Chacun ne voit que les menus de son rôle. Le menu de la page en cours est souligné.</p>
 <h2>La barre des boutons</h2>
@@ -286,11 +286,12 @@ En haut : <b>Télécharger en Excel</b> (toutes les feuilles), <b>Imprimer</b>, 
 <ul><li><b>Compte de résultat</b> par compte (charges, produits, résultat, variation) ; <b>résultat par axe 1 et par axe 2</b>.</li>
 <li><b>Bilan simplifié</b> : actif et passif (classes 1 à 5), résultat de l'exercice.</li>
 <li><b>Budget</b> : lignes de charges ou de produits, par compte, code d'axe 1 ou d'axe 2 ; comparaison budget / réalisé (écart et %).</li></ul>
-<h2>Exports des référentiels</h2>
-<p><span class="menu">Éditions › Exports des référentiels</span> (administrateur et trésorier) : <b>un fichier Excel par référentiel</b> — réglages, axe 1,
+<h2>Exports des référentiels et des écritures</h2>
+<p><span class="menu">Éditions › Exports (référentiels, écritures)</span> (administrateur et trésorier) : <b>un fichier Excel par référentiel</b> — réglages, axe 1,
 axe 2, préfixes, plan comptable, journaux, types de tiers, moyens de paiement, schémas et modèles d'opération, natures et modes des fiches,
-paramètres des relevés, traductions, exercices, tiers et, pour l'administrateur, utilisateurs (sans mot de passe). <b>Tout exporter
-(Parametres.xlsx)</b> en haut donne le classeur complet des paramètres. Chaque fichier est téléchargé et copié dans le dossier Exports ;
+paramètres des relevés, traductions, exercices, tiers, budget, <b>écritures</b>, relevés Banque1, Banque2, Bit et Caisse et, pour l'administrateur,
+utilisateurs (sans mot de passe). <b>Tout exporter (.zip, écritures comprises)</b> en haut réunit tous ces fichiers, avec Parametres.xlsx
+(classeur complet des paramètres) et Lexique.xlsx. Chaque fichier est téléchargé et copié dans le dossier Exports ;
 ceux des paramètres se réimportent tels quels (chapitre 13).</p>
 <h2>Présentation et mode d'emploi</h2>
 <p><span class="menu">Éditions › Présentation (PDF)</span> et <span class="menu">Éditions › Mode d'emploi (PDF)</span> ouvrent ces documents.
@@ -337,7 +338,7 @@ Les écritures ne se modifient pas ici (chapitre 4).</p>
 <h2>Paramètres (Excel)</h2>
 <p><span class="menu">Administration › Paramètres (Excel)</span> : tous les paramètres tiennent dans un classeur <b>Parametres.xlsx</b>, une feuille par sujet.</p>
 <ul><li><b>Par le dossier Imports</b> (PC) : <b>Préparer Imports/Parametres.xlsx</b>, le modifier dans Excel, l'enregistrer et le fermer, puis <b>Importer Imports/Parametres.xlsx</b>.</li>
-<li><b>Par le navigateur</b> (site) : l'exporter (Éditions › Exports des référentiels), le modifier, le choisir puis <b>Importer le fichier envoyé</b>.
+<li><b>Par le navigateur</b> (site) : l'exporter (Éditions › Exports), le modifier, le choisir puis <b>Importer le fichier envoyé</b>.
 Un fichier d'un seul référentiel s'importe de la même façon.</li>
 <li>Une ligne dont la clé (colonne grise) existe est mise à jour ; une clé nouvelle est créée ; une cellule vide ne change rien ; rien n'est supprimé (Actif = Non pour retirer).</li>
 <li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import.</li></ul>

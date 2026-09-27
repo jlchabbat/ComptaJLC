@@ -25,7 +25,10 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # des données, pour survivre aux mises à jour du code.
 _ECHANGES = DATA_DIR if os.environ.get("COMPTABB_DATA") else RACINE
 IMPORTS_DIR = Path(os.environ.get("COMPTABB_IMPORTS", _ECHANGES / "Imports"))
-EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", _ECHANGES / "Exports"))
+# Programme du PC (…\ComptaBB\appli\ComptaBB.exe) : exports et sauvegardes dans …\ComptaBB\Exports, à côté du dossier appli
+# (D:\OneDrive\Applications\ComptaBB\Exports), même si le réglage dossier_exports est vide.
+EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", (RACINE.parent if FIGE and not os.environ.get("COMPTABB_DATA")
+                                                       else _ECHANGES) / "Exports"))
 
 
 def _cle_secrete():
