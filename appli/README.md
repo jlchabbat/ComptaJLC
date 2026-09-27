@@ -12,7 +12,7 @@ application y sera installée pour l'accès à distance (bureau, bénévoles).
    Actions › « Application ComptaBB » › Run workflow › Artifacts) et le
    placer dans `D:\OneDrive\Applications\ComptaBB\appli`.
 2. Double-cliquer `ComptaBB.exe`. Au premier lancement :
-   - créer l'identifiant et le mot de passe du trésorier ;
+   - créer l'identifiant et le mot de passe de l'administrateur ;
    - indiquer le classeur `ComptaBB.xlsm` à reprendre (chemin complet).
 3. Le navigateur s'ouvre sur `http://127.0.0.1:8765`. Fermer la fenêtre noire
    arrête l'application.

@@ -1,7 +1,7 @@
 """Lanceur de ComptaBB sur le PC : démarre l'application et ouvre le navigateur.
 
 Au premier lancement : crée la base (dossier data à côté du programme),
-demande l'identifiant et le mot de passe du trésorier, et propose de
+demande l'identifiant et le mot de passe de l'administrateur, et propose de
 reprendre les données d'un classeur ComptaBB.xlsm. Ensuite : un double-clic
 suffit. L'application reste accessible à l'adresse affichée tant que la
 fenêtre est ouverte.
@@ -21,22 +21,23 @@ def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "comptabb.settings")
     import django
     django.setup()
-    from django.contrib.auth.models import Group, User
+    from django.contrib.auth.models import User
     from django.core.management import call_command
 
     call_command("migrate", verbosity=0)
     call_command("collectstatic", interactive=False, verbosity=0)
     if not User.objects.exists():
-        print("Premier lancement : création du compte du trésorier.")
-        nom = input("Identifiant : ").strip() or "tresorier"
+        print("Premier lancement : création du compte de l'administrateur (tous les droits).")
+        nom = input("Identifiant (nom ou adresse e-mail) : ").strip() or "admin"
         import getpass
         while True:
             mdp = getpass.getpass("Mot de passe (8 caractères au moins) : ")
             if len(mdp) >= 8 and mdp == getpass.getpass("Le retaper : "):
                 break
             print("Mots de passe trop courts ou différents.")
-        u = User.objects.create_superuser(nom, "", mdp)
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        from compta.vues_utilisateurs import donner_role
+        u = User.objects.create_user(nom, nom if "@" in nom else "", mdp)
+        donner_role(u, "Administrateur")
         from compta.models import Mouvement
         if not Mouvement.objects.exists():
             chemin = input("Classeur ComptaBB.xlsm à reprendre (vide pour passer) : ").strip().strip('"')
