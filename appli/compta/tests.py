@@ -1522,8 +1522,11 @@ class Utilisateurs(TestCase):
         self.assertFalse(b.has_perm("compta.add_mouvement"))
         self.assertTrue(b.has_perm("compta.view_mouvement"))
         self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "email": "", "role": "Administrateur",
-                                                                 "actif": "on", "mot_de_passe": ""})
+                                                                 "actif": "on", "mot_de_passe": "", "prenom": "Jean-Luc",
+                                                                 "nom": "CHABBAT"})
         self.tresorier.refresh_from_db()
+        self.assertEqual(self.tresorier.get_full_name(), "Jean-Luc CHABBAT")                    # nom modifiable après création
+        self.assertContains(self.client.get(f"/utilisateurs/{self.tresorier.pk}/"), 'value="CHABBAT"')
         self.assertTrue(self.tresorier.is_superuser)
         self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administrateur"])
         # toujours au moins un administrateur actif

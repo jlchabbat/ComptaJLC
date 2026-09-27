@@ -1,6 +1,6 @@
 {% extends "compta/base.html" %}{% block titre %}Mon compte{% endblock %}{% block contenu %}
 <h1>Mon compte</h1>
-<div class="barre"><button form="f-ident" class="principal" name="identifiant_maj" value="1">Enregistrer l'identifiant</button><button form="f-mdp" class="principal" name="mot_de_passe_maj" value="1">Changer le mot de passe</button></div>
+<div class="barre"><button form="f-ident" class="principal" name="identifiant_maj" value="1">Enregistrer identifiant, nom et e-mail</button><button form="f-mdp" class="principal" name="mot_de_passe_maj" value="1">Changer le mot de passe</button></div>
 <p>{{ user.get_full_name|default:user.username }} · rôle <b>{{ role }}</b></p>
 <div class="deux">
 <form method="post" class="carte" id="f-ident">{% csrf_token %}<h2 style="margin-top:0">Identifiant de connexion</h2>

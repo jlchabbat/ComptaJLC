@@ -61,6 +61,8 @@ def journaliser(request, action, objet, avant="", apres=""):
 
 class IdentifiantForm(forms.Form):
     identifiant = forms.CharField(max_length=150, help_text="Un nom sans espace, ou une adresse e-mail.")
+    prenom = forms.CharField(max_length=60, required=False, label="Prénom")
+    nom = forms.CharField(max_length=60, required=False)
     email = forms.EmailField(required=False, label="E-mail", help_text="Permet aussi de se connecter.")
 
     def __init__(self, *a, utilisateur, **k):
@@ -83,13 +85,16 @@ class IdentifiantForm(forms.Form):
 def mon_compte(request):
     u = request.user
     ident = IdentifiantForm(request.POST if "identifiant_maj" in request.POST else None, utilisateur=u,
-                            initial={"identifiant": u.username, "email": u.email}, prefix="id")
+                            initial={"identifiant": u.username, "prenom": u.first_name, "nom": u.last_name,
+                                     "email": u.email}, prefix="id")
     mdp = PasswordChangeForm(u, request.POST if "mot_de_passe_maj" in request.POST else None, prefix="mdp")
     if "identifiant_maj" in request.POST and ident.is_valid():
-        avant = f"{u.username} / {u.email}"
-        u.username, u.email = ident.cleaned_data["identifiant"], ident.cleaned_data["email"]
-        u.save(update_fields=["username", "email"])
-        journaliser(request, "Identifiant changé", f"utilisateur {u.pk}", avant=avant, apres=f"{u.username} / {u.email}")
+        c = ident.cleaned_data
+        avant = f"{u.username} / {u.get_full_name()} / {u.email}"
+        u.username, u.first_name, u.last_name, u.email = c["identifiant"], c.get("prenom", ""), c.get("nom", ""), c["email"]
+        u.save(update_fields=["username", "first_name", "last_name", "email"])
+        journaliser(request, "Identifiant changé", f"utilisateur {u.pk}", avant=avant,
+                    apres=f"{u.username} / {u.get_full_name()} / {u.email}")
         messages.success(request, f"Identifiant enregistré : connectez-vous désormais avec « {u.username} ».")
         return redirect("mon_compte")
     if "mot_de_passe_maj" in request.POST and mdp.is_valid():
@@ -126,6 +131,8 @@ class NouvelUtilisateurForm(forms.Form):
 
 class ModifierUtilisateurForm(forms.Form):
     identifiant = forms.CharField(max_length=150)
+    prenom = forms.CharField(max_length=60, required=False, label="Prénom")
+    nom = forms.CharField(max_length=60, required=False)
     email = forms.EmailField(required=False, label="E-mail")
     role = forms.ChoiceField(choices=[(r, r) for r in ROLES], label="Rôle")
     actif = forms.BooleanField(required=False, label="Peut se connecter")
@@ -181,13 +188,15 @@ def utilisateurs(request):
 def utilisateur(request, pk):
     administrateur(request)
     u = get_object_or_404(User, pk=pk)
-    initial = {"identifiant": u.username, "email": u.email, "role": role(u), "actif": u.is_active}
+    initial = {"identifiant": u.username, "prenom": u.first_name, "nom": u.last_name, "email": u.email, "role": role(u),
+               "actif": u.is_active}
     form = ModifierUtilisateurForm(request.POST or None, utilisateur=u, initial=initial)
     if request.method == "POST" and form.is_valid():
         c = form.cleaned_data
-        avant = f"{u.username} / {u.email} / {role(u)} / {'actif' if u.is_active else 'inactif'}"
+        avant = f"{u.username} / {u.get_full_name()} / {u.email} / {role(u)} / {'actif' if u.is_active else 'inactif'}"
         with transaction.atomic():
             u.username, u.email, u.is_active = c["identifiant"], c["email"], c["actif"]
+            u.first_name, u.last_name = c["prenom"], c["nom"]
             if c["mot_de_passe"]:
                 u.set_password(c["mot_de_passe"])
             u.save()
@@ -196,7 +205,7 @@ def utilisateur(request, pk):
         if u == request.user and c["mot_de_passe"]:
             update_session_auth_hash(request, u)
         journaliser(request, "Modification", f"utilisateur {u.pk}", avant=avant,
-                    apres=f"{u.username} / {u.email} / {c['role']} / {'actif' if u.is_active else 'inactif'}"
+                    apres=f"{u.username} / {u.get_full_name()} / {u.email} / {c['role']} / {'actif' if u.is_active else 'inactif'}"
                           + (" / mot de passe changé" if c["mot_de_passe"] else ""))
         messages.success(request, f"Utilisateur {u.username} enregistré.")
         return redirect("utilisateurs")
