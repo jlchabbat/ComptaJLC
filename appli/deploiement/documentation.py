@@ -32,6 +32,7 @@ DOCUMENTS = {"presentation.html": "ComptaBB_presentation.pdf", "mode-emploi.html
 def preparer_django(dossier):
     os.environ["COMPTABB_DATA"] = str(dossier)
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "comptabb.settings")
+    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"          # lectures de la base pendant les captures (Playwright)
     sys.path.insert(0, str(APPLI))
     import django
     django.setup()
@@ -116,6 +117,12 @@ def demonstration():
         moteur.enregistrer(op, tresorier)
 
     j = lambda m, d: dt.date(2026, m, d)  # noqa: E731
+    from compta.models import Ligne, Mouvement
+    an = Mouvement.objects.create(numero=1, date=j(1, 1), journal_id="AN", piece=1, origine="import", commentaire="Soldes d'ouverture")
+    for ordre, (compte, debit, credit) in enumerate((("512000", 8000, 0), ("512100", 3000, 0), ("512200", 1200, 0),
+                                                     ("530000", 450, 0), ("110000", 0, 12650))):
+        Ligne.objects.create(mouvement=an, ordre=ordre, compte_id=compte, libelle="A NOUVEAU", debit=D(debit), credit=D(credit),
+                             anal2=codes["GEN.001"])
     for i, (compte, paiement) in enumerate((("411COHEN001", "BIT"), ("411LEVYS001", "Mizrahi compte courant"),
                                             ("411TAIEB001", "BIT"))):
         saisir(j(1, 10 + i), "Cotisation membre", 500 if i < 2 else 400, paiement, compte, "GEN.002")
@@ -177,7 +184,7 @@ def captures(adresse):
         vieux.unlink()
     with sync_playwright() as p:
         navigateur = p.chromium.launch(**chromium())
-        contexte = navigateur.new_context(viewport={"width": 1280, "height": 800}, locale="fr-FR")
+        contexte = navigateur.new_context(viewport={"width": 1400, "height": 800}, locale="fr-FR")
 
         def page_de(utilisateur):
             pg = contexte.new_page()
@@ -195,7 +202,7 @@ def captures(adresse):
             if avant:
                 avant(pg)
             pg.screenshot(path=str(IMAGES / f"{nom}.png"), full_page=hauteur is None,
-                          clip=None if hauteur is None else {"x": 0, "y": 0, "width": 1280, "height": hauteur})
+                          clip=None if hauteur is None else {"x": 0, "y": 0, "width": 1400, "height": hauteur})
 
         pg = contexte.new_page()
         pg.goto(adresse + "/connexion/")
@@ -213,7 +220,7 @@ def captures(adresse):
 
         def apercu(pg):
             pg.evaluate("""() => {
-                const f = document.querySelector('form');
+                const f = document.querySelector('#f-saisie');
                 const choisir = (nom, texte) => { const s = f.querySelector(`select[name=${nom}]`);
                     const o = [...s.options].find(o => o.text.includes(texte)); s.value = o.value; };
                 choisir('modele', 'Cotisation membre'); choisir('tiers', 'ATTAL'); choisir('paiement', 'BIT');
@@ -222,8 +229,8 @@ def captures(adresse):
             pg.click("button[name=apercu]")
             pg.wait_for_load_state("networkidle")
         photo(pg, "03_saisie", "/saisie/", avant=apercu)
-        photo(pg, "04_mouvement", "/mouvement/1/")
-        photo(pg, "05_modifier", "/mouvement/1/modifier/")
+        photo(pg, "04_mouvement", "/mouvement/2/")
+        photo(pg, "05_modifier", "/mouvement/2/modifier/")
         photo(pg, "06_codes", "/codes/")
         photo(pg, "07_tiers", "/membres/", hauteur=720)
         photo(pg, "08_fiche_tiers", "/membres/411ATTAL001/", hauteur=720)
@@ -258,8 +265,8 @@ def chromium():
     for motif in ("/opt/pw-browsers/chromium-*/chrome-linux*/chrome", "/usr/bin/chromium*", "/usr/bin/google-chrome*"):
         trouves = sorted(glob.glob(motif))
         if trouves:
-            return {"executable_path": trouves[-1]}
-    return {}
+            return {"executable_path": trouves[-1], "args": ["--lang=fr-FR"]}
+    return {"args": ["--lang=fr-FR"]}
 
 
 def imprimer():

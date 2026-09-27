@@ -32,60 +32,72 @@ a { color: #1f5fbf; }
 <h1>ComptaBB</h1>
 <div class="st">Mode d'emploi détaillé – comptabilité de la Loge Bnei Brith (₪)</div>
 <div class="bloc">Adresse : <b><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></b><br>
-Pour : le trésorier, les membres du bureau, le vérificateur aux comptes et les bénévoles<br>
-Version du 26/09/2026</div>
+Pour : l'administrateur, le trésorier, les membres du bureau et les bénévoles<br>
+Ce document est livré avec l'application : <b>Éditions › Mode d'emploi (PDF)</b> ouvre toujours la version à jour.<br>
+Version du 27/09/2026</div>
 </div>
 
 <h1 style="break-before:auto">Sommaire</h1>
 <ol class="toc">
-<li><a href="#c1">Accès, connexion et rôles</a></li>
+<li><a href="#c1">Accès, connexion, Mon compte et rôles</a></li>
 <li><a href="#c2">Se repérer dans l'application</a></li>
 <li><a href="#c3">Saisir une opération (saisie guidée)</a></li>
-<li><a href="#c4">Écriture libre, modifier ou annuler une écriture</a></li>
+<li><a href="#c4">Écriture libre, modifier une écriture</a></li>
 <li><a href="#c5">Codes analytiques et nouveaux tiers</a></li>
 <li><a href="#c6">Tiers : fiches, import, solde, cotisations, lettrage</a></li>
-<li><a href="#c7">Fiches bénévoles</a></li>
+<li><a href="#c7">Fiches bénévoles (la liaison)</a></li>
 <li><a href="#c8">Consulter : tableau de bord, écritures, journaux, grand livre, balance</a></li>
 <li><a href="#c9">Banque : relevés à passer en comptabilité</a></li>
-<li><a href="#c10">États annuels et budget</a></li>
+<li><a href="#c10">Éditions : états, budget, exports des référentiels, documents</a></li>
 <li><a href="#c11">Clôture de l'exercice</a></li>
 <li><a href="#c12">Contrôles et historique</a></li>
-<li><a href="#c13">Administration : référentiels, base de données, sauvegardes</a></li>
-<li><a href="#c14">Mises à jour, problèmes fréquents, glossaire</a></li>
+<li><a href="#c13">Administration : utilisateurs, paramétrage, imports / exports, base de données</a></li>
+<li><a href="#c14">Mises à jour, commandes, problèmes fréquents, glossaire</a></li>
 </ol>
 <div class="cadre"><b>Principe général.</b> Une opération = un mouvement (Mvt) numéroté, équilibré (total des débits = total des crédits).
-L'application génère elle-même les écritures à partir de ce que vous saisissez, contrôle tout avant d'enregistrer,
+L'application génère elle-même les écritures à partir de ce que vous saisissez, contrôle tout avant d'enregistrer
 et note chaque action dans l'historique. Vous n'avez pas besoin d'être comptable pour saisir.</div>
+<div class="cadre"><b>Où sont les boutons ?</b> Sur chaque page, tous les boutons d'action sont regroupés <b>en haut à gauche, sous le titre</b>,
+sur une même ligne qui reste visible quand on fait défiler la page. Il n'y a aucun bouton en bas des pages. Seuls les boutons propres
+à une ligne d'un tableau (par exemple « C'est la même » dans Banque) restent sur leur ligne.</div>
 
 <!-- 1 -->
-<h1 id="c1">1. Accès, connexion et rôles</h1>
+<h1 id="c1">1. Accès, connexion, Mon compte et rôles</h1>
 <h2>Se connecter</h2>
 <ol>
 <li>Ouvrir <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> (Edge, Chrome, Safari ; ordinateur, tablette ou téléphone).</li>
-<li>Saisir son <b>identifiant</b> et son <b>mot de passe</b>, puis <b>Se connecter</b>.</li>
+<li>Saisir son <b>identifiant ou son adresse e-mail</b> et son <b>mot de passe</b>, puis <b>Se connecter</b>.</li>
 <li>Pour quitter : <b>Se déconnecter</b> en haut à droite (surtout sur un ordinateur partagé).</li>
 </ol>
 <figure><img src="images/01_connexion.png"><figcaption>Page de connexion.</figcaption></figure>
+<h2>Mon compte : identifiant et mot de passe</h2>
+<p>Cliquer sur <b>son nom</b>, en haut à droite. Chacun peut y changer :</p>
+<ul><li>son <b>identifiant de connexion</b> : un nom sans espace, ou son adresse e-mail ;</li>
+<li>son <b>adresse e-mail</b>, avec laquelle il peut aussi se connecter ;</li>
+<li>son <b>mot de passe</b> (l'ancien est demandé).</li></ul>
+<figure><img src="images/14_mon_compte.png"><figcaption>Mon compte : les boutons « Enregistrer l'identifiant » et « Changer le mot de passe » sont en haut.</figcaption></figure>
 <h2>Icône sur le Bureau</h2>
 <ul>
-<li><b>Edge</b> : menu <b>…</b> › Applications › <b>Installer ce site en tant qu'application</b> › cocher « Créer un raccourci sur le Bureau ».</li>
-<li><b>Chrome</b> : menu <b>⋮</b> › Caster, enregistrer et partager › <b>Installer la page en tant qu'application</b> (ou Créer un raccourci).</li>
+<li><b>Edge</b> : menu <b>…</b> › Applications › <b>Installer ce site en tant qu'application</b>.</li>
+<li><b>Chrome</b> : menu <b>⋮</b> › Caster, enregistrer et partager › <b>Installer la page en tant qu'application</b>.</li>
 <li><b>Téléphone</b> : iPhone (Safari) › Partager › <b>Sur l'écran d'accueil</b> ; Android (Chrome) › ⋮ › <b>Ajouter à l'écran d'accueil</b>.</li>
 </ul>
 <h2>Taille des caractères</h2>
-<p>Les boutons <b>A−</b>, <b>A</b> et <b>A+</b> en haut à droite réduisent, remettent à la normale ou agrandissent toute l'application.
-Le réglage est mémorisé sur l'appareil. On peut aussi utiliser Ctrl + / Ctrl − du navigateur.</p>
-<h2>Rôles</h2>
-<table><tr><th style="width:22%">Rôle</th><th>Ce qu'il peut faire</th></tr>
-<tr><td>Administrateur</td><td>Tous les droits, dont le paramétrage de base : référentiels (plan comptable, journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), codes d'axe 1, paramètres des relevés, utilisateurs, base de données.</td></tr>
-<tr><td>Trésorier</td><td>Tout sauf le paramétrage de base : saisie, corrections, codes d'axe 2, tiers, fiches, rapprochement, budget, clôture.</td></tr>
-<tr><td>Bureau</td><td>Consultation seule : tableau de bord, écritures, journaux, états, tiers, rapprochement, contrôles, historique.</td></tr>
-<tr><td>Bénévole</td><td>La liaison seulement : les fiches bénévoles qui lui sont confiées : saisie des lignes, nouveaux tiers, transmission. Aucun solde ni écriture.</td></tr>
+<p>Les boutons <b>A−</b>, <b>A</b> et <b>A+</b> en haut à droite réduisent, remettent à la normale ou agrandissent toute l'application ;
+le réglage est mémorisé sur l'appareil.</p>
+<h2>Les quatre rôles</h2>
+<table><tr><th style="width:20%">Rôle</th><th>Ce qu'il peut faire</th></tr>
+<tr><td>Administrateur</td><td><b>Tous les droits</b>, dont le paramétrage de base : référentiels (plan comptable, journaux, préfixes, types de tiers,
+moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), Imports / Exports, codes d'axe 1,
+paramètres des relevés, utilisateurs, base de données.</td></tr>
+<tr><td>Trésorier</td><td><b>Tout sauf le paramétrage de base</b> : saisie, corrections, codes d'axe 2, tiers, fiches bénévoles, banque, budget,
+clôture, exports des référentiels.</td></tr>
+<tr><td>Bureau</td><td><b>Consultation seulement</b> : tableau de bord, écritures, journaux, états, tiers, banque, contrôles, historique.</td></tr>
+<tr><td>Bénévole</td><td><b>La liaison seulement</b> : les fiches bénévoles qui lui sont confiées (saisie des lignes, nouveaux tiers, transmission).
+Aucun solde ni écriture.</td></tr>
 </table>
-<p>Il n'y a pas d'autre rôle. Les comptes se créent par l'administrateur dans <span class="menu">Administration › Utilisateurs</span>
-(identifiant, rôle, mot de passe) ; un bénévole se crée par <span class="menu">Saisie › Fiches bénévoles › Nouveau bénévole</span>, en le choisissant parmi les membres.
-Chacun change son identifiant (un nom ou son adresse e-mail) et son mot de passe dans <span class="menu">Mon compte</span> (clic sur son nom, en haut à droite).
-On se connecte avec l'identifiant ou avec l'e-mail enregistré.</p>
+<p>Il n'y a pas d'autre rôle. L'administrateur crée les comptes dans <span class="menu">Administration › Utilisateurs</span> ;
+un bénévole se crée dans <span class="menu">Saisie › Fiches bénévoles</span>, en le choisissant parmi les membres (chapitre 7).</p>
 
 <!-- 2 -->
 <h1 id="c2">2. Se repérer dans l'application</h1>
@@ -96,20 +108,20 @@ On se connecte avec l'identifiant ou avec l'e-mail enregistré.</p>
 <tr><td>Tiers</td><td>Liste des tiers · Cotisations des membres · Tiers provisoires</td></tr>
 <tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analytique</td></tr>
 <tr><td>Banque</td><td>Relevés à passer en compta · Traductions du relevé</td></tr>
-<tr><td>Fin d'exercice</td><td>États annuels et budget · Clôture</td></tr>
 <tr><td>Contrôle</td><td>Contrôles · Historique</td></tr>
-<tr><td>Administration</td><td>Référentiels · Base de données</td></tr></table>
-<p>Passer la souris sur un menu (ou cliquer / toucher) ouvre ses pages. Le menu de la page en cours est souligné.</p>
+<tr><td>Éditions</td><td>États annuels et budget · Clôture de l'exercice · Exports des référentiels · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
+<tr><td>Administration</td><td>Utilisateurs · Référentiels · Paramètres (Excel) · Imports / Exports · Base de données (administrateur)</td></tr></table>
+<p>Chacun ne voit que les menus de son rôle. Le menu de la page en cours est souligné.</p>
+<h2>La barre des boutons</h2>
+<p>Sous le titre de chaque page, une ligne regroupe <b>tous les boutons</b> de la page (Enregistrer, Créer, Importer, Télécharger en Excel,
+Imprimer…). Elle reste en haut de l'écran pendant le défilement : on remplit les cases plus bas, puis on clique en haut. Le bouton principal
+est en bleu foncé.</p>
 <h2>Listes déroulantes « cherchables »</h2>
 <p>Dans toutes les listes (comptes, tiers, codes, types d'opération…), <b>tapez une partie du code ou du libellé</b> :
 « taieb », « 5122 », « bourse ». Choisir avec la souris, ou avec les flèches et Entrée.</p>
 <h2>Trier et filtrer les tableaux</h2>
-<ul><li><b>Clic sur un en-tête de colonne</b> : tri croissant (▲), second clic : décroissant (▼). Textes, montants et dates sont triés correctement.</li>
-<li><b>« Filtrer ce tableau… »</b> (au-dessus des tableaux de plus de 8 lignes) : ne garde que les lignes contenant le texte tapé.</li>
-<li>Dans <span class="menu">Écritures</span>, le tri porte sur toutes les pages.</li></ul>
-<h2>Imprimer, exporter</h2>
-<p>Les pages États, Journaux et Historique ont des boutons <b>Imprimer</b> et <b>Télécharger en Excel</b>.
-L'impression retire automatiquement les menus.</p>
+<ul><li><b>Clic sur un en-tête de colonne</b> : tri croissant (▲), second clic : décroissant (▼).</li>
+<li><b>« Filtrer ce tableau… »</b> (au-dessus des tableaux de plus de 8 lignes) : ne garde que les lignes contenant le texte tapé.</li></ul>
 <h2>Couleurs et conventions</h2>
 <ul><li>Cases de saisie sur fond jaune ; montants négatifs en rouge ; ₪ partout ; dates jj/mm/aaaa.</li>
 <li>Messages en haut de page : vert = fait, rouge = refusé (avec la raison), jaune = à vérifier.</li></ul>
@@ -121,15 +133,13 @@ L'impression retire automatiquement les menus.</p>
 <h2>Étapes</h2>
 <ol>
 <li><b>Date</b> de l'opération (dans l'exercice ouvert).</li>
-<li><b>Type d'opération</b> : l'aide sous la case explique ce qu'il fait (voir le tableau ci-dessous).</li>
+<li><b>Type d'opération</b> : l'aide sous la case explique ce qu'il fait.</li>
 <li><b>Tiers</b> (membre ou fournisseur) quand le type en demande un : la liste ne propose que les tiers du bon type.</li>
-<li><b>Montant</b> en ₪ (toujours positif).</li>
-<li><b>Moyen de paiement</b> : Mizrahi compte courant, Mizrahi épargne, BIT, Caisse, ou « Non réglé » (facture seule).</li>
+<li><b>Montant</b> en ₪ (toujours positif) et <b>moyen de paiement</b> (Mizrahi, BIT, Caisse, ou « Non réglé » pour une facture seule).</li>
 <li><b>Vers</b> (virement interne seulement) : le compte qui reçoit.</li>
 <li><b>Événement / projet (axe 2)</b> : obligatoire.</li>
-<li><b>Compte</b> : seulement si différent de celui du type (ex. compte de charge pour une dépense directe).</li>
-<li><b>Libellé</b> facultatif (sinon il est composé automatiquement) ; <b>Remboursement</b> pour une opération inverse.</li>
-<li><b>Aperçu et contrôles</b> : vérifier les lignes, puis <b>Enregistrer</b>. Le mouvement créé s'affiche.</li>
+<li><b>Compte</b> : seulement si différent de celui du type ; <b>Libellé</b> facultatif ; <b>Remboursement</b> pour une opération inverse.</li>
+<li>En haut : <b>Aperçu et contrôles</b>, vérifier les lignes, puis <b>Enregistrer</b>.</li>
 </ol>
 <h2>Types d'opérations</h2>
 <table><tr><th style="width:30%">Type</th><th>Écritures</th></tr>
@@ -141,35 +151,38 @@ L'impression retire automatiquement les menus.</p>
 <tr><td>Virement interne</td><td>Deux mouvements via le compte 580000 (compte qui paie → 580000 → compte qui reçoit).</td></tr>
 <tr><td>Paiement carte Isracard</td><td>Charge contre 580000 (journal OD), puis prélèvement 580000 contre la banque.</td></tr></table>
 <h2>Contrôles avant enregistrement</h2>
-<p>Date dans l'exercice ouvert, type choisi, montant positif, tiers du bon type, moyen de paiement si obligatoire,
-virement vers un autre compte, code axe 2, compte de la bonne classe, écritures complètes et équilibrées, doublon
-(même date, libellé et montant : cocher « ce n'est pas un doublon » si c'est voulu).</p>
+<p>Date dans l'exercice ouvert, type choisi, montant positif, tiers du bon type, moyen de paiement si obligatoire, virement vers un autre compte,
+code axe 2, compte de la bonne classe, écritures complètes et équilibrées, doublon (même date, libellé et montant : cocher « ce n'est pas un
+doublon » si c'est voulu).</p>
 
 <!-- 4 -->
-<h1 id="c4">4. Écriture libre, modifier ou annuler une écriture</h1>
+<h1 id="c4">4. Écriture libre, modifier une écriture</h1>
 <h2>Ouvrir un mouvement</h2>
-<p>Cliquer sur un <b>n° Mvt</b> (Écritures, Journaux, Grand livre…). La page montre les lignes, le lettrage, le pointage bancaire et les commentaires.</p>
-<figure><img src="images/04_mouvement.png"><figcaption>Un mouvement et ses boutons de correction (trésorier).</figcaption></figure>
+<p>Cliquer sur un <b>n° Mvt</b> (Écritures, Journaux, Grand livre…). La page montre les lignes, le lettrage, le lien avec le relevé et les commentaires ;
+le bouton <b>Modifier</b> est en haut.</p>
+<figure><img src="images/04_mouvement.png"><figcaption>Un mouvement.</figcaption></figure>
 <h2>Modifier</h2>
-<ol><li><span class="menu">Saisie › Modifier une écriture</span> : taper le <b>n° de mouvement</b> puis <b>Rappeler l'écriture</b> (ou bouton <b>Modifier</b> sur le mouvement). Changer comptes, libellés, montants, axe 2, date ou journal ; ajouter une ligne (« + Ajouter une ligne ») ou en supprimer (case Suppr.).</li>
-<li>Le total débit / crédit s'affiche en direct : le mouvement doit rester <b>équilibré</b>.</li>
-<li>Indiquer le <b>motif</b> (obligatoire), puis <b>Enregistrer</b>.</li></ol>
+<ol><li><span class="menu">Saisie › Modifier une écriture</span> : taper le <b>n° de mouvement</b> puis <b>Rappeler l'écriture</b> (ou <b>Modifier</b> sur le mouvement).</li>
+<li>Changer comptes, libellés, montants, axe 2, date ou journal ; ajouter une ligne (« + Ajouter une ligne ») ou en supprimer (case Suppr.).
+Le total débit / crédit s'affiche en direct : le mouvement doit rester <b>équilibré</b>.</li>
+<li>Indiquer le <b>motif</b> (obligatoire), puis <b>Enregistrer</b> en haut.</li></ol>
 <figure><img src="images/05_modifier.png"><figcaption>Modification d'un mouvement : totaux en direct, motif obligatoire.</figcaption></figure>
-<ul><li>Refusé dans un exercice clos.</li>
-<li>Une ligne dont le compte ou le montant change est dépointée du relevé et délettrée.</li>
+<ul><li>Refusé dans un exercice clos : une erreur d'un exercice clos se corrige par une écriture libre dans l'exercice ouvert.</li>
+<li>Une ligne dont le compte ou le montant change est détachée du relevé et délettrée.</li>
 <li>Le motif, l'avant et l'après sont gardés dans le mouvement et dans l'Historique.</li></ul>
 <h2>Écriture libre</h2>
-<p><span class="menu">Saisie › Écriture libre</span> : saisir un mouvement ligne par ligne (opération diverse, reclassement),
-avec journal, date et objet. Mêmes contrôles (équilibre, exercice ouvert).</p>
+<p><span class="menu">Saisie › Écriture libre</span> : saisir un mouvement ligne par ligne (opération diverse, reclassement), avec journal, date et objet.
+Mêmes contrôles (équilibre, exercice ouvert).</p>
 
 <!-- 5 -->
 <h1 id="c5">5. Codes analytiques et nouveaux tiers</h1>
-<p><span class="menu">Saisie › Codes et nouveaux tiers</span>.</p>
+<p><span class="menu">Saisie › Codes et nouveaux tiers</span>. Boutons en haut : <b>Créer le code</b>, <b>Créer le tiers</b>, <b>Changer le statut</b>.</p>
 <figure><img src="images/06_codes.png"><figcaption>Nouveau code, nouveau tiers, statut d'un code, préfixes.</figcaption></figure>
 <h2>Nouveau code analytique</h2>
-<ol><li>Choisir le <b>préfixe</b> (ex. MAN. = manifestations, SOC. = social) : le tableau de droite montre le prochain code.</li>
-<li>Saisir seulement le <b>libellé</b> ; le code est proposé automatiquement (ex. MAN.013).</li>
+<ol><li>Choisir le <b>préfixe</b> (ex. MAN. = manifestations, SOC. = social) : le tableau montre le prochain code.</li>
+<li>Saisir seulement le <b>libellé</b> ; le code est attribué automatiquement (ex. MAN.013).</li>
 <li>Statut (axe 2) : 0 Non affecté, 1 En cours, 2 Terminé.</li></ol>
+<p>Le trésorier crée les codes d'<b>axe 2</b> (événements, projets) ; les codes d'<b>axe 1</b> relèvent du paramétrage de base (administrateur).</p>
 <h2>Nouveau tiers</h2>
 <p>Choisir le <b>type</b> (Membre, Fournisseur…), le nom, et si possible l'adresse, le code postal, la ville, le téléphone, l'e-mail.
 Le compte est proposé d'après le type et le nom : 411COHEN001 pour un membre, 401TRAIT001 pour un fournisseur.</p>
@@ -180,60 +193,64 @@ Le compte est proposé d'après le type et le nom : 411COHEN001 pour un membre, 
 <h1 id="c6">6. Tiers : fiches, import, solde, cotisations, lettrage</h1>
 <h2>Liste des tiers</h2>
 <p><span class="menu">Tiers › Liste des tiers</span> : membres, fournisseurs et autres types. Filtrer par type ou statut, rechercher (nom, compte, ville, e-mail).
-La colonne Solde indique ce que le tiers doit (positif) ou ce qui lui est dû (négatif).</p>
+La colonne <b>Solde</b> indique ce que le tiers doit (positif) ou ce qui lui est dû (négatif). Boutons en haut : <b>Importer Tiers.xlsx</b>,
+<b>Modèle Tiers.xlsx</b>, <b>Lettrer automatiquement</b>, <b>Exporter (Excel)</b>.</p>
 <figure><img src="images/07_tiers.png"><figcaption>Liste des tiers.</figcaption></figure>
 <h2>Fiche d'un tiers</h2>
-<p>Cliquer sur le nom : facturé, réglé, solde dû, historique des écritures.
-<b>Modifier la fiche</b> (en bas) : type, coordonnées, adresse ; pour un membre : statut, date d'adhésion, cotisation attendue.</p>
-<figure><img src="images/08_fiche_tiers.png"><figcaption>Fiche d'un membre.</figcaption></figure>
+<p>Cliquer sur le nom : facturé, réglé, solde dû, historique des écritures. <b>Modifier la fiche</b> : type, coordonnées, adresse ; pour un membre :
+statut, date d'adhésion, cotisation attendue ; puis <b>Enregistrer la fiche</b> en haut.</p>
+<figure><img src="images/08_fiche_tiers.png"><figcaption>Fiche d'un membre : cotisation facturée, pas encore réglée.</figcaption></figure>
 <h2>Importer un fichier Tiers.xlsx</h2>
-<ol><li>Télécharger le modèle : lien <b>« Télécharger le modèle Tiers.xlsx »</b> (en bas de la liste des tiers) ; le remplir (une ligne par tiers).</li>
-<li>Colonnes reconnues : Compte, Type, Nom, Prénom, Adresse, Code postal (CP), Ville, Téléphone (Tél), E-mail (Mail), Date d'adhésion, Statut, Cotisation. Seul le <b>Nom</b> est obligatoire.</li>
-<li><b>Importer</b> : un compte rendu indique les tiers créés, mis à jour, et les lignes en erreur.</li></ol>
+<ol><li><b>Modèle Tiers.xlsx</b> : le remplir, une ligne par tiers. Colonnes : Compte, Type, Nom, Prénom, Adresse, Code postal, Ville, Téléphone,
+E-mail, Date d'adhésion, Statut, Cotisation. Seul le <b>Nom</b> est obligatoire.</li>
+<li>Choisir le fichier dans « Importer des tiers », puis <b>Importer Tiers.xlsx</b> en haut : un compte rendu indique les tiers créés, mis à jour, et les lignes en erreur.</li></ol>
 <div class="cadre">Un tiers déjà présent (même compte, ou même type + nom + prénom) est <b>mis à jour</b>, jamais en double.
 Une cellule vide n'efface rien. Rien n'est supprimé.</div>
 <h2>Ce que doit un tiers</h2>
-<p>Pas de suivi séparé des impayés : le <b>solde du compte tiers</b> suffit (colonne Solde de <span class="menu">Tiers › Liste des tiers</span>, triable, et fiche du tiers).</p>
+<p>Pas de suivi séparé des impayés : le <b>solde du compte tiers</b> suffit (colonne Solde de la liste, triable, et fiche du tiers).</p>
 <h2>Cotisations</h2>
-<p><span class="menu">Tiers › Cotisations des membres</span> : pour l'exercice choisi, attendues (cotisation des membres actifs), facturées, reçues, reste dû et taux de recouvrement.</p>
+<p><span class="menu">Tiers › Cotisations des membres</span> : pour l'exercice choisi, attendues (membres actifs), facturées, reçues, reste dû et taux de recouvrement.</p>
 <h2>Lettrage</h2>
-<p>Le lettrage relie une facture et son règlement (même code : A, B…), ce qui permet de voir ce qui reste dû.</p>
-<ul><li><b>Automatique</b> : bouton <b>Lettrer automatiquement</b> (liste des tiers) ou <b>Lettrage automatique</b> (fiche).</li>
-<li><b>Manuel</b> : dans la fiche, cocher des lignes dont le débit égale le crédit, puis <b>Lettrer la sélection</b>. Le × à côté d'une lettre annule ce lettrage.</li></ul>
+<p>Le lettrage relie une facture et son règlement (même code : A, B…).</p>
+<ul><li><b>Automatique</b> : <b>Lettrer automatiquement</b> (liste des tiers) ou <b>Lettrage automatique</b> (fiche).</li>
+<li><b>Manuel</b> : dans la fiche, cocher des lignes dont le débit égale le crédit, puis <b>Lettrer la sélection</b> en haut. Le × à côté d'une lettre annule ce lettrage.</li></ul>
 
 <!-- 7 -->
-<h1 id="c7">7. Fiches bénévoles</h1>
+<h1 id="c7">7. Fiches bénévoles (la liaison)</h1>
 <p>Les bénévoles notent en ligne les recettes et dépenses d'une activité ; le trésorier complète et reporte en comptabilité.</p>
 <h2>Le trésorier prépare</h2>
-<ol><li><span class="menu">Saisie › Fiches bénévoles</span> › <b>Nouveau bénévole</b> : choisir le <b>membre</b> dans la liste des fiches tiers (un bénévole est toujours un membre ; s'il est absent, créer d'abord sa fiche, type Membre), puis identifiant et mot de passe à lui transmettre.</li>
-<li><b>Nouvelle fiche</b> : type <b>Activité</b> (fixer d'avance le code axe 2 de l'activité : le choisir dans la liste, ou le créer en indiquant le préfixe et le libellé, numéro attribué automatiquement) ou <b>Gestion</b> (dons et aides reçus ou versés) ; choisir les bénévoles.</li></ol>
-<figure><img src="images/09_fiches.png"><figcaption>Liste des fiches avec leurs totaux.</figcaption></figure>
+<ol><li><span class="menu">Saisie › Fiches bénévoles</span>, carte <b>Nouveau bénévole</b> : choisir le <b>membre</b> dans la liste des fiches tiers
+(un bénévole est toujours un membre ; s'il est absent, créer d'abord sa fiche, type Membre), puis identifiant (nom ou e-mail) et mot de passe ;
+<b>Créer le bénévole</b> en haut.</li>
+<li>Carte <b>Nouvelle fiche</b> : type <b>Activité</b> ou <b>Gestion</b> (dons et aides reçus ou versés), titre, bénévoles. Pour une activité, le
+<b>code axe 2</b> se choisit dans la liste, <b>ou se crée sur place</b> : indiquer le préfixe et le libellé, le numéro est attribué automatiquement.
+<b>Créer la fiche</b> en haut.</li></ol>
+<figure><img src="images/09_fiches.png"><figcaption>Liste des fiches avec leurs totaux ; nouvelle fiche et nouveau bénévole.</figcaption></figure>
 <h2>Le bénévole saisit</h2>
 <ol><li>Il se connecte : il ne voit que ses fiches.</li>
-<li>Pour chaque ligne : Recette ou Dépense, date, <b>membre ou tiers</b> (taper le nom), nombre de personnes, nature, montant, mode de paiement, justificatif, remarque.</li>
+<li>Pour chaque ligne : Recette ou Dépense, date, <b>membre ou tiers</b> (taper le nom), nombre de personnes, nature, montant, mode de paiement,
+justificatif, remarque ; <b>Ajouter la ligne</b> en haut.</li>
 <li>Un tiers absent de la liste : remplir <b>« Nouveau tiers »</b> (nom, prénom) : il est <b>provisoire</b> ; ou « Autre payeur ou bénéficiaire » pour une personne extérieure.</li>
-<li>La colonne <b>Contrôle</b> signale ce qui manque ; les totaux (participants, recettes, dépenses, résultat) sont en haut.</li>
 <li>Quand c'est fini : <b>Transmettre au trésorier</b> (la fiche n'est plus modifiable par les bénévoles).</li></ol>
-<figure><img src="images/20_benevole.png"><figcaption>Ce que voit un bénévole.</figcaption></figure>
+<figure><img src="images/20_benevole.png"><figcaption>Ce que voit une bénévole.</figcaption></figure>
 <h2>Le trésorier complète et reporte</h2>
 <ol><li><span class="menu">Tiers › Tiers provisoires</span> : rattacher chaque nouveau tiers à un compte existant, ou laisser vide et choisir le type pour créer son compte.</li>
-<li>Fiche <b>Gestion</b> : pour chaque ligne (Modifier), choisir le mode de paiement (virement Mizrahi, virement BIT, espèces), le compte de contrepartie (proposé selon la nature) et le code axe 2.</li>
-<li><b>Reporter en comptabilité</b> : un mouvement par ligne. Refusé tant qu'une ligne est signalée ; les lignes reportées sont verrouillées.</li>
+<li>Fiche <b>Gestion</b> : pour chaque ligne (Modifier), choisir le mode de paiement, le compte de contrepartie et le code axe 2.</li>
+<li><b>Reporter en comptabilité</b> : un mouvement par ligne. Refusé tant qu'une ligne est signalée dans la colonne Contrôle ; les lignes reportées sont verrouillées.</li>
 <li><b>Rouvrir aux bénévoles</b> pour qu'ils ajoutent des lignes.</li></ol>
-<figure><img src="images/10_fiche_benevole.png"><figcaption>Fiche vue par le trésorier : colonnes Compte et Contrôle.</figcaption></figure>
+<figure><img src="images/10_fiche_benevole.png"><figcaption>Fiche vue par le trésorier : une ligne à corriger (tiers provisoire) bloque le report.</figcaption></figure>
 
 <!-- 8 -->
 <h1 id="c8">8. Consulter</h1>
 <h2>Tableau de bord</h2>
 <p>Produits, charges, résultat, trésorerie par compte, état des contrôles, résultat par activité (axe 1) et par événement (axe 2), sur la période choisie (Du / Au).</p>
 <h2>Écritures</h2>
-<p>Toutes les lignes, filtrées par période, journal, compte (début de numéro ou choix dans la liste), code axe 2 ou texte. Tri par colonne sur toutes les pages.</p>
-<figure><img src="images/12_ecritures.png"><figcaption>Écritures triées par débit décroissant.</figcaption></figure>
+<p>Toutes les lignes, filtrées par période, journal, compte, code axe 2 ou texte. Tri par colonne sur toutes les pages.</p>
+<figure><img src="images/12_ecritures.png"><figcaption>Écritures.</figcaption></figure>
 <h2>Journaux (banque, caisse…)</h2>
-<p><span class="menu">Consulter › Journaux</span> : choisir le journal et la période.</p>
-<ul><li><b>Banque et caisse</b> (B1, B2, B3, CA) : date, Mvt, pièce, libellé, <b>contrepartie</b>, recette, dépense, <b>solde progressif</b>, soldes de début et de fin.</li>
-<li><b>Autres journaux</b> (VT, HA, OD, AN) : écritures par mouvement avec totaux.</li>
-<li><b>Imprimer</b> ou <b>Télécharger en Excel</b>.</li></ul>
+<p><span class="menu">Consulter › Journaux</span> : choisir le journal et la période ; en haut, <b>Télécharger en Excel</b> et <b>Imprimer</b>.</p>
+<ul><li><b>Banque et caisse</b> (B1, B2, B3, CA) : date, Mvt, pièce, libellé, <b>contrepartie</b>, recette, dépense, <b>solde progressif</b>.</li>
+<li><b>Autres journaux</b> (VT, HA, OD, AN) : écritures par mouvement avec totaux.</li></ul>
 <figure><img src="images/11_journal.png"><figcaption>Journal de la banque Mizrahi avec solde progressif.</figcaption></figure>
 <h2>Grand livre, balance, analytique</h2>
 <ul><li><b>Grand livre</b> : un compte, ses lignes et son solde cumulé.</li>
@@ -243,40 +260,52 @@ Une cellule vide n'efface rien. Rien n'est supprimé.</div>
 <!-- 9 -->
 <h1 id="c9">9. Banque : relevés à passer en comptabilité</h1>
 <p><span class="menu">Banque › Relevés à passer en compta</span> : un onglet par compte (B1, B2, B3, caisse). La page ne montre que les
-<b>lignes téléchargées qui n'ont pas encore d'écriture</b>.</p>
+<b>lignes téléchargées qui n'ont pas encore d'écriture</b>. Boutons en haut : <b>Créer les écritures</b>, <b>Télécharger le relevé choisi</b>.</p>
+<figure><img src="images/13_banque.png"><figcaption>Quatre lignes à passer ; la première existe peut-être déjà en comptabilité.</figcaption></figure>
 <h2>1. Télécharger le relevé</h2>
-<p>En bas de page : choisir le fichier (PDF Mizrahi en hébreu, Excel ou CSV) puis <b>Télécharger</b>. Les lignes déjà téléchargées sont ignorées :
-on peut reprendre un relevé qui chevauche le précédent, sans doublon.</p>
+<p>Dans la carte « Télécharger un relevé » : choisir le fichier (PDF Mizrahi en hébreu, Excel ou CSV), puis <b>Télécharger le relevé choisi</b> en haut.
+Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent, sans doublon.</p>
 <h2>2. Traduire les opérations</h2>
-<p>Les lignes en hébreu marquées « à traduire » : <span class="menu">Banque › Traductions du relevé</span>, saisir la traduction française. Elle sert ensuite
-de libellé d'écriture, pour tous les relevés.</p>
+<p>Les lignes en hébreu marquées « à traduire » : <span class="menu">Banque › Traductions du relevé</span>, saisir la traduction française puis
+<b>Enregistrer les traductions</b>. Elle sert ensuite de libellé d'écriture, pour tous les relevés.</p>
 <h2>3. Affecter et créer les écritures</h2>
 <ol><li>Pour chaque ligne, choisir le <b>compte de contrepartie</b> et le <b>code axe 2</b> dans les listes : taper une partie du numéro, du code ou du libellé.</li>
 <li><b>Créer les écritures</b> : une écriture par ligne affectée (banque / contrepartie, même code axe 2, libellé = traduction), datée du jour du relevé.
 Les lignes laissées vides restent à faire.</li></ol>
-<div class="cadre">Pas de doublon : une ligne qui a son écriture disparaît de la liste et ne peut plus en recevoir d'autre. Si la comptabilité contient déjà
-une écriture de même montant à une date proche (saisie, fiche bénévole…), elle s'affiche dans « Déjà en compta ? » : <b>C'est la même</b> relie la ligne
-à cette écriture sans en créer ; sinon cocher « non, nouvelle écriture ».</div>
+<div class="cadre"><b>Pas de doublon.</b> Une ligne qui a son écriture disparaît de la liste et ne peut plus en recevoir d'autre (même en cas de double clic).
+Si la comptabilité contient déjà une écriture de même montant à une date proche (saisie, fiche bénévole…), elle s'affiche dans « Déjà en compta ? » :
+<b>C'est la même</b> relie la ligne à cette écriture sans en créer ; sinon cocher « non, nouvelle écriture ».</div>
 
 <!-- 10 -->
-<h1 id="c10">10. États annuels et budget</h1>
-<p><span class="menu">Fin d'exercice › États annuels et budget</span> : choisir l'exercice ; comparaison automatique avec l'exercice précédent.</p>
+<h1 id="c10">10. Éditions : états, budget, exports des référentiels, documents</h1>
+<figure><img src="images/23_menu_editions.png" style="max-height:60mm"><figcaption>Le menu Éditions.</figcaption></figure>
+<h2>États annuels et budget</h2>
+<p><span class="menu">Éditions › États annuels et budget</span> : choisir l'exercice ; comparaison automatique avec l'exercice précédent.
+En haut : <b>Télécharger en Excel</b> (toutes les feuilles), <b>Imprimer</b>, <b>Ajouter la ligne de budget</b>.</p>
 <figure><img src="images/15_etats.png"><figcaption>Compte de résultat N et N-1.</figcaption></figure>
-<ul><li><b>Compte de résultat</b> par compte (charges, produits, résultat, variation).</li>
-<li><b>Résultat par axe 1 et par axe 2</b>.</li>
-<li><b>Bilan simplifié</b> : actif et passif (classes 1 à 5), résultat de l'exercice ; indique « équilibré ».</li>
-<li><b>Budget</b> : ajouter des lignes (charges ou produits ; par compte, code d'axe 1 ou d'axe 2) ; le tableau compare budget et réalisé (écart et %).</li>
-<li><b>Imprimer</b> et <b>Télécharger en Excel</b> (toutes les feuilles).</li></ul>
+<ul><li><b>Compte de résultat</b> par compte (charges, produits, résultat, variation) ; <b>résultat par axe 1 et par axe 2</b>.</li>
+<li><b>Bilan simplifié</b> : actif et passif (classes 1 à 5), résultat de l'exercice.</li>
+<li><b>Budget</b> : lignes de charges ou de produits, par compte, code d'axe 1 ou d'axe 2 ; comparaison budget / réalisé (écart et %).</li></ul>
+<h2>Exports des référentiels</h2>
+<p><span class="menu">Éditions › Exports des référentiels</span> (administrateur et trésorier) : <b>un fichier Excel par référentiel</b> — réglages, axe 1,
+axe 2, préfixes, plan comptable, journaux, types de tiers, moyens de paiement, schémas et modèles d'opération, natures et modes des fiches,
+paramètres des relevés, traductions, exercices, tiers et, pour l'administrateur, utilisateurs (sans mot de passe). <b>Tout exporter
+(Parametres.xlsx)</b> en haut donne le classeur complet des paramètres. Chaque fichier est téléchargé et copié dans le dossier Exports ;
+ceux des paramètres se réimportent tels quels (chapitre 13).</p>
+<h2>Présentation et mode d'emploi</h2>
+<p><span class="menu">Éditions › Présentation (PDF)</span> et <span class="menu">Éditions › Mode d'emploi (PDF)</span> ouvrent ces documents.
+Ils sont livrés avec l'application : chaque mise à jour apporte leur version à jour.</p>
 
 <!-- 11 -->
 <h1 id="c11">11. Clôture de l'exercice</h1>
-<p><span class="menu">Fin d'exercice › Clôture</span> (trésorier). À faire une fois l'exercice terminé et vérifié.</p>
+<p><span class="menu">Éditions › Clôture de l'exercice</span> (trésorier). À faire une fois l'exercice terminé et vérifié.</p>
 <figure><img src="images/16_cloture.png"><figcaption>Aperçu de la clôture : contrôles et à-nouveaux prévus.</figcaption></figure>
-<ol><li>Lire les <b>points bloquants</b> (mouvement déséquilibré, bilan déséquilibré, exercice précédent non clos) et les <b>points à vérifier</b> (contrôles, fiches non reportées, tiers provisoires).</li>
-<li>Vérifier les états et faire une <b>sauvegarde</b> (Administration › Base de données) et la télécharger.</li>
-<li>Choisir le <b>code axe 2 des à-nouveaux</b>, cocher la confirmation, <b>Clôturer l'exercice</b>.</li></ol>
+<ol><li>Lire les <b>points bloquants</b> (mouvement déséquilibré, bilan déséquilibré, exercice précédent non clos) et les <b>points à vérifier</b>
+(contrôles, fiches non reportées, tiers provisoires).</li>
+<li>Vérifier les états et faire une <b>sauvegarde</b>.</li>
+<li>Choisir le <b>code axe 2 des à-nouveaux</b>, cocher la confirmation, <b>Clôturer l'exercice</b> en haut.</li></ol>
 <p>La clôture crée <b>un</b> mouvement d'à-nouveaux (journal AN) au 1er jour de l'exercice suivant : soldes des comptes de bilan et résultat affecté au compte 110000.
-Elle crée l'exercice suivant si besoin, <b>verrouille</b> l'exercice clos et enregistre une <b>archive Excel figée</b> (téléchargeable). Aucune écriture existante n'est modifiée.</p>
+Elle crée l'exercice suivant si besoin, <b>verrouille</b> l'exercice clos et enregistre une <b>archive Excel figée</b>. Aucune écriture existante n'est modifiée.</p>
 <div class="cadre attention">La clôture est <b>définitive</b>. Une erreur découverte ensuite se corrige dans l'exercice ouvert (écriture libre).</div>
 
 <!-- 12 -->
@@ -286,97 +315,98 @@ Elle crée l'exercice suivant si besoin, <b>verrouille</b> l'exercice clos et en
 aucune écriture nouvelle dans un exercice clos, comptes de liaison 580000 et 470000). L'état général apparaît aussi sur le tableau de bord.</p>
 <figure><img src="images/18_controles.png"><figcaption>Page des contrôles.</figcaption></figure>
 <h2>Historique</h2>
-<p><span class="menu">Contrôle › Historique</span> : toutes les actions (qui, quand, quoi, avant, après). Recherche, <b>Télécharger en Excel</b>.
-C'est la piste d'audit du vérificateur. Le trésorier peut <b>effacer l'historique jusqu'à une date</b> (taper EFFACER) : une copie Excel et une sauvegarde sont faites avant, et une ligne garde la trace de l'effacement.</p>
+<p><span class="menu">Contrôle › Historique</span> : toutes les actions (qui, quand, quoi, avant, après). Recherche ; <b>Télécharger en Excel</b> en haut.
+C'est la piste d'audit du vérificateur aux comptes. L'administrateur peut <b>effacer l'historique jusqu'à une date</b> (taper EFFACER) : une copie Excel et une
+sauvegarde sont faites avant, et une ligne garde la trace de l'effacement.</p>
+<figure><img src="images/19_historique.png"><figcaption>Historique des opérations.</figcaption></figure>
 
 <!-- 13 -->
 <h1 id="c13">13. Administration</h1>
-<h2>Imports / Exports</h2>
-<p><span class="menu">Administration › Imports / Exports</span> (administrateur, en complément des imports habituels des écrans Tiers et Rapprochement). Toutes les données s'échangent par fichiers <b>.xlsx</b>, un par nature
-(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse),
-de <b>même structure à l'import et à l'export</b>. Deux dossiers (les mêmes que pour Paramètres (Excel) et les sauvegardes), modifiables en bas de la page : <b>Imports</b> (fichiers à importer, relevés
-bancaires compris) et <b>Exports</b> (fichiers produits par l'application). Chacun contient un <b>Lexique.xlsx</b> : fichiers, colonnes, règles.</p>
-<ol><li><b>Importer</b> : déposer le fichier dans Imports ; il apparaît dans la liste ; bouton <b>Importer</b>. Tout ou rien : à la moindre
-erreur, rien n'est enregistré et les lignes en erreur s'affichent. Le fichier importé est rangé, daté, dans Imports\Importés.</li>
-<li><b>Exporter</b> : bouton de chaque ligne, ou <b>Tout exporter</b> ; les fichiers datés arrivent dans Exports.</li>
-<li><b>Corriger à la main</b> : exporter, modifier dans Excel, copier le fichier dans Imports et l'importer. Écritures : un Mvt modifié est mis
-à jour (tracé comme une correction), un Mvt nouveau est ajouté, un Mvt identique est ignoré.</li>
-<li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de
-leur nature ; les référentiels sont mis à jour. Pointages, à-nouveaux et fiches reportées sont recollés quand leurs écritures reviennent à
-l'identique.</li></ol>
-<div class="cadre">Une sauvegarde de la base est faite avant chaque import et chaque réinjection (Administration › Base de données).</div>
+<p>Menu réservé à l'administrateur.</p>
+<h2>Utilisateurs</h2>
+<p><span class="menu">Administration › Utilisateurs</span> : la liste des comptes (identifiant, nom, e-mail, rôle, actif, dernière connexion).</p>
+<ul><li><b>Nouvel utilisateur</b> : identifiant (nom ou e-mail), prénom, nom, e-mail, rôle (Administrateur, Trésorier, Bureau), mot de passe à lui transmettre ;
+<b>Créer l'utilisateur</b> en haut. Un bénévole se crée depuis les fiches bénévoles (chapitre 7).</li>
+<li>Clic sur un identifiant : changer l'identifiant, l'e-mail, le rôle, bloquer la connexion (« Peut se connecter » décoché) ou donner un nouveau mot de passe.</li>
+<li>Il reste toujours au moins un administrateur actif.</li></ul>
+<figure><img src="images/21_utilisateurs.png"><figcaption>Utilisateurs et rôles.</figcaption></figure>
 <h2>Référentiels</h2>
-<p><span class="menu">Administration › Référentiels</span> (trésorier) : plan comptable, journaux, codes analytiques, préfixes, exercices, réglages
-(comptes 580000 et 470000, tolérance du rapprochement, compte des cotisations…), modèles d'opérations, moyens de paiement, types de tiers,
-natures et modes des fiches bénévoles, traductions, <b>utilisateurs</b> (mots de passe, groupes).
-Cliquer sur une ligne, modifier, <b>Enregistrer</b>. Les écritures ne se modifient pas ici (voir chapitre 4).</p>
-<h2>Paramètres (Excel) : le fichier Parametres.xlsx</h2>
-<p><span class="menu">Administration › Paramètres (Excel)</span> — <b>administrateur et trésorier seulement</b>. Tous les paramètres
-(réglages, codes axe 1 et axe 2, préfixes, plan comptable hors tiers, journaux, types de tiers, moyens de paiement, modèles d'opération,
-natures et modes des fiches, relevés, traductions) tiennent dans un classeur, une feuille par sujet.</p>
-<ul><li><b>Par le dossier Imports</b> (ComptaBB sur le PC) : <b>Préparer Imports/Parametres.xlsx</b>, le modifier dans Excel, l'enregistrer
-et le fermer, puis <b>Importer Imports/Parametres.xlsx</b>.</li>
-<li><b>Par le navigateur</b> (site hébergé) : <b>Télécharger Parametres.xlsx</b>, le modifier, puis l'envoyer avec <b>Importer le fichier</b>.</li>
-<li>Une ligne dont la clé (colonne grise) existe est mise à jour ; une clé nouvelle est créée ; une cellule vide ne change rien ;
-rien n'est supprimé (Actif = Non pour retirer).</li>
-<li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import,
-et chaque changement est inscrit dans l'Historique.</li></ul>
-<h2>Dossiers Imports et Exports</h2>
-<p>Seuls l'administrateur et le trésorier échangent des fichiers avec ComptaBB (Parametres.xlsx, Tiers.xlsx) ; pour les autres utilisateurs,
-l'application ne dépend d'aucun fichier. Le dossier <b>Exports</b> contient :</p>
-<ul><li><b>Sauvegardes</b> : les copies de la base (30 dernières) ;</li>
-<li><b>Archives</b> : les classeurs de clôture et les copies d'historique effacé ;</li>
-<li>la dernière copie de <b>Parametres.xlsx</b> téléchargée, et les anciennes versions remplacées ;</li>
-<li>les <b>exports complets</b> (Export_complet_….zip).</li></ul>
-<p>Sur le PC, Imports et Exports sont à côté de ComptaBB ; sur PythonAnywhere, dans <code>comptabb-data</code> (ils survivent aux mises à jour).</p>
+<p><span class="menu">Administration › Référentiels</span> : plan comptable, journaux, codes analytiques, préfixes, exercices, réglages, modèles d'opérations,
+moyens de paiement, types de tiers, natures et modes des fiches bénévoles, traductions. Cliquer sur une ligne, modifier, <b>Enregistrer</b>.
+Les écritures ne se modifient pas ici (chapitre 4).</p>
+<h2>Paramètres (Excel)</h2>
+<p><span class="menu">Administration › Paramètres (Excel)</span> : tous les paramètres tiennent dans un classeur <b>Parametres.xlsx</b>, une feuille par sujet.</p>
+<ul><li><b>Par le dossier Imports</b> (PC) : <b>Préparer Imports/Parametres.xlsx</b>, le modifier dans Excel, l'enregistrer et le fermer, puis <b>Importer Imports/Parametres.xlsx</b>.</li>
+<li><b>Par le navigateur</b> (site) : l'exporter (Éditions › Exports des référentiels), le modifier, le choisir puis <b>Importer le fichier envoyé</b>.
+Un fichier d'un seul référentiel s'importe de la même façon.</li>
+<li>Une ligne dont la clé (colonne grise) existe est mise à jour ; une clé nouvelle est créée ; une cellule vide ne change rien ; rien n'est supprimé (Actif = Non pour retirer).</li>
+<li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import.</li></ul>
+<h2>Imports / Exports</h2>
+<p><span class="menu">Administration › Imports / Exports</span> : toutes les données s'échangent par fichiers <b>.xlsx</b>, un par nature
+(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse),
+de <b>même structure à l'import et à l'export</b>, décrits dans <b>Lexique.xlsx</b>. Boutons en haut : <b>Tout exporter</b>,
+<b>Tout exporter et sauvegarder la base</b>, <b>Enregistrer les dossiers</b>, <b>Tout réinjecter</b>.</p>
+<figure><img src="images/22_echanges.png"><figcaption>Imports / Exports.</figcaption></figure>
+<ol><li><b>Importer</b> : déposer le fichier dans le dossier Imports ; il apparaît dans la liste ; bouton <b>Importer</b> de sa ligne. Tout ou rien ;
+le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mizrahi se convertit d'abord en Banque1.xlsx ou Banque2.xlsx.</li>
+<li><b>Tout exporter et sauvegarder la base</b> : le jeu complet (un fichier par format, plus Parametres.xlsx) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.</li>
+<li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de leur nature.</li></ol>
+<h2>Les dossiers Imports, Exports et Sauvegardes</h2>
+<p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).
+Sur le PC de l'association : <code>D:\OneDrive\Applications\ComptaBB\Exports</code> et <code>D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes</code>.
+Un chemin <code>D:\…</code> ne vaut que sur le PC : sur le site, il est ignoré (la page le signale) et les dossiers de <code>comptabb-data</code> servent ;
+on télécharge alors les fichiers. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
 <h2>Base de données</h2>
-<figure><img src="images/17_base.png"><figcaption>Sauvegardes et remise à zéro.</figcaption></figure>
-<p><b>Tout exporter</b> (export complet, en une seule opération) : crée dans Exports un fichier <b>Export_complet_….zip</b> avec
-la sauvegarde de la base, Parametres.xlsx, Tiers.xlsx, Donnees.xlsx (écritures, exercices, relevés, pointages, budget,
-fiches bénévoles, historique), les états de chaque exercice et un fichier de contrôle. Les 20 derniers sont gardés ; téléchargez-les
-(liste « Exports complets ») pour les ranger sur le PC ou OneDrive.</p>
-<p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus (saisies, clôture…) ;
-3. <b>Remettre à zéro et recharger</b> en choisissant l'export complet (taper REMPLACER). La comptabilité est vidée puis rechargée
-depuis les fichiers Excel de l'export, et l'application vérifie que tout est <b>identique</b> à l'export (nombres, totaux et contenu
-cellule par cellule). Au moindre écart, rien n'est modifié. Les comptes utilisateurs sont gardés.</p>
-<ul><li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture, et à ranger sur le PC ou OneDrive.</li>
-<li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis :
-<ul><li>une <b>sauvegarde</b> .sqlite3 : tout redevient comme à ce moment-là (utilisateurs compris) ;</li>
-<li>un <b>export complet</b> .zip : la comptabilité est rechargée depuis ses fichiers Excel puis contrôlée (voir ci-dessus) ;</li>
-<li>le <b>classeur ComptaBB.xlsm</b> : plan, journaux, codes, écritures, exercices, relevé Banque 1 ; les utilisateurs sont gardés ; les tiers sont recréés d'après les comptes (coordonnées à réimporter avec Tiers.xlsx), les fiches bénévoles, budgets, pointages et lettrages sont à refaire.</li></ul>
-Une sauvegarde de la base actuelle est faite juste avant.</li>
-<li><b>Archives Excel</b> : archives de clôture et copies d'historique effacé.</li></ul>
-<h2>Sauvegarde automatique chaque nuit</h2>
-<p>Sur PythonAnywhere, onglet <b>Tasks</b> (<a href="https://www.pythonanywhere.com/user/ComptaBB/tasks_tab/">lien</a>), créer une tâche quotidienne avec la commande :</p>
-<p><code>COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</code></p>
-<p>Les 30 dernières sauvegardes sont gardées, dans <code>comptabb-data/Exports/Sauvegardes</code>.</p>
+<figure><img src="images/17_base.png"><figcaption>Sauvegardes, export complet et remise à zéro.</figcaption></figure>
+<ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Donnees.xlsx, états de chaque exercice, contrôle).</li>
+<li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture.</li>
+<li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis une sauvegarde .sqlite3 (tout redevient comme à ce moment-là, utilisateurs compris),
+un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaBB.xlsm. Une sauvegarde est faite juste avant.</li></ul>
+<p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus ; 3. <b>Remettre à zéro et recharger</b> depuis l'export complet.</p>
 
 <!-- 14 -->
-<h1 id="c14">14. Mises à jour, problèmes fréquents, glossaire</h1>
+<h1 id="c14">14. Mises à jour, commandes, problèmes fréquents, glossaire</h1>
 <h2>Mettre l'application à jour</h2>
-<p>Suivre le <b>protocole de mise à jour</b> (PDF séparé) : télécharger le ZIP depuis GitHub, l'envoyer dans <b>Files</b> sur PythonAnywhere,
-taper <code>bash ~/maj.sh</code> dans une console, puis <b>Ctrl+F5</b> sur une page de ComptaBB. En cas de problème : <code>bash ~/maj.sh --retour</code>.</p>
+<ol><li>Sur GitHub, dépôt ComptaBB, choisir la branche indiquée, <b>Code › Download ZIP</b> (sans renommer le fichier).</li>
+<li>Sur PythonAnywhere, onglet <b>Files</b> › <b>Upload a file</b>.</li>
+<li>Dans une console Bash : <code>bash ~/maj.sh</code> (sauvegarde de la base, nouveau code, bibliothèques, mise à niveau de la base, rechargement).</li>
+<li><b>Ctrl+F5</b> sur une page de ComptaBB. En cas de problème : <code>bash ~/maj.sh --retour</code> remet la version précédente du code.</li></ol>
+<p>La présentation et ce mode d'emploi sont mis à jour en même temps (menu Éditions).</p>
+<h2>Commandes de la console (PythonAnywhere)</h2>
+<p>Se placer d'abord dans l'application : <code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTABB_DATA=~/comptabb-data</code></p>
+<table><tr><th style="width:40%">Commande</th><th>Effet</th></tr>
+<tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (dossier Sauvegardes ; les 30 dernières sont gardées).</td></tr>
+<tr><td><code>python manage.py restaurer</code></td><td>Liste les sauvegardes, les plus récentes d'abord.</td></tr>
+<tr><td><code>python manage.py restaurer 3</code><br><code>python manage.py restaurer derniere</code></td><td>Remet la base dans l'état de la sauvegarde n° 3 de la liste (ou de la plus récente), après confirmation REMPLACER ; l'état actuel est sauvegardé juste avant.</td></tr>
+<tr><td><code>python manage.py exporter_tout</code></td><td>Jeu complet d'exports et sauvegarde de la base, dans les dossiers paramétrés.</td></tr>
+<tr><td><code>python manage.py reinjecter Export_complet_….zip</code></td><td>Remet à zéro et recharge un export complet, puis vérifie que tout est identique.</td></tr>
+<tr><td><code>python manage.py creer_administrateur</code></td><td>Crée un compte administrateur (premier accès, ou secours).</td></tr>
+<tr><td><code>python manage.py changepassword identifiant</code></td><td>Donne un nouveau mot de passe à un utilisateur.</td></tr></table>
+<h2>Sauvegarde automatique chaque nuit</h2>
+<p>PythonAnywhere, onglet <b>Tasks</b>, tâche quotidienne :<br>
+<code>COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</code></p>
 <h2>Problèmes fréquents</h2>
 <table><tr><th style="width:36%">Situation</th><th>Que faire</th></tr>
-<tr><td>Mot de passe oublié (site)</td><td>Un administrateur le change dans Référentiels › Utilisateurs ; ou en console : <code>python manage.py changepassword Tresorier</code>.</td></tr>
+<tr><td>Mot de passe oublié</td><td>L'administrateur en donne un nouveau (Administration › Utilisateurs) ; ou en console : <code>python manage.py changepassword identifiant</code>.</td></tr>
 <tr><td>« Date dans un exercice clos »</td><td>Choisir une date de l'exercice ouvert ; pour corriger le passé, passer une écriture libre dans l'exercice ouvert.</td></tr>
 <tr><td>« Déjà enregistrée ? »</td><td>Une opération identique existe ; si c'est voulu, cocher « ce n'est pas un doublon ».</td></tr>
-<tr><td>Un tiers n'apparaît pas dans la liste de la saisie</td><td>Le type d'opération attend un autre type de tiers (membre / fournisseur), ou le tiers n'existe pas : le créer (Codes et nouveaux tiers).</td></tr>
+<tr><td>« Déjà en compta ? » sur une ligne du relevé</td><td>« C'est la même » si c'est bien cette écriture, sinon cocher « non, nouvelle écriture ».</td></tr>
+<tr><td>Un tiers n'apparaît pas dans la liste de la saisie</td><td>Le type d'opération attend un autre type de tiers, ou le tiers n'existe pas : le créer (Codes et nouveaux tiers).</td></tr>
 <tr><td>Report d'une fiche refusé</td><td>Lire la colonne Contrôle : tiers provisoire sans compte, mode ou axe 2 manquant (Gestion)…</td></tr>
-<tr><td>« Déjà en compta ? » sur une ligne</td><td>Une écriture de même montant existe à une date proche : « C'est la même » si c'est bien elle, sinon cocher « non, nouvelle écriture ».</td></tr>
-<tr><td>Caractères trop petits</td><td>Boutons A+ en haut à droite, ou Ctrl + dans le navigateur.</td></tr>
-<tr><td>La page n'a pas changé après une mise à jour</td><td>Ctrl+F5 sur une page de ComptaBB (pas sur PythonAnywhere).</td></tr>
+<tr><td>Un bénévole n'est pas proposé</td><td>Il doit avoir une fiche tiers de type Membre, non démissionnaire, sans compte de bénévole.</td></tr>
+<tr><td>Je ne trouve pas le bouton</td><td>Il est en haut à gauche de la page, sous le titre.</td></tr>
+<tr><td>La page n'a pas changé après une mise à jour</td><td>Ctrl+F5 sur une page de ComptaBB.</td></tr>
 <tr><td>Le site ne répond plus (offre gratuite)</td><td>PythonAnywhere › Web › <b>Run until 3 months from today</b> (tous les 3 mois).</td></tr>
 </table>
 <h2>Glossaire</h2>
 <table><tr><th style="width:22%">Terme</th><th>Sens</th></tr>
 <tr><td>Mouvement (Mvt)</td><td>Une opération comptable équilibrée, numérotée ; regroupe plusieurs lignes.</td></tr>
 <tr><td>Pièce</td><td>Numéro de pièce justificative, attribué automatiquement.</td></tr>
-<tr><td>Journal</td><td>B1 Mizrahi CC, B2 Mizrahi épargne, B3 BIT, CA caisse, VT ventes, HA achats, OD opérations diverses, AN à-nouveaux.</td></tr>
+<tr><td>Journal</td><td>B1 Mizrahi compte courant, B2 Mizrahi épargne, B3 BIT, CA caisse, VT ventes, HA achats, OD opérations diverses, AN à-nouveaux.</td></tr>
 <tr><td>Axe 1 / axe 2</td><td>Axe 1 : nature (découle du compte). Axe 2 : événement ou projet (choisi à la saisie).</td></tr>
 <tr><td>Tiers</td><td>Membre (411…), fournisseur (401…) ou autre type ; chacun a son compte et sa fiche.</td></tr>
 <tr><td>Lettrage</td><td>Lien entre une facture et son règlement sur le compte d'un tiers.</td></tr>
-<tr><td>Pointage</td><td>Lien entre une ligne du relevé bancaire et une écriture.</td></tr>
+<tr><td>Référentiel</td><td>Liste de paramètres : plan comptable, journaux, codes, types de tiers, modèles d'opération…</td></tr>
 <tr><td>À-nouveaux</td><td>Soldes reportés au début de l'exercice suivant par la clôture.</td></tr>
 <tr><td>580000 / 470000</td><td>Compte de virements internes et paiements Isracard / compte d'attente.</td></tr>
 </table>

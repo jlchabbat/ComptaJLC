@@ -119,6 +119,13 @@ Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiable
 `Imports/Importés`. Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
 remplace écritures, relevés et budget par les fichiers présents.
 
+## Documentation intégrée
+
+**Éditions › Présentation (PDF)** et **Mode d'emploi (PDF)** servent les fichiers de `compta/documentation/`, livrés avec
+le code. Sources : `docs/presentation.html` et `docs/mode-emploi.html`. Après un changement visible, régénérer captures
+et PDF (poste de développement, Playwright et Chromium) : `python deploiement/documentation.py` (base de démonstration
+fictive, captures dans `docs/images`, PDF dans `compta/documentation` et `docs/`).
+
 ## Base de données (administrateur)
 
 Menu **Base** (compte administrateur, créé par `creer_administrateur`) : créer et télécharger des sauvegardes ; **remettre à zéro
