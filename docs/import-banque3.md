@@ -9,7 +9,7 @@ Fichier de référence : `D:\OneDrive\Compta Bnei Brith\Bit.xlsx`
 
 | Colonne | En-tête   | Type                | Contenu                                         |
 |---------|-----------|---------------------|-------------------------------------------------|
-| A       | `Journ`   | texte               | Code journal — toujours `B2` dans le fichier    |
+| A       | `Journ`   | texte               | Code journal — toujours `B2` (voulu)             |
 | B       | `Date`    | date Excel          | Date de l'opération (format affiché `mm-dd-yy`) |
 | C       | `Libelle` | texte (≤ 50 car.)   | `TIERS - RUBRIQUE - SOUS-RUBRIQUE`              |
 | D       | `Debit`   | nombre (entier/décimal) | Montant encaissé sur Bit, sinon vide        |
@@ -18,6 +18,8 @@ Fichier de référence : `D:\OneDrive\Compta Bnei Brith\Bit.xlsx`
 Une ligne a soit `Debit`, soit `Credit`, jamais les deux.
 
 ## Règles observées
+
+- **Code journal** : `B2` est bien le code du journal de Banque 3 (Bit), confirmé.
 
 - **Sens des montants** (point de vue du relevé) :
   - `Debit` = entrée d'argent (ex. participations aux rallyes, fêtes, cotisations).
