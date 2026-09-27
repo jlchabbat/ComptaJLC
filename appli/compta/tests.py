@@ -624,42 +624,80 @@ class EcransRapprochement(TestCase):
         self.u.groups.add(Group.objects.get(name="Trésorier"))
         self.client.force_login(self.u)
 
-    def test_pages_import_et_creation_d_ecriture(self):
+    def test_import_affectation_et_ecriture(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         r = self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
         self.assertRedirects(r, "/rapprochement/B1/")
-        self.assertEqual(LigneReleve.objects.count(), 4)
-        self.client.post("/rapprochement/B1/automatique/")
-        grand = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 1, 25), rang=1, pk=1234, montant=D(1))
-        self.assertContains(self.client.get("/rapprochement/B1/pointage/"), 'value="1234"')
-        grand.delete()
-        for url in ("/rapprochement/", "/rapprochement/B1/", "/rapprochement/B1/pointage/", "/rapprochement/traductions/"):
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        self.assertEqual(LigneReleve.objects.count(), 4)                         # relevé retéléchargé : pas de doublon
+        for url in ("/rapprochement/", "/rapprochement/B1/", "/rapprochement/traductions/"):
             self.assertEqual(self.client.get(url).status_code, 200, url)
-        # traduction d'une opération
-        self.client.post("/rapprochement/traductions/", {"h_1": "הפקדת שיק", "t_1": "Remise de chèque"})
-        self.assertEqual(LigneReleve.objects.get(reference="12").traduction, "Remise de chèque")
-        # ligne du relevé sans écriture : créer l'écriture depuis le relevé, pointée à l'enregistrement
-        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 1, 31), rang=1, reference="15", operation="עמלת מסלול",
-                                       montant=D("-10"))
-        r = self.client.get(f"/rapprochement/releve/{l.pk}/ecriture/")
-        self.assertIn("/saisie/?", r["Location"])
-        page = self.client.get(r["Location"])
-        self.assertContains(page, 'name="releve" value="%d"' % l.pk)
-        self.assertContains(page, 'value="FRAIS DE FORFAIT"')
-        frais = ModeleOperation.objects.get(type="Frais bancaires")
-        r = self.client.post("/saisie/", {"date": "2026-01-31", "modele": frais.pk, "montant": "10", "anal2": "GEN.004", "releve": l.pk,
-                                          "paiement": MoyenPaiement.objects.get(journal=self.b1).pk, "enregistrer": "1"})
-        self.assertEqual(r.status_code, 302)
+        for url in ("/rapprochement/B1/pointage/", "/rapprochement/B1/automatique/"):
+            self.assertEqual(self.client.get(url).status_code, 404, url)          # plus de pointage
+        Mouvement.objects.all().delete()                  # compta vide : aucune écriture « déjà en compta »
+        self.client.post("/rapprochement/traductions/", {"h_1": "עמלת מסלול", "t_1": "Frais de forfait"})
+        frais, remise, virement = LigneReleve.objects.filter(ouverture=False).order_by("date")
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, '<option value="600100 – FRAIS BANCAIRES">')
+        self.assertContains(page, '<option value="GEN.004 – BANQUE">')
+        self.assertNotContains(page, '<option value="512000')                     # pas la banque elle-même
+        # frais : code choisi dans la liste ; virement : libellé tapé ; remise laissée vide ; code inconnu refusé
+        r = self.client.post("/rapprochement/B1/", {
+            f"compte_{frais.pk}": "600100 – FRAIS BANCAIRES", f"anal2_{frais.pk}": "GEN.004 – BANQUE",
+            f"compte_{virement.pk}": "taieb jeanne", f"anal2_{virement.pk}": "GEN.002", "creer": "1"})
+        self.assertRedirects(r, "/rapprochement/B1/")
+        m = Mouvement.objects.get(lignes__compte_id="600100")
+        self.assertEqual([(x.compte_id, x.debit, x.credit, x.anal2_id, x.libelle) for x in m.lignes.order_by("ordre")],
+                         [("512000", D(0), D(10), "GEN.004", "FRAIS DE FORFAIT"), ("600100", D(10), D(0), "GEN.004", "FRAIS DE FORFAIT")])
+        self.assertEqual((m.date, m.journal_id), (frais.date, "B1"))
+        v = Mouvement.objects.get(lignes__compte_id="411TAIEB001", lignes__debit=400)
+        self.assertEqual(v.lignes.get(compte_id="512000").credit, D(400))
+        frais.refresh_from_db()
+        self.assertEqual(frais.rapprochement.ecritures.get().mouvement, m)
+        page = self.client.get("/rapprochement/B1/")
+        self.assertNotContains(page, f'name="compte_{frais.pk}"')                   # traitée : sortie de la liste
+        self.assertContains(page, f'name="compte_{remise.pk}"')
+        n = Mouvement.objects.count()
+        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", f"anal2_{frais.pk}": "GEN.004", "creer": "1"})
+        self.assertEqual(Mouvement.objects.count(), n)                              # double envoi : rien de plus
+        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "600100", f"anal2_{remise.pk}": "ZZZ", "creer": "1"})
+        self.assertContains(r, "Code axe 2 introuvable")
+        self.assertContains(r, 'value="600100"')                                    # saisie gardée
+        # déjà en compta (même montant, date proche) : relier plutôt que créer
+        mv = Mouvement.objects.create(numero=900, date=remise.date, journal_id="B1", piece=900)
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="REMISE", debit=D(1550), anal2_id="GEN.001")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="411TAIEB001", libelle="REMISE", credit=D(1550), anal2_id="GEN.001")
+        self.assertContains(self.client.get("/rapprochement/B1/"), f'value="{remise.pk}:{e.pk}"')
+        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "411TAIEB001", f"anal2_{remise.pk}": "GEN.001", "creer": "1"})
+        self.assertContains(r, "existe déjà")
+        self.assertEqual(Mouvement.objects.count(), n + 1)
+        self.client.post("/rapprochement/B1/", {"relier": f"{remise.pk}:{e.pk}"})
+        remise.refresh_from_db()
+        self.assertEqual(remise.rapprochement.ecritures.get(), e)
+        self.assertEqual(Mouvement.objects.count(), n + 1)                          # reliée, pas d'écriture en plus
+        self.assertContains(self.client.get("/rapprochement/B1/"), "Tout le relevé téléchargé est en comptabilité")
+
+    def test_nouvelle_ecriture_malgre_un_montant_proche(self):
+        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
+        mv = Mouvement.objects.create(numero=901, date=dt.date(2026, 2, 1), journal_id="B1", piece=901)
+        Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="AUTRE", credit=D(10), anal2_id="GEN.004")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="AUTRE", debit=D(10), anal2_id="GEN.004")
+        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"anal2_{l.pk}": "GEN.004", f"nouvelle_{l.pk}": "on",
+                                                "creer": "1"})
         l.refresh_from_db()
-        self.assertEqual(l.rapprochement.mode, "saisie")
+        self.assertIsNotNone(l.rapprochement_id)
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
         b.groups.add(Group.objects.get(name="Bureau"))
         self.client.force_login(b)
-        self.assertEqual(self.client.get("/rapprochement/B1/").status_code, 200)
-        self.assertEqual(self.client.post("/rapprochement/B1/automatique/").status_code, 403)
-        self.assertNotContains(self.client.get("/rapprochement/B1/pointage/"), 'type="checkbox"')
+        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
+        r = self.client.get("/rapprochement/B1/")
+        self.assertContains(r, "Lignes téléchargées sans écriture (1)")
+        self.assertNotContains(r, f'name="compte_{l.pk}"')
+        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"anal2_{l.pk}": "GEN.004", "creer": "1"})
+        l.refresh_from_db()
+        self.assertIsNone(l.rapprochement_id)
 
 
 # ---------------------------------------------------------------- W4 : états annuels et clôture

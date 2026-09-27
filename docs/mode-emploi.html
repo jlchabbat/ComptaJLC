@@ -46,7 +46,7 @@ Version du 26/09/2026</div>
 <li><a href="#c6">Tiers : fiches, import, solde, cotisations, lettrage</a></li>
 <li><a href="#c7">Fiches bénévoles</a></li>
 <li><a href="#c8">Consulter : tableau de bord, écritures, journaux, grand livre, balance</a></li>
-<li><a href="#c9">Rapprochement bancaire</a></li>
+<li><a href="#c9">Banque : relevés à passer en comptabilité</a></li>
 <li><a href="#c10">États annuels et budget</a></li>
 <li><a href="#c11">Clôture de l'exercice</a></li>
 <li><a href="#c12">Contrôles et historique</a></li>
@@ -95,7 +95,7 @@ On se connecte avec l'identifiant ou avec l'e-mail enregistré.</p>
 <tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Modifier une écriture · Codes et nouveaux tiers · Fiches bénévoles</td></tr>
 <tr><td>Tiers</td><td>Liste des tiers · Cotisations des membres · Tiers provisoires</td></tr>
 <tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analytique</td></tr>
-<tr><td>Banque</td><td>Rapprochement · Traductions du relevé</td></tr>
+<tr><td>Banque</td><td>Relevés à passer en compta · Traductions du relevé</td></tr>
 <tr><td>Fin d'exercice</td><td>États annuels et budget · Clôture</td></tr>
 <tr><td>Contrôle</td><td>Contrôles · Historique</td></tr>
 <tr><td>Administration</td><td>Référentiels · Base de données</td></tr></table>
@@ -241,22 +241,22 @@ Une cellule vide n'efface rien. Rien n'est supprimé.</div>
 <li><b>Analytique</b> : produits, charges et résultat par code d'axe 1 et d'axe 2.</li></ul>
 
 <!-- 9 -->
-<h1 id="c9">9. Rapprochement bancaire</h1>
-<p><span class="menu">Banque › Rapprochement</span> : un onglet par compte (B1, B2, B3, caisse).</p>
-<figure><img src="images/13_rapprochement.png"><figcaption>État de rapprochement et écart par mois.</figcaption></figure>
-<h2>1. Importer le relevé</h2>
-<p>En bas de page : choisir le fichier (PDF Mizrahi en hébreu, Excel ou CSV) puis <b>Importer</b>. Les lignes déjà importées sont ignorées :
-on peut réimporter un relevé qui chevauche le précédent. Au premier import d'un compte, le solde d'ouverture est déduit du relevé.</p>
+<h1 id="c9">9. Banque : relevés à passer en comptabilité</h1>
+<p><span class="menu">Banque › Relevés à passer en compta</span> : un onglet par compte (B1, B2, B3, caisse). La page ne montre que les
+<b>lignes téléchargées qui n'ont pas encore d'écriture</b>.</p>
+<h2>1. Télécharger le relevé</h2>
+<p>En bas de page : choisir le fichier (PDF Mizrahi en hébreu, Excel ou CSV) puis <b>Télécharger</b>. Les lignes déjà téléchargées sont ignorées :
+on peut reprendre un relevé qui chevauche le précédent, sans doublon.</p>
 <h2>2. Traduire les opérations</h2>
-<p>Les lignes « À traduire » : <span class="menu">Banque › Traductions du relevé</span>, saisir la traduction française de chaque libellé hébreu. Elles servent ensuite pour tous les relevés.</p>
-<h2>3. Pointer</h2>
-<ul><li><b>Rapprochement automatique</b> : même montant, date à ± 7 jours ; l'à-nouveau est pointé contre le solde d'ouverture.</li>
-<li><b>Pointage manuel</b> (« Pointage des lignes ») : cocher à gauche (relevé) et à droite (écritures) des lignes de <b>même total</b>
-— par exemple une remise de chèques contre plusieurs règlements — puis <b>Pointer la sélection</b>. <b>Dépointer</b> annule un rapprochement.</li>
-<li><b>Créer l'écriture</b> sur une ligne du relevé sans écriture (frais, intérêts…) : la saisie s'ouvre pré-remplie et l'écriture est pointée à l'enregistrement.</li></ul>
-<figure><img src="images/14_pointage.png"><figcaption>Pointage manuel : les totaux sélectionnés doivent être égaux.</figcaption></figure>
-<h2>4. Lire l'état</h2>
-<p>À la date choisie : solde du relevé, solde comptable, lignes non pointées des deux côtés, <b>écart non expliqué (doit être 0)</b>, et écart par mois.</p>
+<p>Les lignes en hébreu marquées « à traduire » : <span class="menu">Banque › Traductions du relevé</span>, saisir la traduction française. Elle sert ensuite
+de libellé d'écriture, pour tous les relevés.</p>
+<h2>3. Affecter et créer les écritures</h2>
+<ol><li>Pour chaque ligne, choisir le <b>compte de contrepartie</b> et le <b>code axe 2</b> dans les listes : taper une partie du numéro, du code ou du libellé.</li>
+<li><b>Créer les écritures</b> : une écriture par ligne affectée (banque / contrepartie, même code axe 2, libellé = traduction), datée du jour du relevé.
+Les lignes laissées vides restent à faire.</li></ol>
+<div class="cadre">Pas de doublon : une ligne qui a son écriture disparaît de la liste et ne peut plus en recevoir d'autre. Si la comptabilité contient déjà
+une écriture de même montant à une date proche (saisie, fiche bénévole…), elle s'affiche dans « Déjà en compta ? » : <b>C'est la même</b> relie la ligne
+à cette écriture sans en créer ; sinon cocher « non, nouvelle écriture ».</div>
 
 <!-- 10 -->
 <h1 id="c10">10. États annuels et budget</h1>
@@ -363,7 +363,7 @@ taper <code>bash ~/maj.sh</code> dans une console, puis <b>Ctrl+F5</b> sur une p
 <tr><td>« Déjà enregistrée ? »</td><td>Une opération identique existe ; si c'est voulu, cocher « ce n'est pas un doublon ».</td></tr>
 <tr><td>Un tiers n'apparaît pas dans la liste de la saisie</td><td>Le type d'opération attend un autre type de tiers (membre / fournisseur), ou le tiers n'existe pas : le créer (Codes et nouveaux tiers).</td></tr>
 <tr><td>Report d'une fiche refusé</td><td>Lire la colonne Contrôle : tiers provisoire sans compte, mode ou axe 2 manquant (Gestion)…</td></tr>
-<tr><td>Écart de rapprochement</td><td>Lignes non pointées : pointer à la main, créer l'écriture manquante, ou corriger l'écriture (montant, date).</td></tr>
+<tr><td>« Déjà en compta ? » sur une ligne</td><td>Une écriture de même montant existe à une date proche : « C'est la même » si c'est bien elle, sinon cocher « non, nouvelle écriture ».</td></tr>
 <tr><td>Caractères trop petits</td><td>Boutons A+ en haut à droite, ou Ctrl + dans le navigateur.</td></tr>
 <tr><td>La page n'a pas changé après une mise à jour</td><td>Ctrl+F5 sur une page de ComptaBB (pas sur PythonAnywhere).</td></tr>
 <tr><td>Le site ne répond plus (offre gratuite)</td><td>PythonAnywhere › Web › <b>Run until 3 months from today</b> (tous les 3 mois).</td></tr>

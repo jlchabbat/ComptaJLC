@@ -80,19 +80,18 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   `Imports/modeles/10_releve_B1.csv`). Les lignes déjà importées sont
   ignorées (clé : date, référence, montant, rang dans la journée). Au premier
   import, un solde d'ouverture est déduit du premier solde du relevé.
-  Les opérations sont traduites (Rapprochement › Traductions).
-- **Rapprochement automatique** : même montant, date à ± tolérance
-  (réglage `tolerance_rapprochement`, 7 jours repris du classeur) ;
-  l'à-nouveau est pointé contre le solde d'ouverture et les lignes du relevé
-  antérieures à la date de reprise.
-- **Pointage manuel** : cocher à gauche et à droite des lignes de même total
-  (remise de chèques, frais regroupés) ; dépointage possible. L'identifiant
-  (R…) est stocké côté relevé et côté écriture.
-- **Créer l'écriture** depuis une ligne du relevé non pointée : la saisie
-  s'ouvre pré-remplie et l'écriture est pointée à l'enregistrement.
-- **État de rapprochement** à une date (écart non expliqué = 0) et écart par
-  mois. La reprise du classeur reproduit l'onglet Banque1 : écart 2 910,00
-  au 24/09/2026, 42 lignes du relevé et 38 écritures non pointées.
+  Les opérations sont traduites (Banque › Traductions du relevé).
+- **Relevés à passer en compta** (menu Banque) : seulement les lignes
+  téléchargées sans écriture (à partir de la date de reprise). Pour chacune :
+  compte de contrepartie et code axe 2 (listes cherchables par code ou
+  libellé), puis **Créer les écritures** : un Mvt banque / contrepartie par
+  ligne, aussitôt relié à la ligne (`releves.creer_ecriture`).
+- **Pas de doublon** : une ligne reliée sort de la liste et n'accepte plus
+  d'écriture ; si une écriture de banque non reliée de même montant existe à
+  ± tolérance (réglage `tolerance_rapprochement`), elle est proposée
+  (« C'est la même » la relie sans rien créer) et la création demande de
+  cocher « nouvelle écriture ».
+- Plus de pointage automatique ou manuel ni d'état de rapprochement à l'écran.
 
 ## Tiers et suivi des membres (W5)
 

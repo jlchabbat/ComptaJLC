@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.db.models import Q
 
-from .models import ZERO, Ligne, LigneReleve, ParametreReleve, Rapprochement, Reglage, soldes
+from .models import ZERO, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
 
 HEBREU = re.compile(r"[֐-׿]")
 INVISIBLES = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮"))
@@ -372,3 +372,61 @@ def par_mois(journal):
         res.append({"mois": mois, "releve": s_rel, "compta": s_cpt, "ecart": ecart, "variation": variation})
         mois = suivant
     return res
+
+
+# ---------------------------------------------------------------- écriture créée depuis une ligne du relevé
+
+def a_affecter(journal):
+    """Lignes téléchargées sans écriture (non reliées), à partir de la date de reprise."""
+    qs = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ouverture=False)
+    reprise = date_reprise(journal)
+    return (qs.filter(date__gte=reprise) if reprise else qs).order_by("date", "rang", "pk")
+
+
+def deja_en_compta(l):
+    """Écritures de banque non reliées, de même montant, à ± tolérance jours : la ligne est peut-être déjà saisie."""
+    ecart = dt.timedelta(days=tolerance())
+    qs = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart))
+    qs = qs.filter(debit=l.montant, credit=ZERO) if l.montant > 0 else qs.filter(credit=-l.montant, debit=ZERO)
+    return list(qs.order_by("mouvement__date", "mouvement__numero"))
+
+
+def libelle_releve(l):
+    t = l.traduction
+    return (t if t != "À traduire" else l.operation)[:60].upper()
+
+
+@transaction.atomic
+def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
+    """Un Mvt à deux lignes (banque / contrepartie, même code axe 2), aussitôt relié à la ligne du relevé.
+
+    Refus si la ligne est déjà reliée (pas de double écriture) ou si une écriture identique existe déjà en compta
+    (sauf forcer=True)."""
+    l = LigneReleve.objects.select_for_update().select_related("journal__compte").get(pk=l.pk)
+    if l.rapprochement_id or l.ouverture:
+        raise ValueError("Cette ligne a déjà son écriture.")
+    banque = l.journal.compte
+    if compte.pk == banque.pk:
+        raise ValueError("La contrepartie ne peut pas être le compte de la banque elle-même.")
+    if not forcer and deja_en_compta(l):
+        raise ValueError("Une écriture de même montant existe déjà à une date proche : reliez-la, ou cochez « nouvelle ».")
+    m = abs(l.montant)
+    mv = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=l.date, journal=l.journal,
+                                  piece=Mouvement.prochaine_piece(), origine="saisie", cree_par=utilisateur,
+                                  commentaire=f"Relevé {l.journal.code} du {l.date:%d/%m/%Y} : {l.operation}")
+    lib = libelle_releve(l)
+    entree = l.montant > 0
+    ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib, anal2=anal2,
+                                        debit=m if entree else ZERO, credit=ZERO if entree else m)
+    Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib, anal2=anal2,
+                         debit=ZERO if entree else m, credit=m if entree else ZERO)
+    pointer(l.journal, [l], [ligne_banque], utilisateur, "saisie")
+    Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Banque",
+                                action="Écriture depuis le relevé", objet=f"Mvt {mv.numero}",
+                                apres=f"{l.journal.code} {l.date:%d/%m/%Y} {l.montant} ; {compte.pk} ; {anal2.pk}")
+    return mv
+
+
+def relier(l, ecriture, utilisateur=None):
+    """La ligne du relevé est déjà en compta : on la relie à cette écriture (aucune écriture créée)."""
+    return pointer(l.journal, [l], [ecriture], utilisateur, "manuel")

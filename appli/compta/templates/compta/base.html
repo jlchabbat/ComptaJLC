@@ -31,7 +31,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'analytique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analytique</a>
 </div></div>
 <div class="menu"><button type="button">Banque ▾</button><div class="sous">
-{% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Rapprochement</a>
+{% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
 {% if perms.compta.pointer_releve %}{% url 'traductions' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Traductions du relevé</a>{% endif %}
 </div></div>
 <div class="menu"><button type="button">Fin d'exercice ▾</button><div class="sous">

@@ -1,17 +1,15 @@
-"""Rapprochement bancaire : import des relevés, pointage automatique et manuel, état de rapprochement."""
+"""Banque : import des relevés, puis pour chaque ligne sans écriture, compte de contrepartie et code axe 2 → écriture créée."""
 
 import datetime as dt
-from urllib.parse import urlencode
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 
 from . import releves as moteur
-from .models import Journal, Ligne, LigneReleve, Modification, MoyenPaiement, ParametreReleve, Rapprochement, Traduction
+from .models import CodeAnalytique, Compte, Journal, Ligne, LigneReleve, Modification, ParametreReleve, Traduction
 
 consulter = permission_required("compta.view_lignereleve", raise_exception=True)
 pointer = permission_required("compta.pointer_releve", raise_exception=True)
@@ -39,27 +37,83 @@ def journaux():
     return Journal.objects.filter(compte__isnull=False, actif=True)
 
 
+def _trouver(modele, texte, **filtre):
+    """« code – libellé » choisi dans la liste, code seul ou libellé exact."""
+    texte = (texte or "").strip()
+    if not texte:
+        return None
+    code = texte.split(" – ")[0].strip()
+    qs = modele.objects.filter(**filtre)
+    return qs.filter(pk__iexact=code).first() or qs.filter(libelle__iexact=texte).first()
+
+
+def _affecter(request, journal, lignes):
+    """Crée les écritures des lignes affectées ; renvoie (créées, erreurs {pk: message}, saisies {pk: (compte, axe2)})."""
+    crees, erreurs, saisies = [], {}, {}
+    for l in lignes:
+        c, a = request.POST.get(f"compte_{l.pk}", "").strip(), request.POST.get(f"anal2_{l.pk}", "").strip()
+        if not c and not a:
+            continue
+        saisies[l.pk] = (c, a)
+        compte = _trouver(Compte, c, actif=True)
+        anal2 = _trouver(CodeAnalytique, a, axe=2)
+        if not compte or not anal2:
+            erreurs[l.pk] = ("Compte introuvable. " if not compte else "") + ("Code axe 2 introuvable." if not anal2 else "")
+            continue
+        try:
+            crees.append(moteur.creer_ecriture(l, compte, anal2, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}"))))
+        except ValueError as e:
+            erreurs[l.pk] = str(e)
+        else:
+            saisies.pop(l.pk)
+    return crees, erreurs, saisies
+
+
 @login_required
 @consulter
 def accueil(request, code=None):
+    """Relevé téléchargé, lignes sans écriture : affecter compte de contrepartie et code axe 2, puis créer les écritures."""
     js = list(journaux())
     if not js:
         return render(request, "compta/rapprochement.html", {"journaux": []})
     journal = get_object_or_404(Journal, code=code) if code else next(
-        (j for j in js if LigneReleve.objects.filter(journal=j).exists()), js[0])
-    derniere = LigneReleve.objects.filter(journal=journal).order_by("-date").first()
-    try:
-        jusquau = dt.date.fromisoformat(request.GET["au"])
-    except (KeyError, ValueError):
-        jusquau = derniere.date if derniere else dt.date.today()
+        (j for j in js if moteur.a_affecter(j).exists()), js[0])
     peut = request.user.has_perm("compta.pointer_releve")
+    erreurs, saisies = {}, {}
+    if request.method == "POST" and peut:
+        if "relier" in request.POST:
+            try:
+                rel, ecr = (int(x) for x in request.POST["relier"].split(":"))
+                l = moteur.a_affecter(journal).get(pk=rel)
+                e = moteur.ecritures(journal).get(pk=ecr, rapprochement__isnull=True)
+                moteur.relier(l, e, request.user)
+            except (ValueError, LigneReleve.DoesNotExist, Ligne.DoesNotExist):
+                messages.error(request, "Liaison impossible : ligne ou écriture déjà reliée.")
+            else:
+                journaliser(request, "Liaison relevé", f"{journal.code} {l.date:%d/%m/%Y} {l.montant}", apres=f"Mvt {e.mouvement.numero}")
+                messages.success(request, f"Ligne du {l.date:%d/%m/%Y} reliée au Mvt {e.mouvement.numero} (aucune écriture créée).")
+            return redirect("rapprochement_journal", journal.code)
+        crees, erreurs, saisies = _affecter(request, journal, list(moteur.a_affecter(journal)))
+        if crees:
+            messages.success(request, f"{len(crees)} écriture(s) créée(s) : Mvt " + ", ".join(str(m.numero) for m in crees) + ".")
+        if erreurs:
+            messages.error(request, f"{len(erreurs)} ligne(s) non enregistrée(s) : voir le motif sur chaque ligne.")
+        elif not crees:
+            messages.warning(request, "Aucune ligne affectée : choisir un compte et un code axe 2.")
+        if not erreurs:
+            return redirect("rapprochement_journal", journal.code)
+    lignes = []
+    for l in moteur.a_affecter(journal):
+        c, a = saisies.get(l.pk, ("", ""))
+        lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""),
+                       "deja": moteur.deja_en_compta(l) if peut else []})
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
-        "journaux": js, "journal": journal, "etat": moteur.etat(journal, jusquau), "mois": moteur.par_mois(journal),
-        "nb_releve": LigneReleve.objects.filter(journal=journal, ouverture=False).count(),
-        "ecarts_solde": moteur.ecarts_solde(journal), "parametres": parametres, "tolerance": moteur.tolerance(),
-        "a_traduire": sum(1 for l in LigneReleve.objects.filter(journal=journal, ouverture=False) if l.traduction == "À traduire"),
-        "peut": peut, "import_form": ImportForm() if peut else None,
+        "journaux": js, "journal": journal, "lignes": lignes, "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
+        "comptes": Compte.objects.filter(actif=True).exclude(pk=journal.compte_id).order_by("numero") if peut else [],
+        "codes": CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code") if peut else [],
+        "a_traduire": sum(1 for x in lignes if x["l"].traduction == "À traduire"),
+        "import_form": ImportForm() if peut else None,
         "parametres_form": (ParametresForm(instance=parametres or ParametreReleve(journal=journal))
                             if request.user.has_perm("compta.parametrer") else None),
     })
@@ -100,58 +154,6 @@ def parametres(request, code):
         journaliser(request, "Paramètres relevé", journal.code, apres=f"reprise {instance.date_reprise}")
         messages.success(request, "Paramètres enregistrés.")
     return redirect("rapprochement_journal", journal.code)
-
-
-@login_required
-@pointer
-def automatique(request, code):
-    journal = get_object_or_404(Journal, code=code)
-    n = moteur.automatique(journal, request.user)
-    journaliser(request, "Pointage automatique", journal.code, apres=f"{n} rapprochement(s)")
-    messages.success(request, f"{n} rapprochement(s) automatique(s) (même montant, ± {moteur.tolerance()} jours).")
-    return redirect("pointage", journal.code)
-
-
-@login_required
-@consulter
-def pointage(request, code):
-    journal = get_object_or_404(Journal, code=code)
-    peut = request.user.has_perm("compta.pointer_releve")
-    if request.method == "POST" and peut:
-        if "depointer" in request.POST:
-            r = get_object_or_404(Rapprochement, pk=request.POST["depointer"], journal=journal)
-            journaliser(request, "Dépointage", f"{journal.code} R{r.pk}")
-            moteur.depointer(r)
-            messages.success(request, f"Rapprochement R{r.pk} annulé.")
-        else:
-            try:
-                with transaction.atomic():
-                    r = moteur.pointer(journal, LigneReleve.objects.filter(journal=journal, pk__in=request.POST.getlist("releve")),
-                                       moteur.ecritures(journal).filter(pk__in=request.POST.getlist("ecriture")), request.user)
-            except ValueError as e:
-                messages.error(request, str(e))
-            else:
-                journaliser(request, "Pointage manuel", f"{journal.code} R{r.pk}")
-                messages.success(request, f"Pointé : R{r.pk}.")
-        return redirect("pointage", journal.code)
-    releve = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True)
-    ecr = moteur.ecritures(journal).filter(rapprochement__isnull=True).order_by("mouvement__date", "mouvement__numero")
-    faits = (Rapprochement.objects.filter(journal=journal).prefetch_related("releves", "ecritures__mouvement")[:200])
-    return render(request, "compta/pointage.html", {"journal": journal, "releve": releve, "ecritures": ecr, "faits": faits,
-                                                     "peut": peut, "tolerance": moteur.tolerance()})
-
-
-@login_required
-@pointer
-def creer_ecriture(request, pk):
-    """Ouvre la saisie pré-remplie depuis une ligne du relevé non pointée."""
-    l = get_object_or_404(LigneReleve, pk=pk, rapprochement__isnull=True)
-    mp = MoyenPaiement.objects.filter(journal=l.journal).first()
-    params = {"date": l.date.isoformat(), "montant": abs(l.montant), "releve": l.pk,
-              "libelle": (l.traduction if l.traduction != "À traduire" else "")[:60].upper()}
-    if mp:
-        params["paiement"] = mp.pk
-    return redirect(reverse("saisie") + "?" + urlencode(params))
 
 
 def pointer_apres_saisie(releve_id, mouvements, utilisateur):
