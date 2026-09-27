@@ -9,7 +9,7 @@ Fichier de référence : `D:\OneDrive\Compta Bnei Brith\Bit.xlsx`
 
 | Colonne | En-tête   | Type                | Contenu                                         |
 |---------|-----------|---------------------|-------------------------------------------------|
-| A       | `Journ`   | texte               | Code journal — `B3` (le fichier contient `B2` par erreur) |
+| A       | `Journ`   | texte               | Code journal — `B3`                             |
 | B       | `Date`    | date Excel          | Date de l'opération (format affiché `mm-dd-yy`) |
 | C       | `Libelle` | texte (≤ 50 car.)   | `TIERS - RUBRIQUE - SOUS-RUBRIQUE`              |
 | D       | `Debit`   | nombre (entier/décimal) | Montant encaissé sur Bit, sinon vide        |
@@ -19,7 +19,7 @@ Une ligne a soit `Debit`, soit `Credit`, jamais les deux.
 
 ## Règles observées
 
-- **Code journal** : le journal de Banque 3 (Bit) est `B3`. Le fichier `Bit.xlsx` porte `B2` par erreur : l'import doit enregistrer les écritures dans le journal `B3`, quelle que soit la valeur de la colonne `Journ`.
+- **Code journal** : `B3` pour Bit (Banque 3). Les anciens exports portaient `B2` par erreur : l'import enregistre toujours les écritures de Bit dans le journal `B3`.
 - **Sens des montants** (point de vue du relevé) :
   - `Debit` = entrée d'argent (ex. participations aux rallyes, fêtes, cotisations).
   - `Credit` = sortie (frais bancaires, `VIREMENT BIT VERS BANQUE`, projets, remboursements).
