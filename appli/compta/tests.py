@@ -4,6 +4,7 @@
 """
 
 import datetime as dt
+import io
 import tempfile
 import zipfile
 from decimal import Decimal
@@ -1345,8 +1346,10 @@ class ExportComplet(TransactionTestCase):
         avant = ec.empreinte()
         chemin = ec.exporter(auteur="tresorier")
         with zipfile.ZipFile(chemin) as z:
-            self.assertTrue({"comptabb.sqlite3", "Parametres.xlsx", "Tiers.xlsx", "Donnees.xlsx", "Etats_2026.xlsx",
-                             "controle.json"} <= set(z.namelist()))
+            self.assertTrue({"comptabb.sqlite3", "Parametres.xlsx", "Tiers.xlsx", "Ecritures.xlsx", "Donnees.xlsx",
+                             "Etats_2026.xlsx", "controle.json"} <= set(z.namelist()))
+            self.assertEqual(openpyxl.load_workbook(io.BytesIO(z.read("Ecritures.xlsx"))).sheetnames, ["Écritures"])
+            self.assertNotIn("Écritures", openpyxl.load_workbook(io.BytesIO(z.read("Donnees.xlsx"))).sheetnames)
         Mouvement.objects.create(numero=2, date=dt.date(2026, 4, 1), journal_id="OD", piece=2)      # après l'export
         Compte.objects.filter(numero="600000").update(libelle="MODIFIÉ")
         message, _ = ec.reinjecter(chemin, auteur="tresorier")
@@ -1365,25 +1368,79 @@ class ExportComplet(TransactionTestCase):
         self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").utilisateur.username, "rachel")
         self.assertEqual(Mouvement.objects.get(numero=1).cree_par, self.u)
 
-    def test_export_altere_rien_n_est_modifie(self):
-        chemin = ec.exporter()
-        altere = chemin.with_name("Export_complet_altere.zip")
+    def modifier(self, chemin, nom, changer, dossier="", retirer=()):
+        """Copie de l'export, le classeur nom modifié par changer(wb) ; les fichiers sont rangés dans dossier (recompression)."""
+        altere = chemin.with_name(f"Export_complet_altere_{len(dossier)}.zip")
         with zipfile.ZipFile(chemin) as z, zipfile.ZipFile(altere, "w") as sortie:
             for n in z.namelist():
+                if n in retirer:
+                    continue
                 contenu = z.read(n)
-                if n == "Donnees.xlsx":
-                    wb = openpyxl.load_workbook(__import__("io").BytesIO(contenu))
-                    wb["Écritures"]["K2"] = "LIBELLÉ CHANGÉ"
-                    tampon = __import__("io").BytesIO()
+                if n == nom:
+                    wb = openpyxl.load_workbook(io.BytesIO(contenu))
+                    changer(wb)
+                    tampon = io.BytesIO()
                     wb.save(tampon)
                     contenu = tampon.getvalue()
-                sortie.writestr(n, contenu)
+                sortie.writestr(dossier + n, contenu)
+        return altere
+
+    def test_export_altere_rien_n_est_modifie(self):
+        chemin = ec.exporter()
+        altere = self.modifier(chemin, "Ecritures.xlsx", lambda wb: wb["Écritures"].__setitem__("K2", "LIBELLÉ CHANGÉ"))
         Compte.objects.filter(numero="600000").update(libelle="GARDÉ")
-        with self.assertRaises(ec.ExportInvalide):
+        with self.assertRaisesRegex(ec.ExportInvalide, "Fichiers modifiés"):
             ec.reinjecter(altere)
         self.assertEqual(Compte.objects.get(numero="600000").libelle, "GARDÉ")              # tout ou rien
         with self.assertRaises(ec.ExportInvalide):
             ec.reinjecter(b"pas un zip")
+
+    def test_fichiers_modifies_recharges_apres_remise_a_zero(self):
+        numeros = sorted(set(Mouvement.objects.values_list("numero", flat=True)) | {5})
+        chemin = ec.exporter()
+
+        def changer(wb):
+            ws = wb["Écritures"]
+            ws["K2"] = ws["K3"] = "COTISATION 2026"                    # libellés corrigés
+            ws["L3"], ws["M2"] = 450, 450                              # montant corrigé, Mvt toujours équilibré
+            ws.append([5, dt.datetime(2026, 5, 1), "OD", 5, "", "", None, "", 1, "600000", "AJOUT", 30, None, "GEN.002"])
+            ws.append([5, dt.datetime(2026, 5, 1), "OD", 5, "", "", None, "", 2, "512000", "AJOUT", None, 30, "GEN.002"])
+        modifie = self.modifier(chemin, "Ecritures.xlsx", changer, dossier="Export_complet_corrige/",
+                                retirer=("controle.json",))
+        with self.assertRaises(ec.ExportInvalide):
+            ec.reinjecter(modifie)                                      # sans la case « Fichiers modifiés »
+        message, _ = ec.reinjecter(modifie, modifie=True)
+        self.assertIn("cohérence", message)
+        self.assertEqual(sorted(Mouvement.objects.values_list("numero", flat=True)), numeros)
+        self.assertEqual(set(Ligne.objects.filter(mouvement__numero=1).values_list("libelle", "debit", "credit")),
+                         {("COTISATION 2026", D(450), D(0)), ("COTISATION 2026", D(0), D(450))})
+        self.assertEqual(Fiche.objects.get().titre, "Rallye")                                   # le reste est rechargé
+        self.assertEqual(Ligne.objects.get(compte_id="512000", mouvement__numero=1).rapprochement.releves.count(), 1)
+        # déséquilibré ou compte inconnu : refusé, rien n'est modifié
+        for cellule, valeur in (("L2", 999), ("J2", "999999")):
+            faux = self.modifier(chemin, "Ecritures.xlsx", lambda wb: wb["Écritures"].__setitem__(cellule, valeur))
+            with self.assertRaises(ec.ExportInvalide):
+                ec.reinjecter(faux, modifie=True)
+            self.assertEqual(sorted(Mouvement.objects.values_list("numero", flat=True)), numeros)
+
+    def test_export_anterieur_sans_ecritures_xlsx(self):
+        """Exports d'avant Ecritures.xlsx : les écritures sont dans la feuille Écritures de Donnees.xlsx."""
+        avant = ec.empreinte()
+        chemin = ec.exporter()
+        ancien = chemin.with_name("Export_complet_ancien.zip")
+        with zipfile.ZipFile(chemin) as z, zipfile.ZipFile(ancien, "w") as sortie:
+            for n in z.namelist():
+                if n == "Donnees.xlsx":
+                    wb = openpyxl.load_workbook(io.BytesIO(z.read(n)))
+                    ws = wb.create_sheet("Écritures", 2)
+                    for r in openpyxl.load_workbook(io.BytesIO(z.read("Ecritures.xlsx")))["Écritures"].iter_rows(values_only=True):
+                        ws.append(r)
+                    sortie.writestr(n, ec._octets(wb))
+                elif n != "Ecritures.xlsx":
+                    sortie.writestr(n, z.read(n))
+        ec.reinjecter(ancien)
+        Modification.objects.filter(action="Réinjection d'un export complet").delete()
+        self.assertEqual(ec.ecarts(avant, ec.empreinte()), [])
 
     def test_page_base(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1616,6 +1673,26 @@ class Echanges(TransactionTestCase):
         self.assertEqual((ech.imports(), ech.exports()), (autre, self.dossier / "Exports"))
         self.assertTrue(autre.is_dir())
         self.assertEqual(Reglage.lire("dossier_imports"), str(autre))
+
+    def test_deposer_et_telecharger(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/echanges/", {"exporter": "Ecritures"})
+        page = self.client.get("/echanges/")
+        nom = next(n for n, _ in page.context["exportes"] if n.startswith("Ecritures_"))
+        r = self.client.get(f"/echanges/exports/{nom}")
+        contenu = b"".join(r.streaming_content)
+        self.assertEqual(self.client.get("/echanges/exports/..%2Fsecret.txt").status_code, 404)
+        tampon = io.BytesIO()
+        with zipfile.ZipFile(tampon, "w") as z:
+            z.writestr("Dossier/Budget.xlsx", contenu)
+            z.writestr("Dossier/notes.txt", "ignoré")
+        r = self.client.post("/echanges/", {"deposer": "1", "fichiers": [SimpleUploadedFile(nom, contenu),
+                                                                         SimpleUploadedFile("lot.zip", tampon.getvalue())]},
+                             follow=True)
+        self.assertContains(r, "Déposé(s) dans Imports")
+        self.assertEqual(sorted(p.name for p, _ in ech.a_importer()), ["Budget.xlsx", nom])
+        r = self.client.post("/echanges/", {"deposer": "1", "fichiers": SimpleUploadedFile("virus.exe", b"x")}, follow=True)
+        self.assertContains(r, "fichier .xlsx, .pdf ou .zip attendu")
 
     def test_tout_reinjecter(self):
         """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""

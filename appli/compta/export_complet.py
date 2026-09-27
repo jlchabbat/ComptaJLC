@@ -4,12 +4,20 @@ L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
 - comptabb.sqlite3 : sauvegarde de la base (restauration exacte, comptes utilisateurs compris) ;
 - Parametres.xlsx : les paramètres (même classeur que la page Paramètres) ;
 - Tiers.xlsx : les fiches tiers (même format que l'import Tiers.xlsx) ;
-- Donnees.xlsx : comptes de tiers, exercices, écritures, pointages, relevés, budget, fiches bénévoles, historique ;
+- Ecritures.xlsx : toutes les écritures (une ligne par ligne d'écriture, avec pointage, origine et auteur) ;
+- Donnees.xlsx : comptes de tiers, exercices, pointages, relevés, budget, fiches bénévoles, historique ;
 - Etats_<exercice>.xlsx : états de chaque exercice (lecture seule) ;
 - controle.json : nombres et totaux, pour vérifier une réinjection.
+Seuls les comptes utilisateurs (identifiants, mots de passe) ne sont que dans comptabb.sqlite3.
 
-La réinjection vide la comptabilité (les comptes utilisateurs sont gardés), recharge Parametres, Tiers et Donnees,
-puis compare la base obtenue à controle.json. Tout ou rien : au moindre écart, rien n'est modifié.
+La réinjection vide la comptabilité (les comptes utilisateurs sont gardés), recharge Parametres, Tiers, Ecritures et
+Donnees, puis compare la base obtenue à controle.json. Tout ou rien : au moindre écart, rien n'est modifié.
+
+Fichiers modifiés à la main (Excel) : décompresser l'export, modifier Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx ou
+Donnees.xlsx sans changer les en-têtes de colonnes, recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
+puis Base de données › Remettre à zéro et recharger en cochant « Fichiers modifiés ». La base n'est alors pas comparée à
+controle.json, mais aux contrôles de cohérence (Mvt équilibrés, débit OU crédit, codes existants) ; au moindre défaut,
+rien n'est modifié.
 """
 
 import datetime as dt
@@ -33,7 +41,9 @@ from .models import (
 )
 
 GARDER = 20                     # exports complets conservés dans Exports
-FICHIERS_REINJECTES = ("Parametres.xlsx", "Tiers.xlsx", "Donnees.xlsx", "controle.json")
+FICHIERS_REINJECTES = ("Parametres.xlsx", "Tiers.xlsx", "Donnees.xlsx")       # obligatoires
+FICHIERS_FACULTATIFS = ("Ecritures.xlsx", "controle.json")                    # absents des exports antérieurs ou retirés
+ECRITURES = "Écritures"                                                       # feuille de Ecritures.xlsx (autrefois de Donnees.xlsx)
 
 
 class ExportInvalide(ValueError):
@@ -225,13 +235,16 @@ def _lignes_donnees():
                         for m in Membre.objects.filter(utilisateur__isnull=False).select_related("utilisateur").order_by("compte"))
 
 
-def classeur_donnees():
+def classeur_donnees(feuilles=None):
+    """Donnees.xlsx : toutes les feuilles sauf les écritures (feuilles=None), ou seulement celles demandées."""
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
     wb = openpyxl.Workbook()
     wb._named_styles["Normal"].font = Font(name="Calibri", size=12)
     wb.remove(wb.active)
     for nom, lignes in _lignes_donnees():
+        if (nom == ECRITURES) if feuilles is None else (nom not in feuilles):
+            continue
         ws = wb.create_sheet(nom)
         ws.append(FEUILLES[nom])
         for c in ws[1]:
@@ -291,6 +304,7 @@ def exporter(auteur=""):
         z.write(sauvegarde, "comptabb.sqlite3")
         z.writestr("Parametres.xlsx", parametres.contenu_classeur())
         z.writestr("Tiers.xlsx", _octets(classeur_tiers()))
+        z.writestr("Ecritures.xlsx", _octets(classeur_donnees([ECRITURES])))
         z.writestr("Donnees.xlsx", _octets(classeur_donnees()))
         for ex in Exercice.objects.all():
             nom = "".join(c if c.isalnum() else "_" for c in ex.libelle)
@@ -315,14 +329,14 @@ def vider():
         m.objects.all().delete()
 
 
-def _rangees(wb, nom):
+def _rangees(wb, nom, fichier="Donnees.xlsx"):
     if nom not in wb.sheetnames:
-        raise ExportInvalide(f"Feuille « {nom} » absente de Donnees.xlsx.")
+        raise ExportInvalide(f"Feuille « {nom} » absente de {fichier}.")
     rangees = wb[nom].iter_rows(values_only=True)
-    entetes = [str(e or "") for e in next(rangees, [])]
+    entetes = [str(e or "").strip() for e in next(rangees, [])]
     manque = [e for e in FEUILLES[nom] if e not in entetes]
     if manque:
-        raise ExportInvalide(f"Donnees.xlsx, feuille {nom} : colonne(s) {', '.join(manque)} absente(s).")
+        raise ExportInvalide(f"{fichier}, feuille {nom} : colonne(s) {', '.join(manque)} absente(s).")
     for r in rangees:
         if any(v not in (None, "") for v in r):
             yield dict(zip(entetes, r))
@@ -334,7 +348,8 @@ def _charger_comptes_tiers(wb):
                               lettrable=_lire_oui(r["Lettrable"]), actif=_lire_oui(r["Actif"]))
 
 
-def _charger_donnees(wb):
+def _charger_donnees(wb, ecritures=None):
+    """ecritures : classeur Ecritures.xlsx (à défaut, la feuille Écritures de Donnees.xlsx des exports antérieurs)."""
     utilisateurs = {u.get_username(): u for u in get_user_model().objects.all()}
     qui = lambda v: utilisateurs.get(_texte(v))  # noqa: E731
     an = {}
@@ -351,7 +366,7 @@ def _charger_donnees(wb):
         Rapprochement.objects.filter(pk=p.pk).update(cree_le=_lire_heure(r["Créé le"]) or p.cree_le)
         pointages[_entier(r["N°"])] = p
     mouvements, dates, lignes = {}, {}, []
-    for r in _rangees(wb, "Écritures"):
+    for r in _rangees(ecritures or wb, ECRITURES, "Ecritures.xlsx" if ecritures else "Donnees.xlsx"):
         n = _entier(r["Mvt"])
         if n not in mouvements:
             mouvements[n] = Mouvement(numero=n, date=_jour(r["Date"]), journal_id=_texte(r["Journal"]), piece=_entier(r["Pièce"]),
@@ -431,26 +446,50 @@ def _charger_donnees(wb):
 
 
 def lire_export(source):
-    """Fichiers utiles d'un export complet (chemin ou octets d'un ZIP)."""
+    """Fichiers utiles d'un export complet (chemin ou octets d'un ZIP), repérés par leur nom : un export décompressé
+    puis recompressé (fichiers rangés dans un dossier du ZIP) est accepté."""
     try:
         z = zipfile.ZipFile(source if not isinstance(source, bytes) else io.BytesIO(source))
     except zipfile.BadZipFile:
         raise ExportInvalide("Ce fichier n'est pas un export complet (ZIP illisible).") from None
     with z:
-        noms = set(z.namelist())
-        manque = [n for n in FICHIERS_REINJECTES if n not in noms]
+        par_nom = {}
+        for n in z.namelist():
+            base = n.replace("\\", "/").rsplit("/", 1)[-1]
+            if base in FICHIERS_REINJECTES + FICHIERS_FACULTATIFS and not n.startswith("__MACOSX"):
+                if base in par_nom:
+                    raise ExportInvalide(f"{base} figure deux fois dans le ZIP ({par_nom[base]} et {n}) ; n'en laisser qu'un.")
+                par_nom[base] = n
+        manque = [n for n in FICHIERS_REINJECTES if n not in par_nom]
         if manque:
             raise ExportInvalide(f"Export complet incomplet : {', '.join(manque)} absent(s).")
-        return {n: z.read(n) for n in FICHIERS_REINJECTES}
+        return {base: z.read(n) for base, n in par_nom.items()}
 
 
-def reinjecter(source, auteur=""):
+def coherence():
+    """Défauts qui interdisent de garder une base rechargée depuis des fichiers modifiés."""
+    from django.db import IntegrityError, connection
+
+    from . import controles
+    defauts = []
+    try:
+        connection.check_constraints()
+    except IntegrityError as e:
+        defauts.append(f"code inexistant (compte, journal, code analytique, exercice…) : {e}")
+    for r in controles.executer():
+        if r.statut == "Anomalie" and r.regle in ("RG-01", "RG-03"):      # équilibre, débit OU crédit
+            defauts.append(f"{r.regle} {r.libelle} : {r.valeur}" + (f" ({' ; '.join(map(str, r.details[:10]))})" if r.details else ""))
+    return defauts
+
+
+def reinjecter(source, auteur="", modifie=False):
     """Remet la comptabilité à zéro puis recharge l'export complet. Renvoie (message, sauvegarde préalable).
 
-    Lève ExportInvalide si l'export est illisible ou si la base obtenue diffère de controle.json (rien n'est alors modifié)."""
+    Export intact : la base obtenue doit être identique à controle.json. Fichiers modifiés (modifie=True) : la base
+    obtenue doit passer les contrôles de cohérence. Lève ExportInvalide sinon (rien n'est alors modifié)."""
     from . import base_donnees
     fichiers = lire_export(source)
-    attendu = json.loads(fichiers["controle.json"])
+    attendu = json.loads(fichiers["controle.json"]) if "controle.json" in fichiers else None
     avant = base_donnees.sauvegarder("avant-reinjection")
     with transaction.atomic():
         vider()
@@ -458,17 +497,34 @@ def reinjecter(source, auteur=""):
         if r.erreurs:
             raise ExportInvalide("Parametres.xlsx : " + " · ".join(r.erreurs[:10]))
         wb = openpyxl.load_workbook(io.BytesIO(fichiers["Donnees.xlsx"]), data_only=True, read_only=True)
-        _charger_comptes_tiers(wb)                           # comptes avant les fiches tiers
-        t = membres.importer_tableau(membres.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
-        if t.erreurs:
-            raise ExportInvalide("Tiers.xlsx : " + " · ".join(t.erreurs[:10]))
-        _charger_donnees(wb)
-        differences = ecarts(attendu, empreinte())
-        if differences:
-            raise ExportInvalide("La base rechargée diffère de l'export : " + " · ".join(differences[:10]))
+        ecritures = (openpyxl.load_workbook(io.BytesIO(fichiers["Ecritures.xlsx"]), data_only=True, read_only=True)
+                     if "Ecritures.xlsx" in fichiers else None)
+        try:
+            _charger_comptes_tiers(wb)                       # comptes avant les fiches tiers
+            t = membres.importer_tableau(membres.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
+            if t.erreurs:
+                raise ExportInvalide("Tiers.xlsx : " + " · ".join(t.erreurs[:10]))
+            _charger_donnees(wb, ecritures)
+        except ExportInvalide:
+            raise
+        except Exception as e:                               # cellule illisible, code inconnu, doublon…
+            if not modifie:
+                raise
+            raise ExportInvalide(f"fichiers modifiés illisibles ({type(e).__name__} : {e}).") from e
+        differences = ecarts(attendu, empreinte()) if attendu else ["controle.json absent"]
+        if modifie:
+            defauts = coherence()
+            if defauts:
+                raise ExportInvalide("Les fichiers modifiés ne sont pas cohérents : " + " · ".join(defauts[:10]))
+        elif differences:
+            raise ExportInvalide("La base rechargée diffère de l'export : " + " · ".join(differences[:10])
+                                 + ". Si vous avez modifié les fichiers, cochez « Fichiers modifiés ».")
+        n = {m: m.objects.count() for m in (Mouvement, Ligne, Membre)}
         Modification.objects.create(auteur=auteur, lot="Base de données", action="Réinjection d'un export complet",
-                                    objet=f"export du {attendu.get('cree_le', '?')}",
-                                    apres=f"{attendu['nombres']['mouvement']} Mvt, contrôle identique")
-    return (f"Export du {attendu.get('cree_le', '?')} réinjecté : {attendu['nombres']['mouvement']} mouvements, "
-            f"{attendu['nombres']['ligne']} lignes, {attendu['nombres']['membre']} tiers. Contrôle : base identique à l'export."), avant
-
+                                    objet=f"export du {(attendu or {}).get('cree_le', '?')}"
+                                          + (" (fichiers modifiés)" if modifie else ""),
+                                    apres=f"{n[Mouvement]} Mvt, " + ("contrôles de cohérence OK" if modifie else "contrôle identique"))
+    controle = ("contrôles de cohérence satisfaits (fichiers modifiés)" if modifie
+                else "base identique à l'export")
+    return (f"Export du {(attendu or {}).get('cree_le', '?')} réinjecté : {n[Mouvement]} mouvements, "
+            f"{n[Ligne]} lignes, {n[Membre]} tiers. Contrôle : {controle}."), avant

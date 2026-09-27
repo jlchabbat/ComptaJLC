@@ -13,10 +13,15 @@ identifiants du site.</p>
 <div>
 <form method="post" class="carte" id="f-export">{% csrf_token %}<h2 style="margin-top:0">Export complet</h2>
 <p class="aide">En une seule opération, crée dans le dossier Exports un fichier <b>Export_complet_….zip</b> qui contient :
-la sauvegarde de la base, <b>Parametres.xlsx</b>, <b>Tiers.xlsx</b>, <b>Donnees.xlsx</b> (écritures, exercices, relevés, pointages,
-budget, fiches bénévoles, historique), les <b>états</b> de chaque exercice et un fichier de contrôle.</p>
+la sauvegarde de la base, <b>Parametres.xlsx</b>, <b>Tiers.xlsx</b>, <b>Ecritures.xlsx</b>, <b>Donnees.xlsx</b> (comptes de tiers,
+exercices, relevés, pointages, budget, fiches bénévoles, historique), les <b>états</b> de chaque exercice et un fichier de contrôle.
+Tout y est, sauf les comptes utilisateurs (seulement dans la sauvegarde de la base).</p>
 <p class="aide">Pour un test : faire l'export complet, puis « Remettre à zéro et recharger » en choisissant cet export.
 L'application vérifie que la base rechargée est <b>identique</b> à l'export ; sinon, rien n'est modifié.</p>
+<p class="aide"><b>Corriger en masse</b> : décompresser l'export, modifier dans Excel Ecritures.xlsx, Tiers.xlsx, Parametres.xlsx ou
+Donnees.xlsx (sans toucher aux en-têtes de colonnes), recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
+puis « Remettre à zéro et recharger » avec ce .zip en cochant <b>Fichiers modifiés</b>. Les Mvt doivent rester équilibrés et les
+codes (comptes, journaux, axes) exister ; sinon, rien n'est modifié.</p>
 </form>
 
 <form method="post" class="carte" id="f-sauver">{% csrf_token %}<h2 style="margin-top:0">Sauvegarder</h2>
@@ -29,8 +34,8 @@ Conseillé chaque mois et avant une clôture ; téléchargez-la aussi sur votre 
 <h2 style="margin-top:0;color:var(--ko)">Remettre à zéro et recharger</h2>
 <p>Remplace <b>toutes</b> les données par un existant :</p>
 <ul><li><b>une sauvegarde</b> (.sqlite3) : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris ;</li>
-<li><b>un export complet</b> (.zip) : la comptabilité est vidée puis rechargée depuis ses fichiers Excel (paramètres, tiers, données),
-et comparée à l'export ; les comptes utilisateurs sont gardés ;</li>
+<li><b>un export complet</b> (.zip) : la comptabilité est vidée puis rechargée depuis ses fichiers Excel (paramètres, tiers, écritures,
+données), et comparée à l'export ; les comptes utilisateurs sont gardés. Export modifié dans Excel : cocher « Fichiers modifiés » ;</li>
 <li><b>le classeur ComptaBB.xlsm</b> : la comptabilité est vidée puis reprise du classeur (plan, journaux, codes, écritures, relevé) ;
 les comptes utilisateurs sont gardés, les fiches bénévoles, budgets et pointages sont effacés.</li></ul>
 <p class="aide">Une sauvegarde de la base actuelle est faite juste avant : en cas d'erreur, choisissez-la ici pour tout remettre comme avant.</p>

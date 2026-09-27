@@ -43,6 +43,9 @@ def sur_le_pc(request):
 class RemplacementForm(forms.Form):
     fichier = forms.FileField(required=False, label="Fichier (.sqlite3, export complet .zip ou ComptaBB.xlsm)")
     sauvegarde = forms.ChoiceField(required=False, label="…ou une sauvegarde ou un export complet du site")
+    modifie = forms.BooleanField(required=False, label="Fichiers modifiés",
+                                 help_text="Export complet dont vous avez modifié les fichiers Excel : la base rechargée n'est pas "
+                                           "comparée à l'export, mais aux contrôles de cohérence.")
     confirmation = forms.CharField(label=f"Tapez {CONFIRMATION} pour confirmer")
 
     def __init__(self, *a, **k):
@@ -115,7 +118,7 @@ def base(request):
                             sortie.write(morceau)
                     chemin = tmp
                 if chemin.suffix.lower() == ".zip":
-                    resume, avant = ec.reinjecter(chemin, auteur=auteur)
+                    resume, avant = ec.reinjecter(chemin, auteur=auteur, modifie=c["modifie"])
                     messages.success(request, f"Base remise à zéro et rechargée depuis {nom}. {resume} Sauvegarde d'avant : {avant.name}.")
                 elif chemin.suffix.lower() in (".xlsm", ".xlsx"):
                     resume, avant = bd.reprendre_classeur(chemin)

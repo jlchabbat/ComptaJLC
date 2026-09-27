@@ -718,6 +718,41 @@ def a_importer():
             if p.is_file() and p.suffix.lower() in (".xlsx", ".pdf") and not p.name.startswith("~$") and p.stem != LEXIQUE]
 
 
+DEPOSABLES = (".xlsx", ".pdf")
+
+
+def deposer(nom, contenu, auteur=""):
+    """Dépose dans Imports un fichier envoyé par le navigateur (.xlsx, .pdf, ou .zip dont les .xlsx et .pdf sont extraits).
+
+    Renvoie les noms déposés ; un fichier de même nom est remplacé."""
+    import io
+    import zipfile
+    nom = Path(nom.replace("\\", "/")).name
+    if Path(nom).suffix.lower() == ".zip":
+        try:
+            z = zipfile.ZipFile(io.BytesIO(contenu))
+        except zipfile.BadZipFile:
+            raise Refus([f"{nom} : ZIP illisible."]) from None
+        with z:
+            fichiers = [(n.replace("\\", "/").rsplit("/", 1)[-1], n) for n in z.namelist() if not n.endswith("/")
+                        and not n.startswith("__MACOSX")]
+            fichiers = [(b, n) for b, n in fichiers if Path(b).suffix.lower() in DEPOSABLES and not b.startswith("~$")]
+            if not fichiers:
+                raise Refus([f"{nom} : aucun fichier .xlsx ou .pdf dans le ZIP."])
+            return [n for b, n_ in fichiers for n in deposer(b, z.read(n_), auteur)]
+    if Path(nom).suffix.lower() not in DEPOSABLES or not nom or nom.startswith("."):
+        raise Refus([f"{nom} : fichier .xlsx, .pdf ou .zip attendu."])
+    (imports() / nom).write_bytes(contenu)
+    Modification.objects.create(auteur=auteur, lot="Échanges", action="Dépôt dans Imports", objet=nom[:200])
+    return [nom]
+
+
+def fichiers_exportes():
+    """Fichiers du dossier Exports (à télécharger depuis le navigateur), du plus récent au plus ancien."""
+    return sorted((p for p in exports().iterdir() if p.is_file() and p.suffix.lower() in (".xlsx", ".zip")
+                   and not p.name.startswith("~$")), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
 def ranger(chemin):
     """Déplace un fichier traité dans Imports/Importés, avec la date et l'heure."""
     dest = importes() / f"{chemin.stem}_importé_{dt.datetime.now():%Y-%m-%d_%H%M%S}{chemin.suffix}"

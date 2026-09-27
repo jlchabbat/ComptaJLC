@@ -51,6 +51,7 @@ urlpatterns = [
     path("utilisateurs/", vues_utilisateurs.utilisateurs, name="utilisateurs"),
     path("utilisateurs/<int:pk>/", vues_utilisateurs.utilisateur, name="utilisateur"),
     path("echanges/", vues_echanges.echanges, name="echanges"),
+    path("echanges/exports/<str:nom>", vues_echanges.telecharger, name="echanges_telecharger"),
     path("documentation/<str:nom>.pdf", vues_documentation.document, name="document"),
     path("referentiels/", vues_referentiels.liste, name="referentiels"),
     path("referentiels/<str:nom>.xlsx", vues_referentiels.exporter, name="referentiel_export"),

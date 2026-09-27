@@ -2,6 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
 
 from . import dossiers
@@ -20,6 +21,12 @@ def echanges(request):
             if "dossiers" in request.POST:
                 moteur.changer_dossiers({c: request.POST.get(c, "") for c in moteur.REGLAGES_DOSSIERS}, auteur)
                 messages.success(request, f"Dossiers enregistrés : Imports = {moteur.imports()} ; Exports = {moteur.exports()}.")
+            elif "deposer" in request.POST:
+                envoyes = request.FILES.getlist("fichiers")
+                if not envoyes:
+                    raise moteur.Refus(["Choisir au moins un fichier à déposer."])
+                noms = [n for f in envoyes for n in moteur.deposer(f.name, f.read(), auteur)]
+                messages.success(request, f"Déposé(s) dans Imports : {', '.join(noms)}.")
             elif "reinjecter" in request.POST:
                 if request.POST.get("confirmation", "").strip().upper() != "REMPLACER":
                     raise moteur.Refus(["Taper REMPLACER pour confirmer la réinjection."])
@@ -59,4 +66,15 @@ def echanges(request):
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
         "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() == ".xlsx"],
         "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
+        "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],
     })
+
+
+@login_required
+@tresorier
+def telecharger(request, nom):
+    """Télécharge un fichier du dossier Exports (indispensable sur le site, dont les dossiers ne sont pas visibles)."""
+    chemin = next((p for p in moteur.fichiers_exportes() if p.name == nom), None)
+    if not chemin:
+        raise Http404
+    return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)

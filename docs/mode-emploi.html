@@ -347,9 +347,10 @@ Un fichier d'un seul référentiel s'importe de la même façon.</li>
 de <b>même structure à l'import et à l'export</b>, décrits dans <b>Lexique.xlsx</b>. Boutons en haut : <b>Tout exporter</b>,
 <b>Tout exporter et sauvegarder la base</b>, <b>Enregistrer les dossiers</b>, <b>Tout réinjecter</b>.</p>
 <figure><img src="images/22_echanges.png"><figcaption>Imports / Exports.</figcaption></figure>
-<ol><li><b>Importer</b> : déposer le fichier dans le dossier Imports ; il apparaît dans la liste ; bouton <b>Importer</b> de sa ligne. Tout ou rien ;
+<ol><li><b>Importer</b> : déposer le fichier dans le dossier Imports (sur le site : bouton <b>Déposer</b>, qui accepte aussi un .zip) ; il apparaît dans la liste ; bouton <b>Importer</b> de sa ligne. Tout ou rien ;
 le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mizrahi se convertit d'abord en Banque1.xlsx ou Banque2.xlsx.</li>
-<li><b>Tout exporter et sauvegarder la base</b> : le jeu complet (un fichier par format, plus Parametres.xlsx) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.</li>
+<li><b>Tout exporter et sauvegarder la base</b> : le jeu complet (un fichier par format, plus Parametres.xlsx) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.
+Les fichiers du dossier Exports se téléchargent depuis la liste de la page.</li>
 <li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de leur nature.</li></ol>
 <h2>Les dossiers Imports, Exports et Sauvegardes</h2>
 <p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).
@@ -358,10 +359,15 @@ Un chemin <code>D:\…</code> ne vaut que sur le PC : sur le site, il est ignor�
 on télécharge alors les fichiers. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes, export complet et remise à zéro.</figcaption></figure>
-<ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Donnees.xlsx, états de chaque exercice, contrôle).</li>
+<ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx, Donnees.xlsx, états de chaque exercice, contrôle).
+Toutes les données y sont ; seuls les comptes utilisateurs ne sont que dans la base.</li>
 <li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture.</li>
 <li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis une sauvegarde .sqlite3 (tout redevient comme à ce moment-là, utilisateurs compris),
-un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaBB.xlsm. Une sauvegarde est faite juste avant.</li></ul>
+un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaBB.xlsm. Une sauvegarde est faite juste avant.</li>
+<li><b>Corriger en masse puis recharger</b> (site et PC) : Tout exporter, télécharger l'export, le décompresser, modifier dans Excel Ecritures.xlsx,
+Tiers.xlsx, Parametres.xlsx ou Donnees.xlsx sans toucher aux en-têtes, recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
+puis Remettre à zéro et recharger avec ce .zip en cochant <b>Fichiers modifiés</b>. Contrôles : Mvt équilibrés, débit OU crédit, codes existants ;
+au moindre défaut, rien n'est modifié.</li></ul>
 <p><b>Recevoir la base du site</b> (programme du PC seulement) : avec l'identifiant et le mot de passe d'un administrateur du site,
 remplace la base du PC par une copie de celle du site, après une sauvegarde de la base du PC. Sens unique, du site vers le PC.</p>
 <p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus ; 3. <b>Remettre à zéro et recharger</b> depuis l'export complet.</p>
