@@ -1,11 +1,9 @@
 """Banque : import des relevés, puis pour chaque ligne sans écriture, compte de contrepartie et code axe 2 → écriture créée."""
 
-import datetime as dt
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from . import releves as moteur

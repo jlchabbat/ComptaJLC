@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import openpyxl
-from django.conf import settings
 from django.db import transaction
 
 from . import dossiers, export, releves
