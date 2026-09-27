@@ -1768,3 +1768,73 @@ class ReferentielsEtPages(TransactionTestCase):
             self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"), nom)
             self.assertTrue(b"".join(r.streaming_content).startswith(b"%PDF"))
         self.assertEqual(self.client.get("/documentation/autre.pdf").status_code, 404)
+
+
+# ---------------------------------------------------------------- Recevoir la base du site (programme du PC)
+
+from . import synchro  # noqa: E402
+
+
+class FauxNavigateur:
+    """Le « site » est l'application elle-même, servie par le client de test."""
+
+    def __init__(self, test, avant_envoi=None):
+        from django.test import Client
+        self.client, self.avant_envoi = Client(), avant_envoi
+
+    def _reponse(self, r):
+        contenu = b"".join(r.streaming_content) if r.streaming else r.content
+        finale = r.redirect_chain[-1][0] if getattr(r, "redirect_chain", None) else r.request["PATH_INFO"]
+        return r.status_code, finale, contenu
+
+    def get(self, url):
+        chemin = url.replace(synchro.ADRESSE_PAR_DEFAUT, "")
+        r = self._reponse(self.client.get(chemin, follow=True))
+        if chemin == "/base/telecharger/" and self.avant_envoi:
+            self.avant_envoi()                       # la base du PC diffère de celle du site
+        return r
+
+    def post(self, url, donnees):
+        return self._reponse(self.client.post(url.replace(synchro.ADRESSE_PAR_DEFAUT, ""), donnees, follow=True))
+
+
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+class RecevoirLaBaseDuSite(TransactionTestCase):
+    def setUp(self):
+        self.racine = Path(tempfile.mkdtemp())
+        self.reglage = override_settings(EXPORTS_DIR=self.racine / "Exports", IMPORTS_DIR=self.racine / "Imports")
+        self.reglage.enable()
+        call_command("migrate", verbosity=0)
+        referentiels_saisie()
+        self.chef = User.objects.create_user("chef", password="Site-mdp-2026")
+        donner_role(self.chef, "Administrateur")
+
+    def tearDown(self):
+        self.reglage.disable()
+
+    def test_la_base_du_pc_devient_celle_du_site(self):
+        effacer = lambda: Mouvement.objects.filter(numero=421).delete()  # noqa: E731
+        n, avant = synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "chef", "Site-mdp-2026", FauxNavigateur(self, effacer))
+        self.assertEqual(n, 1)
+        self.assertTrue(Mouvement.objects.filter(numero=421).exists())             # revenu avec la base du site
+        self.assertTrue(avant.exists())                                            # base du PC sauvegardée avant
+        self.assertEqual(Reglage.lire("adresse_site"), synchro.ADRESSE_PAR_DEFAUT)
+        self.assertTrue(Modification.objects.filter(action="Base reçue du site").exists())
+
+    def test_refus(self):
+        with self.assertRaisesRegex(ValueError, "refusé"):
+            synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "chef", "mauvais", FauxNavigateur(self))
+        b = User.objects.create_user("bureau", password="Bureau-mdp-2026")
+        donner_role(b, "Bureau")
+        with self.assertRaisesRegex(ValueError, "administrateur"):
+            synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "bureau", "Bureau-mdp-2026", FauxNavigateur(self))
+        with self.assertRaisesRegex(ValueError, "https"):
+            synchro.adresse_valide("http://comptabb.pythonanywhere.com")
+        self.assertTrue(Mouvement.objects.filter(numero=421).exists())             # rien de remplacé
+
+    def test_bouton_seulement_sur_le_pc(self):
+        self.client.force_login(self.chef)
+        self.assertNotContains(self.client.get("/base/"), "Recevoir la base du site")          # sur le site
+        r = self.client.get("/base/", HTTP_HOST="127.0.0.1:8765")
+        self.assertContains(r, "Recevoir la base du site")
+        self.assertContains(r, 'value="https://comptabb.pythonanywhere.com"')

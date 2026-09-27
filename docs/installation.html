@@ -30,7 +30,7 @@ pour les deux. Ce qui change, c'est <b>où elle tourne</b>, <b>qui peut s'y conn
 <table><tr><th style="width:21%"></th><th>Site (PythonAnywhere)</th><th>PC (ComptaBB.exe)</th></tr>
 <tr><td>Accès</td><td>De partout (ordinateur, tablette, téléphone), par internet, connexion chiffrée</td><td>Seulement sur ce PC, tant que la fenêtre noire est ouverte</td></tr>
 <tr><td>Utilisateurs</td><td>Administrateur, trésorier, bureau, bénévoles, chacun de chez soi</td><td>En pratique une seule personne, devant ce PC</td></tr>
-<tr><td>Données</td><td><code>comptabb-data</code> sur PythonAnywhere</td><td><code>appli\data</code> sur le PC</td></tr>
+<tr><td>Données</td><td><code>comptabb-data</code> sur PythonAnywhere</td><td><code>appli\data</code> sur le PC ; copie de celle du site en un clic (« Recevoir la base du site »)</td></tr>
 <tr><td>Exports et sauvegardes</td><td>Dans <code>comptabb-data</code>, puis à télécharger</td><td>Directement dans <code>D:\OneDrive\Applications\ComptaBB\Exports</code> et <code>…\Exports\Sauvegardes</code></td></tr>
 <tr><td>Paramètres (Excel)</td><td>Télécharger le fichier, le modifier, le renvoyer</td><td>Directement dans le dossier Imports du PC</td></tr>
 <tr><td>Sauvegarde automatique</td><td>Chaque nuit (tâche PythonAnywhere) et à chaque mise à jour</td><td>À la demande (bouton ou commande)</td></tr>
@@ -111,9 +111,16 @@ puis le <b>classeur ComptaBB.xlsm</b> à reprendre (chemin complet, ou Entrée p
 <li>Données : <code>D:\OneDrive\Applications\ComptaBB\appli\data\comptabb.sqlite3</code>.</li>
 <li><b>Mettre à jour</b> : télécharger le nouveau ComptaBB.zip (Actions) et l'extraire au même endroit en remplaçant les fichiers ; le dossier
 <code>data</code> est conservé.</li></ul>
-<h3>5. Avoir sur le PC les données du site</h3>
-<ol><li>Sur le site : <span class="menu">Administration › Base de données</span> › <b>Télécharger la base maintenant</b>.</li>
-<li>Sur le PC, dans ComptaBB : même page › choisir ce fichier › taper REMPLACER › <b>Remettre à zéro et recharger</b>.</li></ol>
+<h3>5. Avoir sur le PC les données du site : « Recevoir la base du site »</h3>
+<ol><li>Sur le PC, dans ComptaBB : <span class="menu">Administration › Base de données</span>, carte <b>Recevoir la base du site</b>
+(elle n'existe que sur le PC).</li>
+<li>Adresse du site (proposée : <code>https://comptabb.pythonanywhere.com</code>), <b>identifiant et mot de passe d'un administrateur du site</b>
+(ils ne sont pas enregistrés), taper REMPLACER.</li>
+<li>Bouton <b>Recevoir la base du site</b>, en haut à gauche : le PC télécharge la base du site, la vérifie et remplace la sienne ;
+la base précédente du PC est sauvegardée juste avant.</li>
+<li>Se reconnecter avec ses <b>identifiants du site</b> : les utilisateurs du PC sont désormais ceux du site.</li></ol>
+<p>Sens unique, du site vers le PC : à refaire chaque fois qu'on veut une copie à jour. Sans internet, la méthode manuelle reste possible :
+sur le site, <b>Télécharger la base maintenant</b> ; sur le PC, <b>Remettre à zéro et recharger</b> avec ce fichier.</p>
 <div class="cadre attention"><b>Deux bases distinctes.</b> Ce qui est saisi sur l'un n'apparaît pas sur l'autre : ne saisir qu'à un seul endroit (le site).
 <b>OneDrive</b> : fermer ComptaBB avant d'éteindre le PC ou de laisser OneDrive synchroniser, car une base ouverte peut être mal copiée.
 Les sauvegardes de <code>Exports\Sauvegardes</code> restent la copie de sécurité.</div>

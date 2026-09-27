@@ -23,6 +23,23 @@ def administrateur(u):
     return True
 
 
+class RecevoirForm(forms.Form):
+    adresse = forms.CharField(label="Adresse du site", max_length=200)
+    identifiant = forms.CharField(label="Identifiant sur le site", max_length=150, help_text="Un administrateur du site (nom ou e-mail).")
+    mot_de_passe = forms.CharField(label="Mot de passe sur le site", widget=forms.PasswordInput, help_text="Il n'est pas enregistré.")
+    confirmation = forms.CharField(label=f"Tapez {CONFIRMATION} pour confirmer")
+
+    def clean_confirmation(self):
+        if self.cleaned_data["confirmation"].strip().upper() != CONFIRMATION:
+            raise forms.ValidationError(f"Tapez exactement {CONFIRMATION}.")
+        return CONFIRMATION
+
+
+def sur_le_pc(request):
+    """Le bouton « Recevoir la base du site » n'a de sens que sur le programme du PC (adresse locale)."""
+    return request.get_host().split(":")[0] in ("127.0.0.1", "localhost")
+
+
 class RemplacementForm(forms.Form):
     fichier = forms.FileField(required=False, label="Fichier (.sqlite3, export complet .zip ou ComptaBB.xlsm)")
     sauvegarde = forms.ChoiceField(required=False, label="…ou une sauvegarde ou un export complet du site")
@@ -51,6 +68,22 @@ def journaliser(request, action, objet, apres=""):
 @user_passes_test(administrateur)
 def base(request):
     form = RemplacementForm(request.POST or None, request.FILES or None) if "remplacer" in request.POST else RemplacementForm()
+    recevoir_form = None
+    if sur_le_pc(request):
+        from . import synchro
+        from .models import Reglage
+        recevoir_form = RecevoirForm(request.POST if "recevoir" in request.POST else None, prefix="site",
+                                     initial={"adresse": Reglage.lire("adresse_site", synchro.ADRESSE_PAR_DEFAUT)})
+        if "recevoir" in request.POST and recevoir_form.is_valid():
+            c = recevoir_form.cleaned_data
+            try:
+                n, avant = synchro.recevoir(c["adresse"], c["identifiant"], c["mot_de_passe"])
+            except ValueError as e:
+                messages.error(request, f"Rien n'a été remplacé : {e}")
+                return redirect("base")
+            messages.success(request, f"Base du site reçue : {n} mouvements. La base précédente du PC est sauvegardée "
+                                      f"({avant.name}). Connectez-vous avec vos identifiants du site.")
+            return redirect("base")
     if request.method == "POST":
         if "export_complet" in request.POST:
             chemin = ec.exporter(auteur=request.user.get_username())
@@ -100,7 +133,7 @@ def base(request):
                 messages.error(request, f"Échec : {e}. Si les données semblent incomplètes, restaurez la sauvegarde d'avant.")
             return redirect("base")
     return render(request, "compta/base_donnees.html", {
-        "form": form, "sauvegardes": [(p.name, p.stat().st_size // 1024) for p in bd.liste()],
+        "form": form, "recevoir_form": recevoir_form, "sauvegardes": [(p.name, p.stat().st_size // 1024) for p in bd.liste()],
         "archives": [(p.name, p.stat().st_size // 1024) for p in archives()],
         "exports": [(p.name, p.stat().st_size // 1024) for p in ec.liste()],
         "mouvements": Mouvement.objects.count(), "lignes": Ligne.objects.count(), "confirmation": CONFIRMATION})
