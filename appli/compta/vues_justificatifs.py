@@ -42,6 +42,8 @@ def ajouter(request, numero):
 @consulter
 def voir(request, pk):
     j = get_object_or_404(Justificatif.objects.select_related("mouvement"), pk=pk)
+    if j.lien:                                            # document resté en ligne (SUMIT…)
+        return redirect(j.lien)
     fichier = moteur.chemin(j)
     if not fichier.exists():
         raise Http404("Fichier introuvable sur le serveur.")
@@ -126,6 +128,12 @@ def a_classer(request):
 @login_required
 @echanger
 def voir_a_classer(request):
+    nom = request.GET.get("nom", "")
+    if nom.startswith("lien:"):
+        try:
+            return redirect(moteur._lien_en_attente(nom)[0]["lien"])
+        except ValueError:
+            raise Http404
     try:
         f = moteur.fichier_a_classer(request.GET.get("nom", ""))
     except ValueError:

@@ -23,7 +23,7 @@ def dossier():
 
 
 def chemin(j):
-    return dossier() / j.chemin
+    return dossier() / j.chemin if j.chemin else None
 
 
 def type_mime(j):
@@ -70,6 +70,20 @@ def ajouter(mouvement, fichier, description="", auteur=""):
     return j
 
 
+def ajouter_lien(mouvement, lien, nom="", description="", auteur=""):
+    """Rattache un document resté en ligne (SUMIT…) : on garde son lien. Lève ValueError si refusé."""
+    lien = (lien or "").strip()
+    if not re.match(r"^https://", lien):
+        raise ValueError(f"Lien refusé (adresse https:// attendue) : {lien[:80]}")
+    if mouvement.justificatifs.filter(lien=lien).exists():
+        raise ValueError(f"Ce lien est déjà joint au mouvement {mouvement.numero}.")
+    j = Justificatif.objects.create(mouvement=mouvement, lien=lien[:500], nom=(nom or "Document en ligne")[:150],
+                                    description=description[:150], ajoute_par=auteur)
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Ajout d'un lien de justificatif",
+                                objet=f"Mvt {mouvement.numero}", apres=f"{j.nom} {description} {lien}"[:300])
+    return j
+
+
 def refus_suppression(j):
     if Exercice.date_close(j.mouvement.date):
         return "Mouvement dans un exercice clos : ses justificatifs ne se suppriment plus."
@@ -84,7 +98,7 @@ def supprimer(j, auteur=""):
     Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Suppression d'un justificatif",
                                 objet=f"Mvt {j.mouvement.numero}", avant=f"{j.nom} {j.description}"[:300])
     j.delete()
-    if fichier.exists():
+    if fichier and fichier.exists():
         fichier.unlink()
 
 
@@ -116,6 +130,12 @@ def deposer(nom, contenu):
     import io
     import zipfile
     deposes, refus = [], []
+    if nom.lower().endswith((".xlsx", ".xlsm")):                  # extrait (SUMIT…) : les liens de ses lignes
+        try:
+            n = deposer_extrait(contenu)
+        except Exception:
+            return [], [f"« {nom} » : classeur illisible."]
+        return [f"lien {i}" for i in range(n)], ([] if n else [f"« {nom} » : aucun nouveau lien trouvé."])
     if nom.lower().endswith(".zip"):
         try:
             z = zipfile.ZipFile(io.BytesIO(contenu))
@@ -201,11 +221,113 @@ def proposer(nom):
     return None, indice or "aucun numéro, date ou montant reconnu", False
 
 
+def _fichier_liens():
+    return a_classer_dossier() / "liens.json"
+
+
+def lire_liens():
+    import json
+    f = _fichier_liens()
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+
+
+def ecrire_liens(liens):
+    import json
+    f = _fichier_liens()
+    if liens:
+        f.write_text(json.dumps(liens, ensure_ascii=False, indent=1), encoding="utf-8")
+    elif f.exists():
+        f.unlink()
+
+
+def _entetes(rangee):
+    return [str(v or "").strip().lower() for v in rangee]
+
+
+def lire_extrait(contenu):
+    """Lignes à lien d'un extrait Excel (SUMIT ou autre) : date, montant, description, lien.
+
+    Une feuille est retenue si une de ses premières lignes a une colonne date (« תאריך », « date ») et une colonne
+    montant (« סכום », « montant », « amount ») ; le lien est l'hyperlien d'une cellule de la ligne."""
+    import datetime as dt
+    import io
+    import openpyxl
+    from decimal import Decimal, InvalidOperation
+    wb = openpyxl.load_workbook(io.BytesIO(contenu))
+    lignes = []
+    for ws in wb.worksheets:
+        rangees = list(ws.iter_rows())
+        for i, r in enumerate(rangees[:6]):
+            e = _entetes(c.value for c in r)
+            col_date = next((k for k, t in enumerate(e) if t in ("תאריך", "date", "date opération")), None)
+            col_somme = next((k for k, t in enumerate(e) if t in ("סכום", "montant", "amount", "somme")), None)
+            if col_date is not None and col_somme is not None:
+                break
+        else:
+            continue
+        ignorees = {col_date, col_somme} | {k for k, t in enumerate(e) if t in ("סטטוס", "status", "תאריך יצירה", "statut", "card name")}
+        for r in rangees[i + 1:]:
+            liens = [c.hyperlink.target for c in r if c.hyperlink and c.hyperlink.target]
+            if not liens or col_date >= len(r):
+                continue
+            date = r[col_date].value
+            if isinstance(date, dt.datetime):
+                date = date.date()
+            try:
+                montant = abs(Decimal(str(r[col_somme].value)))
+            except (InvalidOperation, TypeError):
+                continue
+            if not isinstance(date, dt.date):
+                continue
+            texte = [str(c.value).strip() for k, c in enumerate(r) if k not in ignorees and c.value not in (None, "")
+                     and not c.hyperlink and not str(c.value).startswith("http")]
+            for lien in liens:
+                lignes.append({"date": date.isoformat(), "montant": str(montant), "lien": lien, "feuille": ws.title,
+                               "description": " · ".join(texte)[:150]})
+    return lignes
+
+
+def deposer_extrait(contenu):
+    """Ajoute aux documents à classer les liens d'un extrait (ceux déjà joints ou déjà en attente sont ignorés)."""
+    import uuid
+    en_attente = lire_liens()
+    connus = {l["lien"] for l in en_attente} | set(Justificatif.objects.exclude(lien="").values_list("lien", flat=True))
+    nouveaux = [dict(l, id=uuid.uuid4().hex[:10]) for l in lire_extrait(contenu) if l["lien"] not in connus]
+    vus, uniques = set(), []
+    for l in nouveaux:
+        if l["lien"] not in vus:
+            vus.add(l["lien"])
+            uniques.append(l)
+    ecrire_liens(en_attente + uniques)
+    return len(uniques)
+
+
+def proposer_lien(l):
+    """Mouvement d'après la date et le montant de la ligne de l'extrait : (mouvement, raison, sûr)."""
+    import datetime as dt
+    from decimal import Decimal
+    from django.db.models import Q
+    from .models import Ligne, Mouvement
+    date, montant = dt.date.fromisoformat(l["date"]), Decimal(l["montant"])
+    numeros = sorted(set(Ligne.objects.filter(mouvement__date=date).filter(Q(debit=montant) | Q(credit=montant))
+                         .values_list("mouvement__numero", flat=True)))
+    if len(numeros) == 1:
+        return Mouvement.objects.get(numero=numeros[0]), f"date {date:%d/%m/%Y} et montant {montant}", True
+    if numeros:
+        return None, f"{len(numeros)} mouvements le {date:%d/%m/%Y} pour {montant} : Mvt " + ", ".join(map(str, numeros)), False
+    return None, f"aucun mouvement le {date:%d/%m/%Y} pour {montant}", False
+
+
 def a_classer():
-    """Fichiers déposés en attente, avec la proposition de rattachement."""
+    """Fichiers déposés et liens d'extraits en attente, avec la proposition de rattachement."""
     res = []
+    for l in lire_liens():
+        mv, raison, sur = proposer_lien(l)
+        res.append({"nom": f"lien:{l['id']}", "affiche": l["description"] or l["lien"], "lien": l["lien"],
+                    "date": l["date"], "montant_extrait": l["montant"], "feuille": l["feuille"], "taille": 0,
+                    "mouvement": mv, "raison": raison, "sur": sur})
     for f in sorted(a_classer_dossier().iterdir(), key=lambda p: p.name.lower()):
-        if f.is_file():
+        if f.is_file() and f.name != "liens.json":
             mv, raison, sur = proposer(re.sub(r"__doublon_[b-z]", "", f.name))
             res.append({"nom": f.name, "affiche": nom_affiche(f.name), "taille": f.stat().st_size, "mouvement": mv,
                         "raison": raison, "sur": sur})
@@ -214,7 +336,7 @@ def a_classer():
 
 def fichier_a_classer(nom):
     f = a_classer_dossier() / nom
-    if "/" in nom or "\\" in nom or nom.startswith(".") or not f.is_file():
+    if "/" in nom or "\\" in nom or nom.startswith(".") or nom == "liens.json" or not f.is_file():
         raise ValueError("Fichier introuvable.")
     return f
 
@@ -225,8 +347,22 @@ def nom_affiche(nom):
     return nom.split("__")[-1]
 
 
+def _lien_en_attente(nom):
+    liens = lire_liens()
+    l = next((x for x in liens if f"lien:{x['id']}" == nom), None)
+    if not l:
+        raise ValueError("Lien introuvable (déjà rattaché ou écarté ?).")
+    return l, liens
+
+
 def rattacher(nom, mouvement, description="", auteur=""):
     from django.core.files import File
+    if nom.startswith("lien:"):
+        l, liens = _lien_en_attente(nom)
+        j = ajouter_lien(mouvement, l["lien"], f"{l['feuille']} du {l['date'][8:10]}/{l['date'][5:7]}/{l['date'][:4]}",
+                         description or l["description"], auteur)
+        ecrire_liens([x for x in liens if x is not l])
+        return j
     f = fichier_a_classer(nom)
     with open(f, "rb") as flux:
         j = ajouter(mouvement, File(flux, name=nom_affiche(nom)), description, auteur)
@@ -235,4 +371,8 @@ def rattacher(nom, mouvement, description="", auteur=""):
 
 
 def ecarter(nom):
+    if nom.startswith("lien:"):
+        l, liens = _lien_en_attente(nom)
+        ecrire_liens([x for x in liens if x is not l])
+        return
     fichier_a_classer(nom).unlink()

@@ -206,10 +206,12 @@ class Ligne(models.Model):
 class Justificatif(models.Model):
     """Scan ou photo d'une pièce (facture, reçu, relevé…) rattaché à un mouvement.
 
-    Le fichier est rangé dans le dossier des données (Justificatifs/<année>/) ; chemin = chemin relatif."""
+    Soit un fichier rangé dans le dossier des données (Justificatifs/<année>/ ; chemin = chemin relatif),
+    soit un lien vers le document resté dans un autre logiciel (SUMIT…)."""
 
     mouvement = models.ForeignKey(Mouvement, on_delete=models.CASCADE, related_name="justificatifs")
-    chemin = models.CharField(max_length=255, unique=True)
+    chemin = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    lien = models.URLField(max_length=500, blank=True, help_text="Document consultable en ligne (SUMIT…).")
     nom = models.CharField("fichier d'origine", max_length=150)
     description = models.CharField(max_length=150, blank=True)
     taille = models.PositiveIntegerField(default=0)

@@ -188,7 +188,7 @@ FEUILLES = {
                          "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Axe 2", "Mvt", "Créé par",
                          "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
-    "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte"],
+    "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte", "Lien"],
 }
 
 
@@ -222,8 +222,8 @@ def _lignes_donnees():
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
     from .justificatifs import chemin as chemin_justificatif
-    yield "Justificatifs", ([j.mouvement.numero, j.chemin, j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
-                             _empreinte_fichier(chemin_justificatif(j))]
+    yield "Justificatifs", ([j.mouvement.numero, j.chemin or "", j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
+                             "lien" if j.lien else _empreinte_fichier(chemin_justificatif(j)), j.lien]
                             for j in Justificatif.objects.select_related("mouvement").order_by("mouvement__numero", "pk"))
     yield "Historique", ([_heure(m.date), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres]
                          for m in Modification.objects.order_by("date", "pk"))
@@ -304,7 +304,7 @@ def exporter(auteur=""):
             nom = "".join(c if c.isalnum() else "_" for c in ex.libelle)
             z.writestr(f"Etats_{nom}.xlsx", _octets(classeur_exercice(ex)))
         from .justificatifs import chemin as chemin_justificatif
-        for j in Justificatif.objects.all():
+        for j in Justificatif.objects.exclude(chemin=None):
             if chemin_justificatif(j).exists():
                 z.write(chemin_justificatif(j), f"Justificatifs/{j.chemin}")
         z.writestr("controle.json", json.dumps(controle, ensure_ascii=False, indent=1))
@@ -328,6 +328,7 @@ def vider():
 
 
 FACULTATIVES = ("Justificatifs",)       # absentes des exports faits avant leur création
+COLONNES_FACULTATIVES = {"Lien"}         # idem pour les colonnes
 
 
 def _rangees(wb, nom):
@@ -337,7 +338,7 @@ def _rangees(wb, nom):
         raise ExportInvalide(f"Feuille « {nom} » absente de Donnees.xlsx.")
     rangees = wb[nom].iter_rows(values_only=True)
     entetes = [str(e or "") for e in next(rangees, [])]
-    manque = [e for e in FEUILLES[nom] if e not in entetes]
+    manque = [e for e in FEUILLES[nom] if e not in entetes and e not in COLONNES_FACULTATIVES]
     if manque:
         raise ExportInvalide(f"Donnees.xlsx, feuille {nom} : colonne(s) {', '.join(manque)} absente(s).")
     for r in rangees:
@@ -435,6 +436,11 @@ def _charger_donnees(wb, pieces=None, ecrits=None):
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
     from .justificatifs import dossier as dossier_justificatifs
     for r in _rangees(wb, "Justificatifs"):
+        if _texte(r.get("Lien")):                           # document resté en ligne : seulement son lien
+            j = Justificatif.objects.create(mouvement_id=ids[_entier(r["Mvt"])], lien=_texte(r["Lien"]), nom=_texte(r["Nom"]),
+                                            description=_texte(r["Description"]), ajoute_par=_texte(r["Ajouté par"]))
+            Justificatif.objects.filter(pk=j.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or j.ajoute_le)
+            continue
         relatif = _texte(r["Fichier"])
         contenu = (pieces or {}).get(relatif)
         if contenu is None:

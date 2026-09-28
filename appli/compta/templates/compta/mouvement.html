@@ -10,10 +10,10 @@
 {% if m.origine != "cloture" %}<a class="bouton" href="{% url 'mouvement_contrepasser' m.numero %}">Annuler par une écriture inverse</a>{% endif %}</div>{% endif %}
 <h2>Justificatifs ({{ justificatifs|length }})</h2>
 {% if justificatifs %}<table><tr><th>Document</th><th>Description</th><th class="n">Taille</th><th>Ajouté</th><th></th></tr>
-{% for j in justificatifs %}<tr><td><a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a></td>
-<td>{{ j.description }}</td><td class="n">{% if j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
+{% for j in justificatifs %}<tr><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% else %}<a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
+<td>{{ j.description }}</td><td class="n">{% if j.lien %}lien{% elif j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
 <td>{{ j.ajoute_le|date:"d/m/Y H:i" }}{% if j.ajoute_par %} · {{ j.ajoute_par }}{% endif %}</td>
-<td><a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>
+<td>{% if not j.lien %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
 {% if perms.compta.change_mouvement and not refus_suppression %}<form method="post" action="{% url 'justificatif_supprimer' j.pk %}" style="display:inline">{% csrf_token %}
 <button onclick="return confirm('Supprimer ce justificatif ?')">Supprimer</button></form>{% endif %}</td></tr>{% endfor %}</table>
 {% if refus_suppression %}<p class="aide">{{ refus_suppression }}</p>{% endif %}
