@@ -599,11 +599,16 @@ def plus_proche(date, journal, lignes, deja_pris=()):
         diff.append(f"date {date:%d/%m/%Y} → {m.date:%d/%m/%Y}")
     if m.journal_id != journal:
         diff.append(f"journal {journal} → {m.journal_id}")
-    if m.total_debit != total:
-        diff.append(f"montant {total:.2f} → {m.total_debit:.2f}".replace(".", ","))
+    montant_f = max((d or cr for _, d, cr in lignes), default=ZERO)          # montant de l'opération (plus grande ligne)
+    montant_s = max((d or cr for _, d, cr in site), default=ZERO)
+    if montant_f != montant_s:
+        diff.append(f"montant {montant_f:.2f} → {montant_s:.2f}".replace(".", ","))
     comptes_f, comptes_s = {c for c, _, _ in lignes}, {c for c, _, _ in site}
     if comptes_f != comptes_s:
         diff.append("comptes " + ", ".join(sorted(comptes_f - comptes_s)) + " → " + ", ".join(sorted(comptes_s - comptes_f)))
+    inverses = sorted({c for c, d, cr in lignes if (c, cr, d) in set(site) and (c, d, cr) not in set(site)})
+    if inverses:
+        diff.append("sens inversé (débit ↔ crédit) sur " + ", ".join(inverses))
     if not diff:
         diff.append("répartition des lignes différente")
     if m.pk in deja_pris:
