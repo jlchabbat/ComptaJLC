@@ -11,6 +11,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from compta import justificatifs as moteur
+from compta.models import Mouvement
 
 
 class Command(BaseCommand):
@@ -35,9 +36,13 @@ class Command(BaseCommand):
         for l in moteur.a_classer():
             m = l["mouvement"]
             if rattacher and l["sur"]:
-                moteur.rattacher(l["nom"], m, auteur="ligne de commande")
+                j = moteur.rattacher(l["nom"], m, auteur="ligne de commande")
+                autres = [Mouvement.objects.get(numero=n) for n in moteur.numeros(l.get("saisie", ""))[1:]]
+                for autre in autres:                      # « 389+412 facture.pdf » : aussi joint aux suivants
+                    moteur.copier(j, autre, "ligne de commande")
                 faits += 1
-                self.stdout.write(f"  rattaché   {l['affiche']} → Mvt {m.numero} ({l['raison']})")
+                cibles = "+".join(str(x.numero) for x in [m] + autres)
+                self.stdout.write(f"  rattaché   {l['affiche']} → Mvt {cibles} ({l['raison']})")
             else:
                 cible = f"Mvt {m.numero}" if m else "?"
                 self.stdout.write(f"  à classer  {l['affiche']} → {cible} ({l['raison']})")

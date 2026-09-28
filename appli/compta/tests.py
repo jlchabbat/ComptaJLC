@@ -2311,6 +2311,11 @@ class JustificatifsExistants(TransactionTestCase):
         call_command("importer_justificatifs", str(dossier), "--rattacher", stdout=open("/dev/null", "w"))
         self.assertEqual(Justificatif.objects.get().mouvement.numero, 5)
         self.assertEqual([l["affiche"] for l in just.a_classer()], ["inconnu.jpg"])
+        (dossier / "5+1 facture commune.pdf").write_bytes(b"%PDF c")               # ZIP envoyé par Files, puis console
+        call_command("importer_justificatifs", str(dossier / "5+1 facture commune.pdf"), "--rattacher",
+                     stdout=open("/dev/null", "w"))
+        self.assertEqual(sorted(Justificatif.objects.filter(nom="5+1 facture commune.pdf")
+                                .values_list("mouvement__numero", flat=True)), [1, 5])
 
 
 @override_settings(**temporaire())

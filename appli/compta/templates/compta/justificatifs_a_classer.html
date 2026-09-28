@@ -11,6 +11,9 @@ de SUMIT</b> (EXTRACT_SUMIT….xlsx) : ses lignes qui ont un lien vers un docume
 proposées au mouvement de même date et même montant ; le document reste dans SUMIT et s'ouvre par son lien. Noms de fichiers reconnus : <b>le n° de Mvt en tête du nom, suivi d'une espace</b> (« 389 facture traiteur.pdf » ; seuls ces
 fichiers sont cochés d'office, les autres restent à classer), <b>« Mvt 389 »</b>, <b>« Pièce 739 »</b> (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt),
 ou une <b>date et un montant</b> (« 2026-03-15 facture 450,00.pdf »). Les documents restent ici tant qu'ils ne sont pas rattachés.</p>
+<p class="aide">Message <b>« 413 Request Entity Too Large »</b> : le ZIP est trop gros pour être envoyé par cette page. Le couper en
+plusieurs ZIP de 50 Mo au plus, ou l'envoyer par PythonAnywhere › Files puis, dans une console Bash :
+<code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; COMPTABB_DATA=~/comptabb-data python manage.py importer_justificatifs ~/Justificatifs.zip --rattacher</code></p>
 <div class="formulaire"><label for="id_fichiers">Fichiers ou ZIP</label>
 <div><input type="file" id="id_fichiers" name="fichiers" multiple accept=".zip,application/zip,.xlsx,application/pdf,image/*" required></div></div></form>
 
