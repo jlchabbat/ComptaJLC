@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from .models import ZERO, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
+from .reglages import montant as en_devise
 
 HEBREU = re.compile(r"[֐-׿]")
 INVISIBLES = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮"))
@@ -289,7 +290,7 @@ def pointer(journal, releves, lignes, utilisateur=None, mode="manuel"):
         raise ValueError("Une des lignes choisies est déjà pointée.")
     total_r, total_e = sum(r.montant for r in releves), sum(montant(l) for l in lignes)
     if total_r != total_e:
-        raise ValueError(f"Totaux différents : relevé {total_r} ₪, écritures {total_e} ₪.")
+        raise ValueError(f"Totaux différents : relevé {en_devise(total_r)}, écritures {en_devise(total_e)}.")
     r = Rapprochement.objects.create(journal=journal, mode=mode, cree_par=utilisateur)
     LigneReleve.objects.filter(pk__in=[x.pk for x in releves]).update(rapprochement=r)
     Ligne.objects.filter(pk__in=[x.pk for x in lignes]).update(rapprochement=r)

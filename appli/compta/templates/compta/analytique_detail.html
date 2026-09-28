@@ -24,9 +24,9 @@
 <div class="sit-entete"><div><div class="sit-titre">{{ s.code }}{% if s.libelle %} – {{ s.libelle }}{% endif %}</div><div class="sit-asso">État détaillé · {{ titre_axe }} · {{ titre_nature }}</div></div>
 <div class="sit-periode">Période {{ periode_texte }}<br><span>Édité le {% now "d/m/Y à H:i" %}</span></div></div>
 <section class="sit-cles">
-<div class="sit-cle"><div class="lib">{{ col_a }}</div><div class="val">{{ s.total.a|shekel }} ₪</div></div>
-<div class="sit-cle"><div class="lib">{{ col_b }}</div><div class="val">{{ s.total.b|shekel }} ₪</div></div>
-<div class="sit-cle fort {% if s.total.s < 0 %}perte{% else %}gain{% endif %}"><div class="lib">{{ col_s }}</div><div class="val">{{ s.total.s|shekel }} ₪</div></div>
+<div class="sit-cle"><div class="lib">{{ col_a }}</div><div class="val">{{ s.total.a|shekel }} {{ devise }}</div></div>
+<div class="sit-cle"><div class="lib">{{ col_b }}</div><div class="val">{{ s.total.b|shekel }} {{ devise }}</div></div>
+<div class="sit-cle fort {% if s.total.s < 0 %}perte{% else %}gain{% endif %}"><div class="lib">{{ col_s }}</div><div class="val">{{ s.total.s|shekel }} {{ devise }}</div></div>
 <div class="sit-cle"><div class="lib">Opérations</div><div class="val">{{ s.nb_mouvements }}</div><div class="note">{{ s.ecritures|length }} ligne{{ s.ecritures|length|pluralize }}</div></div>
 </section>
 
@@ -40,7 +40,7 @@
 {% for x in s.comptes %}<tr class="sit-compte"><td colspan="7"><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a> – {{ x.libelle }}</td></tr>
 {% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.mouvement.piece }}</td><td>{{ e.ligne.libelle }}</td><td title="{{ e.autre_axe }}">{{ e.autre_libelle|default:e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
 <tr class="sit-sous-total"><td colspan="5">Sous-total {{ x.numero }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td></tr>{% endfor %}
-<tr class="total"><td colspan="5">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} ₪</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
+<tr class="total"><td colspan="5">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} {{ devise }}</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
 </article>
 {% empty %}<p>Aucune opération sur la période.</p>{% endfor %}
 {% endblock %}

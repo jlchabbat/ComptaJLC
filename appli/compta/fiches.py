@@ -163,10 +163,10 @@ NATURES = [
 MODES = [
     # fiche, sens (* = les deux), libellé, genre, journal, compte (vide : compte de virement interne pour la carte)
     ("activite", "*", "Espèces", "TRESO", "CA", "530000"), ("activite", "*", "Chèque", "TRESO", "B1", "512000"),
-    ("activite", "*", "Virement", "TRESO", "B1", "512000"), ("activite", "*", "Bit", "TRESO", "B3", "512200"),
-    ("activite", "R", "Non payé", "NON_PAYE", "VT", None), ("activite", "D", "Carte Isracard", "TRESO", "OD", "VIREMENT"),
+    ("activite", "*", "Virement", "TRESO", "B1", "512000"), ("activite", "*", "Bit", "TRESO", "BIT", "512200"),
+    ("activite", "R", "Non payé", "NON_PAYE", "VT", None), ("activite", "D", "Carte {carte}", "TRESO", "OD", "VIREMENT"),
     ("activite", "D", "Avance d'un membre", "AVANCE", "OD", None),
-    ("gestion", "*", "Virement Mizrahi", "TRESO", "B1", "512000"), ("gestion", "*", "Virement BIT", "TRESO", "B3", "512200"),
+    ("gestion", "*", "Virement Mizrahi", "TRESO", "B1", "512000"), ("gestion", "*", "Virement BIT", "TRESO", "BIT", "512200"),
     ("gestion", "*", "Espèces", "TRESO", "CA", "530000"),
 ]
 
@@ -178,7 +178,19 @@ def initialiser():
         if Compte.objects.filter(numero=compte).exists():
             NatureFiche.objects.get_or_create(type_fiche=t, sens=s, libelle=lib,
                                               defaults={"compte_id": compte, "libelle_ecriture": lib_e, "ordre": i})
+    from .reglages import journaux, lire
+    mizrahi, bit, carte = journaux("releves_mizrahi"), journaux("releve_bit"), lire("carte_bancaire")
     for i, (t, s, lib, genre, jnl, compte) in enumerate(MODES):
+        if jnl == "BIT":                                  # journal du relevé Bit, s'il y en a un
+            if not bit:
+                continue
+            jnl = bit[0]
+        if "{carte}" in lib:                              # carte de paiement, s'il y en a une
+            if not carte:
+                continue
+            lib = lib.format(carte=carte)[:40]
+        if lib == "Virement Mizrahi" and jnl not in mizrahi:
+            lib = "Virement bancaire"
         if compte == "VIREMENT":
             compte = Reglage.lire("compte_virement") or None
             if not compte:

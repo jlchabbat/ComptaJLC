@@ -14,11 +14,11 @@ cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher «
 </div>
 
 <section class="sit-cles">
-<div class="sit-cle"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} ₪</div></div>
-<div class="sit-cle"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} ₪</div></div>
-<div class="sit-cle fort {% if resultat < 0 %}perte{% else %}gain{% endif %}"><div class="lib">Résultat</div><div class="val">{{ resultat|shekel }} ₪</div>
+<div class="sit-cle"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} {{ devise }}</div></div>
+<div class="sit-cle"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} {{ devise }}</div></div>
+<div class="sit-cle fort {% if resultat < 0 %}perte{% else %}gain{% endif %}"><div class="lib">Résultat</div><div class="val">{{ resultat|shekel }} {{ devise }}</div>
 <div class="note">{% if resultat < 0 %}déficit{% else %}excédent{% endif %}</div></div>
-<div class="sit-cle"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} ₪</div></div>
+<div class="sit-cle"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} {{ devise }}</div></div>
 </section>
 <p class="sit-note">{{ nb_mouvements }} mouvement{{ nb_mouvements|pluralize }} sur la période · contrôles comptables : <b>{{ etat }}</b>{% if a_verifier %} ({{ a_verifier }} à vérifier){% endif %}</p>
 
@@ -38,6 +38,6 @@ cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher «
 <section class="sit-bloc"><h2>Charges par compte</h2>
 {% include "compta/_situation_comptes.html" with lignes=charges_par_compte total=charges classe="c" %}</section>
 </div>
-<footer class="sit-pied">Situation établie par ComptaBB à partir des écritures enregistrées au {{ edite_le|date:"d/m/Y" }}. Montants en shekels (₪).</footer>
+<footer class="sit-pied">Situation établie par ComptaBB à partir des écritures enregistrées au {{ edite_le|date:"d/m/Y" }}. Montants en {{ devise }}.</footer>
 </article>
 {% endblock %}

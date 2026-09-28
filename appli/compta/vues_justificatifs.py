@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 
 from . import justificatifs as moteur
+from . import reglages
 from .models import Justificatif, Mouvement
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
@@ -38,8 +39,10 @@ def ajouter(request, numero):
             messages.success(request, f"{faits} document(s) déposé(s) rattaché(s) au mouvement {m.numero}.")
         return redirect("mouvement", m.numero)
     if "lien" in request.POST:                            # document resté en ligne (SUMIT…) : on garde son adresse
+        hebergeur = reglages.lire("hebergeur_liens")
+        nom = f"Document {hebergeur}" if hebergeur and hebergeur.lower() in request.POST["lien"].lower() else ""
         try:
-            moteur.ajouter_lien(m, request.POST["lien"], "Document SUMIT" if "sumit" in request.POST["lien"].lower() else "",
+            moteur.ajouter_lien(m, request.POST["lien"], nom,
                                 request.POST.get("description", "").strip(), request.user.get_username())
             messages.success(request, f"Lien joint au mouvement {m.numero}.")
         except ValueError as e:

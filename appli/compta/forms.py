@@ -18,7 +18,7 @@ class SaisieForm(forms.Form):
     date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     modele = forms.ModelChoiceField(ModeleOperation.objects.none(), required=False, label="Type d'opération")
     tiers = forms.ModelChoiceField(Compte.objects.none(), required=False, label="Tiers (membre ou fournisseur)")
-    montant = forms.DecimalField(required=False, max_digits=12, decimal_places=2, min_value=0, label="Montant (₪)")
+    montant = forms.DecimalField(required=False, max_digits=12, decimal_places=2, min_value=0, label="Montant")
     paiement = forms.ModelChoiceField(MoyenPaiement.objects.none(), required=False, label="Moyen de paiement")
     vers = forms.ModelChoiceField(MoyenPaiement.objects.none(), required=False, label="Vers (virement interne)")
     anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Événement / projet (axe 2)")

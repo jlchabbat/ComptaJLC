@@ -119,7 +119,8 @@ def cotisations(exercice):
 
 
 def montant(v):
-    return f"{v:,.2f}".replace(",", " ").replace(".", ",") + " ₪"
+    from .reglages import montant
+    return montant(v)
 
 
 # ---------------------------------------------------------------- lettrage

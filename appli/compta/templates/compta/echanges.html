@@ -15,7 +15,7 @@ Un fichier exporté se réimporte tel quel (même structure). Chaque dossier con
 <button class="principal" name="deposer" value="1">Déposer</button>
 <p class="aide">Depuis votre ordinateur (indispensable sur le site, dont les dossiers ne sont pas visibles) : fichiers .xlsx, relevés .pdf,
 ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est remplacé.</p></form>
-{% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF Mizrahi à convertir</h3>
+{% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
 <p class="aide">La conversion crée Banque1_date.xlsx ou Banque2_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
 <table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
 <button name="journal" value="B1">Convertir en Banque1.xlsx</button> <button name="journal" value="B2">Convertir en Banque2.xlsx</button></form>

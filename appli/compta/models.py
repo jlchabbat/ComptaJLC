@@ -120,7 +120,7 @@ class Reglage(models.Model):
     """Hypothèses nommées (RG-06) : compte de virement interne, compte d'attente…"""
 
     cle = models.CharField("clé", max_length=40, primary_key=True)
-    valeur = models.CharField(max_length=200)
+    valeur = models.CharField(max_length=200, blank=True)
     description = models.CharField(max_length=200, blank=True)
 
     class Meta:
@@ -589,7 +589,10 @@ class LigneReleve(models.Model):
 
     @property
     def traduction(self):
-        return "Solde d'ouverture" if self.ouverture else (Traduction.traduire(self.operation) or "À traduire")
+        if self.ouverture:
+            return "Solde d'ouverture"
+        from .reglages import oui
+        return Traduction.traduire(self.operation) or ("À traduire" if oui("traductions_releve") else self.operation)
 
 
 # ---------------------------------------------------------------- budget (Lot 4)

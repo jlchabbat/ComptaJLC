@@ -18,10 +18,14 @@ from django.test import TestCase, TransactionTestCase, override_settings
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.table import Table
 
-from . import controles
+from . import controles, reglages
 from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, soldes
 
 D = Decimal
+# Les tests décrivent le site de la Loge : un réglage absent y prend la valeur de la Loge (Mizrahi, Bit, Isracard, SUMIT…).
+# La classe ReglagesAssociation vérifie les valeurs neutres d'une nouvelle association.
+NEUTRES = dict(reglages.NEUTRES)
+reglages.NEUTRES.update({cle: loge for cle, _, _, loge in reglages.REGLAGES})
 
 
 def referentiels():
@@ -272,6 +276,59 @@ class Saisie(TestCase):
         n = ModeleOperation.objects.count()
         moteur.initialiser_parametres()
         self.assertEqual((n, ModeleOperation.objects.count()), (14, 14))
+
+
+
+class ReglagesAssociation(TestCase):
+    """Un site par association (étape 1) : réglages propres à l'association, neutres sur une base neuve."""
+
+    def test_migration_garde_les_valeurs_du_site_existant(self):
+        from django.apps import apps
+        creer = __import__("importlib").import_module("compta.migrations.0016_reglages_association").creer
+        creer(apps, None)                                             # base neuve : rien d'enregistré
+        self.assertFalse(Reglage.objects.filter(cle__in=[c for c, *_ in reglages.REGLAGES]).exists())
+        Journal.objects.create(code="B1", intitule="Mizrahi")
+        Reglage.objects.create(cle="association", valeur="Loge de Jérusalem")
+        creer(apps, None)                                             # site existant : ses valeurs actuelles
+        self.assertEqual([Reglage.lire(c) for c in ("nom_association", "devise", "releves_mizrahi", "releve_bit",
+                                                    "carte_bancaire", "hebergeur_liens", "traductions_releve")],
+                         ["Loge de Jérusalem", "₪", "B1,B2", "B3", "Isracard", "SUMIT", "oui"])
+
+    def test_nouvelle_association_sans_mizrahi_bit_ni_isracard(self):
+        from unittest import mock
+
+        from .models import LigneReleve, ModeFiche
+        with mock.patch.dict(reglages.NEUTRES, NEUTRES):
+            referentiels_saisie()
+            self.assertFalse(ModeleOperation.objects.filter(type__icontains="carte").exists())
+            self.assertEqual(ModeleOperation.objects.count(), 13)
+            moyens = set(MoyenPaiement.objects.values_list("libelle", flat=True))
+            self.assertEqual(moyens, {"B1", "B2", "Caisse (espèces)", "Non réglé"})      # nom du journal, pas « Mizrahi »
+            modes = set(ModeFiche.objects.values_list("libelle", flat=True))
+            self.assertIn("Virement bancaire", modes)
+            self.assertFalse({"Bit", "Virement BIT", "Virement Mizrahi"} & modes or any("Carte" in m for m in modes))
+            self.assertEqual(reglages.montant(D("1234.5")), "1 234,50 €")
+            with self.assertRaises(ech.Refus):
+                ech.imp_bit([], "Bit.xlsx")
+            l = LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 1, 5), rang=1, operation="VIREMENT RECU",
+                                           montant=D(10), solde=D(10))
+            self.assertEqual(l.traduction, "VIREMENT RECU")                       # pas de traduction : libellé tel quel
+            Reglage.objects.create(cle="devise", valeur="$")
+            self.assertEqual(reglages.montant(D(-3)), "-3,00 $")
+
+    def test_nom_et_devise_affiches(self):
+        referentiels_saisie()
+        call_command("migrate", verbosity=0)
+        Reglage.objects.update_or_create(cle="nom_association", defaults={"valeur": "Loge de Jérusalem"})
+        u = User.objects.create_user("tresorier", password="x")
+        u.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(u)
+        r = self.client.get("/?du=2026-01-01&au=2026-12-31")
+        self.assertContains(r, "Loge de Jérusalem")
+        self.assertContains(r, " ₪</div>")
+        self.assertContains(r, "Traductions du relevé")
+        Reglage.objects.create(cle="traductions_releve", valeur="non")
+        self.assertNotContains(self.client.get("/"), "Traductions du relevé")
 
 
 class Ecrans(TestCase):

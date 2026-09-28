@@ -13,6 +13,7 @@ from . import etats
 from .export import classeur_exercice
 from .forms import cherchable
 from .models import Budget, CodeAnalytique, Compte, Exercice, Modification, Reglage
+from .reglages import montant
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
 
@@ -62,7 +63,7 @@ def etats_annuels(request):
                 b = budget_form.save(commit=False)
                 b.exercice = ex
                 b.save()
-                messages.success(request, f"Budget ajouté : {b.cible} {b.montant} ₪.")
+                messages.success(request, f"Budget ajouté : {b.cible} {montant(b.montant)}.")
                 return redirect(f"{request.path}?exercice={ex.pk}#budget")
             if "supprimer_budget" in request.POST:
                 Budget.objects.filter(pk=request.POST["supprimer_budget"], exercice=ex).delete()

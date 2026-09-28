@@ -14,7 +14,7 @@
     var t = (cellule && (cellule.dataset.tri || cellule.textContent) || "").trim();
     var d = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (d) return { n: +(d[3] + d[2] + d[1]) };
-    var m = t.replace(/[\s  ₪%]/g, "").replace("−", "-").replace(",", ".");
+    var m = t.replace(/[\s  ₪€$£%]/g, "").replace("−", "-").replace(",", ".");
     if (/^-?\d+(\.\d+)?$/.test(m)) return { n: parseFloat(m) };
     return { t: t };
   }

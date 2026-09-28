@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from . import fiches as moteur
 from .forms import AttribuerForm, BenevoleForm, FicheForm, LigneFicheForm
 from .models import Fiche, LigneFiche, ModeFiche, Modification, NatureFiche, TiersProvisoire
+from .reglages import montant
 
 voir_fiches = permission_required("compta.view_fiche", raise_exception=True)
 gerer = permission_required("compta.gerer_fiche", raise_exception=True)
@@ -123,7 +124,7 @@ def fiche(request, pk):
         action = next((a for a in ("ajouter", "transmettre", "rouvrir", "reporter", "modifier") if a in request.POST), None)
         if action == "ajouter" and form and form.is_valid():
             l = form.save(request.user)
-            messages.success(request, f"Ligne ajoutée : {l.get_sens_display().lower()} de {l.montant} ₪.")
+            messages.success(request, f"Ligne ajoutée : {l.get_sens_display().lower()} de {montant(l.montant)}.")
             return redirect("fiche", fiche.pk)
         if action == "transmettre" and fiche.statut == "ouverte" and saisie:
             fiche.statut = "transmise"

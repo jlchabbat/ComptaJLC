@@ -124,8 +124,9 @@ def comparer(b, b_prec):
 
 
 def montant(v):
-    """Montant au format français, pour les messages."""
-    return f"{v:,.2f}".replace(",", " ").replace(".", ",") + " ₪"
+    """Montant au format français avec la devise du site, pour les messages."""
+    from .reglages import montant
+    return montant(v)
 
 
 # ---------------------------------------------------------------- budget

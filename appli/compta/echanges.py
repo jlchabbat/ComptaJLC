@@ -233,7 +233,12 @@ def imp_exercices(lignes, fichier, utilisateur=None):
 # ---- paramètres
 
 def exp_parametres():
-    return [[r.cle, r.valeur, r.description] for r in Reglage.objects.order_by("cle")]
+    """Tous les réglages enregistrés, plus ceux de l'association encore absents (avec leur valeur neutre)."""
+    from .reglages import REGLAGES
+    lignes = {r.cle: [r.cle, r.valeur, r.description] for r in Reglage.objects.all()}
+    for cle, description, neutre, _ in REGLAGES:
+        lignes.setdefault(cle, [cle, neutre, description])
+    return [lignes[c] for c in sorted(lignes)]
 
 
 def imp_parametres(lignes, fichier, utilisateur=None):
@@ -639,7 +644,7 @@ def rapport_ecarts(ecarts, deja_pris=()):
     return chemin
 
 
-# ---- relevés Mizrahi (Banque 1 et Banque 2) et caisse
+# ---- relevés Banque 1 et Banque 2 (Excel, CSV ou PDF converti) et caisse
 
 COLONNES_BANQUE = ["Date", "Référence", "Opération", "Montant", "Solde"]
 
@@ -679,20 +684,30 @@ def imp_banque(code):
     return f
 
 
-# ---- Bit (Banque 3) : format imposé, journal B3, remplace le relevé existant
+# ---- Bit : format imposé, journal du réglage releve_bit (B3 à la Loge), remplace le relevé existant
+
+def journal_bit():
+    from .reglages import journaux
+    codes = journaux("releve_bit")
+    return codes[0] if codes else ""
+
 
 def exp_bit():
-    return [["B3", l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None]
-            for l in LigneReleve.objects.filter(journal_id="B3", ouverture=False)]
+    code = journal_bit()
+    return [[code, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None]
+            for l in LigneReleve.objects.filter(journal_id=code, ouverture=False)] if code else []
 
 
 def imp_bit(lignes, fichier, utilisateur=None):
-    journal = journal_obligatoire("B3")
+    code = journal_bit()
+    if not code:
+        raise Refus(["Relevé Bit non utilisé par cette association (Paramètres : réglage releve_bit vide)."])
+    journal = journal_obligatoire(code)
     L, a_faire = Lecteur(), []
     for n, d in lignes:
         jnl = L.texte(n, d, "Journ")
-        if jnl != "B3":
-            L.erreur(n, f"journal « {jnl} » : B3 attendu.")
+        if jnl != code:
+            L.erreur(n, f"journal « {jnl} » : {code} attendu.")
         debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
         if (debit is None) == (credit is None) or (debit or credit or ZERO) <= 0:
             L.erreur(n, "un seul montant, Debit OU Credit, positif.")
@@ -733,9 +748,9 @@ FORMATS = [
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_ecritures, (7, 8)),
     Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_libelles, (7, 8)),
-    Format("Banque1", "Relevé Banque 1 – Mizrahi (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
-    Format("Banque2", "Relevé Banque 2 – Mizrahi (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
-    Format("Bit", "Relevé Banque 3 – Bit (journal B3, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
+    Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
+    Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
+    Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
            exp_bit, imp_bit, (4, 5)),
     Format("Caisse", "Caisse (journal CA)", COLONNES_BANQUE, exp_banque("CA"), imp_banque("CA"), (4, 5)),
 ]
@@ -747,7 +762,7 @@ PAR_NOM = {f.nom: f for f in FORMATS}
 
 LEXIQUE = "Lexique"
 O, F = "oui", ""
-DATE, MONTANT, TEXTE, CODE, OUI = "date jj/mm/aaaa", "montant (nombre, sans ₪)", "texte", "code (texte)", "oui / non"
+DATE, MONTANT, TEXTE, CODE, OUI = "date jj/mm/aaaa", "montant (nombre, sans symbole)", "texte", "code (texte)", "oui / non"
 REGLES = [
     ("Format", "Un fichier .xlsx par nature de données ; une seule feuille ; ligne 1 = exactement les en-têtes ; données dès la ligne 2."),
     ("Nom du fichier", "Commence par le nom du format : Tiers.xlsx, Tiers_2026-09-27.xlsx… Les exports portent la date du jour."),
@@ -756,8 +771,8 @@ REGLES = [
     ("Sécurité", "Une sauvegarde de la base est faite avant chaque import ; le fichier importé est rangé, daté, dans Imports\\Importés."),
     ("Ordre", "Importer dans l'ordre du lexique : chaque fichier ne cite que des codes définis par les précédents."),
     ("Dates", "Dates Excel (affichées jj/mm/aaaa)."),
-    ("Montants", "Nombres, sans symbole ₪ ; cellule vide quand il n'y a pas de montant."),
-    ("Relevés PDF", "Un relevé PDF Mizrahi déposé dans Imports se convertit en Banque1 ou Banque2 (bouton de la page), à vérifier puis importer."),
+    ("Montants", "Nombres, sans symbole monétaire ; cellule vide quand il n'y a pas de montant."),
+    ("Relevés PDF", "Un relevé PDF déposé dans Imports se convertit en Banque1 ou Banque2 (bouton de la page), à vérifier puis importer."),
 ]
 AIDE = {
     "Exercices": ("Mise à jour par libellé ; un exercice clos ne change plus. La clôture se fait par Fin d'exercice › Clôture.", {
@@ -785,7 +800,7 @@ AIDE = {
         "Adresse": (F, TEXTE, ""), "Code postal": (F, TEXTE, ""), "Ville": (F, TEXTE, ""), "Téléphone": (F, TEXTE, ""),
         "E-mail": (F, TEXTE, "Adresse e-mail valide"), "Date d'adhésion": (F, DATE, "Membres"),
         "Statut": (F, "Actif / Honoraire / Démissionnaire", "Membres"), "Cotisation annuelle": (F, MONTANT, "Cotisation attendue")}),
-    "Traductions": ("Mise à jour par opération.", {"Opération (hébreu)": (O, TEXTE, "Libellé du relevé Mizrahi"),
+    "Traductions": ("Mise à jour par opération.", {"Opération (hébreu)": (O, TEXTE, "Libellé du relevé bancaire"),
                                                    "Traduction": (O, TEXTE, "Traduction française")}),
     "Budget": ("Mise à jour par exercice + nature + cible.", {
         "Exercice": (O, TEXTE, "Libellé de l'exercice (Exercices.xlsx)"), "Nature": (O, "Charges / Produits", ""),
@@ -797,10 +812,10 @@ AIDE = {
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),
         "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx)"), "Let": (F, TEXTE, "Code de lettrage")}),
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
-    "Banque1": ("Relevé Mizrahi compte 732-182029 (journal B1). Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
-    "Banque2": ("Relevé Mizrahi (journal B2). Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
-    "Bit": ("Relevé Bit (journal B3). Remplace tout le relevé B3 précédent (pointages B3 annulés).", {
-        "Journ": (O, "B3", "Toute autre valeur est refusée"), "Date": (O, DATE, ""),
+    "Banque1": ("Relevé du journal B1. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
+    "Banque2": ("Relevé du journal B2. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
+    "Bit": ("Relevé Bit (journal du réglage releve_bit, B3 à la Loge). Remplace tout le relevé précédent de ce journal (pointages annulés).", {
+        "Journ": (O, "code", "Journal du réglage releve_bit (B3 à la Loge) ; toute autre valeur est refusée"), "Date": (O, DATE, ""),
         "Libelle": (O, "texte, 50 car. au plus", "TIERS - RUBRIQUE - SOUS-RUBRIQUE"),
         "Debit": (F, MONTANT, "Entrée d'argent sur Bit (Debit OU Credit)"), "Credit": (F, MONTANT, "Sortie d'argent (Debit OU Credit)")}),
     "Caisse": ("Mouvements de caisse (journal CA). Lignes déjà importées ignorées.", {}),
@@ -993,7 +1008,7 @@ def importer(nom, utilisateur=None):
 
 
 def convertir_pdf(nom, code, auteur=""):
-    """Relevé PDF Mizrahi du dossier Imports → Imports/Banque1_<date>.xlsx (ou Banque2), à vérifier puis importer."""
+    """Relevé PDF (Mizrahi ou tableau) du dossier Imports → Imports/Banque1_<date>.xlsx (ou Banque2), à vérifier puis importer."""
     chemin = fichier_d_import(nom)
     if chemin.suffix.lower() != ".pdf":
         raise Refus([f"{chemin.name} n'est pas un PDF."])

@@ -175,7 +175,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
 # ---------------------------------------------------------------- paramètres initiaux (repris du classeur, Lot 1)
 
 TYPES_TIERS = [("Membre", "411"), ("Fournisseur", "401")]
-MOYENS = [("Mizrahi compte courant", "B1"), ("Mizrahi épargne", "B2"), ("BIT", "B3"), ("Caisse (espèces)", "CA"), ("Non réglé", None)]
+MOYENS = [("Mizrahi compte courant", "B1"), ("Mizrahi épargne", "B2"), ("BIT", "BIT"), ("Caisse (espèces)", "CA"), ("Non réglé", None)]
 SCHEMAS = [
     ("RT", 1, 1, "TIERS", "D", False, "PAIEMENT_OU_DEFAUT"), ("RT", 2, 1, "CONTREPARTIE", "C", False, "PAIEMENT_OU_DEFAUT"),
     ("RT", 3, 1, "TRESO", "D", True, "PAIEMENT_OU_DEFAUT"), ("RT", 4, 1, "TIERS", "C", True, "PAIEMENT_OU_DEFAUT"),
@@ -211,7 +211,7 @@ MODELES = [
      "Paiement d'une facture fournisseur déjà passée."),
     ("Virement interne", "VI", None, None, None, True, "", "VIREMENT INTERNE",
      "Virement entre deux comptes de l'association : choisir le compte qui reçoit dans « Vers »."),
-    ("Paiement carte Isracard", "CB", "600000", "OD", None, True, "6", "CARTE ISRACARD",
+    ("Paiement carte {carte}", "CB", "600000", "OD", None, True, "6", "CARTE {CARTE}",
      "Charge contre 580000, puis prélèvement 580000 contre la banque (décision Q2)."),
 ]
 
@@ -222,10 +222,25 @@ def initialiser_parametres():
         TypeTiers.objects.get_or_create(libelle=lib, defaults={"prefixe": pref})
     for s, n, mvt, role, sens, si_regle, jr in SCHEMAS:
         LigneSchema.objects.get_or_create(schema=s, ligne=n, defaults=dict(mvt=mvt, role=role, sens=sens, si_regle=si_regle, journal=jr))
+    from .reglages import journaux, lire
+    mizrahi, bit, carte = journaux("releves_mizrahi"), journaux("releve_bit"), lire("carte_bancaire")
     for i, (lib, jnl) in enumerate(MOYENS):
+        if jnl == "BIT":                                  # journal du relevé Bit, s'il y en a un
+            if not bit:
+                continue
+            jnl = bit[0]
+        elif jnl in ("B1", "B2") and jnl not in mizrahi:  # banque sans relevé Mizrahi : nom du journal
+            j = Journal.objects.filter(code=jnl).first()
+            if not j or MoyenPaiement.objects.filter(journal=j).exists():
+                continue
+            lib = j.intitule
         if jnl is None or Journal.objects.filter(code=jnl).exists():
             MoyenPaiement.objects.get_or_create(libelle=lib, defaults={"journal_id": jnl, "ordre": i})
     for i, (t, s, compte, jnl, tiers, oblig, classe, lib, aide) in enumerate(MODELES):
+        if "{carte}" in t:                                # paiement par carte : seulement si le site en a une
+            if not carte:
+                continue
+            t, lib = t.format(carte=carte), lib.format(CARTE=carte.upper())
         if (compte and not Compte.objects.filter(numero=compte).exists()) or (jnl and not Journal.objects.filter(code=jnl).exists()):
             continue
         ModeleOperation.objects.get_or_create(type=t, defaults=dict(

@@ -80,6 +80,7 @@ TEMPLATES = [{
         "django.template.context_processors.request",
         "django.contrib.auth.context_processors.auth",
         "django.contrib.messages.context_processors.messages",
+        "compta.reglages.contexte",
     ]},
 }]
 WSGI_APPLICATION = "comptabb.wsgi.application"

@@ -79,6 +79,9 @@ python -m unittest discover tests
   3 chiffres axe 2 `MAN.008`) ; l'utilisateur ne saisit que le libellé.
   T_Prefixes[Axe] : 1 = axe 1, 2 = axe 2. Statut T_Axe2[Actif] : 0 Non
   affecté, 1 En cours, 2 Terminé.
+- Application web : ce qui est propre à l'association (nom, devise, relevés Mizrahi/Bit,
+  carte Isracard, liens SUMIT, traductions) passe par `appli/compta/reglages.py`
+  (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
 - Paramètres nommés dans Paramètres!D3:F16 (P_DebutExercice, P_FinExercice,
   P_DateCloture, P_DernierMvtClos, P_CompteVirement 580000, P_CompteAttente
   470000, P_Dossier, P_ReleveB1).

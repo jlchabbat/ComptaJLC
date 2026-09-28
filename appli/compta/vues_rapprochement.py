@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from . import reglages
 from . import releves as moteur
 from .models import CodeAnalytique, Compte, Journal, Ligne, LigneReleve, Modification, ParametreReleve, Traduction
 
@@ -119,6 +120,7 @@ def accueil(request, code=None):
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
         "journaux": js, "journal": journal, "lignes": lignes, "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
+        "pdf_mizrahi": journal.code in reglages.journaux("releves_mizrahi"),
         "comptes": Compte.objects.filter(actif=True).exclude(pk=journal.compte_id).order_by("numero") if peut else [],
         "codes": CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code") if peut else [],
         "a_traduire": sum(1 for x in lignes if x["l"].traduction == "À traduire"),

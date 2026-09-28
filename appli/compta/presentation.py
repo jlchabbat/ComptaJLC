@@ -1,12 +1,17 @@
 """Classeurs Excel « de présentation » (situation financière, états détaillés) : titre, sections, tableaux à bandes,
-totaux, montants en ₪, mise en page A4 prête à imprimer."""
+totaux, montants dans la devise du site, mise en page A4 prête à imprimer."""
 
 import io
 
 from django.http import HttpResponse
 
 BLEU, CLAIR, GRIS = "1F3864", "EEF3FB", "DDE1E7"
-MONTANT = '#,##0.00 "₪";[Red]-#,##0.00 "₪";"–"'
+
+
+def format_montant():
+    from .reglages import devise
+    d = devise().replace('"', "")
+    return f'#,##0.00 "{d}";[Red]-#,##0.00 "{d}";"–"' if d else '#,##0.00;[Red]-#,##0.00;"–"'
 
 
 class Presentation:
@@ -21,6 +26,7 @@ class Presentation:
         for i, l in enumerate(largeurs, 1):
             self.ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = l
         self.ligne = 1
+        self.format_montant = format_montant()
         self.police = {"titre": Font(bold=True, size=18, color=BLEU), "sous": Font(size=11, color="555555"),
                        "section": Font(bold=True, size=13, color=BLEU), "entete": Font(bold=True, color="FFFFFF"),
                        "gras": Font(bold=True), "sous_total": Font(bold=True, italic=True, color=BLEU)}
@@ -42,7 +48,7 @@ class Presentation:
             if bordure:
                 c.border = bordure
             if i in montants:
-                c.number_format = MONTANT
+                c.number_format = self.format_montant
                 c.alignment = Alignment(horizontal="right")
             if formats and i in formats:
                 c.number_format = formats[i]

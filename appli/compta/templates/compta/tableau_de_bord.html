@@ -4,10 +4,10 @@
 <a class="bouton principal" href="{% url 'situation_excel' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}" title="Même présentation dans un classeur Excel mis en page">Situation (Excel)</a></div>
 {% include "compta/_periode.html" %}
 <div class="chiffres">
-<div class="chiffre"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} ₪</div></div>
-<div class="chiffre"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} ₪</div></div>
-<div class="chiffre"><div class="lib">Résultat</div><div class="val {% if resultat < 0 %}neg{% endif %}">{{ resultat|shekel }} ₪</div></div>
-<div class="chiffre"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} ₪</div></div>
+<div class="chiffre"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Résultat</div><div class="val {% if resultat < 0 %}neg{% endif %}">{{ resultat|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} {{ devise }}</div></div>
 <div class="chiffre"><div class="lib">Contrôles</div><div class="val"><a href="{% url 'controles' %}"><span class="statut {% if etat == 'OK' %}OK{% else %}Anomalie{% endif %}">{{ etat }}</span></a>{% if a_verifier %} <span class="statut Àvérifier">{{ a_verifier }} à vérifier</span>{% endif %}</div></div>
 <div class="chiffre"><div class="lib">Mouvements sur la période</div><div class="val">{{ nb_mouvements }}</div></div>
 </div>
