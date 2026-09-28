@@ -2,7 +2,7 @@ name: Application ComptaBB
 
 # Tests à chaque envoi. Application PC (ComptaBB.exe) mise de côté pendant la
 # période de tests en ligne : elle n'est construite qu'à la demande (bouton
-# « Run workflow ») ; l'exécutable se récupère dans les Artifacts de l'exécution.
+# « Run workflow ») ; l'exécutable est publié dans la Release « application-pc » (ComptaBB-PC.zip).
 on:
   push:
   pull_request:
@@ -28,6 +28,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: tests
     runs-on: windows-latest
+    permissions:
+      contents: write          # publier ComptaBB-PC.zip dans la Release « application-pc »
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,7 +38,15 @@ jobs:
       - run: pip install -r appli/requirements.txt pyinstaller
       - run: pyinstaller build.spec
         working-directory: appli
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ComptaBB
-          path: appli/dist/ComptaBB
+      # Publication dans une Release (pas un artifact : leur quota de stockage est vite plein) ; lien fixe :
+      # https://github.com/<dépôt>/releases/download/application-pc/ComptaBB-PC.zip
+      - run: Compress-Archive -Path appli/dist/ComptaBB -DestinationPath ComptaBB-PC.zip
+        shell: pwsh
+      - run: |
+          gh release delete application-pc --cleanup-tag --yes 2>$null
+          gh release create application-pc ComptaBB-PC.zip --target $env:GITHUB_SHA --prerelease `
+            --title "Application PC (ComptaBB.exe)" `
+            --notes "Construite depuis $env:GITHUB_REF_NAME ($env:GITHUB_SHA). Décompresser, puis lancer ComptaBB\ComptaBB.exe."
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
