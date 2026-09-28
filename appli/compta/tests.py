@@ -2173,6 +2173,25 @@ class JustificatifsExistants(TransactionTestCase):
             m, raison, s = just.proposer(nom)
             self.assertEqual((m.numero if m else None, s), (numero, sur), f"{nom} : {raison}")
 
+    def test_rappel_depuis_le_mouvement(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.u)
+        self.assertNotContains(self.client.get("/mouvement/5/"), "document déjà déposé")          # rien à classer
+        self.client.post("/justificatifs/a-classer/", {"deposer": "1", "fichiers": [
+            SimpleUploadedFile("scan traiteur.pdf", b"%PDF t"), SimpleUploadedFile("recu.jpg", b"\xff\xd8r")]})
+        page = self.client.get("/mouvement/5/")
+        self.assertContains(page, "Choisir un document déjà déposé (2 à classer)")
+        noms = [nom for nom, _ in page.context["a_classer"]]
+        r = self.client.post("/mouvement/5/justificatifs/", {"a_classer": noms, "description": "rappel"}, follow=True)
+        self.assertContains(r, "2 document(s) déposé(s) rattaché(s) au mouvement 5")
+        self.assertEqual(sorted(Mouvement.objects.get(numero=5).justificatifs.values_list("nom", flat=True)),
+                         ["recu.jpg", "scan_traiteur.pdf"])
+        self.assertEqual(just.liste_a_classer(), [])
+        b = User.objects.create_user("bureau")                 # consultation seulement : ni liste ni rattachement
+        donner_role(b, "Bureau")
+        self.client.force_login(b)
+        self.assertEqual(self.client.post("/mouvement/5/justificatifs/", {"a_classer": ["x"]}).status_code, 403)
+
     def test_depot_zip_et_rattachement(self):
         import io
         tampon = io.BytesIO()

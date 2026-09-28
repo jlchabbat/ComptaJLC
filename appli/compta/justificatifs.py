@@ -463,6 +463,14 @@ def a_classer():
     return res
 
 
+def liste_a_classer():
+    """[(nom, nom affiché)] des documents déposés et liens en attente, sans proposition (liste rapide)."""
+    res = [(f"lien:{l['id']}", "🔗 " + (l["description"] or l["lien"])[:80]) for l in lire_liens()]
+    res += sorted(((f.name, nom_affiche(f.name)) for f in a_classer_dossier().iterdir()
+                   if f.is_file() and f.name != "liens.json"), key=lambda x: x[1].lower())
+    return res
+
+
 def fichier_a_classer(nom):
     f = a_classer_dossier() / nom
     if "/" in nom or "\\" in nom or nom.startswith(".") or nom == "liens.json" or not f.is_file():

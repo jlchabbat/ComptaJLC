@@ -127,12 +127,15 @@ def ecritures(request):
 def mouvement(request, numero):
     m = get_object_or_404(Mouvement.objects.select_related("journal"), numero=numero)
     from .corrections import verrou
-    from .justificatifs import refus_suppression
+    from .justificatifs import liste_a_classer, refus_suppression
     from .vues_justificatifs import peut_ajouter
     pieces = list(m.justificatifs.all())
+    joindre = peut_ajouter(request.user)
     return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2"),
                                                      "verrou": verrou(m), "justificatifs": pieces,
-                                                     "peut_joindre": peut_ajouter(request.user),
+                                                     "peut_joindre": joindre,
+                                                     "a_classer": liste_a_classer() if joindre and request.user.has_perm(
+                                                         "compta.echanger_fichiers") else [],
                                                      "refus_suppression": refus_suppression(pieces[0]) if pieces else ""})
 
 

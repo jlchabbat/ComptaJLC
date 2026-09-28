@@ -23,6 +23,22 @@ def ajouter(request, numero):
     if not peut_ajouter(request.user):
         raise PermissionDenied
     m = get_object_or_404(Mouvement, numero=numero)
+    if "a_classer" in request.POST:                       # document déjà déposé (Justificatifs existants)
+        if not request.user.has_perm("compta.echanger_fichiers"):
+            raise PermissionDenied
+        noms = request.POST.getlist("a_classer")
+        if not noms:
+            messages.error(request, "Choisissez au moins un document dans la liste.")
+        faits = 0
+        for nom in noms:
+            try:
+                moteur.rattacher(nom, m, request.POST.get("description", "").strip(), request.user.get_username())
+                faits += 1
+            except ValueError as e:
+                messages.error(request, str(e))
+        if faits:
+            messages.success(request, f"{faits} document(s) déposé(s) rattaché(s) au mouvement {m.numero}.")
+        return redirect("mouvement", m.numero)
     if "lien" in request.POST:                            # document resté en ligne (SUMIT…) : on garde son adresse
         try:
             moteur.ajouter_lien(m, request.POST["lien"], "Document SUMIT" if "sumit" in request.POST["lien"].lower() else "",

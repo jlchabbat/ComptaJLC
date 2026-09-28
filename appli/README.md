@@ -116,7 +116,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
   seul cas coché d'office ; « Mvt 389 », « Pièce 739 », numéro seul,
   date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
-  rattachés restent « à classer ». En ligne de commande :
+  rattachés restent « à classer » ; la page d'un mouvement permet de les y rattacher (liste des documents déposés). En ligne de commande :
   `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.
   Un **extrait Excel SUMIT** déposé sur la même page fournit des **liens** (documents restés dans SUMIT),
   proposés au mouvement de même date et même montant ; seuls les nouveaux liens sont repris. Un Excel fait à la main
