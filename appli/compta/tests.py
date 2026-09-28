@@ -693,10 +693,39 @@ class EcransRapprochement(TestCase):
         l.refresh_from_db()
         self.assertIsNone(l.rapprochement_id)
         r = self.client.post("/rapprochement/B1/", {"relier": f"{l.pk}:{es[0].pk},{es[1].pk}"}, follow=True)
-        self.assertContains(r, "reliée à Mvt 903 + Mvt 904")
+        self.assertContains(r, "reliée(s) à Mvt 903 + Mvt 904")
         l.refresh_from_db()
         self.assertEqual(sorted(e.pk for e in l.rapprochement.ecritures.all()), [es[0].pk, es[1].pk])
         self.assertEqual(Mouvement.objects.filter(numero__gte=903).count(), 3)                 # aucune écriture créée
+
+    def test_frais_du_mois_en_une_ecriture_et_depot_renouvele(self):
+        forfait = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 1), rang=1, operation="FORFAIT", montant=D(-10))
+        guichet = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 1), rang=2, operation="GUICHET", montant=D("-13.60"))
+        mv = Mouvement.objects.create(numero=906, date=dt.date(2026, 2, 1), journal_id="B1", piece=906)
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("23.60"), anal2_id="GEN.004")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("23.60"), anal2_id="GEN.004")
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Les relier ensemble")
+        self.assertContains(page, f'value="{forfait.pk},{guichet.pk}:{e.pk}"')
+        r = self.client.post("/rapprochement/B1/", {"relier": f"{forfait.pk},{guichet.pk}:{e.pk}"}, follow=True)
+        self.assertContains(r, "2 lignes du relevé reliée(s) à Mvt 906")
+        forfait.refresh_from_db(); guichet.refresh_from_db()
+        self.assertEqual(forfait.rapprochement_id, guichet.rapprochement_id)
+        # dépôt renouvelé : +3029,94 ; +0,01 ; −3029,95 le même jour : reliées entre elles, sans écriture
+        d = dt.date(2026, 3, 6)
+        rs = [LigneReleve.objects.create(journal=self.b1, date=d, rang=i, operation=o, montant=D(m))
+              for i, (o, m) in enumerate((("DEPOT", "3029.94"), ("INTERETS", "0.01"), ("DEPOT", "-3029.95")), 10)]
+        n = Mouvement.objects.count()
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Relier sans écriture")
+        valeur = ",".join(str(x.pk) for x in rs) + ":"
+        self.assertContains(page, f'value="{valeur}"')
+        self.client.post("/rapprochement/B1/", {"relier": f"{rs[0].pk},{rs[1].pk}:"})           # somme non nulle : refusé
+        self.assertIsNone(LigneReleve.objects.get(pk=rs[0].pk).rapprochement_id)
+        self.client.post("/rapprochement/B1/", {"relier": valeur})
+        self.assertEqual(len({LigneReleve.objects.get(pk=x.pk).rapprochement_id for x in rs}), 1)
+        self.assertIsNotNone(LigneReleve.objects.get(pk=rs[0].pk).rapprochement_id)
+        self.assertEqual(Mouvement.objects.count(), n)
 
     def test_pistes_quand_rien_n_est_propose(self):
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 20), rang=1, operation="x", montant=D(-71.93))
@@ -710,7 +739,7 @@ class EcransRapprochement(TestCase):
         l.refresh_from_db()
         self.assertEqual(l.rapprochement.ecritures.get(), e)
         # même montant déjà relié à une autre ligne (relevé importé deux fois)
-        double = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 21), rang=2, operation="x", montant=D(-71.93))
+        double = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 20), rang=2, operation="x", montant=D("-71.93"))
         page = self.client.get("/rapprochement/B1/")
         self.assertContains(page, "relevé importé deux fois ?")
         self.assertNotContains(page, f'value="{double.pk}:{e.pk}"')

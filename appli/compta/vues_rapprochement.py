@@ -81,16 +81,22 @@ def accueil(request, code=None):
     if request.method == "POST" and peut:
         if "relier" in request.POST:
             try:
-                rel, ecr = request.POST["relier"].split(":")          # « ligne:écriture » ou « ligne:é1,é2,… »
-                l = moteur.a_affecter(journal).get(pk=int(rel))
-                es = [moteur.ecritures(journal).get(pk=int(x), rapprochement__isnull=True) for x in ecr.split(",")]
-                moteur.pointer(journal, [l], es, request.user, "manuel")
+                rel, ecr = request.POST["relier"].split(":")          # « l1,l2…:é1,é2,… » ; « l1,l2,…: » = somme nulle
+                ls = [moteur.a_affecter(journal).get(pk=int(x)) for x in rel.split(",")]
+                l = ls[0]
+                es = [moteur.ecritures(journal).get(pk=int(x), rapprochement__isnull=True) for x in ecr.split(",") if x]
+                if es:
+                    moteur.pointer(journal, ls, es, request.user, "manuel")
+                else:
+                    moteur.relier_nulles(ls, request.user)
             except (ValueError, LigneReleve.DoesNotExist, Ligne.DoesNotExist) as err:
                 messages.error(request, f"Liaison impossible : ligne ou écriture déjà reliée, ou totaux différents ({err}).")
             else:
-                mvts = " + ".join(f"Mvt {e.mouvement.numero}" for e in es)
-                journaliser(request, "Liaison relevé", f"{journal.code} {l.date:%d/%m/%Y} {l.montant}", apres=mvts)
-                messages.success(request, f"Ligne du {l.date:%d/%m/%Y} reliée à {mvts} (aucune écriture créée).")
+                mvts = " + ".join(f"Mvt {e.mouvement.numero}" for e in es) or "elles-mêmes (somme nulle)"
+                quoi = f"{len(ls)} lignes du relevé" if len(ls) > 1 else f"Ligne du {l.date:%d/%m/%Y}"
+                journaliser(request, "Liaison relevé", f"{journal.code} {l.date:%d/%m/%Y} " + " ; ".join(str(x.montant) for x in ls),
+                            apres=mvts)
+                messages.success(request, f"{quoi} reliée(s) à {mvts} (aucune écriture créée).")
             return redirect("rapprochement_journal", journal.code)
         crees, erreurs, saisies = _affecter(request, journal, list(moteur.a_affecter(journal)))
         if crees:
@@ -107,6 +113,8 @@ def accueil(request, code=None):
         deja = moteur.deja_en_compta(l) if peut else []
         lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""), "deja": deja,
                        "groupes": moteur.groupes(l) if peut and not deja else [],
+                       "lignes_groupees": moteur.lignes_groupees(l) if peut and not deja else [],
+                       "nulles": moteur.lignes_nulles(l) if peut and not deja else None,
                        "pistes": moteur.pistes(l) if peut and not deja else None})
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {

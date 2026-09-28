@@ -410,6 +410,52 @@ def groupes(l, maxi=4):
     return trouves
 
 
+def lignes_groupees(l, maxi=4):
+    """Plusieurs lignes du relevé (dont l) pour une seule écriture non reliée : frais du mois passés en une fois.
+    [(lignes du relevé, écriture), …] (3 au plus), lignes et écriture à ± tolérance jours."""
+    from itertools import combinations
+    ecart = dt.timedelta(days=tolerance())
+    autres = sorted(a_affecter(l.journal).filter(date__range=(l.date - ecart, l.date + ecart)).exclude(pk=l.pk),
+                    key=lambda x: (abs((x.date - l.date).days), x.rang))[:10]
+    cibles = {}
+    for e in ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart)):
+        cibles.setdefault(montant(e), []).append(e)
+    trouves = []
+    for n in range(1, maxi):
+        for combi in combinations(autres, n):
+            total = l.montant + sum(x.montant for x in combi)
+            for e in cibles.get(total, [])[:1]:
+                trouves.append(((l,) + combi, e))
+                if len(trouves) >= 3:
+                    return trouves
+    return trouves
+
+
+def lignes_nulles(l, maxi=4):
+    """Lignes du relevé (dont l) dont la somme est nulle (dépôt renouvelé : sortie, retour et intérêts), le même jour :
+    elles se relient entre elles, sans écriture. Premier groupe trouvé, ou None."""
+    from itertools import combinations
+    autres = list(a_affecter(l.journal).filter(date=l.date).exclude(pk=l.pk).order_by("rang")[:10])
+    for n in range(1, maxi):
+        for combi in combinations(autres, n):
+            if l.montant + sum(x.montant for x in combi) == 0:
+                return (l,) + combi
+    return None
+
+
+@transaction.atomic
+def relier_nulles(releves, utilisateur=None):
+    """Relie entre elles des lignes du relevé de somme nulle (aucune écriture : l'argent est sorti puis revenu)."""
+    releves = list(releves)
+    if len(releves) < 2 or sum(r.montant for r in releves) != 0:
+        raise ValueError("La somme des lignes choisies n'est pas nulle.")
+    if any(r.rapprochement_id for r in releves):
+        raise ValueError("Une des lignes choisies est déjà pointée.")
+    r = Rapprochement.objects.create(journal=releves[0].journal, mode="manuel", cree_par=utilisateur)
+    LigneReleve.objects.filter(pk__in=[x.pk for x in releves]).update(rapprochement=r)
+    return r
+
+
 def pistes(l, jours=60):
     """Quand rien n'est proposé : pourquoi ? Écritures de même montant hors du cadre habituel.
 
@@ -424,7 +470,8 @@ def pistes(l, jours=60):
     reliees = []
     for e in proches.filter(rapprochement__isnull=False).order_by("mouvement__date")[:3]:
         autre = LigneReleve.objects.filter(rapprochement_id=e.rapprochement_id).exclude(pk=l.pk).first()
-        reliees.append((e, autre))
+        if autre and autre.date == l.date and autre.montant == l.montant:     # même jour, même montant : doublon probable
+            reliees.append((e, autre))
     ailleurs = list(Ligne.objects.filter(compte__numero__startswith="5", mouvement__date__range=(l.date - ecart, l.date + ecart),
                                          rapprochement__isnull=True, **montant)
                     .exclude(compte=l.journal.compte).exclude(mouvement__origine="cloture")
