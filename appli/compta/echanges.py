@@ -10,6 +10,7 @@ import datetime as dt
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 
 import openpyxl
@@ -408,9 +409,15 @@ def exp_ecritures():
             for l in Ligne.objects.select_related("mouvement").order_by("mouvement__numero", "ordre")]
 
 
+def empreinte(date, journal, lignes):
+    """Ce qui fait qu'un Mvt est le même, quels que soient son numéro, sa pièce et ses libellés."""
+    return date, journal, tuple(sorted((compte, Decimal(debit or 0), Decimal(credit or 0)) for compte, debit, credit in lignes))
+
+
 def imp_ecritures(lignes, fichier, utilisateur=None):
     """Mvt nouveau : créé. Mvt existant modifié dans le fichier : mis à jour (tracé, comme une correction) ;
-    identique : ignoré. Un Mvt absent du fichier n'est jamais supprimé."""
+    identique : ignoré. Un Mvt absent du fichier n'est jamais supprimé. Un Mvt nouveau identique à un Mvt du site
+    (même date, journal, comptes et montants, autre numéro) est refusé : il serait créé en double."""
     from . import corrections
     L, mvts = Lecteur(), defaultdict(list)
     comptes = set(Compte.objects.values_list("numero", flat=True))
@@ -440,9 +447,18 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
         td, tc = sum((x[6] for x in ls), ZERO), sum((x[7] for x in ls), ZERO)
         if td != tc:
             L.erreur(ls[0][0], f"Mvt {numero} déséquilibré : débit {td} ≠ crédit {tc} (RG-01).")
+    en_base = defaultdict(list)                  # empreinte (date, journal, comptes et montants) -> n° des Mvt du site
+    for m in Mouvement.objects.prefetch_related("lignes"):
+        en_base[empreinte(m.date, m.journal_id, [(l.compte_id, l.debit, l.credit) for l in m.lignes.all()])].append(m.numero)
     modifies = {}
     for numero, ls in mvts.items():
         m = Mouvement.objects.filter(numero=numero).first() if numero in existants else None
+        if not m and numero is not None:
+            doublons = en_base.get(empreinte(ls[0][1], ls[0][2], [(x[4], x[6], x[7]) for x in ls]))
+            if doublons:
+                L.erreur(ls[0][0], f"Mvt {numero} absent du site, mais identique au Mvt {doublons[0]} (même date, journal, "
+                                   "comptes et montants) : il serait créé en double. Exporter les écritures du site et "
+                                   "corriger ce fichier-là.")
         if not m:
             if ls[0][1] and ls[0][2] != "AN" and Exercice.date_close(ls[0][1]):
                 L.erreur(ls[0][0], f"Mvt {numero} : date dans un exercice clos (RG-04).")
@@ -628,7 +644,7 @@ AIDE = {
         "Exercice": (O, TEXTE, "Libellé de l'exercice (Exercices.xlsx)"), "Nature": (O, "Charges / Produits", ""),
         "Compte": (F, CODE, "Cible : un compte…"), "Axe 1": (F, CODE, "… ou un code axe 1…"), "Axe 2": (F, CODE, "… ou un code axe 2 (une seule cible)"),
         "Montant": (O, MONTANT, "Montant budgété")}),
-    "Ecritures": ("Ajoute des mouvements nouveaux ; un n° de Mvt déjà présent est refusé. Chaque Mvt équilibré, hors exercice clos.", {
+    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos.", {
         "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Pièce": (O, "entier", "N° de pièce"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),

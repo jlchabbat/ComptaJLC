@@ -1638,6 +1638,24 @@ class Echanges(TransactionTestCase):
         wb.save(ech.imports() / "Ecritures.xlsx")
         self.assertContains(self.importer("Ecritures.xlsx"), "1 inchangé(s)")
 
+    def test_ecritures_en_double_refusees(self):
+        """Un fichier dont les n° de Mvt ne sont pas ceux du site ne crée pas de doublons."""
+        chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
+        wb = openpyxl.load_workbook(chemin)
+        ws = wb.active
+        ws["C2"], ws["C3"], ws["D2"], ws["D3"] = 5000, 5000, 5000, 5000      # Mvt 421 renuméroté : même contenu
+        ws["F2"], ws["F3"] = "AUTRE LIBELLE", "AUTRE LIBELLE"
+        wb.save(ech.imports() / chemin.name)
+        n = Mouvement.objects.count()
+        r = self.importer(chemin.name)
+        self.assertContains(r, "Mvt 5000 absent du site, mais identique au Mvt 421")
+        self.assertContains(r, "rien n&#x27;a été enregistré")
+        self.assertEqual(Mouvement.objects.count(), n)
+        ws["G2"], ws["H3"] = 999, 999                                          # autre montant : Mvt vraiment nouveau
+        wb.save(ech.imports() / chemin.name)
+        self.assertContains(self.importer(chemin.name), "1 mouvement(s) ajouté(s), 0 modifié(s)")
+        self.assertEqual(Mouvement.objects.count(), n + 1)
+
     def test_bit_remplace_le_releve(self):
         d = dt.datetime(2026, 1, 11)
         self.fichier("Bit.xlsx", [["B2", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None]])
