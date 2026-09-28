@@ -135,6 +135,7 @@ def demarrer(d, auteur=""):
         fait += [f"exercice {libelle}", f"{Compte.objects.count()} comptes", f"{Journal.objects.count()} journaux",
                  "codes analytiques et préfixes", "modèles de saisie et moyens de paiement"]
     _reglage("demarrage", "fait", "Assistant de premier démarrage passé")
+    _reglage("demarrage_le", dt.date.today().isoformat(), "Date du premier démarrage (début de la période d'essai)")
     Modification.objects.create(auteur=auteur, lot="Démarrage", action="Assistant de premier démarrage",
                                 objet=d["nom"][:200], apres=" ; ".join(fait)[:300])
     return fait

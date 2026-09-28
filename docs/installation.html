@@ -148,6 +148,17 @@ remplace l'assistant. Un site qui a déjà des journaux ou des écritures ne voi
 <p>Comme pour la Loge (chapitre 3) : envoyer le nouveau ZIP dans Files, puis <code>bash ~/maj.sh</code>. Les données de l'association ne sont jamais touchées.
 Tous les 3 mois avec l'offre gratuite : onglet Web › <b>Run until 3 months from today</b>.</p>
 
+<h3>F. La licence</h3>
+<p>Un site créé par l'assistant a <b>60 jours d'essai</b>. Ensuite, sans licence valable, il passe en <b>lecture seule</b> : on consulte, on imprime et on exporte
+(export complet compris), on ne saisit plus. Le site de la Loge, installé avant l'assistant, n'est jamais concerné.</p>
+<p><b>Côté éditeur</b> (sur votre propre compte, console du site) :</p>
+<table><tr><th style="width:52%">Commande</th><th>Effet</th></tr>
+<tr><td><code>python manage.py licence cles</code></td><td>Une seule fois : crée la clé privée dans <code>~/comptabb-licence</code> (à garder secrète et à sauvegarder hors du site)
+et affiche la clé publique, à inscrire dans le programme (<code>compta/licence.py</code>, CLE_PUBLIQUE). Tant qu'elle n'y est pas, aucune licence n'est demandée.</td></tr>
+<tr><td><code>python manage.py licence creer --association "Amis du musée" --site amisdumusee.pythonanywhere.com --fin 2027-12-31</code></td><td>Affiche la licence (texte CBB1.…) à envoyer à l'association.</td></tr>
+<tr><td><code>python manage.py licence verifier "CBB1.…"</code></td><td>Affiche l'association, le site et la date de fin d'une licence.</td></tr></table>
+<p><b>Côté association</b> : Administration › <b>Licence</b>, coller le texte reçu, « Enregistrer la licence ».</p>
+
 <h2>7. Problèmes rencontrés</h2>
 <table><tr><th style="width:38%">Situation</th><th>Que faire</th></tr>
 <tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaBB/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>

@@ -83,6 +83,7 @@ python -m unittest discover tests
   carte Isracard, liens SUMIT, traductions) passe par `appli/compta/reglages.py`
   (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
   Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).
+  Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptabb-licence`) ne va jamais dans le dépôt.
 - Paramètres nommés dans Paramètres!D3:F16 (P_DebutExercice, P_FinExercice,
   P_DateCloture, P_DernierMvtClos, P_CompteVirement 580000, P_CompteAttente
   470000, P_Dossier, P_ReleveB1).

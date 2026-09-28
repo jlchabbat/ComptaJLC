@@ -390,6 +390,89 @@ class PremierDemarrage(TestCase):
         self.assertEqual(self.client.get("/").status_code, 200)
 
 
+
+class Licences(TestCase):
+    """Étape 3 : sites créés par l'assistant ; essai, lecture seule, licence signée ; le site de la Loge est exempté."""
+
+    def setUp(self):
+        from unittest import mock
+
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        from . import licence
+        self.licence = licence
+        self.cle = Ed25519PrivateKey.generate()
+        publique = licence._b64(self.cle.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw))
+        patch = mock.patch.object(licence, "CLE_PUBLIQUE", publique)
+        patch.start()
+        self.addCleanup(patch.stop)
+        referentiels_saisie()
+        call_command("migrate", verbosity=0)
+        self.u = User.objects.create_user("admin", password="x")
+        from .vues_utilisateurs import donner_role
+        donner_role(self.u, "Administrateur")
+        self.client.force_login(self.u)
+
+    def site_neuf(self, il_y_a):
+        Reglage.objects.create(cle="demarrage", valeur="fait")
+        Reglage.objects.create(cle="demarrage_le", valeur=(dt.date.today() - dt.timedelta(days=il_y_a)).isoformat())
+
+    def test_site_de_la_loge_exempte(self):
+        self.assertEqual(self.licence.etat()["code"], "exempt")
+        self.assertNotContains(self.client.get("/"), "Licence")
+
+    def test_essai_puis_lecture_seule_puis_licence(self):
+        self.site_neuf(10)
+        e = self.licence.etat()
+        self.assertEqual((e["code"], e["lecture_seule"]), ("essai", False))
+        self.assertContains(self.client.get("/"), "50 jour(s) restant(s)")
+        Reglage.objects.filter(cle="demarrage_le").update(valeur=(dt.date.today() - dt.timedelta(days=61)).isoformat())
+        self.assertTrue(self.licence.etat()["lecture_seule"])
+        n = Mouvement.objects.count()
+        r = self.client.post("/codes/", {"nouveau_code": "1"}, follow=True)
+        self.assertContains(r, "Période d&#x27;essai terminée")
+        self.assertEqual(Mouvement.objects.count(), n)
+        self.assertEqual(self.client.get("/ecritures/").status_code, 200)            # consultation
+        self.assertEqual(self.client.post("/echanges/", {"exporter": "Tiers"}).status_code, 200)   # export permis
+        fin = dt.date.today() + dt.timedelta(days=365)
+        texte = self.licence.signer(self.cle, "Amis du musée", "testserver", fin)
+        self.client.post("/licence/", {"licence": texte[:40] + "\n" + texte[40:]})          # coupée par un retour à la ligne
+        e = self.licence.etat()
+        self.assertEqual((e["code"], e["licence"]["association"]), ("valide", "Amis du musée"))
+        self.assertTrue(Modification.objects.filter(action="Licence enregistrée").exists())
+
+    def test_licence_falsifiee_ou_d_un_autre_site(self):
+        self.site_neuf(0)
+        fin = dt.date.today() + dt.timedelta(days=30)
+        autre = self.licence.signer(self.cle, "Club", "club.pythonanywhere.com", fin)
+        Reglage.objects.create(cle="licence", valeur=autre)
+        self.assertEqual(self.licence.etat()["code"], "invalide")
+        bonne = self.licence.signer(self.cle, "Club", "*", fin)
+        contenu = bonne.split(".")[1]
+        fausse = bonne.replace(contenu, self.licence._b64(b'{"a": "Club", "s": "*", "f": "2099-12-31"}'))
+        with self.assertRaises(self.licence.LicenceInvalide):
+            self.licence.lire(fausse)
+        Reglage.objects.filter(cle="licence").update(valeur=bonne)
+        self.assertEqual(self.licence.etat()["code"], "valide")
+        Reglage.objects.filter(cle="licence").update(valeur=self.licence.signer(self.cle, "Club", "*", dt.date.today() - dt.timedelta(days=1)))
+        self.assertEqual(self.licence.etat()["code"], "expiree")
+
+    def test_commande_de_l_editeur(self):
+        d = Path(tempfile.mkdtemp())
+        out = io.StringIO()
+        call_command("licence", "cles", dossier=str(d), stdout=out)
+        self.assertTrue((d / "privee.pem").exists())
+        with self.assertRaises(Exception):
+            call_command("licence", "cles", dossier=str(d), stdout=io.StringIO())      # jamais remplacée
+        out = io.StringIO()
+        call_command("licence", "creer", association="Club", site="club.pythonanywhere.com", fin="2027-12-31", dossier=str(d), stdout=out)
+        texte = out.getvalue().strip()
+        out = io.StringIO()
+        call_command("licence", "verifier", texte, dossier=str(d), stdout=out)
+        self.assertIn("Club · site : club.pythonanywhere.com · fin : 31/12/2027", out.getvalue())
+
+
 class Ecrans(TestCase):
     def setUp(self):
         referentiels_saisie()

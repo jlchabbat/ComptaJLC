@@ -42,3 +42,7 @@ Releves/
 appli/data/
 data/
 Exports/
+
+# clé privée des licences (éditeur)
+comptabb-licence/
+*.pem

@@ -59,6 +59,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données (sauvegardes, rechargement)</a>{% endif %}
 <div class="groupe">Installation</div>
 <a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>
+{% if licence_etat and perms.compta.parametrer %}{% url 'licence' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Licence</a>{% endif %}
 </div></div>{% endif %}
 </nav>
 <span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
@@ -97,5 +98,5 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
   var x = document.getElementById("vers-excel");                 // « Excel » : les tableaux de la page, mêmes filtres
   if (x && document.querySelector("main table")) { var u = new URL(location.href); u.searchParams.delete("page");
     u.searchParams.set("tout", "1"); u.searchParams.set("export", "xlsx"); x.href = u.pathname + u.search; x.hidden = false; } });</script>
-<main>{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
+<main>{% if licence_etat.message and licence_etat.lecture_seule or licence_etat.message and perms.compta.parametrer %}<div class="carte message {% if licence_etat.lecture_seule %}error{% else %}warning{% endif %}">{{ licence_etat.message }}{% if perms.compta.parametrer %} <a href="{% url 'licence' %}">Licence</a>{% endif %}</div>{% endif %}{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
 </body></html>

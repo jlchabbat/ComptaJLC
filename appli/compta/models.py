@@ -120,7 +120,7 @@ class Reglage(models.Model):
     """Hypothèses nommées (RG-06) : compte de virement interne, compte d'attente…"""
 
     cle = models.CharField("clé", max_length=40, primary_key=True)
-    valeur = models.CharField(max_length=200, blank=True)
+    valeur = models.CharField(max_length=500, blank=True)
     description = models.CharField(max_length=200, blank=True)
 
     class Meta:
