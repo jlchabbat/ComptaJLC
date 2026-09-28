@@ -32,7 +32,8 @@ def type_mime(j):
 
 def _nom_sur(nom):
     nom = unicodedata.normalize("NFKD", nom).encode("ascii", "ignore").decode()
-    nom = re.sub(r"[^A-Za-z0-9._-]+", "_", nom).strip("._") or "document"
+    nom = re.sub(r"[^A-Za-z0-9._+ -]+", "_", nom)            # espaces et « + » gardés : « 389+412 facture.pdf »
+    nom = re.sub(r" {2,}", " ", nom).strip("._ ") or "document"
     return nom[-80:]
 
 
@@ -175,6 +176,30 @@ def rapatrier_tous(auteur="", limite=None):
     return faits, erreurs, Justificatif.objects.exclude(lien="").count()
 
 
+def copier(j, mouvement, auteur=""):
+    """Joint aussi le document du justificatif j à un autre mouvement (copie du fichier, ou même lien)."""
+    if mouvement.pk == j.mouvement_id:
+        raise ValueError(f"Ce document est déjà joint au mouvement {mouvement.numero}.")
+    if j.lien:
+        return ajouter_lien(mouvement, j.lien, j.nom, j.description, auteur)
+    from django.core.files import File
+    source = chemin(j)
+    if not source or not source.exists():
+        raise ValueError(f"Fichier de « {j.nom} » introuvable sur le site.")
+    with open(source, "rb") as flux:
+        copie = ajouter(mouvement, File(flux, name=j.nom), j.description or f"aussi joint au Mvt {j.mouvement.numero}", auteur)
+    return copie
+
+
+def numeros(texte):
+    """N° de Mvt d'une saisie « 389 », « 389+412 », « 389, 412 » (dans l'ordre, sans doublon)."""
+    vus = []
+    for n in re.findall(r"\d+", texte or ""):
+        if int(n) not in vus:
+            vus.append(int(n))
+    return vus
+
+
 def refus_suppression(j):
     if Exercice.date_close(j.mouvement.date):
         return "Mouvement dans un exercice clos : ses justificatifs ne se suppriment plus."
@@ -254,14 +279,27 @@ def _nombre(texte):
     return Decimal(texte.replace(",", "."))
 
 
+def numeros_en_tete(nom):
+    """N° de Mvt en tête du nom, suivis d'une espace : « 389 facture.pdf » → [389] ; « 389+412 x.pdf » → [389, 412].
+    Dossiers du ZIP (« dossier__ ») ignorés."""
+    m = re.match(r"(\d{1,6}(?:\+\d{1,6})*) ", nom.split("__")[-1])
+    return numeros(m.group(1)) if m else []
+
+
 def proposer(nom):
     """Mouvement proposé d'après le nom du fichier : (mouvement ou None, raison, sûr)."""
     import datetime as dt
     from django.db.models import Q
     from .models import Ligne, Mouvement
     base = nom.rsplit(".", 1)[0]
-    m = re.search(r"(?i)(?:^|[^a-z])mvt[\s_.\-n°o]*(\d{1,6})", base) or re.match(r"(\d{1,6}) ", base.split("__")[-1])
-    # « Mvt 389 … » ou « 389 facture » (n° de Mvt en tête du nom, suivi d'une espace) ; dossiers du ZIP ignorés
+    en_tete = numeros_en_tete(nom)
+    if en_tete:                                             # « 389 facture » ou « 389+412 facture » : n° de Mvt en tête
+        mvts = [Mouvement.objects.filter(numero=n).first() for n in en_tete]
+        texte = "+".join(map(str, en_tete))
+        if all(mvts):
+            return mvts[0], f"« {texte} » en tête du nom" + (" (plusieurs mouvements)" if len(mvts) > 1 else ""), True
+        return None, "Mvt " + ", ".join(str(n) for n, mv in zip(en_tete, mvts) if not mv) + " inconnu", False
+    m = re.search(r"(?i)(?:^|[^a-z])mvt[\s_.\-n°o]*(\d{1,6})", base)
     if m:
         mv = Mouvement.objects.filter(numero=int(m.group(1))).first()
         return (mv, f"« Mvt {m.group(1)} » dans le nom", True) if mv else (None, f"Mvt {m.group(1)} inconnu", False)
@@ -458,8 +496,10 @@ def a_classer():
     for f in sorted(a_classer_dossier().iterdir(), key=lambda p: p.name.lower()):
         if f.is_file() and f.name != "liens.json":
             mv, raison, sur = proposer(re.sub(r"__doublon_[b-z]", "", f.name))
+            en_tete = numeros_en_tete(re.sub(r"__doublon_[b-z]", "", f.name))
             res.append({"nom": f.name, "affiche": nom_affiche(f.name), "taille": f.stat().st_size, "mouvement": mv,
-                        "raison": raison, "sur": sur})
+                        "raison": raison, "sur": sur,
+                        "saisie": "+".join(map(str, en_tete)) if mv and len(en_tete) > 1 else ""})
     return res
 
 

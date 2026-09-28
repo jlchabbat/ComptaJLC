@@ -14,7 +14,9 @@
 <td>{{ j.ajoute_le|date:"d/m/Y H:i" }}{% if j.ajoute_par %} · {{ j.ajoute_par }}{% endif %}</td>
 <td>{% if not j.lien %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
 {% if perms.compta.change_mouvement and not refus_suppression %}<form method="post" action="{% url 'justificatif_supprimer' j.pk %}" style="display:inline">{% csrf_token %}
-<button onclick="return confirm('Supprimer ce justificatif ?')">Supprimer</button></form>{% endif %}</td></tr>{% endfor %}</table>
+<button onclick="return confirm('Supprimer ce justificatif ?')">Supprimer</button></form>{% endif %}
+{% if peut_joindre %}<form method="post" action="{% url 'justificatif_copier' j.pk %}" style="display:inline" title="Joindre aussi ce document à un autre mouvement (plusieurs : 412+430)">{% csrf_token %}
+<input name="mvt" size="7" inputmode="numeric" placeholder="n° Mvt" required> <button>Joindre aussi</button></form>{% endif %}</td></tr>{% endfor %}</table>
 {% if refus_suppression %}<p class="aide">{{ refus_suppression }}</p>{% endif %}
 {% else %}<p class="aide">Aucun document joint à ce mouvement.</p>{% endif %}
 {% if a_classer %}<form method="post" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}

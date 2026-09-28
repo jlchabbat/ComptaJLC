@@ -18,6 +18,7 @@ urlpatterns = [
     path("justificatifs/a-classer/", vues_justificatifs.a_classer, name="justificatifs_a_classer"),
     path("justificatifs/a-classer/voir/", vues_justificatifs.voir_a_classer, name="justificatif_a_classer_voir"),
     path("justificatif/<int:pk>/supprimer/", vues_justificatifs.supprimer, name="justificatif_supprimer"),
+    path("justificatif/<int:pk>/copier/", vues_justificatifs.copier, name="justificatif_copier"),
     path("mouvement/<int:numero>/", views.mouvement, name="mouvement"),
     path("mouvement/<int:numero>/modifier/", vues_corrections.modifier, name="mouvement_modifier"),
     path("mouvement/rappel/", vues_corrections.rappeler, name="mouvement_rappel"),

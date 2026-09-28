@@ -77,6 +77,26 @@ def voir(request, pk):
 
 @login_required
 @require_POST
+def copier(request, pk):
+    """Joindre aussi ce document à d'autres mouvements (« 412 » ou « 412+430 »)."""
+    if not peut_ajouter(request.user):
+        raise PermissionDenied
+    j = get_object_or_404(Justificatif.objects.select_related("mouvement"), pk=pk)
+    for n in moteur.numeros(request.POST.get("mvt", "")) or [None]:
+        cible = Mouvement.objects.filter(numero=n).first() if n else None
+        if not cible:
+            messages.error(request, f"Mvt {n or '(vide)'} inconnu : « {j.nom} » n'y est pas joint.")
+            continue
+        try:
+            moteur.copier(j, cible, request.user.get_username())
+            messages.success(request, f"« {j.nom} » joint aussi au mouvement {cible.numero}.")
+        except ValueError as e:
+            messages.error(request, str(e))
+    return redirect("mouvement", j.mouvement.numero)
+
+
+@login_required
+@require_POST
 def supprimer(request, pk):
     if not request.user.has_perm("compta.change_mouvement"):
         raise PermissionDenied
@@ -128,14 +148,18 @@ def a_classer(request):
             for i, nom in enumerate(request.POST.getlist("nom")):
                 if not request.POST.get(f"garder_{i}"):
                     continue
-                numero = request.POST.get(f"mvt_{i}", "").strip()
-                m = Mouvement.objects.filter(numero=numero).first() if numero.isdigit() else None
-                if not m:
-                    erreurs.append(f"« {moteur.nom_affiche(nom)} » : n° de Mvt {numero or 'vide'} inconnu, non rattaché.")
+                saisie = request.POST.get(f"mvt_{i}", "").strip()
+                nums = moteur.numeros(saisie)                     # « 389 » ou « 389+412 » : plusieurs mouvements
+                mvts = [Mouvement.objects.filter(numero=n).first() for n in nums]
+                if not nums or not all(mvts):
+                    inconnus = ", ".join(str(n) for n, mv in zip(nums, mvts) if not mv) or "vide"
+                    erreurs.append(f"« {moteur.nom_affiche(nom)} » : n° de Mvt {inconnus} inconnu, non rattaché.")
                     continue
                 try:
-                    moteur.rattacher(nom, m, request.POST.get(f"desc_{i}", "").strip(), auteur)
+                    j = moteur.rattacher(nom, mvts[0], request.POST.get(f"desc_{i}", "").strip(), auteur)
                     faits += 1
+                    for autre in mvts[1:]:
+                        moteur.copier(j, autre, auteur)
                 except ValueError as e:
                     erreurs.append(str(e))
             messages.success(request, f"{faits} document(s) rattaché(s) à leur mouvement.")

@@ -2185,12 +2185,49 @@ class JustificatifsExistants(TransactionTestCase):
         r = self.client.post("/mouvement/5/justificatifs/", {"a_classer": noms, "description": "rappel"}, follow=True)
         self.assertContains(r, "2 document(s) déposé(s) rattaché(s) au mouvement 5")
         self.assertEqual(sorted(Mouvement.objects.get(numero=5).justificatifs.values_list("nom", flat=True)),
-                         ["recu.jpg", "scan_traiteur.pdf"])
+                         ["recu.jpg", "scan traiteur.pdf"])
         self.assertEqual(just.liste_a_classer(), [])
         b = User.objects.create_user("bureau")                 # consultation seulement : ni liste ni rattachement
         donner_role(b, "Bureau")
         self.client.force_login(b)
         self.assertEqual(self.client.post("/mouvement/5/justificatifs/", {"a_classer": ["x"]}).status_code, 403)
+
+    def test_numero_en_tete_et_plusieurs_mouvements(self):
+        import io
+        tampon = io.BytesIO()
+        with zipfile.ZipFile(tampon, "w") as z:
+            z.writestr("Justificatifs/5 facture traiteur.pdf", b"%PDF t")
+            z.writestr("Justificatifs/5+1 facture commune.pdf", b"%PDF c")
+            z.writestr("Justificatifs/sans numero.pdf", b"%PDF s")
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.u)
+        self.client.post("/justificatifs/a-classer/", {"deposer": "1", "fichiers": [SimpleUploadedFile("J.zip", tampon.getvalue())]})
+        page = self.client.get("/justificatifs/a-classer/")
+        lignes = {l["affiche"]: l for l in page.context["lignes"]}
+        self.assertEqual(set(lignes), {"5 facture traiteur.pdf", "5+1 facture commune.pdf", "sans numero.pdf"})
+        self.assertTrue(lignes["5 facture traiteur.pdf"]["sur"])
+        self.assertEqual(lignes["5+1 facture commune.pdf"]["saisie"], "5+1")
+        self.assertContains(page, 'value="5+1"')
+        self.assertFalse(lignes["sans numero.pdf"]["sur"])
+        donnees = {"rattacher": "1", "nom": [l["nom"] for l in page.context["lignes"]]}
+        for i, l in enumerate(page.context["lignes"]):
+            if l["sur"]:
+                donnees.update({f"mvt_{i}": l["saisie"] or str(l["mouvement"].numero), f"garder_{i}": "1"})
+        self.client.post("/justificatifs/a-classer/", donnees)
+        self.assertEqual(sorted(Justificatif.objects.filter(mouvement__numero=5).values_list("nom", flat=True)),
+                         ["5 facture traiteur.pdf", "5+1 facture commune.pdf"])
+        j1 = Justificatif.objects.get(mouvement__numero=1)
+        self.assertEqual(just.chemin(j1).read_bytes(), b"%PDF c")                  # copie pour le Mvt 1
+        self.assertEqual([l["affiche"] for l in just.a_classer()], ["sans numero.pdf"])
+        # depuis la page du mouvement : « Joindre aussi » au Mvt 1
+        j = Justificatif.objects.get(mouvement__numero=5, nom="5 facture traiteur.pdf")
+        self.assertContains(self.client.get("/mouvement/5/"), "Joindre aussi")
+        r = self.client.post(f"/justificatif/{j.pk}/copier/", {"mvt": "1+999"}, follow=True)
+        self.assertContains(r, "joint aussi au mouvement 1")
+        self.assertContains(r, "Mvt 999 inconnu")
+        self.assertEqual(Justificatif.objects.filter(mouvement__numero=1).count(), 2)
+        self.client.post(f"/justificatif/{j.pk}/copier/", {"mvt": "5"})               # déjà sur ce mouvement
+        self.assertEqual(Justificatif.objects.filter(mouvement__numero=5).count(), 2)
 
     def test_depot_zip_et_rattachement(self):
         import io
@@ -2208,7 +2245,7 @@ class JustificatifsExistants(TransactionTestCase):
         lignes = just.a_classer()
         self.assertEqual(len(lignes), 4)
         page = self.client.get("/justificatifs/a-classer/")
-        self.assertContains(page, "Piece_739.pdf")
+        self.assertContains(page, "Piece 739.pdf")
         noms = [l["nom"] for l in page.context["lignes"]]
         self.assertTrue(any("doublon" in n for n in noms))                       # deux « Mvt 5.pdf »
         donnees = {"rattacher": "1", "nom": noms}
@@ -2220,8 +2257,8 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(just.a_classer(), [])
         self.assertEqual(Justificatif.objects.filter(mouvement__numero=5).count(), 2)
         self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=1).values_list("nom", flat=True)),
-                         {"Piece_739.pdf", "photo_recu.jpg"})
-        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=5).values_list("nom", flat=True)), {"Mvt_5.pdf"})
+                         {"Piece 739.pdf", "photo recu.jpg"})
+        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=5).values_list("nom", flat=True)), {"Mvt 5.pdf"})
         # écarter, droits
         just.deposer("inutile.pdf", b"%PDF")
         self.client.post("/justificatifs/a-classer/", {"ecarter": just.a_classer()[0]["nom"]})

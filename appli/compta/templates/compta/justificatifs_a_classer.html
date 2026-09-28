@@ -24,7 +24,7 @@ télécharger alors les PDF sur le PC et les déposer ci-dessus.</p></form>{% en
 <h2>2. Vérifier et rattacher ({{ lignes|length }} document{{ lignes|length|pluralize }} à classer)</h2>
 {% if lignes %}
 <p class="aide">{{ proposes }} proposition{{ proposes|pluralize }}, dont {{ surs }} sûre{{ surs|pluralize }} (déjà cochée{{ surs|pluralize }}).
-Corrigez le n° de Mvt si besoin, cochez les lignes à rattacher, puis <b>Rattacher</b>. Les lignes non cochées restent à classer.
+Corrigez le n° de Mvt si besoin (plusieurs mouvements pour un même document : <b>389+412</b>), cochez les lignes à rattacher, puis <b>Rattacher</b>. Les lignes non cochées restent à classer.
 Cliquez sur un nom pour ouvrir le document.</p>
 <form method="post">{% csrf_token %}
 <div class="barre"><button class="principal" name="rattacher" value="1">Rattacher les lignes cochées</button>
@@ -34,7 +34,7 @@ Cliquez sur un nom pour ouvrir le document.</p>
 {% for l in lignes %}<tr>
 <td><input type="hidden" name="nom" value="{{ l.nom }}"><a href="{% if l.lien %}{{ l.lien }}{% else %}{% url 'justificatif_a_classer_voir' %}?nom={{ l.nom|urlencode }}{% endif %}" target="_blank" rel="noopener">{% if l.lien %}🔗 {% endif %}{{ l.affiche }}</a>
 <div class="aide">{% if l.lien %}{{ l.feuille }}{% if l.date %} · {{ l.date|slice:"8:10" }}/{{ l.date|slice:"5:7" }}/{{ l.date|slice:":4" }}{% endif %}{% if l.montant_extrait %} · {{ l.montant_extrait }}{% endif %}{% elif l.taille >= 1048576 %}{% widthratio l.taille 1048576 1 %} Mo{% else %}{% widthratio l.taille 1024 1 %} Ko{% endif %}</div></td>
-<td><input name="mvt_{{ forloop.counter0 }}" value="{% if l.mouvement %}{{ l.mouvement.numero|stringformat:'d' }}{% endif %}" size="6" inputmode="numeric"></td>
+<td><input name="mvt_{{ forloop.counter0 }}" value="{% if l.saisie %}{{ l.saisie }}{% elif l.mouvement %}{{ l.mouvement.numero|stringformat:'d' }}{% endif %}" size="9"></td>
 <td>{% if l.mouvement %}<a href="{% url 'mouvement' l.mouvement.numero %}" target="_blank" rel="noopener">{{ l.detail }}</a>{% else %}<span class="ko">—</span>{% endif %}</td>
 <td class="n">{% if l.mouvement %}{{ l.montant|shekel }}{% endif %}</td>
 <td class="{% if l.sur %}ok{% else %}aide{% endif %}">{{ l.raison }}</td>
