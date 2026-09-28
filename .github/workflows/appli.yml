@@ -1,8 +1,8 @@
 name: Application ComptaBB
 
-# Tests à chaque envoi ; construction de ComptaBB.exe (Windows) à la demande
-# (bouton « Run workflow ») ou à chaque envoi sur une branche. L'exécutable se
-# récupère en pièce jointe de l'exécution (Artifacts).
+# Tests à chaque envoi. Application PC (ComptaBB.exe) mise de côté pendant la
+# période de tests en ligne : elle n'est construite qu'à la demande (bouton
+# « Run workflow ») ; l'exécutable se récupère dans les Artifacts de l'exécution.
 on:
   push:
   pull_request:
@@ -25,7 +25,7 @@ jobs:
       - run: python -m unittest discover tests
 
   exe:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: tests
     runs-on: windows-latest
     steps:

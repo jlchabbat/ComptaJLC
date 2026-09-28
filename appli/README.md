@@ -1,10 +1,15 @@
 # ComptaBB — application web
 
-Application web (Django) de la comptabilité de l'association. **Pour
-l'instant elle tourne sur le PC du trésorier** : `ComptaBB.exe` démarre
-l'application et ouvre le navigateur ; les données sont dans le dossier
-`data` à côté du programme. Le jour où un hébergeur sera choisi, la même
-application y sera installée pour l'accès à distance (bureau, bénévoles).
+Application web (Django) de la comptabilité de l'association.
+
+> **Période de tests** : l'application est utilisée **en ligne** sur
+> PythonAnywhere (https://comptabb.pythonanywhere.com ; mise à jour :
+> `docs/ComptaBB_protocole_mise_a_jour.pdf`). La version PC (`ComptaBB.exe`,
+> décrite ci-dessous) est **mise de côté** pendant cette période : elle n'est
+> plus construite automatiquement ni mise à jour.
+
+Version PC (en veille) : `ComptaBB.exe` démarre l'application et ouvre le
+navigateur ; les données sont dans le dossier `data` à côté du programme.
 
 ## Installer sur le PC
 
