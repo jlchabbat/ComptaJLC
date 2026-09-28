@@ -103,8 +103,9 @@ def accueil(request, code=None):
     lignes = []
     for l in moteur.a_affecter(journal):
         c, a = saisies.get(l.pk, ("", ""))
-        lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""),
-                       "deja": moteur.deja_en_compta(l) if peut else []})
+        deja = moteur.deja_en_compta(l) if peut else []
+        lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""), "deja": deja,
+                       "pistes": moteur.pistes(l) if peut and not deja else None})
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
         "journaux": js, "journal": journal, "lignes": lignes, "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),

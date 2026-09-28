@@ -678,6 +678,25 @@ class EcransRapprochement(TestCase):
         self.assertEqual(Mouvement.objects.count(), n + 1)                          # reliée, pas d'écriture en plus
         self.assertContains(self.client.get("/rapprochement/B1/"), "Tout le relevé téléchargé est en comptabilité")
 
+    def test_pistes_quand_rien_n_est_propose(self):
+        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 20), rang=1, operation="x", montant=D(-71.93))
+        mv = Mouvement.objects.create(numero=902, date=dt.date(2026, 2, 20), journal_id="B1", piece=902)     # 28 jours avant
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("71.93"), anal2_id="GEN.004")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("71.93"), anal2_id="GEN.004")
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Même montant, date plus éloignée")
+        self.assertContains(page, f'value="{l.pk}:{e.pk}"')                       # reliable malgré la date
+        self.client.post("/rapprochement/B1/", {"relier": f"{l.pk}:{e.pk}"})
+        l.refresh_from_db()
+        self.assertEqual(l.rapprochement.ecritures.get(), e)
+        # même montant déjà relié à une autre ligne (relevé importé deux fois)
+        double = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 21), rang=2, operation="x", montant=D(-71.93))
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "relevé importé deux fois ?")
+        self.assertNotContains(page, f'value="{double.pk}:{e.pk}"')
+        LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 22), rang=3, operation="y", montant=D(-3.21))
+        self.assertContains(self.client.get("/rapprochement/B1/"), "Aucune écriture de ce montant à 60 jours près")
+
     def test_nouvelle_ecriture_malgre_un_montant_proche(self):
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
         mv = Mouvement.objects.create(numero=901, date=dt.date(2026, 2, 1), journal_id="B1", piece=901)

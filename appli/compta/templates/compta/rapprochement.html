@@ -20,7 +20,14 @@ Les lignes laissées vides restent à faire.</p>{% endif %}
 {% if x.erreur %}<ul class="erreurs"><li>{{ x.erreur }}</li></ul>{% endif %}</td>
 <td>{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
-{% if x.deja %}<label class="aide"><input type="checkbox" name="nouvelle_{{ x.l.pk|stringformat:'d' }}"> non, nouvelle écriture</label>{% endif %}</td>{% endif %}</tr>
+{% if x.deja %}<label class="aide"><input type="checkbox" name="nouvelle_{{ x.l.pk|stringformat:'d' }}"> non, nouvelle écriture</label>{% endif %}
+{% with p=x.pistes %}{% if p %}
+{% for e in p.loin %}<div class="piste">Même montant, date plus éloignée : Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
+<button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération malgré la date : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
+{% for e, autre in p.reliees %}<div class="piste">Même montant, Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} déjà relié{% if autre %} à la ligne du relevé du {{ autre.date|date:"d/m/Y" }}{% if autre.reference %} (réf. {{ autre.reference }}){% endif %} : relevé importé deux fois ?{% else %} à une autre ligne.{% endif %}</div>{% endfor %}
+{% for e in p.ailleurs %}<div class="piste">Même montant sur un autre compte : Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }}, compte {{ e.compte_id }} (journal {{ e.mouvement.journal_id }}) : mauvaise banque ?</div>{% endfor %}
+{% if not p.loin and not p.reliees and not p.ailleurs %}<div class="piste">Aucune écriture de ce montant à 60 jours près : absente de la comptabilité, ou montant différent (plusieurs frais regroupés ?).</div>{% endif %}
+{% endif %}{% endwith %}</td>{% endif %}</tr>
 {% empty %}<tr><td colspan="6">Tout le relevé téléchargé est en comptabilité.</td></tr>{% endfor %}</table>
 {% if peut %}<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }} – {{ c.libelle }}">{% endfor %}</datalist>
 <datalist id="codes">{% for c in codes %}<option value="{{ c.code }} – {{ c.libelle }}">{% endfor %}</datalist>{% endif %}

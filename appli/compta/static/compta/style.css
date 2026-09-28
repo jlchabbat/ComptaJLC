@@ -195,3 +195,4 @@ td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; ma
 .message .ligne-aide:not(:first-child)::before { content: "• "; }
 @media print { p.aide, div.aide { background: none; border-left: 2px solid #999; } }
 .formulaire .aide { font-size: 13.5px; padding: 5px 10px; margin: 2px 0 6px; }
+.piste { font-size: 13px; color: #7f6000; background: #fff8e1; border-left: 3px solid #e0b400; padding: 3px 7px; margin: 2px 0; }

@@ -391,6 +391,28 @@ def deja_en_compta(l):
     return list(qs.order_by("mouvement__date", "mouvement__numero"))
 
 
+def pistes(l, jours=60):
+    """Quand rien n'est proposé : pourquoi ? Écritures de même montant hors du cadre habituel.
+
+    loin : non reliées, sur le compte de la banque, à plus de « tolérance » jours (jusqu'à 60) : reliables ;
+    reliees : déjà reliées à une autre ligne du relevé (relevé importé deux fois ?) ;
+    ailleurs : sur un autre compte de trésorerie (5…) à tolérance près : saisies sur la mauvaise banque ?"""
+    ecart, large = dt.timedelta(days=tolerance()), dt.timedelta(days=jours)
+    montant = (dict(debit=l.montant, credit=ZERO) if l.montant > 0 else dict(credit=-l.montant, debit=ZERO))
+    proches = ecritures(l.journal).filter(mouvement__date__range=(l.date - large, l.date + large), **montant)
+    loin = [e for e in proches.filter(rapprochement__isnull=True).order_by("mouvement__date")
+            if abs((e.mouvement.date - l.date).days) > ecart.days]
+    reliees = []
+    for e in proches.filter(rapprochement__isnull=False).order_by("mouvement__date")[:3]:
+        autre = LigneReleve.objects.filter(rapprochement_id=e.rapprochement_id).exclude(pk=l.pk).first()
+        reliees.append((e, autre))
+    ailleurs = list(Ligne.objects.filter(compte__numero__startswith="5", mouvement__date__range=(l.date - ecart, l.date + ecart),
+                                         rapprochement__isnull=True, **montant)
+                    .exclude(compte=l.journal.compte).exclude(mouvement__origine="cloture")
+                    .select_related("mouvement", "compte")[:3])
+    return {"loin": loin[:3], "reliees": reliees, "ailleurs": ailleurs}
+
+
 def libelle_releve(l):
     t = l.traduction
     return (t if t != "À traduire" else l.operation)[:60].upper()
