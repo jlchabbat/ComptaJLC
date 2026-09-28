@@ -183,3 +183,15 @@ a.bouton.principal { background: var(--bleu); color: #fff; border-color: var(--b
 /* Justificatifs existants : proposition sûre / absente */
 td.ok, span.ok { color: var(--ok); }
 span.ko { color: var(--ko); }
+
+/* ===== Aides et messages plus visibles (demande du trésorier) : encadrées, plus grandes, une remarque par ligne ===== */
+p.aide, div.aide { color: #1f3864; font-size: 14.5px; line-height: 1.55; background: #eef3fb; border-left: 4px solid #5b7fb8;
+  border-radius: 4px; padding: 8px 12px; margin: 8px 0 12px; }
+span.aide, td.aide, .aide { color: #34495e; font-size: 14px; }
+td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; margin: 0; }
+.aide .ligne-aide + .ligne-aide, .message .ligne-aide + .ligne-aide { margin-top: 4px; }
+.ligne-aide { display: block; }
+.message { font-size: 15px; line-height: 1.55; }
+.message .ligne-aide:not(:first-child)::before { content: "• "; }
+@media print { p.aide, div.aide { background: none; border-left: 2px solid #999; } }
+.formulaire .aide { font-size: 13.5px; padding: 5px 10px; margin: 2px 0 6px; }

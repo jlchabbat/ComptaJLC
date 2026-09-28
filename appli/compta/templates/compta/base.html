@@ -61,6 +61,26 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
+<script>addEventListener("DOMContentLoaded", function () {     // aides et messages : une remarque par ligne
+  // coupe après « . » suivi d'une majuscule (et, dans les messages, autour de « ; » et « · »),
+  // seulement dans le texte de premier niveau (jamais dans une balise ni dans un passage en gras ou un lien)
+  var phrase = /(?<=\.)\s+(?=[A-ZÀ-ÖØ-Ý«(]|$)/,                                   // aides : une phrase par ligne
+      message = /(?<=\.)\s+(?=[A-ZÀ-ÖØ-Ý«(]|$)|\s;\s|\s·\s(?=[A-ZÀ-ÖØ-Ý«0-9])/;    // messages : aussi « ; » et « · »
+  document.querySelectorAll("p.aide, div.aide, .message").forEach(function (bloc) {
+    var coupe = bloc.classList.contains("message") ? message : phrase;
+    var morceaux = [""], niveau = 0;
+    bloc.innerHTML.trim().split(/(<[^>]+>)/).forEach(function (t) {
+      if (t.charAt(0) === "<") {
+        if (/^<\//.test(t)) niveau--; else if (!/\/>$|^<(br|img|input|wbr)\b/i.test(t)) niveau++;
+        morceaux[morceaux.length - 1] += t;
+      } else if (niveau > 0) morceaux[morceaux.length - 1] += t;
+      else t.split(coupe).forEach(function (x, k) { if (k) morceaux.push(""); morceaux[morceaux.length - 1] += x; });
+    });
+    morceaux = morceaux.filter(function (m) { return m.trim(); });
+    if (morceaux.length > 1)
+      bloc.innerHTML = morceaux.map(function (m) { return '<span class="ligne-aide">' + m + "</span>"; }).join("");
+  });
+});</script>
 <script>addEventListener("DOMContentLoaded", function () {     // les en-têtes de tableau restent sous la barre des boutons
   var b = document.querySelector("main > .barre"); if (b) document.documentElement.style.setProperty("--haut-barre", b.offsetHeight + "px");
   var propres = document.querySelector("main .barre [onclick*='print']");     // la page a déjà ses boutons Excel et PDF
