@@ -1669,8 +1669,13 @@ class Echanges(TransactionTestCase):
                 ws.cell(r, 3).value = premier + 7000                      # autre numérotation
                 ws.cell(r, 4).value = 1
                 ws.cell(r, 6).value = f"LIBELLE BANQUE {r}"
-        ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "600100", "INCONNU", 1, None, ws["I2"].value, None])
-        ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "512000", "INCONNU", None, 1, ws["I2"].value, None])
+        ws.append([dt.datetime(2020, 5, 5), "OD", 8888, 1, "600100", "INCONNU", 1, None, ws["I2"].value, None])
+        ws.append([dt.datetime(2020, 5, 5), "OD", 8888, 1, "512000", "INCONNU", None, 1, ws["I2"].value, None])
+        # Mvt dont le montant diffère sur le site : le rapport propose le Mvt du site et la différence
+        m2 = m                                                            # seul Mvt de la base d'essai
+        for i, l in enumerate(m2.lignes.order_by("ordre")):
+            ws.append([m2.date, m2.journal_id, 9999, m2.piece, l.compte_id, "LIBELLE MODIFIE",
+                       (l.debit + 1) if l.debit else None, (l.credit + 1) if l.credit else None, l.anal2_id, None])
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
         self.assertEqual(ech.format_de("Libellés_2026-09-27.xlsx").nom, "Libelles")          # accent et majuscule admis
         self.assertEqual(ech.format_de("LIBELLES.xlsx").nom, "Libelles")
@@ -1678,8 +1683,14 @@ class Echanges(TransactionTestCase):
         n = Mouvement.objects.count()
         r = self.importer("Libelles_2026-09-27.xlsx")
         self.assertContains(r, "1 mouvement(s) : libellés mis à jour")
-        self.assertContains(r, "1 introuvable(s) sur le site")
+        self.assertContains(r, "2 introuvable(s) sur le site")
         self.assertContains(r, "Mvt du fichier 8888")
+        rapport = next(ech.exports().glob("Ecarts_libelles_*.xlsx"))
+        feuille = openpyxl.load_workbook(rapport)["Introuvables"]
+        self.assertEqual(feuille["A2"].value, 8888)
+        self.assertIn("absent du site", feuille["K2"].value)
+        self.assertEqual((feuille["A3"].value, feuille["F3"].value), (9999, m2.numero))
+        self.assertIn("montant", feuille["K3"].value)
         self.assertEqual(Mouvement.objects.count(), n)                                  # rien de créé
         m.refresh_from_db()
         self.assertTrue(all(l.libelle.startswith("LIBELLE BANQUE") for l in m.lignes.all()))

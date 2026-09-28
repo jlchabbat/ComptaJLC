@@ -514,7 +514,7 @@ def imp_libelles(lignes, fichier, utilisateur=None):
     en_base = defaultdict(list)
     for m in Mouvement.objects.prefetch_related("lignes"):
         en_base[empreinte(m.date, m.journal_id, [(l.compte_id, l.debit, l.credit) for l in m.lignes.all()])].append(m)
-    faits, identiques, introuvables, ambigus, clos, vus = 0, 0, [], [], [], set()
+    faits, identiques, introuvables, ambigus, clos, vus, ecarts = 0, 0, [], [], [], set(), []
     for numero, ls in sorted(mvts.items(), key=lambda x: x[0] or 0):
         if numero is None:
             continue
@@ -523,6 +523,7 @@ def imp_libelles(lignes, fichier, utilisateur=None):
             candidats = [m for m in candidats if m.numero == numero] or candidats
         if not candidats:
             introuvables.append(numero)
+            ecarts.append((numero, ls))
             continue
         if len(candidats) > 1:
             ambigus.append(f"{numero} (site : " + ", ".join(str(m.numero) for m in candidats) + ")")
@@ -563,7 +564,80 @@ def imp_libelles(lignes, fichier, utilisateur=None):
                       f"Mvt du fichier {liste(introuvables)})")
     if ambigus:
         resume.append(f"{len(ambigus)} ambigu(s), non modifié(s) : Mvt du fichier {liste(ambigus)}")
+    if ecarts:
+        chemin = rapport_ecarts(ecarts, vus)
+        resume.append(f"détail des introuvables et mouvement le plus proche sur le site : {chemin.name} "
+                      "(Imports / Exports › Télécharger)")
     return " ; ".join(resume)
+
+
+def _decrire(lignes):
+    """« 512000 D 450,00 | 600100 C 450,00 » : comptes et montants d'un Mvt."""
+    return " | ".join(f"{c} {'D' if d else 'C'} {(d or cr):.2f}".replace(".", ",") for c, d, cr in sorted(lignes))
+
+
+def plus_proche(date, journal, lignes, deja_pris=()):
+    """Mvt du site le plus ressemblant (date à 10 jours près) et les différences, ou (None, "")."""
+    import datetime as dt
+    total = sum((d for _, d, _ in lignes), ZERO)
+    fichier = {(c, d, cr) for c, d, cr in lignes}
+    meilleur, score_max = None, 0
+    for m in Mouvement.objects.filter(date__range=(date - dt.timedelta(days=10), date + dt.timedelta(days=10))
+                                      ).prefetch_related("lignes"):
+        site = {(l.compte_id, l.debit, l.credit) for l in m.lignes.all()}
+        score = (3 if m.date == date else 0) + (2 if m.journal_id == journal else 0) + 2 * len(fichier & site) \
+            + len({c for c, _, _ in fichier} & {c for c, _, _ in site}) + (2 if m.total_debit == total else 0) \
+            - abs((m.date - date).days) * 0.2 - (1 if m.pk in deja_pris else 0)
+        if score > score_max:
+            meilleur, score_max = m, score
+    if not meilleur or score_max < 3:
+        return None, "aucun mouvement ressemblant sur le site (à 10 jours près) : absent du site ?"
+    m = meilleur
+    site = [(l.compte_id, l.debit, l.credit) for l in m.lignes.all()]
+    diff = []
+    if m.date != date:
+        diff.append(f"date {date:%d/%m/%Y} → {m.date:%d/%m/%Y}")
+    if m.journal_id != journal:
+        diff.append(f"journal {journal} → {m.journal_id}")
+    if m.total_debit != total:
+        diff.append(f"montant {total:.2f} → {m.total_debit:.2f}".replace(".", ","))
+    comptes_f, comptes_s = {c for c, _, _ in lignes}, {c for c, _, _ in site}
+    if comptes_f != comptes_s:
+        diff.append("comptes " + ", ".join(sorted(comptes_f - comptes_s)) + " → " + ", ".join(sorted(comptes_s - comptes_f)))
+    if not diff:
+        diff.append("répartition des lignes différente")
+    if m.pk in deja_pris:
+        diff.append("ce Mvt du site a déjà reçu les libellés d'un autre Mvt du fichier")
+    return m, " ; ".join(diff)
+
+
+def rapport_ecarts(ecarts, deja_pris=()):
+    """Exports/Ecarts_libelles_<date>.xlsx : Mvt du fichier introuvables, Mvt du site le plus proche, différences."""
+    import datetime as dt
+    lignes = []
+    for numero, ls in ecarts:
+        date, jnl = ls[0][1], ls[0][2]
+        detail = [(x[3], x[5], x[6]) for x in ls]
+        m, diff = plus_proche(date, jnl, detail, deja_pris)
+        lignes.append([numero, date, jnl, _decrire(detail), " | ".join(dict.fromkeys(x[4] for x in ls if x[4])),
+                       m.numero if m else None, m.date if m else None, m.journal_id if m else None,
+                       _decrire([(l.compte_id, l.debit, l.credit) for l in m.lignes.all()]) if m else "",
+                       " | ".join(dict.fromkeys(l.libelle for l in m.lignes.all())) if m else "", diff])
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    ws = export.feuille(wb, "Introuvables", ["Mvt fichier", "Date fichier", "Jnl fichier", "Comptes et montants (fichier)",
+                                             "Libellé du fichier", "Mvt site proposé", "Date site", "Jnl site",
+                                             "Comptes et montants (site)", "Libellé actuel (site)", "Différences"], lignes)
+    for row in ws.iter_rows(min_row=2):
+        for c in row:
+            if isinstance(c.value, (dt.date, dt.datetime)):
+                c.number_format = "DD/MM/YYYY"
+    for col, largeur in zip("ABCDEFGHIJK", (10, 12, 8, 45, 45, 10, 12, 8, 45, 45, 60)):
+        ws.column_dimensions[col].width = largeur
+    ws.freeze_panes = "A2"
+    chemin = exports() / f"Ecarts_libelles_{dt.datetime.now():%Y-%m-%d_%H%M}.xlsx"
+    wb.save(chemin)
+    return chemin
 
 
 # ---- relevés Mizrahi (Banque 1 et Banque 2) et caisse
