@@ -81,6 +81,43 @@ TRIS_ECRITURES = {
 }
 
 
+COLONNES_CIEL = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Debit", "Credit", "Npiece", "Anal", "LibelAnal", "Lettr"]
+
+
+def export_ciel(lignes, debut, fin):
+    """Écritures (période et filtres de la page) au format de contrôle de Ciel Compta : une ligne par ligne d'écriture ;
+    Npiece = code axe 2 (texte), Anal / LibelAnal = code axe 1 du compte et son libellé, Lettr = lettrage."""
+    import io
+
+    import openpyxl
+    from django.http import HttpResponse
+    from openpyxl.styles import Font, PatternFill
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Ecritures"
+    ws.append(COLONNES_CIEL)
+    for c in ws[1]:
+        c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F3864")
+    for l in lignes.order_by("mouvement__date", "mouvement__numero", "ordre"):
+        a1 = l.compte.anal1
+        ws.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle,
+                   float(l.debit), float(l.credit), l.anal2_id or "", a1.code if a1 else "", a1.libelle if a1 else "",
+                   l.lettrage or ""])
+        r = ws.max_row
+        ws.cell(r, 3).number_format = "DD/MM/YYYY"
+        ws.cell(r, 6).number_format = ws.cell(r, 7).number_format = "0.00"
+        for col in (4, 8, 9):                             # codes en texte (Npiece = code axe 2)
+            ws.cell(r, col).number_format = "@"
+    for col, largeur in zip("ABCDEFGHIJK", (8, 7, 11, 14, 34, 12, 12, 12, 10, 28, 7)):
+        ws.column_dimensions[col].width = largeur
+    ws.freeze_panes = "A2"
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    r = HttpResponse(tampon.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    r["Content-Disposition"] = f'attachment; filename="Ecritures_Ciel_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"'
+    return r
+
+
 @login_required
 @consulter
 def ecritures(request):
@@ -98,6 +135,8 @@ def ecritures(request):
         qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
     if f["just"] in ("avec", "sans"):                   # mouvements avec / sans justificatif joint
         qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
+    if request.GET.get("format") == "ciel":
+        return export_ciel(qs, debut, fin)
     d, c, _ = soldes(qs)
     # tri par colonne (sur toutes les pages) : ?tri=<colonne>&ordre=asc|desc
     tri, ordre = request.GET.get("tri", ""), request.GET.get("ordre", "asc")

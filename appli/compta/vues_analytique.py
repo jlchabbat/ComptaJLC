@@ -20,7 +20,7 @@ from .vues_journaux import reponse_excel
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
 SANS_CODE = "(sans code)"
-AXES = {1: "Axe 1 – nature", 2: "Axe 2 – événement ou projet"}
+AXES = {1: "Nature (axe 1)", 2: "Objet (axe 2 : événement, projet)"}
 NATURES = {
     "gestion": {"titre": "Gestion (comptes 6 et 7)", "colonnes": ("Produits", "Charges", "Résultat"), "classes": "67"},
     "bilan": {"titre": "Bilan (comptes 1 à 5)", "colonnes": ("Débit", "Crédit", "Solde"), "classes": "12345"},
@@ -140,7 +140,10 @@ def analytique(request):
             lignes.append(["TOTAL", "", t["a"], t["b"], t["s"]])
             feuille(wb, f"Axe {a['axe']}", ["Code", "Libellé", ctx["col_a"], ctx["col_b"], ctx["col_s"]], lignes, (3, 4, 5))
         return reponse_excel(wb, f"Analytique_{nature}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx")
-    return render(request, "compta/analytique.html", {**ctx, "axes": axes})
+    axe = 2 if request.GET.get("axe") == "2" else 1               # une page par axe : Nature (1), Objet (2)
+    a = next(x for x in axes if x["axe"] == axe)
+    return render(request, "compta/analytique.html", {
+        **ctx, "axes": axes, "axe": axe, "a": dict(a, codes=CodeAnalytique.objects.filter(axe=axe).order_by("libelle", "code"))})
 
 
 def classeur_detail(sections, axe, ctx):
@@ -190,5 +193,5 @@ def analytique_detail(request):
         return classeur_detail(sections, axe, ctx).reponse(nom)
     return render(request, "compta/analytique_detail.html", {
         **ctx, "axe": axe, "titre_axe": AXES[axe], "code": code or "", "sections": sections, "sans_code": SANS_CODE,
-        "codes": CodeAnalytique.objects.filter(axe=axe).order_by("code"),
+        "codes": CodeAnalytique.objects.filter(axe=axe).order_by("libelle", "code"),
         "total": _total([{"a": s["total"]["a"], "b": s["total"]["b"]} for s in sections])})

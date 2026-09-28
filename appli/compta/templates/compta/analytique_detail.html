@@ -4,8 +4,8 @@
 <a class="bouton" href="{% url 'analytique' %}?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">Synthèse analytique</a></div>
 <div class="ecran">
 <form class="filtres" method="get">
-<label>Axe <select name="axe" onchange="this.form.code.value='';this.form.submit()"><option value="1" {% if axe == 1 %}selected{% endif %}>Axe 1 – nature</option><option value="2" {% if axe == 2 %}selected{% endif %}>Axe 2 – événement ou projet</option></select></label>
-<label>Code <select name="code" data-cherchable style="min-width:22em"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.code }} – {{ c.libelle }}</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
+<label>Fenêtre <select name="axe" onchange="this.form.code.value='';this.form.submit()"><option value="1" {% if axe == 1 %}selected{% endif %}>Nature (axe 1)</option><option value="2" {% if axe == 2 %}selected{% endif %}>Objet (axe 2)</option></select></label>
+<label>Libellé <select name="code" data-cherchable style="min-width:22em"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.libelle }} ({{ c.code }})</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
 <label>Comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button></form>
@@ -30,7 +30,7 @@
 <div class="sit-cle"><div class="lib">Opérations</div><div class="val">{{ s.nb_mouvements }}</div><div class="note">{{ s.ecritures|length }} ligne{{ s.ecritures|length|pluralize }}</div></div>
 </section>
 
-<section class="sit-bloc"><h2>Répartition par {% if axe == 1 %}événement / projet (axe 2){% else %}nature (axe 1){% endif %}</h2>
+<section class="sit-bloc"><h2>Répartition par {% if axe == 1 %}objet (axe 2){% else %}nature (axe 1){% endif %}</h2>
 <table class="sit-table"><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
 {% for x in s.autres %}<tr><td>{{ x.code }}</td><td>{{ x.libelle }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td><td class="n {% if x.s < 0 %}neg{% endif %}">{{ x.s|shekel }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}">{{ s.total.s|shekel }}</td></tr></table></section>

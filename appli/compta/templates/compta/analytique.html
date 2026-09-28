@@ -1,18 +1,28 @@
-{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique{% endblock %}{% block contenu %}
-<h1>Analytique – {{ titre_nature }}</h1>
-<div class="barre"><a class="bouton" href="?comptes={{ nature }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a><button type="button" onclick="window.print()">Imprimer / PDF</button>
-<a class="bouton" href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe=1&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">Détail axe 1</a>
-<a class="bouton" href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe=2&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">Détail axe 2</a></div>
-<form class="filtres ecran" method="get"><label>Comptes <select name="comptes" onchange="this.form.submit()">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique – {% if axe == 1 %}Nature{% else %}Objet{% endif %}{% endblock %}{% block contenu %}
+<h1>Analytique – {{ a.titre }}</h1>
+<div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
+<a class="bouton principal" href="?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
+<a class="bouton" href="?axe={% if axe == 1 %}2{% else %}1{% endif %}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{% if axe == 1 %}Voir l'analytique Objet (axe 2){% else %}Voir l'analytique Nature (axe 1){% endif %}</a></div>
+<form class="filtres ecran" method="get"><input type="hidden" name="axe" value="{{ axe }}">
+<label>Comptes <select name="comptes" onchange="this.form.submit()">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button></form>
-<p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %} par code ; clic sur un code pour son détail.</p>
-{% for a in axes %}<section><h2>{{ a.titre }}</h2>
-<table class="triable"><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
-{% for l in a.lignes %}<tr><td><a href="{% url 'analytique_detail' %}?comptes={{ nature }}&axe={{ a.axe }}&code={{ l.code|urlencode }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ l.code }}</a></td>
-<td>{{ l.libelle }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
-<td class="n {% if l.s < 0 %}neg{% endif %}">{{ l.s|shekel }}</td></tr>
+<p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
+Choisir un libellé dans la liste puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
+
+<section class="ana-fenetre ana-axe{{ axe }}">
+<form method="get" action="{% url 'analytique_detail' %}" class="ana-choix">
+<input type="hidden" name="axe" value="{{ axe }}"><input type="hidden" name="comptes" value="{{ nature }}">
+<input type="hidden" name="du" value="{{ debut|date:'Y-m-d' }}"><input type="hidden" name="au" value="{{ fin|date:'Y-m-d' }}">
+<select name="code" data-cherchable aria-label="{{ a.titre }}"><option value="">{% if axe == 1 %}Toutes les natures{% else %}Tous les objets{% endif %}</option>
+{% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle }} ({{ c.code }})</option>{% endfor %}</select>
+<button class="principal">État détaillé</button></form>
+<table class="sit-table ana-synthese"><tr><th>Libellé</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?comptes={{ nature }}&amp;axe={{ axe }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
+<td><b>{{ l.libelle|default:"(sans code)" }}</b></td><td class="code">{{ l.code }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
+<td class="n {% if l.s < 0 %}neg{% endif %}"><b>{{ l.s|shekel }}</b></td></tr>
 {% empty %}<tr><td colspan="5">Aucune opération sur la période.</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ a.total.a|shekel }}</td><td class="n">{{ a.total.b|shekel }}</td>
-<td class="n {% if a.total.s < 0 %}neg{% endif %}">{{ a.total.s|shekel }}</td></tr></table></section>{% endfor %}
+<td class="n {% if a.total.s < 0 %}neg{% endif %}">{{ a.total.s|shekel }}</td></tr></table>
+</section>
 {% endblock %}

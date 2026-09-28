@@ -2228,7 +2228,12 @@ class RapportsAnalytiques(TestCase):
         self.assertEqual([l["code"] for l in axe1["lignes"]], ["(sans code)", "COT.2", "FON.1"])
         self.assertContains(r, "Imprimer")
         self.assertContains(r, "Résultat")
-        self.assertContains(r, "/analytique/detail/?comptes=gestion&axe=2&code=MAN.001")
+        self.assertContains(r, "<h1>Analytique – Nature (axe 1)</h1>")                        # une page par axe
+        self.assertNotContains(r, "RALLYE")
+        r = self.client.get("/analytique/?axe=2&du=2026-01-01&au=2026-12-31")
+        self.assertContains(r, "<h1>Analytique – Objet (axe 2 : événement, projet)</h1>")
+        self.assertContains(r, "/analytique/detail/?comptes=gestion&amp;axe=2&amp;code=MAN.001")
+        self.assertContains(r, '<option value="MAN.001">RALLYE (MAN.001)</option>')             # choix par le libellé
         x = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31&format=xlsx")
         wb = openpyxl.load_workbook(io.BytesIO(x.content))
         self.assertEqual(wb.sheetnames, ["Axe 1", "Axe 2"])
@@ -2296,6 +2301,20 @@ class ExcelDeToutesLesPages(TestCase):
         self.assertIn("Compte", valeurs)
         from . import dossiers as dos
         self.assertTrue(list(dos.exports().glob("Balance_*.xlsx")))            # copie dans Exports
+
+    def test_export_ciel(self):
+        page = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&journal=OD")
+        self.assertContains(page, "Export Ciel (Excel)")
+        self.assertContains(page, "journal=OD&amp;du=2026-01-01&amp;au=2026-12-31&amp;format=ciel")
+        r = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&format=ciel")
+        self.assertIn("Ecritures_Ciel_2026-01-01_2026-12-31.xlsx", r["Content-Disposition"])
+        ws = openpyxl.load_workbook(io.BytesIO(r.content)).active
+        self.assertEqual([c.value for c in ws[1]], ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Debit", "Credit", "Npiece",
+                                                    "Anal", "LibelAnal", "Lettr"])
+        lignes = [[c.value for c in row] for row in ws.iter_rows(min_row=2)]
+        charge = next(l for l in lignes if l[3] == "600000")
+        self.assertEqual((charge[0], charge[5], charge[6]), (600, 1234.5, 0))
+        self.assertEqual(ws.cell(2, 8).number_format, "@")                               # Npiece en texte
 
     def test_toutes_les_lignes_malgre_la_pagination(self):
         for n in range(1, 131):
