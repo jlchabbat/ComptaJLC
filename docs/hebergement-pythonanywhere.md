@@ -23,50 +23,41 @@ Objectif : un essai gratuit, puis, s'il est concluant, l'offre payante
 
 Dans la suite, remplacer `VOTRE_NOM` par cet identifiant.
 
-## 2. Déposer le code
+## 2. Installer (script)
 
-1. Sur GitHub, dépôt **ComptaBB**, choisir la branche (`main` une fois la PR
-   fusionnée), bouton **Code** › **Download ZIP**.
-2. Sur PythonAnywhere, onglet **Files** › **Upload a file** : envoyer le ZIP.
-3. Onglet **Consoles** › **Bash**, puis taper :
-
-```bash
-unzip -q ComptaBB-*.zip && mv ComptaBB-*/ ComptaBB && rm ComptaBB-*.zip
-python3.12 -m venv ~/venv && source ~/venv/bin/activate
-pip install -r ComptaBB/appli/requirements.txt
-```
-
-## 3. Mettre les données
-
-Choisir **une** des trois possibilités, puis lancer la préparation.
-
-- **A. Copie d'une base existante** (comptes, fiches et pointages
-  compris) : onglet Files, créer le dossier `comptabb-data` et y envoyer
-  le fichier `comptabb.sqlite3`.
-- **B. Reprise du classeur** : envoyer `ComptaBB.xlsm`, puis après la
-  préparation : `python manage.py importer_classeur ~/ComptaBB.xlsm`.
-- **C. Base vide** pour tester.
+1. Onglet **Web** › **Add a new web app** › **Manual configuration** ›
+   **Python 3.12**.
+2. Sur GitHub, dépôt **ComptaBB**, bouton **Code** › **Download ZIP** ;
+   onglet **Files** › **Upload a file** : envoyer le ZIP.
+3. Onglet **Consoles** › **Bash** :
 
 ```bash
-cd ~/ComptaBB/appli && source ~/venv/bin/activate
-export COMPTABB_DATA=~/comptabb-data
-python manage.py preparer
-python manage.py creer_administrateur # inutile avec la copie A si vos comptes existent déjà
+unzip -qo ComptaBB-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh
 ```
 
-## 4. Créer le site
+Le script (`appli/deploiement/installer.sh`) installe le code et les
+bibliothèques, crée la base vide, écrit le fichier WSGI et `~/maj.sh`, puis
+affiche le **code d'installation**.
 
-Onglet **Web** › **Add a new web app** › **Manual configuration** ›
-**Python 3.12**, puis sur la page de l'application :
+## 3. Régler l'application web
+
+Onglet **Web** :
 
 | Rubrique | Valeur |
 |---|---|
 | Virtualenv | `/home/VOTRE_NOM/venv` |
-| WSGI configuration file | ouvrir le lien, tout remplacer par le contenu de `appli/deploiement/pythonanywhere_wsgi.py` et y mettre votre identifiant (3 endroits) |
 | Static files | URL `/static/`, dossier `/home/VOTRE_NOM/comptabb-data/static` |
 | Force HTTPS | Enabled |
 
-Bouton vert **Reload**, puis ouvrir `https://VOTRE_NOM.pythonanywhere.com`.
+Bouton vert **Reload**.
+
+## 4. Premier démarrage
+
+Ouvrir `https://VOTRE_NOM.pythonanywhere.com` : saisir le code
+d'installation, créer l'administrateur, puis décrire l'association (nom,
+devise, plan de base ou fichiers à importer, exercice, banques, options).
+Pour reprendre des données existantes : Administration › Base de données ›
+recharger une sauvegarde ou un export complet.
 
 ## 5. Au quotidien
 

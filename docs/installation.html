@@ -100,14 +100,7 @@ Parametres.xlsx et une copie de la base).</li>
 <span class="cmd">COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</span>
 
 <h2 class="saut">5. Réglages de l'association</h2>
-<h3>Site neuf : l'assistant de premier démarrage</h3>
-<ol><li>Dans la console du site, <code>python manage.py preparer</code> affiche un <b>code d'installation</b>.</li>
-<li>Ouvrir le site : la page « Bienvenue dans ComptaBB » demande ce code, puis l'identifiant et le mot de passe (12 caractères au moins) de l'administrateur.</li>
-<li>La page « Premier démarrage » décrit l'association : nom, devise, plan comptable (plan de base proposé, ou vos propres fichiers à partir des
-<b>modèles vierges</b>), premier exercice, jusqu'à trois banques avec le format de leur relevé, caisse, options.
-« Démarrer ComptaBB » crée tout d'un coup ; tout reste modifiable ensuite.</li>
-<li>Pour une <b>réinstallation</b>, « Recharger une sauvegarde » remplace l'assistant : Administration › Base de données.</li></ol>
-<p>Un site qui a déjà des journaux ou des écritures (celui de la Loge) ne voit jamais l'assistant.</p>
+
 <p>Chaque association a son propre site ; ce qui lui est propre se règle dans <span class="menu">Administration › Paramètres (Excel)</span>
 (fichier Parametres.xlsx : exporter, modifier la colonne Valeur, réimporter). Une valeur vide désactive l'option.</p>
 <table><tr><th style="width:24%">Clé</th><th style="width:22%">Valeur de la Loge</th><th>Effet</th></tr>
@@ -121,7 +114,41 @@ Parametres.xlsx et une copie de la base).</li>
 <p>Les moyens de paiement, modèles de saisie et modes des fiches déjà créés ne changent pas quand on modifie un réglage :
 ils se corrigent dans <span class="menu">Administration › Référentiels</span>.</p>
 
-<h2>6. Problèmes rencontrés</h2>
+<h2 class="saut">6. Installer le site d'une nouvelle association</h2>
+<p>Chaque association a son propre site, avec le même programme que celui de la Loge et ses propres données. Compter une demi-heure.</p>
+<h3>A. Le compte et l'application web (PythonAnywhere)</h3>
+<ol><li>Sur <b>www.pythonanywhere.com</b> : <b>Pricing &amp; signup</b> › <b>Create a Beginner account</b> (gratuit pour essayer ; environ 5 $ par mois ensuite).
+L'identifiant choisi donne l'adresse du site : <code>amisdumusee</code> → <code>amisdumusee.pythonanywhere.com</code>. Confirmer l'adresse e-mail.</li>
+<li>Onglet <b>Web</b> › <b>Add a new web app</b> › Next › <b>Manual configuration</b> › <b>Python 3.12</b> › Next.</li></ol>
+<h3>B. Le programme</h3>
+<ol><li>Sur GitHub, dépôt ComptaBB, la branche en service › <b>Code</b> › <b>Download ZIP</b>.</li>
+<li>PythonAnywhere, onglet <b>Files</b> › <b>Upload a file</b> : envoyer le ZIP (sans le renommer ni l'ouvrir).</li>
+<li>Onglet <b>Consoles</b> › <b>Bash</b>, puis copier cette ligne et appuyer sur Entrée :</li></ol>
+<span class="cmd">unzip -qo ComptaBB-*.zip -d ~/inst &amp;&amp; bash ~/inst/*/appli/deploiement/installer.sh</span>
+<p>Le script installe le programme et ses bibliothèques (quelques minutes), crée la base vide, écrit le fichier WSGI du site et le script de mise à jour
+<code>~/maj.sh</code>. Il termine par <b>INSTALLATION TERMINÉE</b> et un <b>code d'installation</b> de 8 caractères : le noter.</p>
+<h3>C. Les réglages de l'application web</h3>
+<p>Onglet <b>Web</b>, sur la page de l'application :</p>
+<table><tr><th style="width:30%">Rubrique</th><th>Valeur (remplacer NOM par l'identifiant)</th></tr>
+<tr><td>Virtualenv</td><td><code>/home/NOM/venv</code></td></tr>
+<tr><td>Static files</td><td>URL <code>/static/</code>, dossier <code>/home/NOM/comptabb-data/static</code></td></tr>
+<tr><td>Force HTTPS</td><td>Enabled</td></tr></table>
+<p>Puis le bouton vert <b>Reload</b>.</p>
+<h3>D. Le premier démarrage (dans le navigateur)</h3>
+<ol><li>Ouvrir <code>https://NOM.pythonanywhere.com</code> : la page « Bienvenue dans ComptaBB » demande le <b>code d'installation</b>, puis l'identifiant et le mot de passe
+(12 caractères au moins) de l'administrateur.</li>
+<li>La page « Premier démarrage » décrit l'association : nom, devise, plan comptable (plan de base proposé, ou vos propres fichiers à partir des
+<b>modèles vierges</b>), premier exercice, jusqu'à trois banques avec le format de leur relevé, caisse, options.
+« Démarrer ComptaBB » crée tout d'un coup ; tout reste modifiable ensuite (chapitre 5).</li>
+<li>Créer les utilisateurs (Administration › Utilisateurs) et importer les membres (modèle vierge Tiers).</li>
+<li>Sauvegarde automatique de chaque nuit : chapitre 4 (onglet Tasks), avec l'identifiant de l'association.</li></ol>
+<p>Pour une <b>réinstallation</b> (nouveau compte, données existantes) : après l'étape D.1, « Recharger une sauvegarde » (Administration › Base de données)
+remplace l'assistant. Un site qui a déjà des journaux ou des écritures ne voit jamais l'assistant.</p>
+<h3>E. Les mises à jour</h3>
+<p>Comme pour la Loge (chapitre 3) : envoyer le nouveau ZIP dans Files, puis <code>bash ~/maj.sh</code>. Les données de l'association ne sont jamais touchées.
+Tous les 3 mois avec l'offre gratuite : onglet Web › <b>Run until 3 months from today</b>.</p>
+
+<h2>7. Problèmes rencontrés</h2>
 <table><tr><th style="width:38%">Situation</th><th>Que faire</th></tr>
 <tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaBB/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>
 <tr><td><code>maj.sh</code> : « Aucun fichier ComptaBB-….zip »</td><td>Le ZIP n'est pas envoyé, ou son nom ne commence pas par <code>ComptaBB-</code> : le renommer (chapitre 3).</td></tr>
