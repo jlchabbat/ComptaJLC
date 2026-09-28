@@ -185,6 +185,11 @@ def oui_non(v):
 
 # ---------------------------------------------------------------- formats
 
+def _sans_accent(texte):
+    import unicodedata
+    return unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode().lower()
+
+
 @dataclass
 class Format:
     nom: str                 # nom du fichier, sans extension ni date
@@ -195,7 +200,7 @@ class Format:
     montants: tuple = ()     # colonnes (1 = A) au format montant
 
     def reconnait(self, chemin):
-        return Path(chemin).stem.lower().split("_")[0] == self.nom.lower()
+        return _sans_accent(Path(chemin).stem.split("_")[0].strip()) == self.nom.lower()   # « Libellés_… » = Libelles
 
 
 def maj_ou_cree(modele, cles, valeurs, compteur):

@@ -1672,6 +1672,9 @@ class Echanges(TransactionTestCase):
         ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "600100", "INCONNU", 1, None, ws["I2"].value, None])
         ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "512000", "INCONNU", None, 1, ws["I2"].value, None])
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
+        self.assertEqual(ech.format_de("Libellés_2026-09-27.xlsx").nom, "Libelles")          # accent et majuscule admis
+        self.assertEqual(ech.format_de("LIBELLES.xlsx").nom, "Libelles")
+        self.assertEqual(ech.format_de("Ecritures_2026-09-27_libelles_banque.xlsx").nom, "Ecritures")
         n = Mouvement.objects.count()
         r = self.importer("Libelles_2026-09-27.xlsx")
         self.assertContains(r, "1 mouvement(s) : libellés mis à jour")
