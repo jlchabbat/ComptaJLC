@@ -239,3 +239,7 @@ td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; ma
   .sit-entete { display: flex !important; }
 }
 .sit-parts .pc { white-space: nowrap; }
+.sit-table tr.sit-compte td { background: #e9eef7 !important; font-weight: 700; color: var(--bleu); padding-top: 8px; }
+.sit-table tr.sit-sous-total td { font-style: italic; font-weight: 600; color: var(--bleu); border-bottom: 1.5px solid #9fb0cc; }
+@media print { article.situation.saut + article.situation.saut, article.situation + article.situation.saut { break-before: page; }
+  .sit-table tr.sit-compte td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

@@ -2179,9 +2179,17 @@ class RapportsAnalytiques(TestCase):
         bilan = self.client.get("/analytique/detail/?comptes=bilan&axe=2&code=MAN.001&du=2026-01-01&au=2026-12-31")
         self.assertEqual([c["numero"] for c in bilan.context["sections"][0]["comptes"]], ["411TAIEB001", "530000"])
         x = self.client.get("/analytique/detail/?axe=2&du=2026-01-01&au=2026-12-31&format=xlsx")
-        wb = openpyxl.load_workbook(io.BytesIO(x.content))
-        self.assertEqual(wb.sheetnames, ["Par compte", "Écritures"])
-        self.assertEqual(wb["Écritures"].max_row, 4)                                  # en-tête + 3 lignes
+        ws = openpyxl.load_workbook(io.BytesIO(x.content)).active
+        valeurs = [c.value for row in ws.iter_rows() for c in row if c.value is not None]
+        self.assertIn("État détaillé – MAN.001 – " + s["libelle"], valeurs)           # présentation soignée, un bloc par code
+        self.assertIn("Sous-total 600000", valeurs)
+        self.assertIn("Répartition par axe 1", valeurs)
+        # présentation : chiffres clés, répartition par l'autre axe, détail par compte avec sous-totaux
+        self.assertEqual(s["nb_mouvements"], 2)
+        self.assertEqual([(x["code"], x["s"]) for x in s["autres"]], [("COT.2", D(400)), ("FON.1", D(-150))])
+        self.assertContains(r, "Répartition par nature (axe 1)")
+        self.assertContains(r, "Sous-total 600000")
+        self.assertContains(r, 'data-cherchable')
 
 
 # ---------------------------------------------------------------- Excel et PDF sur toutes les pages
