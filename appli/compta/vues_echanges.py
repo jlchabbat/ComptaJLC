@@ -19,11 +19,8 @@ def echanges(request):
     if request.method == "POST":
         try:
             if "dossiers" in request.POST:
-                pour_le_pc = moteur.changer_dossiers({c: request.POST.get(c, "") for c in moteur.REGLAGES_DOSSIERS}, auteur)
+                moteur.changer_dossiers({c: request.POST.get(c, "") for c in moteur.REGLAGES_DOSSIERS}, auteur)
                 messages.success(request, f"Dossiers enregistrés : Imports = {moteur.imports()} ; Exports = {moteur.exports()}.")
-                if pour_le_pc:
-                    messages.info(request, f"Chemins du PC enregistrés ({' ; '.join(pour_le_pc)}) : ils serviront au programme du PC "
-                                           "(après « Recevoir la base du site ») ; ici, sur le site, les dossiers ci-dessus sont utilisés.")
             elif "deposer" in request.POST:
                 envoyes = request.FILES.getlist("fichiers")
                 if not envoyes:

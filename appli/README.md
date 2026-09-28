@@ -2,35 +2,20 @@
 
 Application web (Django) de la comptabilité de l'association.
 
-> **Période de tests** : l'application est utilisée **en ligne** sur
-> PythonAnywhere (https://comptabb.pythonanywhere.com ; mise à jour :
-> `docs/ComptaBB_protocole_mise_a_jour.pdf`). La version PC (`ComptaBB.exe`,
-> décrite ci-dessous) est **mise de côté** pendant cette période : elle n'est
-> plus construite automatiquement ni mise à jour.
+L'application est utilisée **en ligne** sur PythonAnywhere
+(https://comptabb.pythonanywhere.com ; mise à jour :
+`docs/ComptaBB_protocole_mise_a_jour.pdf`, script `deploiement/maj.sh`).
+L'ancien programme du PC (`ComptaBB.exe`) est abandonné et retiré du dépôt.
 
-Version PC (en veille) : `ComptaBB.exe` démarre l'application et ouvre le
-navigateur ; les données sont dans le dossier `data` à côté du programme.
-
-## Installer sur le PC
-
-1. Récupérer le dossier `ComptaBB` produit par GitHub Actions (onglet
-   Actions › « Application ComptaBB » › Run workflow › Artifacts) et le
-   placer dans `D:\OneDrive\Applications\ComptaBB\appli`.
-2. Double-cliquer `ComptaBB.exe`. Au premier lancement :
-   - créer l'identifiant et le mot de passe de l'administrateur ;
-   - indiquer le classeur `ComptaBB.xlsm` à reprendre (chemin complet).
-3. Le navigateur s'ouvre sur `http://127.0.0.1:8765`. Fermer la fenêtre noire
-   arrête l'application.
-
-Données : `data\comptabb.sqlite3` (à sauvegarder), `data\secret.txt` (ne pas
-partager). Hors de Git.
+Données (hors Git) : dossier `comptabb-data` du site (`comptabb.sqlite3`,
+`secret.txt`, justificatifs, Imports, Exports, sauvegardes).
 
 ## Rôles
 
 | Rôle | Droits |
 |---|---|
 | Administrateur | tous les droits, dont le paramétrage de base : Référentiels (plan comptable, journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), codes d'axe 1, paramètres des relevés, utilisateurs, base de données |
-| Trésorier | tout, sauf le paramétrage de base |
+| Trésorier | l'usage courant : saisie, tiers, consultation, banque, éditions, exports (ni paramétrage, ni imports, ni base de données) |
 | Bureau | consultation seule : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
 | Bénévole | la liaison seulement : ses fiches bénévoles (saisie des lignes, nouveaux tiers provisoires, transmission) |
 
@@ -73,9 +58,7 @@ Remplacent le fichier de liaison Excel (même conventions d'écritures, voir
    lignes reportées sont verrouillées.
 
 Natures et modes de paiement des fiches : Référentiels (modifiables).
-Tant que l'application tourne seulement sur le PC du trésorier, un bénévole
-à distance n'y a pas accès : le trésorier saisit pour lui, ou l'accès distant
-arrive avec l'hébergement.
+Un bénévole se connecte au site avec son propre identifiant (rôle Bénévole).
 
 ## Rapprochement bancaire (W3)
 

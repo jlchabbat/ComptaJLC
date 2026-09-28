@@ -2006,20 +2006,17 @@ class DossiersEtExportComplet(TransactionTestCase):
     def tearDown(self):
         self.reglage.disable()
 
-    def test_chemins_du_pc_ignores_sur_le_site(self):
+    def test_chemins_windows_effaces_et_refuses(self):
         from django.apps import apps
         __import__("importlib").import_module("compta.migrations.0012_dossiers_pc").dossiers_pc(apps, None)
-        self.assertEqual(Reglage.lire("dossier_exports"), r"D:\OneDrive\Applications\ComptaBB\Exports")    # migration 0012
-        self.assertEqual(Reglage.lire("dossier_sauvegardes"), r"D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes")
-        self.assertFalse(dossiers.valable(r"D:\OneDrive\Applications\ComptaBB\Exports"))                  # tests : Linux
-        self.assertEqual(dossiers.exports(), self.racine / "Exports")
+        self.assertEqual(Reglage.lire("dossier_exports"), r"D:\OneDrive\Applications\ComptaBB\Exports")   # ancien programme du PC
+        __import__("importlib").import_module("compta.migrations.0015_sans_programme_pc").effacer_chemins_pc(apps, None)
+        self.assertEqual((Reglage.lire("dossier_exports"), Reglage.lire("dossier_sauvegardes")), ("", ""))
         self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")
-        self.assertEqual(ech.changer_dossiers({"dossier_sauvegardes": r"E:\Sauvegardes"}), [r"E:\Sauvegardes"])    # pour le PC
-        self.assertEqual(Reglage.lire("dossier_sauvegardes"), r"E:\Sauvegardes")
-        self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")                   # ignoré ici
-        self.assertFalse(Path(r"E:\Sauvegardes").exists())                                                # rien de créé ici
-        with self.assertRaises(ech.Refus):
-            ech.changer_dossiers({"dossier_exports": "relatif/Exports"})
+        for chemin in (r"E:\Sauvegardes", "relatif/Exports"):
+            with self.assertRaises(ech.Refus):
+                ech.changer_dossiers({"dossier_sauvegardes": chemin})
+        self.assertEqual(Reglage.lire("dossier_sauvegardes"), "")
 
     def test_tout_exporter_et_sauvegarder(self):
         exp, sauv = self.racine / "Mes exports", self.racine / "Mes sauvegardes"
@@ -2119,91 +2116,6 @@ class ReferentielsEtPages(TransactionTestCase):
             self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"), nom)
             self.assertTrue(b"".join(r.streaming_content).startswith(b"%PDF"))
         self.assertEqual(self.client.get("/documentation/autre.pdf").status_code, 404)
-
-
-# ---------------------------------------------------------------- Recevoir la base du site (programme du PC)
-
-from . import synchro  # noqa: E402
-
-
-class FauxNavigateur:
-    """Le « site » est l'application elle-même, servie par le client de test."""
-
-    def __init__(self, test, avant_envoi=None):
-        from django.test import Client
-        self.client, self.avant_envoi = Client(), avant_envoi
-
-    def _reponse(self, r):
-        contenu = b"".join(r.streaming_content) if r.streaming else r.content
-        finale = r.redirect_chain[-1][0] if getattr(r, "redirect_chain", None) else r.request["PATH_INFO"]
-        return r.status_code, finale, contenu
-
-    def get(self, url):
-        chemin = url.replace(synchro.ADRESSE_PAR_DEFAUT, "")
-        r = self._reponse(self.client.get(chemin, follow=True))
-        if chemin == "/base/telecharger/" and self.avant_envoi:
-            self.avant_envoi()                       # la base du PC diffère de celle du site
-        return r
-
-    def post(self, url, donnees):
-        return self._reponse(self.client.post(url.replace(synchro.ADRESSE_PAR_DEFAUT, ""), donnees, follow=True))
-
-
-@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
-class RecevoirLaBaseDuSite(TransactionTestCase):
-    def setUp(self):
-        self.racine = Path(tempfile.mkdtemp())
-        self.reglage = override_settings(EXPORTS_DIR=self.racine / "Exports", IMPORTS_DIR=self.racine / "Imports")
-        self.reglage.enable()
-        call_command("migrate", verbosity=0)
-        referentiels_saisie()
-        self.chef = User.objects.create_user("chef", password="Site-mdp-2026")
-        donner_role(self.chef, "Administrateur")
-
-    def tearDown(self):
-        self.reglage.disable()
-
-    def test_la_base_du_pc_devient_celle_du_site(self):
-        effacer = lambda: Mouvement.objects.filter(numero=421).delete()  # noqa: E731
-        n, avant = synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "chef", "Site-mdp-2026", FauxNavigateur(self, effacer))
-        self.assertEqual(n, 1)
-        self.assertTrue(Mouvement.objects.filter(numero=421).exists())             # revenu avec la base du site
-        self.assertTrue(avant.exists())                                            # base du PC sauvegardée avant
-        self.assertEqual(Reglage.lire("adresse_site"), synchro.ADRESSE_PAR_DEFAUT)
-        self.assertTrue(Modification.objects.filter(action="Base reçue du site").exists())
-
-    def test_refus(self):
-        with self.assertRaisesRegex(ValueError, "refusé"):
-            synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "chef", "mauvais", FauxNavigateur(self))
-        n, _ = synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, " Chef ", "Site-mdp-2026", FauxNavigateur(self))    # majuscules, espaces
-        self.assertEqual(n, 1)
-        b = User.objects.create_user("bureau", password="Bureau-mdp-2026")
-        donner_role(b, "Bureau")
-        with self.assertRaisesRegex(ValueError, "administrateur"):
-            synchro.recevoir(synchro.ADRESSE_PAR_DEFAUT, "bureau", "Bureau-mdp-2026", FauxNavigateur(self))
-        with self.assertRaisesRegex(ValueError, "https"):
-            synchro.adresse_valide("http://comptabb.pythonanywhere.com")
-        self.assertTrue(Mouvement.objects.filter(numero=421).exists())             # rien de remplacé
-
-    def test_connexion_securisee_du_site(self):
-        """Sur le site (HTTPS, protection CSRF active), le PC se connecte avec l'en-tête Referer qu'il envoie."""
-        import re
-        from django.test import Client
-        hote = "comptabb.pythonanywhere.com"
-        with override_settings(ALLOWED_HOSTS=[hote], CSRF_TRUSTED_ORIGINS=[f"https://{hote}"], CSRF_COOKIE_SECURE=True):
-            c = Client(enforce_csrf_checks=True, HTTP_HOST=hote)
-            jeton = re.search(rb'name="csrfmiddlewaretoken" value="([^"]+)"', c.get("/connexion/", secure=True).content).group(1)
-            r = c.post("/connexion/", {"csrfmiddlewaretoken": jeton.decode(), "username": "chef", "password": "Site-mdp-2026"},
-                       secure=True, HTTP_REFERER=f"https://{hote}/connexion/")
-            self.assertEqual(r.status_code, 302)
-
-    def test_bouton_seulement_sur_le_pc(self):
-        self.client.force_login(self.chef)
-        self.assertNotContains(self.client.get("/base/"), "Recevoir la base du site")          # sur le site
-        r = self.client.get("/base/", HTTP_HOST="127.0.0.1:8765")
-        self.assertContains(r, "Recevoir la base du site")
-        self.assertContains(r, 'value="https://comptabb.pythonanywhere.com"')
-        self.assertContains(r, 'autocomplete="new-password"')                 # pas le mot de passe du PC pré-rempli
 
 
 # ---------------------------------------------------------------- rapports analytiques (axe 1, axe 2)

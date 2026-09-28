@@ -2,7 +2,7 @@
 
 Chacun se paramètre (Administration › Imports / Exports, ou Reglages.xlsx) par les réglages dossier_imports,
 dossier_exports et dossier_sauvegardes ; vide = valeur par défaut (IMPORTS_DIR, EXPORTS_DIR, Exports/Sauvegardes).
-Un chemin Windows (D:\\…) n'a de sens que sur le PC : sur le site, il est ignoré (dossier par défaut).
+Un chemin Windows (D:\\…), hérité de l'ancien programme du PC, est ignoré (dossier par défaut).
 
 Exports/Archives : classeurs de clôture et historiques effacés ; Exports/Parametres.xlsx : paramètres exportés.
 Les fichiers des anciens emplacements (data/sauvegardes, data/archives) sont déplacés au premier accès."""

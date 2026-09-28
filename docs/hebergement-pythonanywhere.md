@@ -1,8 +1,8 @@
 # Héberger ComptaBB sur PythonAnywhere
 
 Objectif : un essai gratuit, puis, s'il est concluant, l'offre payante
-(environ 5 $ par mois, sans engagement). L'application reste la même que
-sur le PC ; seules changent l'adresse et l'endroit où vivent les données.
+(environ 5 $ par mois, sans engagement). L'application n'existe plus qu'en ligne
+(l'ancien programme du PC est abandonné).
 
 ## À savoir avant de commencer
 
@@ -10,10 +10,6 @@ sur le PC ; seules changent l'adresse et l'endroit où vivent les données.
   `https://VOTRE_NOM.pythonanywhere.com`, puissance limitée, et il faut
   cliquer une fois tous les **3 mois** sur « Run until 3 months from today »
   (onglet Web) pour qu'elle reste en ligne. Suffisant pour l'essai.
-- **Deux bases distinctes** : pendant l'essai, la base du PC et celle du site
-  évoluent séparément. Garder le PC comme référence ; au passage définitif,
-  on copie une dernière fois la base du PC vers le site, puis on n'utilise
-  plus que le site (le PC devient un simple navigateur).
 - **Données personnelles** : pour l'essai, on peut mettre une copie des
   vraies données ou partir de zéro. Les mots de passe doivent être solides
   (12 caractères au moins pour le trésorier).
@@ -44,9 +40,9 @@ pip install -r ComptaBB/appli/requirements.txt
 
 Choisir **une** des trois possibilités, puis lancer la préparation.
 
-- **A. Copie de la base du PC** (recommandé : comptes, fiches et pointages
+- **A. Copie d'une base existante** (comptes, fiches et pointages
   compris) : onglet Files, créer le dossier `comptabb-data` et y envoyer
-  `data\comptabb.sqlite3` du PC (ComptaBB fermé).
+  le fichier `comptabb.sqlite3`.
 - **B. Reprise du classeur** : envoyer `ComptaBB.xlsm`, puis après la
   préparation : `python manage.py importer_classeur ~/ComptaBB.xlsm`.
 - **C. Base vide** pour tester.
@@ -94,4 +90,4 @@ sauvegarde de la base, nouveau code, bibliothèques, `preparer`, rechargement ;
 - **On garde** : Account › passer à l'offre payante (environ 5 $/mois), qui
   lève la limite des 3 mois et permet un nom de domaine à soi.
 - **On arrête** : onglet Web › Delete, puis Account › supprimer le compte.
-  L'application du PC continue de fonctionner.
+  Faire d'abord un export complet (Administration › Base de données).

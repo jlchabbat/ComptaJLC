@@ -83,6 +83,7 @@ def detail(debut, fin, axe, nature, code=None):
         qs = qs.filter(**{f"{champ}__isnull": True})
     elif code:
         qs = qs.filter(**{champ: code})
+    libelles_autre = dict(CodeAnalytique.objects.filter(axe=2 if axe == 1 else 1).values_list("code", "libelle"))
     sections = OrderedDict()
     for l in qs:
         c = l.compte.anal1 if axe == 1 else l.anal2
@@ -92,9 +93,8 @@ def detail(debut, fin, axe, nature, code=None):
         cpt = s["comptes"].setdefault(l.compte_id, {"numero": l.compte_id, "libelle": l.compte.libelle, "a": ZERO, "b": ZERO})
         cpt["a"] += a
         cpt["b"] += b
-        s["ecritures"].append({"ligne": l, "autre_axe": (l.anal2_id if axe == 1 else (l.compte.anal1_id or "")) or "",
-                               "a": a, "b": b})
-    libelles_autre = dict(CodeAnalytique.objects.filter(axe=2 if axe == 1 else 1).values_list("code", "libelle"))
+        autre = (l.anal2_id if axe == 1 else (l.compte.anal1_id or "")) or ""
+        s["ecritures"].append({"ligne": l, "autre_axe": autre, "autre_libelle": libelles_autre.get(autre, ""), "a": a, "b": b})
     res = []
     for s in sections.values():
         s["comptes"] = sorted(s["comptes"].values(), key=lambda x: x["numero"])
@@ -170,9 +170,9 @@ def classeur_detail(sections, axe, ctx):
         p.section("Détail par compte")
         for x in sec["comptes"]:
             p.ecrire([f"{x['numero']} – {x['libelle']}"], police=p.police["gras"])
-            p.tableau(["Date", "Mvt", "Pièce", "Libellé", autre, a, b],
+            p.tableau(["Date", "Mvt", "Pièce", "Libellé", "Libellé " + autre.lower(), a, b],
                       [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].mouvement.piece, e["ligne"].libelle,
-                        e["autre_axe"], e["a"] or None, e["b"] or None] for e in x["ecritures"]],
+                        e["autre_libelle"] or e["autre_axe"], e["a"] or None, e["b"] or None] for e in x["ecritures"]],
                       montants=(6, 7), formats={1: "DD/MM/YYYY"})
             p.sous_total(["", "", "", f"Sous-total {x['numero']}", "", x["a"], x["b"]], montants=(6, 7))
         p.ecrire(["Total " + sec["code"], "", "", "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(6, 7))

@@ -5,11 +5,11 @@
 <div class="ecran">
 <form class="filtres" method="get">
 <label>Fenêtre <select name="axe" onchange="this.form.code.value='';this.form.submit()"><option value="1" {% if axe == 1 %}selected{% endif %}>Nature (axe 1)</option><option value="2" {% if axe == 2 %}selected{% endif %}>Objet (axe 2)</option></select></label>
-<label>Libellé <select name="code" data-cherchable style="min-width:22em"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.libelle }} ({{ c.code }})</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
-<label>Comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<label><b>{% if axe == 1 %}Libellé Axe 1 (nature){% else %}Libellé Axe 2 (objet){% endif %}</b> <select name="code" data-cherchable="Taper une partie du libellé…" style="min-width:24em"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
+<label>Type de comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button></form>
-<p class="aide">Choisir l'axe, puis le code (taper une partie du code ou du libellé dans la liste). Pour le PDF : « PDF / Imprimer », imprimante
+<p class="aide">Choisir l'axe, puis le libellé du code axe 1 ou axe 2 (taper une partie du libellé dans la liste ; ce ne sont pas les libellés des comptes). Pour le PDF : « PDF / Imprimer », imprimante
 « Enregistrer au format PDF », et cocher « Graphiques d'arrière-plan » dans « Plus de paramètres ».</p></div>
 
 {% if sections|length > 1 %}<article class="situation">
@@ -36,9 +36,9 @@
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}">{{ s.total.s|shekel }}</td></tr></table></section>
 
 <section class="sit-bloc"><h2>Détail par compte</h2>
-<table class="sit-table"><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>{% if axe == 1 %}Axe 2{% else %}Axe 1{% endif %}</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
+<table class="sit-table"><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>{% if axe == 1 %}Libellé axe 2{% else %}Libellé axe 1{% endif %}</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
 {% for x in s.comptes %}<tr class="sit-compte"><td colspan="7"><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a> – {{ x.libelle }}</td></tr>
-{% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.mouvement.piece }}</td><td>{{ e.ligne.libelle }}</td><td>{{ e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
+{% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.mouvement.piece }}</td><td>{{ e.ligne.libelle }}</td><td title="{{ e.autre_axe }}">{{ e.autre_libelle|default:e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
 <tr class="sit-sous-total"><td colspan="5">Sous-total {{ x.numero }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="5">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} ₪</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
 </article>

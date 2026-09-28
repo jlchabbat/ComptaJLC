@@ -3,21 +3,19 @@
 <div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
 <a class="bouton principal" href="?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
 <a class="bouton" href="?axe={% if axe == 1 %}2{% else %}1{% endif %}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{% if axe == 1 %}Voir l'analytique Objet (axe 2){% else %}Voir l'analytique Nature (axe 1){% endif %}</a></div>
-<form class="filtres ecran" method="get"><input type="hidden" name="axe" value="{{ axe }}">
-<label>Comptes <select name="comptes" onchange="this.form.submit()">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}"><input type="hidden" name="axe" value="{{ axe }}">
+<label><b>{% if axe == 1 %}Libellé Axe 1 (nature){% else %}Libellé Axe 2 (objet){% endif %}</b>
+<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">{% if axe == 1 %}Toutes les natures{% else %}Tous les objets{% endif %}</option>
+{% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}</select></label>
+<button class="principal">État détaillé</button>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
-<button class="principal">Afficher</button></form>
+<label>Type de comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<button formaction="{% url 'analytique' %}">Actualiser le tableau</button></form>
 <p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
-Choisir un libellé dans la liste puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
+La liste contient les libellés des codes {% if axe == 1 %}axe 1 (nature){% else %}axe 2 (objet){% endif %}, pas ceux des comptes. Choisir un libellé puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
 
 <section class="ana-fenetre ana-axe{{ axe }}">
-<form method="get" action="{% url 'analytique_detail' %}" class="ana-choix">
-<input type="hidden" name="axe" value="{{ axe }}"><input type="hidden" name="comptes" value="{{ nature }}">
-<input type="hidden" name="du" value="{{ debut|date:'Y-m-d' }}"><input type="hidden" name="au" value="{{ fin|date:'Y-m-d' }}">
-<select name="code" data-cherchable aria-label="{{ a.titre }}"><option value="">{% if axe == 1 %}Toutes les natures{% else %}Tous les objets{% endif %}</option>
-{% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle }} ({{ c.code }})</option>{% endfor %}</select>
-<button class="principal">État détaillé</button></form>
-<table class="sit-table ana-synthese"><tr><th>Libellé</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+<table class="sit-table ana-synthese"><tr><th>Libellé {% if axe == 1 %}axe 1{% else %}axe 2{% endif %}</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
 {% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?comptes={{ nature }}&amp;axe={{ axe }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
 <td><b>{{ l.libelle|default:"(sans code)" }}</b></td><td class="code">{{ l.code }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
 <td class="n {% if l.s < 0 %}neg{% endif %}"><b>{{ l.s|shekel }}</b></td></tr>

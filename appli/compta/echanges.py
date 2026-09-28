@@ -51,32 +51,26 @@ def importes():
 
 
 def changer_dossiers(valeurs, auteur=""):
-    """Enregistre les chemins des dossiers Imports, Exports et Sauvegardes (vide = dossier par défaut) ; les crée au besoin.
-
-    Sur le site, un chemin Windows (D:\\…) est enregistré pour le programme du PC (qui le reçoit avec la base) mais
-    ignoré sur place. Renvoie ces chemins réservés au PC."""
-    erreurs, pour_le_pc = [], []
+    """Enregistre les chemins des dossiers Imports, Exports et Sauvegardes (vide = dossier par défaut) ; les crée au besoin."""
+    erreurs = []
     for cle, v in valeurs.items():
         v = (v or "").strip().strip('"')
         if v:
-            if dossiers.WINDOWS.match(v) and not dossiers.valable(v):
-                pour_le_pc.append(v)                         # site : gardé pour le PC, sans créer de dossier
-            elif not dossiers.valable(v):
-                erreurs.append(f"{v} : chemin complet attendu (par exemple D:\\OneDrive\\Applications\\ComptaBB\\Exports).")
+            if not dossiers.valable(v):
+                erreurs.append(f"{v} : chemin complet du site attendu (par exemple /home/ComptaBB/comptabb-data/Exports), "
+                               "ou vide pour le dossier par défaut.")
                 continue
-            else:
-                try:
-                    _cree(Path(v))
-                except OSError as e:
-                    erreurs.append(f"{v} : dossier impossible à créer ({e.strerror or e}).")
-                    continue
+            try:
+                _cree(Path(v))
+            except OSError as e:
+                erreurs.append(f"{v} : dossier impossible à créer ({e.strerror or e}).")
+                continue
         avant = Reglage.lire(cle)
         if v != avant:
             Reglage.objects.update_or_create(cle=cle, defaults={"valeur": v, "description": REGLAGES_DOSSIERS[cle][1]})
             Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet=cle, avant=avant, apres=v)
     if erreurs:
         raise Refus(erreurs)
-    return pour_le_pc
 
 
 def tout_exporter(auteur=""):

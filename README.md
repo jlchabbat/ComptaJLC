@@ -1,6 +1,6 @@
 # ComptaBB
 
-> **Application web** : dossier [`appli/`](appli/README.md) (Django). **Période de tests : seule la version en ligne (PythonAnywhere) est utilisée** ; l'application PC `ComptaBB.exe` est mise de côté (construite seulement à la demande). Le classeur Excel des Lots 0 et 1 sert de transition jusqu'à sa mise en service.
+> **Application web** : dossier [`appli/`](appli/README.md) (Django). **Application en ligne (PythonAnywhere)** ; l'ancien programme du PC `ComptaBB.exe` est abandonné. Le classeur Excel des Lots 0 et 1 sert de transition jusqu'à sa mise en service.
 
 Comptabilité de l'association (Loge Bnei Brith, Israël, comptes en ₪),
 tenue directement dans un classeur Excel : saisie guidée pour bénévoles,

@@ -16,19 +16,14 @@ import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-FIGE = getattr(sys, "frozen", False)
-RACINE = Path(sys.executable).resolve().parent if FIGE else BASE_DIR.parent
+RACINE = BASE_DIR.parent
 DATA_DIR = Path(os.environ.get("COMPTABB_DATA", RACINE / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-# Dossiers d'échange (administrateur et trésorier seulement) : Imports (fichiers à réinjecter) et Exports
-# (sauvegardes, archives, paramètres). Sur le PC : à côté de l'application ; sur un hébergeur : dans le dossier
-# des données, pour survivre aux mises à jour du code.
+# Dossiers d'échange (administrateur) : Imports (fichiers à importer) et Exports (sauvegardes, archives, exports).
+# Sur l'hébergeur : dans le dossier des données, pour survivre aux mises à jour du code.
 _ECHANGES = DATA_DIR if os.environ.get("COMPTABB_DATA") else RACINE
 IMPORTS_DIR = Path(os.environ.get("COMPTABB_IMPORTS", _ECHANGES / "Imports"))
-# Programme du PC (…\ComptaBB\appli\ComptaBB.exe) : exports et sauvegardes dans …\ComptaBB\Exports, à côté du dossier appli
-# (D:\OneDrive\Applications\ComptaBB\Exports), même si le réglage dossier_exports est vide.
-EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", (RACINE.parent if FIGE and not os.environ.get("COMPTABB_DATA")
-                                                       else _ECHANGES) / "Exports"))
+EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", _ECHANGES / "Exports"))
 
 
 def _cle_secrete():

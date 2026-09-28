@@ -1,12 +1,9 @@
 name: Application ComptaBB
 
-# Tests à chaque envoi. Application PC (ComptaBB.exe) mise de côté pendant la
-# période de tests en ligne : elle n'est construite qu'à la demande (bouton
-# « Run workflow ») ; l'exécutable est publié dans la Release « application-pc » (ComptaBB-PC.zip).
+# Tests à chaque envoi (l'ancien programme du PC, ComptaBB.exe, n'est plus construit).
 on:
   push:
   pull_request:
-  workflow_dispatch:
 
 jobs:
   tests:
@@ -17,36 +14,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r appli/requirements.txt pyflakes
-      - run: python -m pyflakes appli/compta appli/comptabb appli/lanceur.py src tests
+      - run: python -m pyflakes appli/compta appli/comptabb src tests
       - run: python manage.py test compta
         working-directory: appli
         env:
           COMPTABB_DATA: ${{ runner.temp }}/data
       - run: python -m unittest discover tests
-
-  exe:
-    if: github.event_name == 'workflow_dispatch'
-    needs: tests
-    runs-on: windows-latest
-    permissions:
-      contents: write          # publier ComptaBB-PC.zip dans la Release « application-pc »
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install -r appli/requirements.txt pyinstaller
-      - run: pyinstaller build.spec
-        working-directory: appli
-      # Publication dans une Release (pas un artifact : leur quota de stockage est vite plein) ; lien fixe :
-      # https://github.com/<dépôt>/releases/download/application-pc/ComptaBB-PC.zip
-      - run: Compress-Archive -Path appli/dist/ComptaBB -DestinationPath ComptaBB-PC.zip
-        shell: pwsh
-      - run: |
-          gh release delete application-pc --cleanup-tag --yes 2>$null
-          gh release create application-pc ComptaBB-PC.zip --target $env:GITHUB_SHA --prerelease `
-            --title "Application PC (ComptaBB.exe)" `
-            --notes "Construite depuis $env:GITHUB_REF_NAME ($env:GITHUB_SHA). Décompresser, puis lancer ComptaBB\ComptaBB.exe."
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}

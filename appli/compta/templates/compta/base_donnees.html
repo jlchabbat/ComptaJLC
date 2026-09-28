@@ -1,13 +1,9 @@
 {% extends "compta/base.html" %}{% block titre %}Base de données{% endblock %}{% block contenu %}
 <h1>Base de données</h1>
-<div class="barre"><button form="f-export" class="principal" name="export_complet" value="1">Tout exporter</button><button form="f-sauver" class="principal" name="sauvegarder" value="1">Créer une sauvegarde</button><a class="bouton" href="{% url 'base_telecharger' %}">Télécharger la base maintenant</a>{% if recevoir_form %}<button form="f-recevoir" class="principal" name="recevoir" value="1" onclick="return confirm('Remplacer toute la base du PC par celle du site ?')">Recevoir la base du site</button>{% endif %}<button form="f-remplacer" class="principal" name="remplacer" value="1" style="background:var(--ko);border-color:var(--ko)"
+<div class="barre"><button form="f-export" class="principal" name="export_complet" value="1">Tout exporter</button><button form="f-sauver" class="principal" name="sauvegarder" value="1">Créer une sauvegarde</button><a class="bouton" href="{% url 'base_telecharger' %}">Télécharger la base maintenant</a><button form="f-remplacer" class="principal" name="remplacer" value="1" style="background:var(--ko);border-color:var(--ko)"
  onclick="return confirm('Remplacer TOUTES les données de ComptaBB ?')">Remettre à zéro et recharger</button></div>
 <p>La base contient <b>{{ mouvements }}</b> mouvements et <b>{{ lignes }}</b> lignes d'écritures.</p>
-{% if recevoir_form %}<form method="post" class="carte" id="f-recevoir" style="border-color:var(--bleu)">{% csrf_token %}<h2 style="margin-top:0">Recevoir la base du site</h2>
-<p class="aide">Remplace <b>toute</b> la base de ce PC par une copie de celle du site (écritures, tiers, fiches, utilisateurs). Sens unique :
-du site vers le PC ; ce qui a été saisi sur le PC est remplacé. La base du PC est sauvegardée juste avant. Ensuite, se connecter avec ses
-identifiants du site.</p>
-<div class="formulaire">{% for f in recevoir_form %}{% include "compta/_champ.html" %}{% endfor %}</div></form>{% endif %}
+
 
 <div class="deux">
 <div>

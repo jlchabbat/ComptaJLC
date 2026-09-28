@@ -6,12 +6,12 @@ trésorier, bureau, vérificateur. Interface en français ; relevés bancaires
 en hébreu. Référence : `docs/cahier-des-charges.md` (la feuille « CDC
 ComptaBB » du classeur fait foi).
 
-## Période de tests (en cours)
+## Application en ligne
 
-Seule la version en ligne (https://comptabb.pythonanywhere.com, mise à jour par
-`appli/deploiement/maj.sh`) est utilisée. L'application PC (`ComptaBB.exe`,
-`appli/lanceur.py`, `appli/build.spec`) est **mise de côté** : ne pas la faire
-évoluer ni la tester ; la CI ne la construit qu'à la demande (workflow_dispatch).
+Seule la version en ligne existe (https://comptabb.pythonanywhere.com, mise à
+jour par `appli/deploiement/maj.sh`). Le programme du PC (`ComptaBB.exe`) est
+abandonné et retiré du dépôt : ne pas le réintroduire. Distribution prévue :
+un site par association (étape 1 : application générique, réglages par site).
 
 ## Architecture
 

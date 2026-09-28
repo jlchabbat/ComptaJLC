@@ -22,28 +22,18 @@ code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; backg
 .saut { break-before: page; }
 </style></head><body>
 <div class="bandeau"><h1>ComptaBB – Installation et mises à jour</h1>
-<p>Le site et le programme du PC · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 27/09/2026</p></div>
+<p>Le site · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 27/09/2026</p></div>
 
-<h2>1. Une seule application, deux façons de l'utiliser</h2>
-<p>Le site et le programme du PC sont <b>la même application</b> : même code, mêmes menus, mêmes fonctionnalités. Chaque mise à jour vaut
-pour les deux. Ce qui change, c'est <b>où elle tourne</b>, <b>qui peut s'y connecter</b> et <b>où sont les données</b>.</p>
-<table><tr><th style="width:21%"></th><th>Site (PythonAnywhere)</th><th>PC (ComptaBB.exe)</th></tr>
-<tr><td>Accès</td><td>De partout (ordinateur, tablette, téléphone), par internet, connexion chiffrée</td><td>Seulement sur ce PC, tant que la fenêtre noire est ouverte</td></tr>
-<tr><td>Utilisateurs</td><td>Administrateur, trésorier, bureau, bénévoles, chacun de chez soi</td><td>En pratique une seule personne, devant ce PC</td></tr>
-<tr><td>Données</td><td><code>comptabb-data</code> sur PythonAnywhere</td><td><code>appli\data</code> sur le PC ; copie de celle du site en un clic (« Recevoir la base du site »)</td></tr>
-<tr><td>Exports et sauvegardes</td><td>Dans <code>comptabb-data</code>, puis à télécharger</td><td>Directement dans <code>D:\OneDrive\Applications\ComptaBB\Exports</code> et <code>…\Exports\Sauvegardes</code></td></tr>
-<tr><td>Paramètres (Excel)</td><td>Télécharger le fichier, le modifier, le renvoyer</td><td>Directement dans le dossier Imports du PC</td></tr>
-<tr><td>Sauvegarde automatique</td><td>Chaque nuit (tâche PythonAnywhere) et à chaque mise à jour</td><td>À la demande (bouton ou commande)</td></tr>
-<tr><td>Mise à jour</td><td>ZIP du code, puis <code>bash ~/maj.sh</code> (chapitre 3)</td><td>Nouveau ComptaBB.zip extrait par-dessus l'ancien (chapitre 4)</td></tr>
-<tr><td>Coût</td><td>Gratuit pendant l'essai, puis environ 5 $ par mois</td><td>Gratuit</td></tr></table>
-<div class="cadre"><b>Recommandation.</b> Le <b>site est l'outil principal</b> : c'est le seul qui permet au bureau et aux bénévoles d'y accéder, donc
-à la liaison de fonctionner. Le <b>PC est un outil d'appoint</b> (travail hors connexion, vérifications, exports directement dans OneDrive) :
-avant de l'utiliser, y recharger la base du site, et <b>ne rien y saisir</b>, sinon les deux bases divergent.</div>
+<h2>1. Une application en ligne</h2>
+<p>ComptaBB est un <b>site</b> hébergé chez PythonAnywhere : on s'y connecte de partout (ordinateur, tablette, téléphone), par internet,
+avec une connexion chiffrée. Il n'y a rien à installer sur les ordinateurs. Les données sont dans <code>comptabb-data</code> sur PythonAnywhere,
+sauvegardées automatiquement chaque nuit et à chaque mise à jour ; les exports se téléchargent depuis l'application.
+(L'ancien programme Windows, ComptaBB.exe, est abandonné.)</p>
 
 <h2>2. Les rôles et les mots de passe</h2>
 <table><tr><th style="width:21%">Rôle</th><th>Droits</th></tr>
 <tr><td>Administrateur</td><td>Tous les droits, dont le paramétrage de base, les utilisateurs et la base de données</td></tr>
-<tr><td>Trésorier</td><td>Tout, sauf le paramétrage de base</td></tr>
+<tr><td>Trésorier</td><td>La tenue quotidienne : saisie, tiers, consultation, banque, contrôles, éditions (ni paramétrage, ni imports / exports, ni base de données)</td></tr>
 <tr><td>Bureau</td><td>Consultation seulement</td></tr>
 <tr><td>Bénévole</td><td>La liaison seulement : ses fiches bénévoles</td></tr></table>
 <h3>Créer un compte</h3>
@@ -67,9 +57,8 @@ pas uniquement des chiffres, ne ressemble pas à l'identifiant et n'est pas trop
 Le sélecteur de branche, au-dessus de la liste des fichiers, doit afficher le nom de la branche.</li>
 <li>Bouton vert <b>&lt;&gt; Code</b> (à droite de « Add file ») › <b>Download ZIP</b>.</li>
 <li>Le fichier s'appelle <code>ComptaBB-&lt;nom de la branche&gt;.zip</code>, par exemple <code>ComptaBB-claude-keen-tesla-q5sib5.zip</code>.</li></ol>
-<div class="cadre attention"><b>Pas l'onglet Actions.</b> Le fichier <code>ComptaBB.zip</code> de l'onglet Actions (Artifacts) est le programme Windows du PC
-(il contient <code>ComptaBB.exe</code>) : il ne fonctionne pas sur le site. Les branches ne se cumulent pas entre elles : toujours prendre la branche indiquée.
-Dans une même branche, en revanche, le dernier envoi contient tous les précédents.</div>
+<div class="cadre attention">Toujours prendre la branche indiquée : les branches ne se cumulent pas entre elles. Dans une même branche,
+le dernier envoi contient tous les précédents.</div>
 <h3>2. L'envoyer sur PythonAnywhere</h3>
 <p>Onglet <b>Files</b>, dossier <code>/home/ComptaBB/</code>, <b>Upload a file</b>.</p>
 <h3>3. Installer, dans une console Bash</h3>
@@ -86,46 +75,10 @@ puis « MISE À JOUR TERMINÉE ». L'ancien code est gardé dans <code>ComptaBB-
 <span class="cmd">bash ~/maj.sh --retour</span>
 <p>Les données (<code>comptabb-data</code>) ne sont jamais touchées par une mise à jour. La présentation et le mode d'emploi du menu Éditions sont mis à jour en même temps.</p>
 <h3>Les coches de GitHub</h3>
-<p>Dans l'onglet Actions, chaque envoi est vérifié (tests automatiques, puis construction de ComptaBB.exe). Une <b>coche verte</b> : tout est passé ;
+<p>Dans l'onglet Actions, chaque envoi est vérifié (tests automatiques). Une <b>coche verte</b> : tout est passé ;
 une <b>croix rouge</b> : un contrôle a échoué, à signaler avant d'installer. Une vérification n'ajoute ni n'enlève rien au code.</p>
 
-<h2 class="saut">4. Installer le programme sur le PC</h2>
-<h3>1. Récupérer le programme</h3>
-<ol><li>Ouvrir <a href="https://github.com/jlchabbat/ComptaBB/actions">github.com/jlchabbat/ComptaBB/actions</a>.</li>
-<li>Cliquer sur la ligne la plus récente de la branche, avec une <b>coche verte</b>.</li>
-<li>Tout en bas, <b>Artifacts</b> › <b>ComptaBB</b> : le fichier <code>ComptaBB.zip</code> se télécharge.</li></ol>
-<h3>2. L'installer</h3>
-<ol><li>Clic droit sur <code>ComptaBB.zip</code> › <b>Extraire tout…</b> vers <code>D:\OneDrive\Applications\ComptaBB\appli</code>
-(on y trouve <code>ComptaBB.exe</code> et un dossier <code>_internal</code>).</li>
-<li>Clic droit sur <code>ComptaBB.exe</code> › Afficher plus d'options › <b>Envoyer vers › Bureau (créer un raccourci)</b>.</li></ol>
-<h3>3. Premier lancement</h3>
-<ol><li>Double-clic sur <code>ComptaBB.exe</code>. Si Windows affiche « Windows a protégé votre ordinateur » : <b>Informations complémentaires</b>
-› <b>Exécuter quand même</b> (le programme n'est pas signé).</li>
-<li>La fenêtre noire demande l'<b>identifiant</b> et le <b>mot de passe de l'administrateur</b> (8 caractères au moins, à retaper),
-puis le <b>classeur ComptaBB.xlsm</b> à reprendre (chemin complet, ou Entrée pour une base vide).</li>
-<li>Le navigateur s'ouvre sur <code>http://127.0.0.1:8765</code> : se connecter.</li></ol>
-<h3>4. Utilisation</h3>
-<ul><li>Double-clic sur l'icône du Bureau. <b>Laisser la fenêtre noire ouverte</b> : la fermer arrête ComptaBB.</li>
-<li>Exports et sauvegardes : <code>D:\OneDrive\Applications\ComptaBB\Exports</code> et <code>…\Exports\Sauvegardes</code> (réglables dans
-<span class="menu">Administration › Imports / Exports</span>).</li>
-<li>Données : <code>D:\OneDrive\Applications\ComptaBB\appli\data\comptabb.sqlite3</code>.</li>
-<li><b>Mettre à jour</b> : télécharger le nouveau ComptaBB.zip (Actions) et l'extraire au même endroit en remplaçant les fichiers ; le dossier
-<code>data</code> est conservé.</li></ul>
-<h3>5. Avoir sur le PC les données du site : « Recevoir la base du site »</h3>
-<ol><li>Sur le PC, dans ComptaBB : <span class="menu">Administration › Base de données</span>, carte <b>Recevoir la base du site</b>
-(elle n'existe que sur le PC).</li>
-<li>Adresse du site (proposée : <code>https://comptabb.pythonanywhere.com</code>), <b>identifiant et mot de passe d'un administrateur du site</b>
-(ils ne sont pas enregistrés), taper REMPLACER.</li>
-<li>Bouton <b>Recevoir la base du site</b>, en haut à gauche : le PC télécharge la base du site, la vérifie et remplace la sienne ;
-la base précédente du PC est sauvegardée juste avant.</li>
-<li>Se reconnecter avec ses <b>identifiants du site</b> : les utilisateurs du PC sont désormais ceux du site.</li></ol>
-<p>Sens unique, du site vers le PC : à refaire chaque fois qu'on veut une copie à jour. Sans internet, la méthode manuelle reste possible :
-sur le site, <b>Télécharger la base maintenant</b> ; sur le PC, <b>Remettre à zéro et recharger</b> avec ce fichier.</p>
-<div class="cadre attention"><b>Deux bases distinctes.</b> Ce qui est saisi sur l'un n'apparaît pas sur l'autre : ne saisir qu'à un seul endroit (le site).
-<b>OneDrive</b> : fermer ComptaBB avant d'éteindre le PC ou de laisser OneDrive synchroniser, car une base ouverte peut être mal copiée.
-Les sauvegardes de <code>Exports\Sauvegardes</code> restent la copie de sécurité.</div>
-
-<h2 class="saut">5. Sauvegarder et restaurer</h2>
+<h2 class="saut">4. Sauvegarder et restaurer</h2>
 <h3>Par l'application</h3>
 <ul><li><span class="menu">Administration › Base de données</span> : <b>Créer une sauvegarde</b>, <b>Télécharger la base maintenant</b>, <b>Tout exporter</b>
 (export complet .zip), <b>Remettre à zéro et recharger</b> depuis une sauvegarde, un export complet ou le classeur (taper REMPLACER).</li>
@@ -146,7 +99,7 @@ Parametres.xlsx et une copie de la base).</li>
 <p>PythonAnywhere, onglet <b>Tasks</b>, tâche quotidienne avec la commande :</p>
 <span class="cmd">COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</span>
 
-<h2>6. Problèmes rencontrés</h2>
+<h2>5. Problèmes rencontrés</h2>
 <table><tr><th style="width:38%">Situation</th><th>Que faire</th></tr>
 <tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaBB/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>
 <tr><td><code>maj.sh</code> : « Aucun fichier ComptaBB-….zip »</td><td>Le ZIP n'est pas envoyé, ou son nom ne commence pas par <code>ComptaBB-</code> : le renommer (chapitre 3).</td></tr>

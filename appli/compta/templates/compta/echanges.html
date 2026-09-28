@@ -31,7 +31,7 @@ avant chaque import ; le fichier importé est rangé, daté, dans Imports\Import
 
 <details class="carte"><summary><b>Tout réinjecter</b> : remplacer les données par les fichiers du dossier Imports</summary>
 <p>Pour corriger en masse : <b>Tout exporter</b>, télécharger les fichiers (liste en bas de la partie 2), les modifier dans Excel,
-les déposer dans Imports (bouton <b>Déposer</b> ci-dessus, ou copie dans le dossier sur le PC), puis réinjecter.</p>
+les déposer dans Imports (bouton <b>Déposer</b> ci-dessus), puis réinjecter.</p>
 <ul><li>Un fichier <b>Ecritures, Banque1, Banque2, Bit, Caisse ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
 <li>Les <b>référentiels</b> (exercices, paramètres, axes, préfixes, plan, journaux, tiers, traductions) sont mis à jour, jamais supprimés.</li>
@@ -59,8 +59,8 @@ des paramètres) dans le dossier Exports, et une copie de la base dans le dossie
 <form method="post" class="carte" id="f-dossiers">{% csrf_token %}<div class="formulaire">
 {% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">
-<div class="aide">Vide = {{ defaut }}.{% if valeur and utilise|stringformat:"s" != valeur %} <b>Ici, ce chemin est ignoré (dossier du PC) : dossier utilisé {{ utilise }}.</b>{% endif %}</div></div>{% endfor %}</div>
-<p class="aide">Chemin complet, par exemple D:\OneDrive\Applications\ComptaBB\Exports et D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes
-(sur le PC). Sur le site, un chemin D:\… est accepté et gardé pour le programme du PC (qui le reçoit avec « Recevoir la base du site ») ; le site, lui, écrit dans ses propres dossiers, d'où l'on télécharge les fichiers.
-Le dossier est créé s'il n'existe pas. Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports, dossier_exports, dossier_sauvegardes).</p></form>
+<div class="aide">Vide = {{ defaut }}.{% if valeur and utilise|stringformat:"s" != valeur %} <b>Ce chemin est ignoré : dossier utilisé {{ utilise }}.</b>{% endif %}</div></div>{% endfor %}</div>
+<p class="aide">Laisser vide pour les dossiers par défaut du site (conseillé). Sinon, chemin complet sur le site, par exemple
+/home/ComptaBB/comptabb-data/Exports ; le dossier est créé s'il n'existe pas. Les fichiers se récupèrent par « Télécharger ».
+Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports, dossier_exports, dossier_sauvegardes).</p></form>
 {% endblock %}

@@ -390,8 +390,7 @@ moyens de paiement, types de tiers, natures et modes des fiches bénévoles, tra
 Les écritures ne se modifient pas ici (chapitre 4).</p>
 <h2>Paramètres (Excel)</h2>
 <p><span class="menu">Administration › Paramètres (Excel)</span> : tous les paramètres tiennent dans un classeur <b>Parametres.xlsx</b>, une feuille par sujet.</p>
-<ul><li><b>Par le dossier Imports</b> (PC) : <b>Préparer Imports/Parametres.xlsx</b>, le modifier dans Excel, l'enregistrer et le fermer, puis <b>Importer Imports/Parametres.xlsx</b>.</li>
-<li><b>Par le navigateur</b> (site) : l'exporter (Éditions › Exports), le modifier, le choisir puis <b>Importer le fichier envoyé</b>.
+<ul><li>L'exporter (Éditions › Exports), le modifier, le choisir puis <b>Importer le fichier envoyé</b>.
 Un fichier d'un seul référentiel s'importe de la même façon.</li>
 <li>Une ligne dont la clé (colonne grise) existe est mise à jour ; une clé nouvelle est créée ; une cellule vide ne change rien ; rien n'est supprimé (Actif = Non pour retirer).</li>
 <li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import.</li></ul>
@@ -407,15 +406,13 @@ le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mi
 Les fichiers du dossier Exports se téléchargent depuis la liste de la page.</li>
 <li><b>Libellés seulement</b> : un fichier d'écritures nommé <b>Libelles….xlsx</b> (mêmes colonnes qu'Ecritures.xlsx) ne change que
 les libellés. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants, même si son n° diffère (fichier
-venu d'une autre base, du PC par exemple). Les Mvt introuvables, ambigus ou d'un exercice clos sont listés et laissés tels quels ; pour les introuvables, un fichier
+venu d'une autre base). Les Mvt introuvables, ambigus ou d'un exercice clos sont listés et laissés tels quels ; pour les introuvables, un fichier
 <b>Ecarts_libelles_….xlsx</b> (liste des exports, Télécharger) donne le mouvement le plus proche du site et les différences (date,
 journal, montant, comptes).</li>
 <li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de leur nature.</li></ol>
 <h2>Les dossiers Imports, Exports et Sauvegardes</h2>
 <p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).
-Sur le PC de l'association : <code>D:\OneDrive\Applications\ComptaBB\Exports</code> et <code>D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes</code>.
-Un chemin <code>D:\…</code> ne vaut que sur le PC : sur le site, il est ignoré (la page le signale) et les dossiers de <code>comptabb-data</code> servent ;
-on télécharge alors les fichiers. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
+Laissés vides, ce sont les dossiers de <code>comptabb-data</code> (conseillé) ; on télécharge les fichiers depuis l'application. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes, export complet et remise à zéro.</figcaption></figure>
 <ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx, Donnees.xlsx, justificatifs, états de chaque exercice, contrôle).
@@ -423,12 +420,10 @@ Toutes les données y sont ; seuls les comptes utilisateurs ne sont que dans la 
 <li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture.</li>
 <li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis une sauvegarde .sqlite3 (tout redevient comme à ce moment-là, utilisateurs compris),
 un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaBB.xlsm. Une sauvegarde est faite juste avant.</li>
-<li><b>Corriger en masse puis recharger</b> (site et PC) : Tout exporter, télécharger l'export, le décompresser, modifier dans Excel Ecritures.xlsx,
+<li><b>Corriger en masse puis recharger</b> : Tout exporter, télécharger l'export, le décompresser, modifier dans Excel Ecritures.xlsx,
 Tiers.xlsx, Parametres.xlsx ou Donnees.xlsx sans toucher aux en-têtes, recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
 puis Remettre à zéro et recharger avec ce .zip en cochant <b>Fichiers modifiés</b>. Contrôles : Mvt équilibrés, débit OU crédit, codes existants ;
 au moindre défaut, rien n'est modifié.</li></ul>
-<p><b>Recevoir la base du site</b> (programme du PC seulement) : avec l'identifiant et le mot de passe d'un administrateur du site,
-remplace la base du PC par une copie de celle du site, après une sauvegarde de la base du PC. Sens unique, du site vers le PC.</p>
 <p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus ; 3. <b>Remettre à zéro et recharger</b> depuis l'export complet.</p>
 
 <!-- 14 -->
