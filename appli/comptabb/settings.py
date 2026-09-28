@@ -74,7 +74,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = "comptabb.urls"
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
-    "DIRS": [],
+    "DIRS": [BASE_DIR / "compta" / "gabarits_admin"],   # Référentiels : retour aux menus de ComptaBB
     "APP_DIRS": True,
     "OPTIONS": {"context_processors": [
         "django.template.context_processors.request",
