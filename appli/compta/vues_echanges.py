@@ -37,6 +37,9 @@ def echanges(request):
                 messages.success(request, f"Réinjection terminée (sauvegarde préalable : {sauvegarde.name}).")
                 for x in comptes_rendus:
                     messages.info(request, x)
+            elif "retirer" in request.POST:
+                moteur.retirer(request.POST["retirer"], auteur)
+                messages.success(request, f"« {request.POST['retirer']} » supprimé du dossier Imports.")
             elif "importer" in request.POST:
                 f, texte = moteur.importer(request.POST["importer"], request.user)
                 messages.success(request, f"{request.POST['importer']} importé ({f.contenu}) : {texte}. "

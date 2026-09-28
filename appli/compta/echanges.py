@@ -890,6 +890,15 @@ def a_importer():
             if p.is_file() and p.suffix.lower() in (".xlsx", ".pdf") and not p.name.startswith("~$") and p.stem != LEXIQUE]
 
 
+def retirer(nom, auteur=""):
+    """Supprime un fichier du dossier Imports (déposé par erreur, ou devenu inutile). Le dossier Importés n'est pas touché."""
+    chemin = next((p for p, _ in a_importer() if p.name == nom), None)
+    if not chemin:
+        raise Refus([f"« {nom} » n'est pas (ou plus) dans le dossier Imports."])
+    chemin.unlink()
+    Modification.objects.create(auteur=auteur, lot="Échanges", action="Fichier retiré du dossier Imports", objet=nom[:200])
+
+
 DEPOSABLES = (".xlsx", ".pdf")
 
 

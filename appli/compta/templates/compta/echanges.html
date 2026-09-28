@@ -17,11 +17,13 @@ ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est rem
 {% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF Mizrahi à convertir</h3>
 <p class="aide">La conversion crée Banque1_date.xlsx ou Banque2_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
 <table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
-<button name="journal" value="B1">Convertir en Banque1.xlsx</button> <button name="journal" value="B2">Convertir en Banque2.xlsx</button></form></td></tr>{% endfor %}</table></div>{% endif %}
+<button name="journal" value="B1">Convertir en Banque1.xlsx</button> <button name="journal" value="B2">Convertir en Banque2.xlsx</button></form>
+<form method="post" style="display:inline">{% csrf_token %}<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ?')">Supprimer</button></form></td></tr>{% endfor %}</table></div>{% endif %}
 <form method="post">{% csrf_token %}
 <table><tr><th>Fichier dans Imports</th><th>Contenu</th><th></th></tr>
 {% for nom, f in a_importer %}<tr><td>{{ nom }}</td><td>{% if f %}{{ f.contenu }}{% else %}<span class="neg">nom non reconnu</span>{% endif %}</td>
-<td>{% if f %}<button class="principal" name="importer" value="{{ nom }}">Importer</button>{% endif %}</td></tr>
+<td>{% if f %}<button class="principal" name="importer" value="{{ nom }}">Importer</button>{% endif %}
+<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ? (rien n&#39;est importé ni modifié)')">Supprimer</button></td></tr>
 {% empty %}<tr><td colspan="3">Aucun fichier .xlsx dans le dossier Imports.</td></tr>{% endfor %}</table></form>
 <p class="aide">Tout ou rien : à la moindre erreur, rien n'est enregistré et les lignes en erreur s'affichent. Une sauvegarde de la base est faite
 avant chaque import ; le fichier importé est rangé, daté, dans Imports\Importés.</p>

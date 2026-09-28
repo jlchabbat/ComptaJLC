@@ -1656,6 +1656,16 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer(chemin.name), "1 mouvement(s) ajouté(s), 0 modifié(s)")
         self.assertEqual(Mouvement.objects.count(), n + 1)
 
+    def test_supprimer_un_fichier_du_dossier_imports(self):
+        self.fichier("Axe1.xlsx", [["ZZZ.1", "Essai"]])
+        page = self.client.get("/echanges/")
+        self.assertContains(page, 'name="retirer" value="Axe1.xlsx"')
+        r = self.client.post("/echanges/", {"retirer": "Axe1.xlsx"}, follow=True)
+        self.assertContains(r, "supprimé du dossier Imports")
+        self.assertFalse((ech.imports() / "Axe1.xlsx").exists())
+        self.assertFalse(CodeAnalytique.objects.filter(code="ZZZ.1").exists())               # rien d'importé
+        self.assertContains(self.client.post("/echanges/", {"retirer": "../secret.txt"}, follow=True), "pas (ou plus)")
+
     def test_libelles_seulement_mvt_retrouves_par_leur_contenu(self):
         """Fichier venu d'une autre base : n° décalés ; seuls les libellés sont repris, Mvt retrouvés par leur contenu."""
         chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
