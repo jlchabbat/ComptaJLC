@@ -1,5 +1,8 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Tableau de bord{% endblock %}{% block contenu %}
-<h1>Tableau de bord</h1>{% include "compta/_periode.html" %}
+<h1>Tableau de bord</h1>
+<div class="barre"><a class="bouton principal" href="{% url 'situation' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}" title="Présentation soignée de la situation, à imprimer en PDF">Situation (PDF)</a>
+<a class="bouton principal" href="{% url 'situation_excel' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}" title="Même présentation dans un classeur Excel mis en page">Situation (Excel)</a></div>
+{% include "compta/_periode.html" %}
 <div class="chiffres">
 <div class="chiffre"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} ₪</div></div>
 <div class="chiffre"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} ₪</div></div>

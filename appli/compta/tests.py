@@ -678,6 +678,22 @@ class EcransRapprochement(TestCase):
         self.assertEqual(Mouvement.objects.count(), n + 1)                          # reliée, pas d'écriture en plus
         self.assertContains(self.client.get("/rapprochement/B1/"), "Tout le relevé téléchargé est en comptabilité")
 
+    def test_situation_financiere_pdf_et_excel(self):
+        mv = Mouvement.objects.create(numero=907, date=dt.date(2026, 3, 1), journal_id="B1", piece=907)
+        Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D(50), anal2_id="GEN.004")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D(50), anal2_id="GEN.004")
+        self.assertContains(self.client.get("/?du=2026-01-01&au=2026-12-31"), "Situation (PDF)")
+        page = self.client.get("/situation/?du=2026-01-01&au=2026-12-31")
+        for texte in ("Situation financière", "Période du <b>01/01/2026</b> au <b>31/12/2026</b>", "Charges par compte", "600100",
+                      "Résultat par activité (axe 1)"):
+            self.assertContains(page, texte)
+        r = self.client.get("/situation/excel/?du=2026-01-01&au=2026-12-31")
+        self.assertIn("Situation_2026-01-01_2026-12-31.xlsx", r["Content-Disposition"])
+        ws = openpyxl.load_workbook(io.BytesIO(r.content))["Situation"]
+        valeurs = [c.value for row in ws.iter_rows() for c in row if c.value is not None]
+        self.assertIn("Charges par compte", valeurs)
+        self.assertIn(50, valeurs)
+
     def test_une_ligne_du_releve_pour_plusieurs_ecritures(self):
         """Prélèvement Isracard de 760 = deux écritures (160 + 600) passées séparément sur la banque."""
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 10), rang=1, operation="ISRACARD", montant=D(-760))

@@ -1,0 +1,43 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Situation financière{% endblock %}{% block contenu %}
+<div class="barre"><button type="button" class="principal" onclick="window.print()" title="Choisir « Enregistrer au format PDF » comme imprimante">PDF / Imprimer</button>
+<a class="bouton principal" href="{% url 'situation_excel' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">Excel</a>
+<a class="bouton" href="{% url 'tableau_de_bord' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">Retour au tableau de bord</a></div>
+<div class="ecran">{% include "compta/_periode.html" %}
+<p class="aide">Pour le PDF : bouton « PDF / Imprimer », puis imprimante « Enregistrer au format PDF » ; dans « Plus de paramètres »,
+cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher « En-têtes et pieds de page ».</p></div>
+
+<article class="situation">
+<div class="sit-entete">
+<div><div class="sit-titre">Situation financière</div>{% if association %}<div class="sit-asso">{{ association }}</div>{% endif %}</div>
+<div class="sit-periode">Période du <b>{{ debut|date:"d/m/Y" }}</b> au <b>{{ fin|date:"d/m/Y" }}</b><br>
+<span>Éditée le {{ edite_le|date:"d/m/Y à H:i" }}</span></div>
+</div>
+
+<section class="sit-cles">
+<div class="sit-cle"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} ₪</div></div>
+<div class="sit-cle"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} ₪</div></div>
+<div class="sit-cle fort {% if resultat < 0 %}perte{% else %}gain{% endif %}"><div class="lib">Résultat</div><div class="val">{{ resultat|shekel }} ₪</div>
+<div class="note">{% if resultat < 0 %}déficit{% else %}excédent{% endif %}</div></div>
+<div class="sit-cle"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} ₪</div></div>
+</section>
+<p class="sit-note">{{ nb_mouvements }} mouvement{{ nb_mouvements|pluralize }} sur la période · contrôles comptables : <b>{{ etat }}</b>{% if a_verifier %} ({{ a_verifier }} à vérifier){% endif %}</p>
+
+<section class="sit-bloc"><h2>Trésorerie</h2>
+<table class="sit-table"><tr><th>Journal</th><th>Compte</th><th class="n">Solde</th></tr>
+{% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td>{{ t.journal.compte }}</td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total</td><td class="n">{{ total_tresorerie|shekel }}</td></tr></table></section>
+
+<section class="sit-bloc"><h2>Résultat par activité (axe 1)</h2>
+{% include "compta/_situation_axe.html" with lignes=axe1 %}</section>
+<section class="sit-bloc"><h2>Résultat par événement / projet (axe 2)</h2>
+{% include "compta/_situation_axe.html" with lignes=axe2 %}</section>
+
+<div class="sit-deux">
+<section class="sit-bloc"><h2>Produits par compte</h2>
+{% include "compta/_situation_comptes.html" with lignes=produits_par_compte total=produits classe="p" %}</section>
+<section class="sit-bloc"><h2>Charges par compte</h2>
+{% include "compta/_situation_comptes.html" with lignes=charges_par_compte total=charges classe="c" %}</section>
+</div>
+<footer class="sit-pied">Situation établie par ComptaBB à partir des écritures enregistrées au {{ edite_le|date:"d/m/Y" }}. Montants en shekels (₪).</footer>
+</article>
+{% endblock %}
