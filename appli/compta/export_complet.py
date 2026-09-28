@@ -5,7 +5,8 @@ L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
 - Parametres.xlsx : les paramètres (même classeur que la page Paramètres) ;
 - Tiers.xlsx : les fiches tiers (même format que l'import Tiers.xlsx) ;
 - Ecritures.xlsx : toutes les écritures (une ligne par ligne d'écriture, avec pointage, origine et auteur) ;
-- Donnees.xlsx : comptes de tiers, exercices, pointages, relevés, budget, fiches bénévoles, historique ;
+- Donnees.xlsx : comptes de tiers, exercices, pointages, relevés, budget, fiches bénévoles, justificatifs, historique ;
+- Justificatifs/ : les scans et photos joints aux mouvements ;
 - Etats_<exercice>.xlsx : états de chaque exercice (lecture seule) ;
 - controle.json : nombres et totaux, pour vérifier une réinjection.
 Seuls les comptes utilisateurs (identifiants, mots de passe) ne sont que dans comptabb.sqlite3.
@@ -35,7 +36,7 @@ from django.utils import timezone
 
 from . import membres, parametres
 from .models import (
-    ZERO, Budget, CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneReleve, LigneSchema, Membre,
+    ZERO, Budget, CodeAnalytique, Compte, Exercice, Fiche, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, LigneSchema, Membre,
     ModeFiche, ModeleOperation, Modification, Mouvement, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe,
     Rapprochement, Reglage, TiersProvisoire, Traduction, TypeTiers, arrondi,
 )
@@ -111,7 +112,7 @@ def _nom_utilisateur(u):
 
 COMPTES = [Compte, Journal, CodeAnalytique, Prefixe, Reglage, TypeTiers, MoyenPaiement, LigneSchema, ModeleOperation,
            NatureFiche, ModeFiche, Traduction, ParametreReleve, Exercice, Mouvement, Ligne, Rapprochement, LigneReleve,
-           Budget, Membre, TiersProvisoire, Fiche, LigneFiche]
+           Budget, Membre, TiersProvisoire, Fiche, LigneFiche, Justificatif]
 
 
 def empreinte():
@@ -197,6 +198,7 @@ FEUILLES = {
                          "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
     "Bénévoles": ["Compte", "Identifiant"],
+    "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte", "Lien"],
 }
 
 
@@ -229,10 +231,18 @@ def _lignes_donnees():
                                 l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
+    from .justificatifs import chemin as chemin_justificatif
+    yield "Justificatifs", ([j.mouvement.numero, j.chemin or "", j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
+                             "lien" if j.lien else _empreinte_fichier(chemin_justificatif(j)), j.lien]
+                            for j in Justificatif.objects.select_related("mouvement").order_by("mouvement__numero", "pk"))
     yield "Historique", ([_heure(m.date), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres]
                          for m in Modification.objects.order_by("date", "pk"))
     yield "Bénévoles", ([m.compte_id, m.utilisateur.get_username()]
                         for m in Membre.objects.filter(utilisateur__isnull=False).select_related("utilisateur").order_by("compte"))
+
+
+def _empreinte_fichier(chemin):
+    return hashlib.sha256(chemin.read_bytes()).hexdigest()[:16] if chemin.exists() else "absent"
 
 
 def classeur_donnees(feuilles=None):
@@ -309,6 +319,10 @@ def exporter(auteur=""):
         for ex in Exercice.objects.all():
             nom = "".join(c if c.isalnum() else "_" for c in ex.libelle)
             z.writestr(f"Etats_{nom}.xlsx", _octets(classeur_exercice(ex)))
+        from .justificatifs import chemin as chemin_justificatif
+        for j in Justificatif.objects.exclude(chemin=None):
+            if chemin_justificatif(j).exists():
+                z.write(chemin_justificatif(j), f"Justificatifs/{j.chemin}")
         z.writestr("controle.json", json.dumps(controle, ensure_ascii=False, indent=1))
         z.writestr("LISEZMOI.txt", __doc__.strip() + "\n")
     for vieux in liste()[GARDER:]:
@@ -329,12 +343,18 @@ def vider():
         m.objects.all().delete()
 
 
+FACULTATIVES = ("Justificatifs",)       # absentes des exports faits avant leur création
+COLONNES_FACULTATIVES = {"Lien"}         # idem pour les colonnes
+
+
 def _rangees(wb, nom, fichier="Donnees.xlsx"):
     if nom not in wb.sheetnames:
+        if nom in FACULTATIVES:
+            return
         raise ExportInvalide(f"Feuille « {nom} » absente de {fichier}.")
     rangees = wb[nom].iter_rows(values_only=True)
     entetes = [str(e or "").strip() for e in next(rangees, [])]
-    manque = [e for e in FEUILLES[nom] if e not in entetes]
+    manque = [e for e in FEUILLES[nom] if e not in entetes and e not in COLONNES_FACULTATIVES]
     if manque:
         raise ExportInvalide(f"{fichier}, feuille {nom} : colonne(s) {', '.join(manque)} absente(s).")
     for r in rangees:
@@ -348,8 +368,9 @@ def _charger_comptes_tiers(wb):
                               lettrable=_lire_oui(r["Lettrable"]), actif=_lire_oui(r["Actif"]))
 
 
-def _charger_donnees(wb, ecritures=None):
-    """ecritures : classeur Ecritures.xlsx (à défaut, la feuille Écritures de Donnees.xlsx des exports antérieurs)."""
+def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
+    """ecritures : classeur Ecritures.xlsx (à défaut, la feuille Écritures de Donnees.xlsx des exports antérieurs) ;
+    pieces : fichiers des justificatifs de l'export ; ecrits : fichiers écrits, pour tout remettre en cas d'échec."""
     utilisateurs = {u.get_username(): u for u in get_user_model().objects.all()}
     qui = lambda v: utilisateurs.get(_texte(v))  # noqa: E731
     an = {}
@@ -431,6 +452,27 @@ def _charger_donnees(wb, ecritures=None):
             justificatif=_texte(r["Justificatif"]), remarque=_texte(r["Remarque"]), compte_id=_texte(r["Compte"]) or None,
             anal2_id=_texte(r["Axe 2"]) or None, mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
+    from .justificatifs import dossier as dossier_justificatifs
+    for r in _rangees(wb, "Justificatifs"):
+        if _texte(r.get("Lien")):                           # document resté en ligne : seulement son lien
+            j = Justificatif.objects.create(mouvement_id=ids[_entier(r["Mvt"])], lien=_texte(r["Lien"]), nom=_texte(r["Nom"]),
+                                            description=_texte(r["Description"]), ajoute_par=_texte(r["Ajouté par"]))
+            Justificatif.objects.filter(pk=j.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or j.ajoute_le)
+            continue
+        relatif = _texte(r["Fichier"])
+        contenu = (pieces or {}).get(relatif)
+        if contenu is None:
+            raise ExportInvalide(f"Justificatif {relatif} absent de l'export.")
+        cible = dossier_justificatifs() / relatif
+        if not cible.exists() or cible.read_bytes() != contenu:
+            if ecrits is not None:
+                ecrits.append((cible, cible.read_bytes() if cible.exists() else None))   # pour tout remettre en cas d'échec
+            cible.parent.mkdir(parents=True, exist_ok=True)
+            cible.write_bytes(contenu)
+        j = Justificatif.objects.create(mouvement_id=ids[_entier(r["Mvt"])], chemin=relatif, nom=_texte(r["Nom"]),
+                                        description=_texte(r["Description"]), taille=_entier(r["Taille"]) or 0,
+                                        ajoute_par=_texte(r["Ajouté par"]))
+        Justificatif.objects.filter(pk=j.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or j.ajoute_le)
     historique = []
     for r in _rangees(wb, "Historique"):
         historique.append((Modification(auteur=_texte(r["Auteur"]), lot=_texte(r["Lot"]), action=_texte(r["Action"]),
@@ -463,7 +505,14 @@ def lire_export(source):
         manque = [n for n in FICHIERS_REINJECTES if n not in par_nom]
         if manque:
             raise ExportInvalide(f"Export complet incomplet : {', '.join(manque)} absent(s).")
-        return {base: z.read(n) for base, n in par_nom.items()}
+        fichiers = {base: z.read(n) for base, n in par_nom.items()}
+        fichiers["justificatifs"] = {}                      # Justificatifs/<année>/… , éventuellement dans un dossier du ZIP
+        for n in z.namelist():
+            chemin = n.replace("\\", "/")
+            if n.endswith("/") or chemin.startswith("__MACOSX") or "Justificatifs/" not in chemin:
+                continue
+            fichiers["justificatifs"][chemin.split("Justificatifs/", 1)[1]] = z.read(n)
+        return fichiers
 
 
 def coherence():
@@ -491,6 +540,20 @@ def reinjecter(source, auteur="", modifie=False):
     fichiers = lire_export(source)
     attendu = json.loads(fichiers["controle.json"]) if "controle.json" in fichiers else None
     avant = base_donnees.sauvegarder("avant-reinjection")
+    ecrits = []
+    try:
+        message = _reinjecter(fichiers, attendu, auteur, ecrits, modifie)
+    except Exception:
+        for cible, ancien in reversed(ecrits):             # fichiers remis comme avant
+            if ancien is None:
+                cible.unlink(missing_ok=True)
+            else:
+                cible.write_bytes(ancien)
+        raise
+    return message, avant
+
+
+def _reinjecter(fichiers, attendu, auteur, ecrits, modifie):
     with transaction.atomic():
         vider()
         r = parametres.importer(fichiers["Parametres.xlsx"], auteur=auteur, tracer=False)
@@ -504,7 +567,7 @@ def reinjecter(source, auteur="", modifie=False):
             t = membres.importer_tableau(membres.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
             if t.erreurs:
                 raise ExportInvalide("Tiers.xlsx : " + " · ".join(t.erreurs[:10]))
-            _charger_donnees(wb, ecritures)
+            _charger_donnees(wb, ecritures, fichiers["justificatifs"], ecrits)
         except ExportInvalide:
             raise
         except Exception as e:                               # cellule illisible, code inconnu, doublon…
@@ -519,7 +582,7 @@ def reinjecter(source, auteur="", modifie=False):
         elif differences:
             raise ExportInvalide("La base rechargée diffère de l'export : " + " · ".join(differences[:10])
                                  + ". Si vous avez modifié les fichiers, cochez « Fichiers modifiés ».")
-        n = {m: m.objects.count() for m in (Mouvement, Ligne, Membre)}
+        n = {m: m.objects.count() for m in (Mouvement, Ligne, Membre, Justificatif)}
         Modification.objects.create(auteur=auteur, lot="Base de données", action="Réinjection d'un export complet",
                                     objet=f"export du {(attendu or {}).get('cree_le', '?')}"
                                           + (" (fichiers modifiés)" if modifie else ""),
@@ -527,4 +590,4 @@ def reinjecter(source, auteur="", modifie=False):
     controle = ("contrôles de cohérence satisfaits (fichiers modifiés)" if modifie
                 else "base identique à l'export")
     return (f"Export du {(attendu or {}).get('cree_le', '?')} réinjecté : {n[Mouvement]} mouvements, "
-            f"{n[Ligne]} lignes, {n[Membre]} tiers. Contrôle : {controle}."), avant
+            f"{n[Ligne]} lignes, {n[Membre]} tiers, {n[Justificatif]} justificatif(s). Contrôle : {controle}.")

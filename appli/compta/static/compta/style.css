@@ -180,3 +180,6 @@ a.bouton.principal { background: var(--bleu); color: #fff; border-color: var(--b
 /* ===== Excel et Imprimer / PDF, dans l'en-tête de chaque page ===== */
 .qui .editer { margin-right: 10px; }
 .qui .editer .bouton, .qui .editer button { margin-left: 4px; }
+/* Justificatifs existants : proposition sûre / absente */
+td.ok, span.ok { color: var(--ok); }
+span.ko { color: var(--ko); }

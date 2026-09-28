@@ -1,10 +1,15 @@
 # ComptaBB — application web
 
-Application web (Django) de la comptabilité de l'association. **Pour
-l'instant elle tourne sur le PC du trésorier** : `ComptaBB.exe` démarre
-l'application et ouvre le navigateur ; les données sont dans le dossier
-`data` à côté du programme. Le jour où un hébergeur sera choisi, la même
-application y sera installée pour l'accès à distance (bureau, bénévoles).
+Application web (Django) de la comptabilité de l'association.
+
+> **Période de tests** : l'application est utilisée **en ligne** sur
+> PythonAnywhere (https://comptabb.pythonanywhere.com ; mise à jour :
+> `docs/ComptaBB_protocole_mise_a_jour.pdf`). La version PC (`ComptaBB.exe`,
+> décrite ci-dessous) est **mise de côté** pendant cette période : elle n'est
+> plus construite automatiquement ni mise à jour.
+
+Version PC (en veille) : `ComptaBB.exe` démarre l'application et ouvre le
+navigateur ; les données sont dans le dossier `data` à côté du programme.
 
 ## Installer sur le PC
 
@@ -102,6 +107,18 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   statut (actif, honoraire, démissionnaire), cotisation attendue ; import du
   modèle `Imports/modeles/07_membres.csv`.
 - **Fiche membre** : facturé, réglé, solde dû, historique.
+- **Justificatifs** (page d'un mouvement) : scans PDF ou photos joints au mouvement (plusieurs par
+  mouvement, 10 Mo au plus chacun, photo directe sur téléphone) ; consultables par tous les rôles qui voient
+  la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
+  filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
+  repris par l'export complet.
+- **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
+  fichiers), rattachement proposé d'après le nom du fichier (« Mvt 389 », « Pièce 739 », numéro seul,
+  date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
+  rattachés restent « à classer ». En ligne de commande :
+  `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.
+  Un **extrait Excel SUMIT** déposé sur la même page fournit des **liens** (documents restés dans SUMIT),
+  proposés au mouvement de même date et même montant ; seuls les nouveaux liens sont repris.
 - Pas de suivi des impayés : le solde du compte tiers suffit ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique

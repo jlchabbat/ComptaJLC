@@ -183,7 +183,8 @@ def captures(adresse):
     from playwright.sync_api import sync_playwright
     IMAGES.mkdir(parents=True, exist_ok=True)
     for vieux in IMAGES.glob("*.png"):
-        vieux.unlink()
+        if "justificatifs" not in vieux.name:            # captures des justificatifs faites à part (documents joints)
+            vieux.unlink()
     with sync_playwright() as p:
         navigateur = p.chromium.launch(**chromium())
         contexte = navigateur.new_context(viewport={"width": 1400, "height": 800}, locale="fr-FR")

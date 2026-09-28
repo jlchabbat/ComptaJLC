@@ -2059,3 +2059,219 @@ class ExcelDeToutesLesPages(TestCase):
     def test_page_sans_tableau(self):
         r = self.client.get("/mon-compte/?export=xlsx")
         self.assertIn("text/html", r["Content-Type"])                          # rien à exporter : la page s'affiche
+from . import justificatifs as just  # noqa: E402
+from .models import Justificatif  # noqa: E402
+
+
+@override_settings(**temporaire())
+class Justificatifs(TransactionTestCase):
+    def setUp(self):
+        ExportComplet.setUp(self)
+        self.m = Mouvement.objects.get(numero=1)
+
+    def fichier(self, nom="facture.pdf", contenu=b"%PDF-1.4 facture"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return SimpleUploadedFile(nom, contenu)
+
+    def test_ajout_consultation_suppression(self):
+        self.client.force_login(self.u)
+        r = self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier(), self.fichier("recu.jpg", b"\xff\xd8photo")],
+                                                             "description": "Traiteur"})
+        self.assertRedirects(r, "/mouvement/1/")
+        self.assertEqual(self.m.justificatifs.count(), 2)
+        j = self.m.justificatifs.first()
+        self.assertTrue(just.chemin(j).exists())
+        self.assertRegex(j.chemin, r"^2026/Mvt1_\d+_facture\.pdf$")
+        page = self.client.get("/mouvement/1/")
+        self.assertContains(page, "facture.pdf")
+        self.assertIn("<title>Mvt 1 ", page.content.decode())            # section dans la page, pas dans le titre
+        self.assertNotIn("Justificatifs", page.content.decode().split("</title>")[0])
+        self.assertContains(page, "Traiteur")
+        r = self.client.get(f"/justificatif/{j.pk}/")
+        self.assertEqual(b"".join(r.streaming_content), b"%PDF-1.4 facture")
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertIn("attachment", self.client.get(f"/justificatif/{j.pk}/?telecharger=1")["Content-Disposition"])
+        # colonne 📎 et filtre des écritures
+        self.assertContains(self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31"), "📎2")
+        sans = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&just=sans").context["page"]
+        avec = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&just=avec").context["page"]
+        self.assertNotIn(1, {l.mouvement.numero for l in sans})
+        self.assertEqual({l.mouvement.numero for l in avec}, {1})
+        self.assertEqual(avec.paginator.count, 2)
+        # suppression tracée, fichier effacé
+        fichier = just.chemin(j)
+        self.client.post(f"/justificatif/{j.pk}/supprimer/")
+        self.assertFalse(fichier.exists())
+        self.assertEqual(self.m.justificatifs.count(), 1)
+        self.assertTrue(Modification.objects.filter(action="Suppression d'un justificatif").exists())
+        self.assertTrue(Modification.objects.filter(action="Ajout d'un justificatif").exists())
+
+    def test_refus(self):
+        self.client.force_login(self.u)
+        self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier("virus.exe", b"MZ")]})
+        self.assertEqual(Justificatif.objects.count(), 0)
+        with self.assertRaises(ValueError):
+            just.ajouter(self.m, self.fichier("gros.pdf", b"x" * (just.TAILLE_MAXI + 1)))
+        # bureau (consultation) : consulte mais ne joint ni ne supprime
+        j = just.ajouter(self.m, self.fichier(), auteur="tresorier")
+        v = User.objects.create_user("verif")
+        v.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(v)
+        self.assertEqual(self.client.get(f"/justificatif/{j.pk}/").status_code, 200)
+        self.assertEqual(self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier()]}).status_code, 403)
+        self.assertEqual(self.client.post(f"/justificatif/{j.pk}/supprimer/").status_code, 403)
+        self.assertNotContains(self.client.get("/mouvement/1/"), "Joindre")
+        # exercice clos : on peut encore joindre, plus supprimer
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        with self.assertRaises(ValueError):
+            just.supprimer(j)
+        self.assertTrue(just.chemin(j).exists())
+        just.ajouter(self.m, self.fichier("complement.png", b"\x89PNG"))
+
+    def test_export_complet_avec_justificatifs(self):
+        j = just.ajouter(self.m, self.fichier(), "Traiteur", "tresorier")
+        contenu = just.chemin(j).read_bytes()
+        chemin = ec.exporter(auteur="tresorier")
+        with zipfile.ZipFile(chemin) as z:
+            self.assertEqual(z.read(f"Justificatifs/{j.chemin}"), contenu)
+        just.chemin(j).unlink()                              # fichier perdu sur le serveur
+        Justificatif.objects.all().delete()
+        message, _ = ec.reinjecter(chemin, auteur="tresorier")
+        self.assertIn("1 justificatif", message)
+        j = Justificatif.objects.get()
+        self.assertEqual((j.description, just.chemin(j).read_bytes()), ("Traiteur", contenu))
+        # export dont le scan a été altéré : refusé, rien n'est modifié
+        altere = chemin.with_name("Export_complet_scan_altere.zip")
+        with zipfile.ZipFile(chemin) as z, zipfile.ZipFile(altere, "w") as sortie:
+            for n in z.namelist():
+                sortie.writestr(n, b"%PDF autre" if n.startswith("Justificatifs/") else z.read(n))
+        with self.assertRaises(ec.ExportInvalide):
+            ec.reinjecter(altere)
+        self.assertEqual(just.chemin(Justificatif.objects.get()).read_bytes(), contenu)
+
+
+@override_settings(**temporaire())
+class JustificatifsExistants(TransactionTestCase):
+    def setUp(self):
+        ExportComplet.setUp(self)                         # Mvt 1 : pièce 1, 01/02/2026, 400,00
+        import shutil
+        shutil.rmtree(just.dossier())                     # dossier partagé par les tests de la classe
+        Mouvement.objects.filter(numero=1).update(piece=739)
+        m = Mouvement.objects.create(numero=5, date=dt.date(2026, 3, 15), journal_id="OD", piece=740)
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600000", libelle="TRAITEUR", debit=D("450.00"), anal2_id="MAN.001")
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="TRAITEUR", credit=D("450.00"), anal2_id="MAN.001")
+
+    def test_propositions(self):
+        cas = {"Mvt 5 facture.pdf": (5, True), "mvt_1.jpg": (1, True), "Pièce 739.pdf": (1, True),
+               "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, True), "2026-03-15 traiteur 450,00.pdf": (5, True),
+               "15.03.2026.pdf": (5, False), "5.pdf": (5, False), "photo.jpg": (None, False), "Mvt 999.pdf": (None, False)}
+        self.assertIn("aucun mouvement le 16/03/2026", just.proposer("2026-03-16 recu.pdf")[1])
+        for nom, (numero, sur) in cas.items():
+            m, raison, s = just.proposer(nom)
+            self.assertEqual((m.numero if m else None, s), (numero, sur), f"{nom} : {raison}")
+
+    def test_depot_zip_et_rattachement(self):
+        import io
+        tampon = io.BytesIO()
+        with zipfile.ZipFile(tampon, "w") as z:
+            z.writestr("Factures 2026/Piece 739.pdf", b"%PDF 739")
+            z.writestr("Factures 2026/Piece 739.pdf.bak", b"x")                 # format refusé
+            z.writestr("__MACOSX/._Piece 739.pdf", b"x")                        # ignoré
+            z.writestr("Divers/photo reçu.jpg", b"\xff\xd8photo")
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.u)
+        self.client.post("/justificatifs/a-classer/", {"deposer": "1", "fichiers": [
+            SimpleUploadedFile("scans.zip", tampon.getvalue()), SimpleUploadedFile("Mvt 5.pdf", b"%PDF 5"),
+            SimpleUploadedFile("Mvt 5.pdf", b"%PDF 5 bis")]})
+        lignes = just.a_classer()
+        self.assertEqual(len(lignes), 4)
+        page = self.client.get("/justificatifs/a-classer/")
+        self.assertContains(page, "Piece_739.pdf")
+        noms = [l["nom"] for l in page.context["lignes"]]
+        self.assertTrue(any("doublon" in n for n in noms))                       # deux « Mvt 5.pdf »
+        donnees = {"rattacher": "1", "nom": noms}
+        for i, l in enumerate(page.context["lignes"]):
+            donnees[f"mvt_{i}"] = str(l["mouvement"].numero) if l["mouvement"] else "1"   # photo : saisie à la main
+            donnees[f"garder_{i}"] = "1"
+            donnees[f"desc_{i}"] = "reprise"
+        self.client.post("/justificatifs/a-classer/", donnees)
+        self.assertEqual(just.a_classer(), [])
+        self.assertEqual(Justificatif.objects.filter(mouvement__numero=5).count(), 2)
+        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=1).values_list("nom", flat=True)),
+                         {"Piece_739.pdf", "photo_recu.jpg"})
+        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=5).values_list("nom", flat=True)), {"Mvt_5.pdf"})
+        # écarter, droits
+        just.deposer("inutile.pdf", b"%PDF")
+        self.client.post("/justificatifs/a-classer/", {"ecarter": just.a_classer()[0]["nom"]})
+        self.assertEqual(just.a_classer(), [])
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
+
+    def test_commande(self):
+        dossier = Path(tempfile.mkdtemp()) / "Scans"
+        (dossier / "2026").mkdir(parents=True)
+        (dossier / "2026" / "Pièce 740.pdf").write_bytes(b"%PDF 740")
+        (dossier / "inconnu.jpg").write_bytes(b"\xff\xd8")
+        call_command("importer_justificatifs", str(dossier), "--rattacher", stdout=open("/dev/null", "w"))
+        self.assertEqual(Justificatif.objects.get().mouvement.numero, 5)
+        self.assertEqual([l["affiche"] for l in just.a_classer()], ["inconnu.jpg"])
+
+
+@override_settings(**temporaire())
+class LiensSumit(TransactionTestCase):
+    def setUp(self):
+        JustificatifsExistants.setUp(self)               # Mvt 1 (01/02/2026, 400) et Mvt 5 (15/03/2026, 450)
+
+    def extrait(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "DEPENSES"
+        ws.append(["Card name", "תאריך", "ספק/ית", "סכום", "פריט הוצאה", "סוג תשלום", "סטטוס", "קובץ מקושר"])
+        for date, somme, item, lien in ((dt.datetime(2026, 3, 15), -450, "2 - FETES - RALLYE", "https://app.sumit.co.il/crm/downloadfile/aaa/"),
+                                        (dt.datetime(2026, 2, 1), -400, "1 - LOGE - COTISATION", "https://app.sumit.co.il/crm/downloadfile/bbb/"),
+                                        (dt.datetime(2026, 4, 1), -99, "4 - FRAIS", "https://app.sumit.co.il/crm/downloadfile/ccc/"),
+                                        (dt.datetime(2026, 4, 2), -10, "4 - FRAIS", None)):
+            ws.append(["חשבונית", date, None, somme, item, "Cash", "Draft", "https://app.sumit.co.il/crm/downloadfile" if lien else None])
+            if lien:
+                ws.cell(ws.max_row, 8).hyperlink = lien
+        return self.octets(wb)
+
+    def octets(self, wb):
+        tampon = __import__("io").BytesIO()
+        wb.save(tampon)
+        return tampon.getvalue()
+
+    def test_liens(self):
+        deposes, refus = just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())
+        self.assertEqual((len(deposes), refus), (3, []))
+        self.assertEqual(just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())[0], [])       # pas de doublon
+        lignes = {l["lien"][-4:-1]: l for l in just.a_classer()}
+        self.assertEqual(lignes["aaa"]["mouvement"].numero, 5)
+        self.assertTrue(lignes["aaa"]["sur"])
+        self.assertEqual(lignes["aaa"]["affiche"], "2 - FETES - RALLYE · Cash")
+        self.assertEqual(lignes["bbb"]["mouvement"].numero, 1)
+        self.assertIsNone(lignes["ccc"]["mouvement"])
+        self.client.force_login(self.u)
+        page = self.client.get("/justificatifs/a-classer/")
+        self.assertContains(page, "https://app.sumit.co.il/crm/downloadfile/aaa/")
+        donnees = {"rattacher": "1", "nom": [l["nom"] for l in page.context["lignes"]]}
+        for i, l in enumerate(page.context["lignes"]):
+            if l["mouvement"]:
+                donnees.update({f"mvt_{i}": str(l["mouvement"].numero), f"garder_{i}": "1"})
+        self.client.post("/justificatifs/a-classer/", donnees)
+        j = Justificatif.objects.get(mouvement__numero=5)
+        self.assertEqual((j.lien, j.chemin, j.nom), ("https://app.sumit.co.il/crm/downloadfile/aaa/", None, "DEPENSES du 15/03/2026"))
+        self.assertEqual(self.client.get(f"/justificatif/{j.pk}/")["Location"], j.lien)
+        self.assertContains(self.client.get("/mouvement/5/"), "🔗")
+        self.assertEqual([l["lien"][-4:-1] for l in just.a_classer()], ["ccc"])          # reste à classer
+        just.ecarter(just.a_classer()[0]["nom"])
+        self.assertEqual(just.a_classer(), [])
+        self.assertEqual(just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())[0], ["lien 0"])  # seul « ccc » revient
+        # export complet : les liens reviennent à la réinjection
+        chemin = ec.exporter()
+        Justificatif.objects.all().delete()
+        ec.reinjecter(chemin)
+        self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
+                         {"https://app.sumit.co.il/crm/downloadfile/aaa/", "https://app.sumit.co.il/crm/downloadfile/bbb/"})

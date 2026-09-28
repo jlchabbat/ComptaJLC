@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 
-from compta import views, vues_base, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_utilisateurs, vues_rapprochement as rap
+from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_utilisateurs, vues_rapprochement as rap
 from compta import vues_analytique, vues_documentation, vues_echanges, vues_referentiels
 
 admin.site.site_header = "ComptaBB – administration"
@@ -13,6 +13,11 @@ admin.site.site_title = "ComptaBB"
 urlpatterns = [
     path("", views.tableau_de_bord, name="tableau_de_bord"),
     path("ecritures/", views.ecritures, name="ecritures"),
+    path("mouvement/<int:numero>/justificatifs/", vues_justificatifs.ajouter, name="justificatif_ajouter"),
+    path("justificatif/<int:pk>/", vues_justificatifs.voir, name="justificatif"),
+    path("justificatifs/a-classer/", vues_justificatifs.a_classer, name="justificatifs_a_classer"),
+    path("justificatifs/a-classer/voir/", vues_justificatifs.voir_a_classer, name="justificatif_a_classer_voir"),
+    path("justificatif/<int:pk>/supprimer/", vues_justificatifs.supprimer, name="justificatif_supprimer"),
     path("mouvement/<int:numero>/", views.mouvement, name="mouvement"),
     path("mouvement/<int:numero>/modifier/", vues_corrections.modifier, name="mouvement_modifier"),
     path("mouvement/rappel/", vues_corrections.rappeler, name="mouvement_rappel"),

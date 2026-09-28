@@ -42,7 +42,7 @@ Version du 27/09/2026</div>
 <li><a href="#c1">Accès, connexion, Mon compte et rôles</a></li>
 <li><a href="#c2">Se repérer dans l'application</a></li>
 <li><a href="#c3">Saisir une opération (saisie guidée)</a></li>
-<li><a href="#c4">Écriture libre, modifier une écriture</a></li>
+<li><a href="#c4">Écriture libre, modifier une écriture, justificatifs</a></li>
 <li><a href="#c5">Codes analytiques et nouveaux tiers</a></li>
 <li><a href="#c6">Tiers : fiches, import, solde, cotisations, lettrage</a></li>
 <li><a href="#c7">Fiches bénévoles (la liaison)</a></li>
@@ -159,7 +159,7 @@ code axe 2, compte de la bonne classe, écritures complètes et équilibrées, d
 doublon » si c'est voulu).</p>
 
 <!-- 4 -->
-<h1 id="c4">4. Écriture libre, modifier une écriture</h1>
+<h1 id="c4">4. Écriture libre, modifier une écriture, justificatifs</h1>
 <h2>Ouvrir un mouvement</h2>
 <p>Cliquer sur un <b>n° Mvt</b> (Écritures, Journaux, Grand livre…). La page montre les lignes, le lettrage, le lien avec le relevé et les commentaires ;
 le bouton <b>Modifier</b> est en haut.</p>
@@ -176,6 +176,39 @@ Le total débit / crédit s'affiche en direct : le mouvement doit rester <b>équ
 <h2>Écriture libre</h2>
 <p><span class="menu">Saisie › Écriture libre</span> : saisir un mouvement ligne par ligne (opération diverse, reclassement), avec journal, date et objet.
 Mêmes contrôles (équilibre, exercice ouvert).</p>
+<h2>Joindre les justificatifs (scans, photos)</h2>
+<p>Sur la page d'un mouvement, cadre <b>Joindre un scan ou une photo</b> : choisir un ou plusieurs fichiers (PDF ou image :
+JPG, PNG, HEIC ; 10 Mo au plus chacun), ajouter si besoin une description (« facture traiteur n° 1234 »), puis <b>Joindre</b>.
+Sur un téléphone, le bouton propose aussi de <b>prendre une photo</b> du reçu. Après une saisie guidée, l'application ouvre
+justement la page du mouvement créé : on y joint aussitôt la pièce.</p>
+<figure><img src="images/21_justificatifs.png"><figcaption>Mouvement avec ses deux justificatifs joints.</figcaption></figure>
+<ul><li>Cliquer sur le nom du document l'ouvre dans un nouvel onglet ; <b>Télécharger</b> l'enregistre sur le poste.</li>
+<li>Tous les utilisateurs qui consultent la comptabilité voient les justificatifs (le bureau notamment) ; seuls ceux qui saisissent
+peuvent en joindre, et seul le trésorier peut en supprimer.</li>
+<li>Un justificatif peut encore être joint dans un exercice clos, mais plus supprimé. Ajouts et suppressions sont inscrits dans l'Historique.</li>
+<li>Menu <span class="menu">Consulter › Écritures</span> : la colonne 📎 signale les mouvements qui ont des justificatifs, et le filtre
+<b>Justificatif : Sans</b> liste les mouvements à compléter.</li>
+<li>Les fichiers sont rangés sur le site dans <code>comptabb-data/Justificatifs</code> et sont repris dans l'<b>export complet</b>.
+Offre gratuite PythonAnywhere : 512 Mo d'espace en tout ; préférer des PDF ou photos de taille raisonnable.</li></ul>
+<h2>Documents existants : dépôt en masse</h2>
+<p><span class="menu">Administration › Justificatifs existants</span> (administrateur et trésorier) : pour joindre d'un coup les scans
+déjà faits.</p>
+<ol><li><b>Déposer</b> un fichier ZIP (dossiers compris) ou plusieurs fichiers sélectionnés ensemble.</li>
+<li>L'application propose pour chaque document le mouvement correspondant d'après le <b>nom du fichier</b> :
+« Mvt 389 », « Pièce 739 » (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt), ou une date et un montant
+(« 2026-03-15 facture 450,00.pdf »). Les propositions sûres sont déjà cochées ; les autres sont signalées « à vérifier »
+(par exemple un numéro qui est à la fois un n° de pièce et un n° de Mvt, ou plusieurs mouvements à la même date).</li>
+<li>Corriger ou saisir le n° de Mvt si besoin (cliquer sur le nom pour ouvrir le document), cocher, puis <b>Rattacher les lignes cochées</b>.
+Les documents non cochés restent « à classer » pour plus tard ; <b>Écarter</b> supprime un document déposé par erreur.</li></ol>
+<figure><img src="images/22_justificatifs_existants.png"><figcaption>Documents déposés : propositions sûres cochées, cas douteux à vérifier.</figcaption></figure>
+<p class="aide">Conseil : si les scans ne portent pas encore de numéro, les renommer avec le n° de pièce écrit sur le document
+(« Pièce 739.pdf ») rend le rattachement automatique.</p>
+<h2>Documents restés dans SUMIT</h2>
+<p>Sur la même page, déposer l'<b>extrait Excel de SUMIT</b> (EXTRACT_SUMIT_….xlsx). Chaque ligne qui a un lien vers un document
+(feuille DEPENSES, colonne « קובץ מקושר ») est proposée au mouvement de <b>même date et même montant</b>. Le document reste dans
+SUMIT : ComptaBB garde son <b>lien</b> 🔗, qui l'ouvre dans SUMIT (être connecté à SUMIT dans le navigateur).
+Les lignes dont la date et le montant correspondent à plusieurs mouvements sont « à vérifier » : la raison indique les n° de Mvt
+possibles, saisir le bon. Redéposer un extrait plus récent n'ajoute que les nouveaux liens.</p>
 
 <!-- 5 -->
 <h1 id="c5">5. Codes analytiques et nouveaux tiers</h1>
@@ -248,8 +281,9 @@ justificatif, remarque ; <b>Ajouter la ligne</b> en haut.</li>
 <h2>Tableau de bord</h2>
 <p>Produits, charges, résultat, trésorerie par compte, état des contrôles, résultat par activité (axe 1) et par événement (axe 2), sur la période choisie (Du / Au).</p>
 <h2>Écritures</h2>
-<p>Toutes les lignes, filtrées par période, journal, compte, code axe 2 ou texte. Tri par colonne sur toutes les pages.</p>
-<figure><img src="images/12_ecritures.png"><figcaption>Écritures.</figcaption></figure>
+<p>Toutes les lignes, filtrées par période, journal, compte (début de numéro ou choix dans la liste), code axe 2, texte ou présence
+d'un justificatif (colonne 📎). Tri par colonne sur toutes les pages.</p>
+<figure><img src="images/12_ecritures.png"><figcaption>Écritures triées par débit décroissant.</figcaption></figure>
 <h2>Journaux (banque, caisse…)</h2>
 <p><span class="menu">Consulter › Journaux</span> : choisir le journal et la période ; en haut, <b>Télécharger en Excel</b> et <b>Imprimer / PDF</b>.</p>
 <ul><li><b>Banque et caisse</b> (B1, B2, B3, CA) : date, Mvt, pièce, libellé, <b>contrepartie</b>, recette, dépense, <b>solde progressif</b>.</li>
@@ -365,7 +399,7 @@ Un chemin <code>D:\…</code> ne vaut que sur le PC : sur le site, il est ignor�
 on télécharge alors les fichiers. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes, export complet et remise à zéro.</figcaption></figure>
-<ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx, Donnees.xlsx, états de chaque exercice, contrôle).
+<ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx, Donnees.xlsx, justificatifs, états de chaque exercice, contrôle).
 Toutes les données y sont ; seuls les comptes utilisateurs ne sont que dans la base.</li>
 <li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture.</li>
 <li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis une sauvegarde .sqlite3 (tout redevient comme à ce moment-là, utilisateurs compris),
