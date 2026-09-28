@@ -134,8 +134,7 @@ def mouvement(request, numero):
     return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2"),
                                                      "verrou": verrou(m), "justificatifs": pieces,
                                                      "peut_joindre": joindre,
-                                                     "a_classer": liste_a_classer() if joindre and request.user.has_perm(
-                                                         "compta.echanger_fichiers") else [],
+                                                     "a_classer": liste_a_classer() if joindre else [],
                                                      "refus_suppression": refus_suppression(pieces[0]) if pieces else ""})
 
 

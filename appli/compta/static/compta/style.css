@@ -243,3 +243,12 @@ td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; ma
 .sit-table tr.sit-sous-total td { font-style: italic; font-weight: 600; color: var(--bleu); border-bottom: 1.5px solid #9fb0cc; }
 @media print { article.situation.saut + article.situation.saut, article.situation + article.situation.saut { break-before: page; }
   .sit-table tr.sit-compte td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+/* Onglet Administration (administrateur seulement) : à droite, séparé des onglets de tenue quotidienne */
+.menu.admin { margin-left: auto; border-left: 1px solid rgba(255,255,255,.25); }
+.menu.admin > button { color: #ffd98a; }
+.menu .sous .groupe { padding: 8px 16px 3px; font-size: 12px; font-weight: 700; color: #7a869a; text-transform: uppercase;
+  letter-spacing: .4px; border-top: 1px solid var(--ligne); }
+.menu .sous .groupe:first-child { border-top: 0; }
+nav.menus { flex: 1; }
+.menu.admin .sous { right: 0; left: auto; }

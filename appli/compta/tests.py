@@ -1132,6 +1132,11 @@ class ImportTiers(TestCase):
         self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # rôle Bureau : pas d'import
         self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
         self.client.force_login(u)
+        self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # trésorier : pas d'import non plus
+        self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
+        a = User.objects.create_user("admin")
+        a.groups.add(Group.objects.get(name="Administrateur"))
+        self.client.force_login(a)                                                       # import : administrateur
         from django.core.files.uploadedfile import SimpleUploadedFile
         modele = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(modele["Tiers"]["C1"].value, "Nom")
@@ -1989,9 +1994,16 @@ class ReferentielsEtPages(TransactionTestCase):
         t = User.objects.create_user("tresorier")
         donner_role(t, "Trésorier")
         self.client.force_login(t)
+        self.assertEqual(self.client.get("/referentiels/").status_code, 403)          # exports : administrateur seulement
+        self.assertEqual(self.client.get("/documentation/installation.pdf").status_code, 403)
+        page = self.client.get("/")
+        self.assertNotContains(page, "Administration ▾")                             # onglet réservé
+        self.assertNotContains(page, "Installation et mises à jour")
+        t = User.objects.create_user("admin2")
+        donner_role(t, "Administrateur")
+        self.client.force_login(t)
         noms = [r[0] for r in referentiels(t)]
         self.assertIn("PlanComptable", noms)
-        self.assertNotIn("Utilisateurs", noms)                                     # administrateur seulement
         self.assertContains(self.client.get("/referentiels/"), "PlanComptable.xlsx")
         for nom in noms + ["Parametres"]:
             r = self.client.get(f"/referentiels/{nom}.xlsx")
@@ -2011,7 +2023,7 @@ class ReferentielsEtPages(TransactionTestCase):
         with zipfile.ZipFile(io.BytesIO(r.content)) as z:
             self.assertTrue({"Parametres.xlsx", "Ecritures.xlsx", "Tiers.xlsx", "Banque1.xlsx", "Lexique.xlsx"} <= set(z.namelist()))
         self.assertTrue(list((self.racine / "Exports").glob("Exports_*.zip")))
-        self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 403)
+        self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 200)             # administrateur
         b = User.objects.create_user("bureau")
         donner_role(b, "Bureau")
         self.client.force_login(b)

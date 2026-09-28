@@ -24,8 +24,6 @@ def ajouter(request, numero):
         raise PermissionDenied
     m = get_object_or_404(Mouvement, numero=numero)
     if "a_classer" in request.POST:                       # document déjà déposé (Justificatifs existants)
-        if not request.user.has_perm("compta.echanger_fichiers"):
-            raise PermissionDenied
         noms = request.POST.getlist("a_classer")
         if not noms:
             messages.error(request, "Choisissez au moins un document dans la liste.")
@@ -180,8 +178,9 @@ def a_classer(request):
 
 
 @login_required
-@echanger
 def voir_a_classer(request):
+    if not (request.user.has_perm("compta.echanger_fichiers") or peut_ajouter(request.user)):   # aperçu depuis le mouvement
+        raise PermissionDenied
     nom = request.GET.get("nom", "")
     if nom.startswith("lien:"):
         try:
