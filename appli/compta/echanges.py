@@ -494,6 +494,73 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     return f"{crees} mouvement(s) ajouté(s), {len(modifies)} modifié(s), {len(mvts) - crees - len(modifies)} inchangé(s)"
 
 
+def imp_libelles(lignes, fichier, utilisateur=None):
+    """Libellés seulement. Chaque Mvt du fichier est retrouvé sur le site par son contenu (date, journal, comptes et
+    montants), pas par son numéro : un fichier venu d'une autre base (numéros décalés) convient. Seuls les libellés
+    changent ; montants, comptes, dates, pointages et lettrages ne bougent pas. Mvt introuvable, ambigu ou dans un
+    exercice clos : laissé tel quel et signalé."""
+    L, mvts = Lecteur(), defaultdict(list)
+    for n, d in lignes:
+        numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
+        mvts[numero].append((n, L.date(n, d, "Date"), L.texte(n, d, "Jnl", True), L.texte(n, d, "Compte", True),
+                             L.texte(n, d, "Libellé", longueur=200) or "", L.montant(n, d, "Débit") or ZERO,
+                             L.montant(n, d, "Crédit") or ZERO))
+    L.verifier()
+    en_base = defaultdict(list)
+    for m in Mouvement.objects.prefetch_related("lignes"):
+        en_base[empreinte(m.date, m.journal_id, [(l.compte_id, l.debit, l.credit) for l in m.lignes.all()])].append(m)
+    faits, identiques, introuvables, ambigus, clos, vus = 0, 0, [], [], [], set()
+    for numero, ls in sorted(mvts.items(), key=lambda x: x[0] or 0):
+        if numero is None:
+            continue
+        candidats = en_base.get(empreinte(ls[0][1], ls[0][2], [(x[3], x[5], x[6]) for x in ls]), [])
+        if len(candidats) > 1:                        # plusieurs Mvt identiques : le même numéro départage
+            candidats = [m for m in candidats if m.numero == numero] or candidats
+        if not candidats:
+            introuvables.append(numero)
+            continue
+        if len(candidats) > 1:
+            ambigus.append(f"{numero} (site : " + ", ".join(str(m.numero) for m in candidats) + ")")
+            continue
+        m = candidats[0]
+        if m.pk in vus:                               # deux Mvt du fichier pour un seul du site
+            ambigus.append(f"{numero} (site : {m.numero}, déjà pris)")
+            continue
+        vus.add(m.pk)
+        restantes = list(ls)                          # chaque ligne du site reçoit le libellé de la ligne de même compte et montant
+        changements = []
+        for l in m.lignes.all():
+            x = next(x for x in restantes if (x[3], x[5], x[6]) == (l.compte_id, l.debit, l.credit))
+            restantes.remove(x)
+            if x[4] != l.libelle:
+                changements.append((l, x[4]))
+        if not changements:
+            identiques += 1
+            continue
+        if Exercice.date_close(m.date):
+            clos.append(m.numero)
+            continue
+        for l, libelle in changements:
+            Ligne.objects.filter(pk=l.pk).update(libelle=libelle)
+        Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Échanges",
+                                    action="Libellés mis à jour", objet=f"Mvt {m.numero} (fichier : Mvt {numero})",
+                                    avant=" | ".join(l.libelle for l, _ in changements)[:300],
+                                    apres=" | ".join(v for _, v in changements)[:300])
+        faits += 1
+
+    def liste(ns):
+        return ", ".join(map(str, ns[:30])) + (" …" if len(ns) > 30 else "")
+    resume = [f"{faits} mouvement(s) : libellés mis à jour", f"{identiques} déjà à jour"]
+    if clos:
+        resume.append(f"{len(clos)} dans un exercice clos, non modifié(s) (Mvt du site {liste(clos)})")
+    if introuvables:
+        resume.append(f"{len(introuvables)} introuvable(s) sur le site (date, journal, comptes ou montants différents ; "
+                      f"Mvt du fichier {liste(introuvables)})")
+    if ambigus:
+        resume.append(f"{len(ambigus)} ambigu(s), non modifié(s) : Mvt du fichier {liste(ambigus)}")
+    return " ; ".join(resume)
+
+
 # ---- relevés Mizrahi (Banque 1 et Banque 2) et caisse
 
 COLONNES_BANQUE = ["Date", "Référence", "Opération", "Montant", "Solde"]
@@ -586,6 +653,8 @@ FORMATS = [
     Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"], exp_budget, imp_budget, (6,)),
     Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)",
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_ecritures, (7, 8)),
+    Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
+           ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_libelles, (7, 8)),
     Format("Banque1", "Relevé Banque 1 – Mizrahi (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 – Mizrahi (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
     Format("Bit", "Relevé Banque 3 – Bit (journal B3, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
@@ -649,6 +718,7 @@ AIDE = {
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Pièce": (O, "entier", "N° de pièce"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),
         "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx)"), "Let": (F, TEXTE, "Code de lettrage")}),
+    "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
     "Banque1": ("Relevé Mizrahi compte 732-182029 (journal B1). Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Banque2": ("Relevé Mizrahi (journal B2). Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Bit": ("Relevé Bit (journal B3). Remplace tout le relevé B3 précédent (pointages B3 annulés).", {
@@ -661,6 +731,7 @@ COLONNES_RELEVE = {"Date": (O, DATE, "Date d'opération"), "Référence": (F, TE
                    "Opération": (F, TEXTE, "Libellé de l'opération (hébreu accepté)"),
                    "Montant": (O, MONTANT, "Positif = entrée, négatif = sortie"),
                    "Solde": (F, MONTANT, "Solde après l'opération ; obligatoire sur la 1re ligne du tout premier import")}
+AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
 for _nom in ("Banque1", "Banque2", "Caisse"):
     AIDE[_nom][1].update(COLONNES_RELEVE)
 

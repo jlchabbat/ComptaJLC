@@ -397,7 +397,7 @@ Un fichier d'un seul référentiel s'importe de la même façon.</li>
 <li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import.</li></ul>
 <h2>Imports / Exports</h2>
 <p><span class="menu">Administration › Imports / Exports</span> : toutes les données s'échangent par fichiers <b>.xlsx</b>, un par nature
-(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse),
+(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Libelles, Banque1, Banque2, Bit, Caisse),
 de <b>même structure à l'import et à l'export</b>, décrits dans <b>Lexique.xlsx</b>. Boutons en haut : <b>Tout exporter</b>,
 <b>Tout exporter et sauvegarder la base</b>, <b>Enregistrer les dossiers</b>, <b>Tout réinjecter</b>.</p>
 <figure><img src="images/22_echanges.png"><figcaption>Imports / Exports.</figcaption></figure>
@@ -405,6 +405,9 @@ de <b>même structure à l'import et à l'export</b>, décrits dans <b>Lexique.x
 le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mizrahi se convertit d'abord en Banque1.xlsx ou Banque2.xlsx.</li>
 <li><b>Tout exporter et sauvegarder la base</b> : le jeu complet (un fichier par format, plus Parametres.xlsx) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.
 Les fichiers du dossier Exports se téléchargent depuis la liste de la page.</li>
+<li><b>Libellés seulement</b> : un fichier d'écritures nommé <b>Libelles….xlsx</b> (mêmes colonnes qu'Ecritures.xlsx) ne change que
+les libellés. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants, même si son n° diffère (fichier
+venu d'une autre base, du PC par exemple). Les Mvt introuvables, ambigus ou d'un exercice clos sont listés et laissés tels quels.</li>
 <li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de leur nature.</li></ol>
 <h2>Les dossiers Imports, Exports et Sauvegardes</h2>
 <p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).

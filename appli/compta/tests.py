@@ -1583,7 +1583,7 @@ class Echanges(TransactionTestCase):
             self.assertContains(r, f"{source.name} importé (", msg_prefix=f.nom)
         self.assertEqual(avant, (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count()))
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
-        self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 8)
+        self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 9)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
         self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"])
         self.assertEqual(wb.active["C2"].value, 421)
@@ -1655,6 +1655,41 @@ class Echanges(TransactionTestCase):
         wb.save(ech.imports() / chemin.name)
         self.assertContains(self.importer(chemin.name), "1 mouvement(s) ajouté(s), 0 modifié(s)")
         self.assertEqual(Mouvement.objects.count(), n + 1)
+
+    def test_libelles_seulement_mvt_retrouves_par_leur_contenu(self):
+        """Fichier venu d'une autre base : n° décalés ; seuls les libellés sont repris, Mvt retrouvés par leur contenu."""
+        chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
+        wb = openpyxl.load_workbook(chemin)
+        ws = wb.active
+        premier = ws["C2"].value
+        m = Mouvement.objects.get(numero=premier)
+        avant = {l.pk: (l.compte_id, l.debit, l.credit, l.rapprochement_id, l.lettrage) for l in m.lignes.all()}
+        for r in range(2, ws.max_row + 1):
+            if ws.cell(r, 3).value == premier:
+                ws.cell(r, 3).value = premier + 7000                      # autre numérotation
+                ws.cell(r, 4).value = 1
+                ws.cell(r, 6).value = f"LIBELLE BANQUE {r}"
+        ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "600100", "INCONNU", 1, None, ws["I2"].value, None])
+        ws.append([dt.datetime(2026, 5, 5), "OD", 8888, 1, "512000", "INCONNU", None, 1, ws["I2"].value, None])
+        wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
+        n = Mouvement.objects.count()
+        r = self.importer("Libelles_2026-09-27.xlsx")
+        self.assertContains(r, "1 mouvement(s) : libellés mis à jour")
+        self.assertContains(r, "1 introuvable(s) sur le site")
+        self.assertContains(r, "Mvt du fichier 8888")
+        self.assertEqual(Mouvement.objects.count(), n)                                  # rien de créé
+        m.refresh_from_db()
+        self.assertTrue(all(l.libelle.startswith("LIBELLE BANQUE") for l in m.lignes.all()))
+        self.assertEqual(avant, {l.pk: (l.compte_id, l.debit, l.credit, l.rapprochement_id, l.lettrage) for l in m.lignes.all()})
+        self.assertEqual(m.numero, premier)                                             # n° du site gardé
+        self.assertTrue(Modification.objects.filter(action="Libellés mis à jour", objet__contains=f"fichier : Mvt {premier + 7000}").exists())
+        wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")                            # réimport : déjà à jour
+        self.assertContains(self.importer("Libelles_2026-09-27.xlsx"), "0 mouvement(s) : libellés mis à jour")
+        # exercice clos : libellés non modifiés, signalés
+        Exercice.objects.filter(debut__lte=m.date, fin__gte=m.date).update(clos=True)
+        ws["F2"] = "ENCORE AUTRE"
+        wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
+        self.assertContains(self.importer("Libelles_2026-09-27.xlsx"), "1 dans un exercice clos, non modifié(s)")
 
     def test_bit_remplace_le_releve(self):
         d = dt.datetime(2026, 1, 11)

@@ -62,6 +62,7 @@ fichier n'est pas versionné (règle `*.xlsx` du `.gitignore`).
 | 9 | `Traductions.xlsx` | Opération (hébreu), Traduction | mise à jour par opération |
 | 10 | `Budget.xlsx` | Exercice, Nature, Compte, Axe 1, Axe 2, Montant | une seule cible par ligne |
 | 11 | `Ecritures.xlsx` | Date, Jnl, Mvt, Pièce, Compte, Libellé, Débit, Crédit, Anal2, Let | Mvt nouveau ajouté, Mvt modifié mis à jour (tracé), identique ignoré ; Mvt nouveau identique à un Mvt du site sous un autre n° refusé (doublon) |
+| 11 bis | `Libelles.xlsx` | mêmes colonnes qu'Ecritures | Libellés seulement : chaque Mvt retrouvé sur le site par date, journal, comptes et montants (n° indifférent) ; introuvables, ambigus et exercices clos signalés, laissés tels quels |
 | 12 | `Banque1.xlsx` | Date, Référence, Opération, Montant, Solde | relevé Mizrahi 732-182029 (B1) ; lignes déjà présentes ignorées |
 | 13 | `Banque2.xlsx` | idem | relevé Mizrahi (B2) |
 | 14 | `Bit.xlsx` | Journ, Date, Libelle, Debit, Credit | relevé Bit (B3), `Journ` = `B3` ; **remplace** le relevé B3 ([détail](../docs/import-banque3.md)) |
