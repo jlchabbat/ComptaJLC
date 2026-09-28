@@ -14,6 +14,13 @@ ou une <b>date et un montant</b> (« 2026-03-15 facture 450,00.pdf »). Les docu
 <div class="formulaire"><label for="id_fichiers">Fichiers ou ZIP</label>
 <div><input type="file" id="id_fichiers" name="fichiers" multiple accept=".zip,application/zip,.xlsx,application/pdf,image/*" required></div></div></form>
 
+{% if en_ligne %}<form method="post" class="carte">{% csrf_token %}
+<h2 style="margin-top:0">Documents encore en ligne ({{ en_ligne }})</h2>
+<div class="barre"><button class="principal" name="rapatrier" value="1">Les enregistrer sur le site</button></div>
+<p class="aide">Ces justificatifs ne sont que des <b>liens</b> 🔗 (SUMIT…). Le bouton télécharge chaque document (25 par clic) et le range
+sur le site ; le lien est ensuite oublié. Si le site du document refuse (connexion demandée, site non permis), le lien reste :
+télécharger alors les PDF sur le PC et les déposer ci-dessus.</p></form>{% endif %}
+
 <h2>2. Vérifier et rattacher ({{ lignes|length }} document{{ lignes|length|pluralize }} à classer)</h2>
 {% if lignes %}
 <p class="aide">{{ proposes }} proposition{{ proposes|pluralize }}, dont {{ surs }} sûre{{ surs|pluralize }} (déjà cochée{{ surs|pluralize }}).
@@ -26,7 +33,7 @@ Cliquez sur un nom pour ouvrir le document.</p>
 <table class="triable"><tr><th>Document</th><th>Mvt</th><th>Mouvement proposé</th><th class="n">Total du Mvt</th><th>Raison</th><th>Description</th><th>Rattacher</th><th></th></tr>
 {% for l in lignes %}<tr>
 <td><input type="hidden" name="nom" value="{{ l.nom }}"><a href="{% if l.lien %}{{ l.lien }}{% else %}{% url 'justificatif_a_classer_voir' %}?nom={{ l.nom|urlencode }}{% endif %}" target="_blank" rel="noopener">{% if l.lien %}🔗 {% endif %}{{ l.affiche }}</a>
-<div class="aide">{% if l.lien %}{{ l.feuille }} · {{ l.date|slice:"8:10" }}/{{ l.date|slice:"5:7" }}/{{ l.date|slice:":4" }} · {{ l.montant_extrait }}{% elif l.taille >= 1048576 %}{% widthratio l.taille 1048576 1 %} Mo{% else %}{% widthratio l.taille 1024 1 %} Ko{% endif %}</div></td>
+<div class="aide">{% if l.lien %}{{ l.feuille }}{% if l.date %} · {{ l.date|slice:"8:10" }}/{{ l.date|slice:"5:7" }}/{{ l.date|slice:":4" }}{% endif %}{% if l.montant_extrait %} · {{ l.montant_extrait }}{% endif %}{% elif l.taille >= 1048576 %}{% widthratio l.taille 1048576 1 %} Mo{% else %}{% widthratio l.taille 1024 1 %} Ko{% endif %}</div></td>
 <td><input name="mvt_{{ forloop.counter0 }}" value="{% if l.mouvement %}{{ l.mouvement.numero|stringformat:'d' }}{% endif %}" size="6" inputmode="numeric"></td>
 <td>{% if l.mouvement %}<a href="{% url 'mouvement' l.mouvement.numero %}" target="_blank" rel="noopener">{{ l.detail }}</a>{% else %}<span class="ko">—</span>{% endif %}</td>
 <td class="n">{% if l.mouvement %}{{ l.montant|shekel }}{% endif %}</td>

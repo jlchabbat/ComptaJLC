@@ -23,6 +23,14 @@ def ajouter(request, numero):
     if not peut_ajouter(request.user):
         raise PermissionDenied
     m = get_object_or_404(Mouvement, numero=numero)
+    if "lien" in request.POST:                            # document resté en ligne (SUMIT…) : on garde son adresse
+        try:
+            moteur.ajouter_lien(m, request.POST["lien"], "Document SUMIT" if "sumit" in request.POST["lien"].lower() else "",
+                                request.POST.get("description", "").strip(), request.user.get_username())
+            messages.success(request, f"Lien joint au mouvement {m.numero}.")
+        except ValueError as e:
+            messages.error(request, str(e))
+        return redirect("mouvement", m.numero)
     fichiers = request.FILES.getlist("fichiers")
     if not fichiers:
         messages.error(request, "Choisissez au moins un fichier (PDF ou photo).")
@@ -83,6 +91,11 @@ def a_classer(request):
                 messages.info(request, f"« {moteur.nom_affiche(request.POST['ecarter'])} » écarté (fichier supprimé).")
             except ValueError as e:
                 messages.error(request, str(e))
+        elif "rapatrier" in request.POST:                 # par paquets : la page ne doit pas attendre trop longtemps
+            faits, erreurs, restent = moteur.rapatrier_tous(auteur, limite=25)
+            messages.success(request, f"{faits} document(s) copié(s) sur le site ; {restent} encore en ligne.")
+            for e in erreurs[:20]:
+                messages.error(request, e)
         elif "deposer" in request.POST:
             n, refus = 0, []
             for f in request.FILES.getlist("fichiers"):
@@ -122,6 +135,7 @@ def a_classer(request):
             l["montant"] = m.total_debit
     from django.shortcuts import render
     return render(request, "compta/justificatifs_a_classer.html", {
+        "en_ligne": Justificatif.objects.exclude(lien="").count(),
         "lignes": lignes, "proposes": sum(1 for l in lignes if l["mouvement"]), "surs": sum(1 for l in lignes if l["sur"])})
 
 

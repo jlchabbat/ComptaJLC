@@ -25,5 +25,14 @@ Sur un téléphone, le bouton propose aussi de prendre une photo.</p>
 <div class="formulaire"><label for="id_fichiers">Fichiers</label>
 <div><input type="file" id="id_fichiers" name="fichiers" multiple accept="application/pdf,image/*" required></div>
 <label for="id_description">Description (facultatif)</label>
-<div><input id="id_description" name="description" maxlength="150" placeholder="ex. facture traiteur n° 1234"></div></div></form>{% endif %}
+<div><input id="id_description" name="description" maxlength="150" placeholder="ex. facture traiteur n° 1234"></div></div></form>
+<form method="post" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}
+<h3 style="margin-top:0">Ou joindre un lien (document resté dans SUMIT…)</h3>
+<div class="barre"><button class="principal">Joindre le lien</button></div>
+<p class="aide">Coller l'adresse du document (https://app.sumit.co.il/crm/downloadfile/…) : ComptaBB garde le lien 🔗, le document reste dans SUMIT.
+Pour beaucoup de liens d'un coup : Administration › Justificatifs existants, avec l'extrait Excel de SUMIT.</p>
+<div class="formulaire"><label for="id_lien">Lien</label>
+<div><input type="url" id="id_lien" name="lien" maxlength="500" required placeholder="https://app.sumit.co.il/crm/downloadfile/…" style="width:100%"></div>
+<label for="id_description_lien">Description (facultatif)</label>
+<div><input id="id_description_lien" name="description" maxlength="150"></div></div></form>{% endif %}
 {% endblock %}

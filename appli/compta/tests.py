@@ -2243,6 +2243,73 @@ class LiensSumit(TransactionTestCase):
         wb.save(tampon)
         return tampon.getvalue()
 
+    def test_lien_ecrit_en_texte(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["תאריך", "סכום", "קובץ מקושר"])
+        ws.append([dt.datetime(2026, 3, 15), -450, "https://app.sumit.co.il/crm/downloadfile/ddd/"])     # sans hyperlien
+        self.assertEqual(len(just.deposer("EXTRACT_SUMIT.xlsx", self.octets(wb))[0]), 1)
+        l = just.a_classer()[0]
+        self.assertEqual((l["lien"], l["mouvement"].numero), ("https://app.sumit.co.il/crm/downloadfile/ddd/", 5))
+
+    def test_excel_fait_a_la_main(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Liens"
+        ws.append(["Mvt", "Pièce", "Lien", "Remarque"])
+        ws.append([1, None, "https://app.sumit.co.il/crm/downloadfile/m01/", "cotisation"])
+        ws.append([None, Mouvement.objects.get(numero=5).piece, "https://app.sumit.co.il/crm/downloadfile/p05/", None])
+        ws.append([999, None, "https://app.sumit.co.il/crm/downloadfile/x99/", None])
+        ws.append([None, None, "https://app.sumit.co.il/crm/downloadfile/sans/", None])        # rien pour le rattacher
+        self.assertEqual(len(just.deposer("Liens.xlsx", self.octets(wb))[0]), 3)
+        lignes = {l["lien"][-4:-1]: l for l in just.a_classer()}
+        self.assertEqual((lignes["m01"]["mouvement"].numero, lignes["m01"]["sur"], lignes["m01"]["affiche"]), (1, True, "cotisation"))
+        self.assertEqual(lignes["p05"]["mouvement"].numero, 5)
+        self.assertIsNone(lignes["x99"]["mouvement"])
+        self.client.force_login(self.u)
+        self.assertContains(self.client.get("/justificatifs/a-classer/"), "Mvt 999 inexistant")
+        just.rattacher(lignes["m01"]["nom"], lignes["m01"]["mouvement"])
+        self.assertEqual(Justificatif.objects.get(mouvement__numero=1).nom, "Liens (lien)")
+
+    def test_documents_en_ligne_copies_sur_le_site(self):
+        from unittest import mock
+        m = Mouvement.objects.get(numero=5)
+        a = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/aaa/", "Document SUMIT")
+        b = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/bbb/", "Document SUMIT")
+        c = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/ccc/", "Document SUMIT")
+        reponses = {"aaa": (b"%PDF-1.4 facture", "Facture 12.pdf"), "bbb": (b"<!DOCTYPE html><html>connexion", "")}
+
+        def faux(lien):
+            if lien[-4:-1] not in reponses:
+                raise ValueError("site du document injoignable depuis ComptaBB")
+            return reponses[lien[-4:-1]]
+        self.client.force_login(self.u)
+        self.assertContains(self.client.get("/justificatifs/a-classer/"), "Documents encore en ligne (3)")
+        with mock.patch.object(just, "telecharger", faux):
+            r = self.client.post("/justificatifs/a-classer/", {"rapatrier": "1"}, follow=True)
+        self.assertContains(r, "1 document(s) copié(s) sur le site ; 2 encore en ligne")
+        self.assertContains(r, "page web (connexion à SUMIT")
+        a.refresh_from_db()
+        self.assertEqual((a.lien, a.nom, a.taille), ("", "Facture 12.pdf", 16))
+        self.assertEqual(just.chemin(a).read_bytes(), b"%PDF-1.4 facture")
+        self.assertEqual(self.client.get(f"/justificatif/{a.pk}/").status_code, 200)            # servi par le site
+        self.assertTrue(Modification.objects.filter(action="Document en ligne enregistré sur le site",
+                                                    avant__contains="aaa").exists())
+        b.refresh_from_db()
+        c.refresh_from_db()
+        self.assertTrue(b.lien and c.lien)                                                     # les échecs gardent leur lien
+
+    def test_lien_colle_sur_le_mouvement(self):
+        self.client.force_login(self.u)
+        self.assertContains(self.client.get("/mouvement/5/"), "Joindre le lien")
+        adresse = "https://app.sumit.co.il/crm/downloadfile/a2be4b4f-5493-4433-b40e-f6c0d81eaa83/"
+        self.assertRedirects(self.client.post("/mouvement/5/justificatifs/", {"lien": adresse, "description": "Traiteur"}), "/mouvement/5/")
+        j = Justificatif.objects.get(mouvement__numero=5)
+        self.assertEqual((j.lien, j.nom, j.description), (adresse, "Document SUMIT", "Traiteur"))
+        self.client.post("/mouvement/5/justificatifs/", {"lien": adresse})                     # pas deux fois
+        self.client.post("/mouvement/5/justificatifs/", {"lien": "javascript:alert(1)"})       # https seulement
+        self.assertEqual(Justificatif.objects.count(), 1)
+
     def test_liens(self):
         deposes, refus = just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())
         self.assertEqual((len(deposes), refus), (3, []))

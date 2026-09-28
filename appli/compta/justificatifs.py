@@ -81,7 +81,98 @@ def ajouter_lien(mouvement, lien, nom="", description="", auteur=""):
                                     description=description[:150], ajoute_par=auteur)
     Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Ajout d'un lien de justificatif",
                                 objet=f"Mvt {mouvement.numero}", apres=f"{j.nom} {description} {lien}"[:300])
+    if getattr(settings, "RAPATRIER_LIENS", True):
+        try:
+            rapatrier(j, auteur)                          # le document est aussitôt copié sur le site si possible
+        except ValueError:
+            pass                                          # sinon le lien reste ; « Enregistrer sur le site » réessaiera
     return j
+
+
+# ---------------------------------------------------------------- documents en ligne copiés sur le site
+
+SIGNATURES = ((b"%PDF", ".pdf"), (b"\xff\xd8\xff", ".jpg"), (b"\x89PNG", ".png"), (b"GIF8", ".gif"),
+              (b"II*\x00", ".tif"), (b"MM\x00*", ".tif"))
+
+
+def _extension(contenu):
+    for debut, ext in SIGNATURES:
+        if contenu.startswith(debut):
+            return ext
+    if contenu[:4] == b"RIFF" and contenu[8:12] == b"WEBP":
+        return ".webp"
+    if contenu[4:12] in (b"ftypheic", b"ftypheix", b"ftypmif1"):
+        return ".heic"
+    return None
+
+
+def telecharger(lien):
+    """(contenu, nom proposé par le serveur ou '') du document à l'adresse lien. Lève ValueError si impossible."""
+    import urllib.error
+    import urllib.request
+    from email.message import Message
+    requete = urllib.request.Request(lien, headers={"User-Agent": "Mozilla/5.0 (ComptaBB)"})
+    try:
+        with urllib.request.urlopen(requete, timeout=30) as r:
+            contenu = r.read(TAILLE_MAXI + 1)
+            entete = Message()
+            entete["content-disposition"] = r.headers.get("Content-Disposition", "")
+            nom = entete.get_filename() or ""
+    except urllib.error.HTTPError as e:
+        raise ValueError(f"le site du document répond « {e.code} {e.reason} »") from None
+    except (urllib.error.URLError, OSError) as e:
+        raise ValueError("site du document injoignable depuis ComptaBB "
+                         f"({getattr(e, 'reason', e)} ; offre gratuite PythonAnywhere : seuls certains sites sont permis)") from None
+    if len(contenu) > TAILLE_MAXI:
+        raise ValueError("document de plus de 10 Mo")
+    return contenu, nom
+
+
+def rapatrier(j, auteur=""):
+    """Copie sur le site le document d'un justificatif « lien » ; le justificatif devient un fichier et le lien est
+    oublié (gardé dans l'historique). Lève ValueError si le document ne peut pas être récupéré."""
+    if not j.lien:
+        return j
+    contenu, nom = telecharger(j.lien)
+    ext = _extension(contenu)
+    if not ext:
+        debut = contenu[:500].lower()
+        if b"<html" in debut or b"<!doctype" in debut:
+            raise ValueError("le lien renvoie une page web (connexion à SUMIT demandée ?), pas le document")
+        raise ValueError("le lien ne renvoie ni un PDF ni une image")
+    base = nom.rsplit("/", 1)[-1].rsplit("\\", 1)[-1] if nom else f"SUMIT_Mvt{j.mouvement.numero}"
+    if not base.lower().endswith(EXTENSIONS):
+        base = base.rsplit(".", 1)[0] + ext if "." in base else base + ext
+    m = j.mouvement
+    rang = m.justificatifs.count()
+    relatif = f"{m.date:%Y}/Mvt{m.numero}_{rang}_{_nom_sur(base)}"
+    while Justificatif.objects.filter(chemin=relatif).exists() or (dossier() / relatif).exists():
+        rang += 1
+        relatif = f"{m.date:%Y}/Mvt{m.numero}_{rang}_{_nom_sur(base)}"
+    cible = dossier() / relatif
+    cible.parent.mkdir(parents=True, exist_ok=True)
+    cible.write_bytes(contenu)
+    ancien = j.lien
+    j.chemin, j.lien, j.taille = relatif, "", len(contenu)
+    if j.nom in ("Document en ligne", "Document SUMIT") or j.nom.startswith(("DEPENSES", "Liens")) or " du " in j.nom or "(lien)" in j.nom:
+        j.nom = base[:150]
+    j.save()
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Document en ligne enregistré sur le site",
+                                objet=f"Mvt {m.numero}", avant=ancien[:300], apres=f"{j.nom} ({j.taille // 1024} Ko)"[:300])
+    return j
+
+
+def rapatrier_tous(auteur="", limite=None):
+    """Copie sur le site les documents encore en ligne. Renvoie (nombre copié, erreurs, nombre restant)."""
+    faits, erreurs = 0, []
+    liens = Justificatif.objects.exclude(lien="").select_related("mouvement").order_by("mouvement__numero", "pk")
+    for j in (liens[:limite] if limite else liens):
+        try:
+            rapatrier(j, auteur)
+            faits += 1
+        except ValueError as e:
+            erreurs.append(f"Mvt {j.mouvement.numero} : {e}.")
+    return faits, erreurs, Justificatif.objects.exclude(lien="").count()
 
 
 def refus_suppression(j):
@@ -244,46 +335,73 @@ def _entetes(rangee):
     return [str(v or "").strip().lower() for v in rangee]
 
 
-def lire_extrait(contenu):
-    """Lignes à lien d'un extrait Excel (SUMIT ou autre) : date, montant, description, lien.
+MOTS_DATE = ("תאריך", "date", "date opération")
+MOTS_MONTANT = ("סכום", "montant", "amount", "somme")
+MOTS_MVT = ("mvt", "mouvement", "n° mvt", "numéro de mvt")
+MOTS_PIECE = ("pièce", "piece", "n° pièce", "n° de pièce", "pce", "pc", "pj")
 
-    Une feuille est retenue si une de ses premières lignes a une colonne date (« תאריך », « date ») et une colonne
-    montant (« סכום », « montant », « amount ») ; le lien est l'hyperlien d'une cellule de la ligne."""
+
+def _numero(v):
+    """N° de Mvt ou de pièce d'une cellule (389, « 389 », « Mvt 389 ») ; None sinon."""
+    if isinstance(v, (int, float)):
+        return int(v) or None
+    m = re.search(r"\d+", str(v or ""))
+    return int(m.group()) if m else None
+
+
+def lire_extrait(contenu):
+    """Lignes à lien d'un extrait Excel (SUMIT ou tableau fait à la main) : Mvt, pièce, date, montant, description, lien.
+
+    Une feuille est retenue si une de ses premières lignes a une colonne « Mvt », une colonne « Pièce », ou à la fois
+    une colonne date (« תאריך », « date ») et une colonne montant (« סכום », « montant », « amount ») ; le lien est
+    l'hyperlien d'une cellule de la ligne, ou une adresse https:// écrite dans une cellule."""
     import datetime as dt
     import io
     import openpyxl
     from decimal import Decimal, InvalidOperation
     wb = openpyxl.load_workbook(io.BytesIO(contenu))
     lignes = []
+
+    def colonne(e, mots):
+        return next((k for k, t in enumerate(e) if t in mots), None)
+
+    def valeur(r, k):
+        return r[k].value if k is not None and k < len(r) else None
+
     for ws in wb.worksheets:
         rangees = list(ws.iter_rows())
         for i, r in enumerate(rangees[:6]):
             e = _entetes(c.value for c in r)
-            col_date = next((k for k, t in enumerate(e) if t in ("תאריך", "date", "date opération")), None)
-            col_somme = next((k for k, t in enumerate(e) if t in ("סכום", "montant", "amount", "somme")), None)
-            if col_date is not None and col_somme is not None:
+            col_date, col_somme = colonne(e, MOTS_DATE), colonne(e, MOTS_MONTANT)
+            col_mvt, col_piece = colonne(e, MOTS_MVT), colonne(e, MOTS_PIECE)
+            if (col_date is not None and col_somme is not None) or col_mvt is not None or col_piece is not None:
                 break
         else:
             continue
-        ignorees = {col_date, col_somme} | {k for k, t in enumerate(e) if t in ("סטטוס", "status", "תאריך יצירה", "statut", "card name")}
+        ignorees = {col_date, col_somme, col_mvt, col_piece} | {
+            k for k, t in enumerate(e) if t in ("סטטוס", "status", "תאריך יצירה", "statut", "card name")}
         for r in rangees[i + 1:]:
             liens = [c.hyperlink.target for c in r if c.hyperlink and c.hyperlink.target]
-            if not liens or col_date >= len(r):
+            liens += [str(c.value).strip() for c in r if not c.hyperlink and str(c.value or "").strip().startswith("https://")
+                      and str(c.value).strip() not in liens]              # adresse écrite en texte dans la cellule
+            if not liens:
                 continue
-            date = r[col_date].value
+            date = valeur(r, col_date)
             if isinstance(date, dt.datetime):
                 date = date.date()
             try:
-                montant = abs(Decimal(str(r[col_somme].value)))
+                montant = abs(Decimal(str(valeur(r, col_somme))))
             except (InvalidOperation, TypeError):
-                continue
-            if not isinstance(date, dt.date):
+                montant = None
+            mvt, piece = _numero(valeur(r, col_mvt)), _numero(valeur(r, col_piece))
+            if not (mvt or piece or (isinstance(date, dt.date) and montant is not None)):
                 continue
             texte = [str(c.value).strip() for k, c in enumerate(r) if k not in ignorees and c.value not in (None, "")
                      and not c.hyperlink and not str(c.value).startswith("http")]
             for lien in liens:
-                lignes.append({"date": date.isoformat(), "montant": str(montant), "lien": lien, "feuille": ws.title,
-                               "description": " · ".join(texte)[:150]})
+                lignes.append({"date": date.isoformat() if isinstance(date, dt.date) else "",
+                               "montant": str(montant) if montant is not None else "", "mvt": mvt, "piece": piece,
+                               "lien": lien, "feuille": ws.title, "description": " · ".join(texte)[:150]})
     return lignes
 
 
@@ -303,11 +421,21 @@ def deposer_extrait(contenu):
 
 
 def proposer_lien(l):
-    """Mouvement d'après la date et le montant de la ligne de l'extrait : (mouvement, raison, sûr)."""
+    """Mouvement d'après le n° de Mvt, le n° de pièce, ou la date et le montant de la ligne : (mouvement, raison, sûr)."""
     import datetime as dt
     from decimal import Decimal
     from django.db.models import Q
     from .models import Ligne, Mouvement
+    if l.get("mvt"):
+        mv = Mouvement.objects.filter(numero=l["mvt"]).first()
+        return (mv, f"Mvt {l['mvt']}", True) if mv else (None, f"Mvt {l['mvt']} inexistant", False)
+    if l.get("piece"):
+        mvts = list(Mouvement.objects.filter(piece=l["piece"])[:2])
+        if len(mvts) == 1:
+            return mvts[0], f"pièce {l['piece']}", True
+        return None, f"pièce {l['piece']} " + ("sur plusieurs mouvements" if mvts else "inexistante"), False
+    if not (l.get("date") and l.get("montant")):
+        return None, "ni Mvt, ni pièce, ni date et montant", False
     date, montant = dt.date.fromisoformat(l["date"]), Decimal(l["montant"])
     numeros = sorted(set(Ligne.objects.filter(mouvement__date=date).filter(Q(debit=montant) | Q(credit=montant))
                          .values_list("mouvement__numero", flat=True)))
@@ -359,7 +487,8 @@ def rattacher(nom, mouvement, description="", auteur=""):
     from django.core.files import File
     if nom.startswith("lien:"):
         l, liens = _lien_en_attente(nom)
-        j = ajouter_lien(mouvement, l["lien"], f"{l['feuille']} du {l['date'][8:10]}/{l['date'][5:7]}/{l['date'][:4]}",
+        d = l.get("date") or ""
+        j = ajouter_lien(mouvement, l["lien"], f"{l['feuille']} du {d[8:10]}/{d[5:7]}/{d[:4]}" if d else f"{l['feuille']} (lien)",
                          description or l["description"], auteur)
         ecrire_liens([x for x in liens if x is not l])
         return j
