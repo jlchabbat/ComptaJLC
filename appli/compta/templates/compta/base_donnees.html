@@ -51,7 +51,7 @@ les comptes utilisateurs sont gardés, les fiches bénévoles, budgets et pointa
 {% empty %}<tr><td colspan="3">Aucun export complet.</td></tr>{% endfor %}</table>
 
 <h2>Sauvegardes sur le site ({{ sauvegardes|length }})</h2>
-<p class="aide">Les 30 dernières sont gardées (dont celles faites automatiquement par les mises à jour).</p>
+<p class="aide">Les 3 dernières sont gardées (dont celles faites automatiquement par les mises à jour).</p>
 <table class="triable"><tr><th>Fichier</th><th class="n">Taille (Ko)</th><th></th></tr>
 {% for nom, ko in sauvegardes %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'base_telecharger_fichier' nom %}">Télécharger</a></td></tr>
 {% empty %}<tr><td colspan="3">Aucune sauvegarde.</td></tr>{% endfor %}</table>

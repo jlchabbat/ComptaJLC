@@ -2,7 +2,7 @@
 
 Pour une sauvegarde automatique quotidienne sur PythonAnywhere (onglet Tasks) :
 COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder
-Les 30 dernières sauvegardes sont gardées dans Exports/Sauvegardes."""
+Les 3 dernières sauvegardes sont gardées dans Exports/Sauvegardes."""
 
 from django.core.management.base import BaseCommand
 

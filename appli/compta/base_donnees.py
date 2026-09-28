@@ -4,6 +4,7 @@ Toute opération qui remplace les données commence par une sauvegarde datée da
 
 import datetime as dt
 import sqlite3
+from pathlib import Path
 
 from django.core.management import call_command
 from django.db import connection
@@ -20,8 +21,12 @@ def liste():
     return sorted(dossier().glob("*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-def sauvegarder(motif="manuelle"):
-    """Copie cohérente de la base (API de sauvegarde SQLite), même pendant que le site tourne."""
+GARDER = 3                                  # sauvegardes de la base conservées (demande du trésorier)
+
+
+def sauvegarder(motif="manuelle", proteger=None):
+    """Copie cohérente de la base (API de sauvegarde SQLite), même pendant que le site tourne.
+    proteger : sauvegarde à ne pas effacer en faisant de la place (celle qu'on va restaurer)."""
     connection.ensure_connection()
     base = f"comptabb_{dt.datetime.now():%Y-%m-%d_%H%M%S}_{motif}"
     chemin, n = dossier() / f"{base}.sqlite3", 1
@@ -32,7 +37,8 @@ def sauvegarder(motif="manuelle"):
     with dest:
         connection.connection.backup(dest)
     dest.close()
-    for vieux in liste()[30:]:              # garde les 30 dernières
+    garde = {chemin.resolve()} | ({Path(proteger).resolve()} if proteger else set())
+    for vieux in [p for p in liste() if p.resolve() not in garde][GARDER - 1:]:     # garde les 3 dernières
         vieux.unlink()
     return chemin
 
@@ -54,7 +60,7 @@ def verifier(chemin):
 def restaurer(chemin):
     """Remplace toute la base par la sauvegarde (comptes utilisateurs compris), puis la met au niveau du code."""
     n = verifier(chemin)
-    avant = sauvegarder("avant-restauration")
+    avant = sauvegarder("avant-restauration", proteger=chemin)
     connection.ensure_connection()
     src = sqlite3.connect(chemin)
     src.backup(connection.connection)

@@ -1135,6 +1135,22 @@ class BaseDonnees(TransactionTestCase):
         self.admin = User.objects.create_superuser("admin", "", "motdepasse-long")
         self.client.force_login(self.admin)
 
+    def test_trois_sauvegardes_gardees_et_restauration_de_la_plus_ancienne(self):
+        import os
+        import time
+        referentiels()
+        mouvement(1, dt.date(2026, 2, 1), [("512000", 100, 0), ("700000", 0, 100)])
+        faites = []
+        for i in range(5):
+            faites.append(bd.sauvegarder(f"essai{i}"))
+            os.utime(faites[-1], (time.time() + i, time.time() + i))        # ordre des dates garanti
+        self.assertEqual(bd.liste(), faites[:1:-1])                           # les 3 dernières seulement
+        mouvement(2, dt.date(2026, 2, 2), [("512000", 5, 0), ("700000", 0, 5)])
+        plus_ancienne = bd.liste()[-1]
+        n, avant = bd.restaurer(plus_ancienne)                                # sa copie « avant » ne l'efface pas
+        self.assertEqual((n, Mouvement.objects.count()), (1, 1))
+        self.assertTrue(plus_ancienne.exists() and avant.exists())
+
     def test_sauvegarde_et_restauration(self):
         referentiels()
         mouvement(1, dt.date(2026, 2, 1), [("512000", 100, 0), ("700000", 0, 100)])

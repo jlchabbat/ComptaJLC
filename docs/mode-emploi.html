@@ -442,7 +442,7 @@ remplace la base du PC par une copie de celle du site, après une sauvegarde de 
 <h2>Commandes de la console (PythonAnywhere)</h2>
 <p>Se placer d'abord dans l'application : <code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTABB_DATA=~/comptabb-data</code></p>
 <table><tr><th style="width:40%">Commande</th><th>Effet</th></tr>
-<tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (dossier Sauvegardes ; les 30 dernières sont gardées).</td></tr>
+<tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (dossier Sauvegardes ; les 3 dernières sont gardées).</td></tr>
 <tr><td><code>python manage.py restaurer</code></td><td>Liste les sauvegardes, les plus récentes d'abord.</td></tr>
 <tr><td><code>python manage.py restaurer 3</code><br><code>python manage.py restaurer derniere</code></td><td>Remet la base dans l'état de la sauvegarde n° 3 de la liste (ou de la plus récente), après confirmation REMPLACER ; l'état actuel est sauvegardé juste avant.</td></tr>
 <tr><td><code>python manage.py exporter_tout</code></td><td>Jeu complet d'exports et sauvegarde de la base, dans les dossiers paramétrés.</td></tr>
