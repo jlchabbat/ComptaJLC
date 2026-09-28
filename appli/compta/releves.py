@@ -391,6 +391,25 @@ def deja_en_compta(l):
     return list(qs.order_by("mouvement__date", "mouvement__numero"))
 
 
+def groupes(l, maxi=4):
+    """Plusieurs écritures non reliées dont la somme fait la ligne du relevé (prélèvement de carte, remise de chèques…),
+    à ± tolérance jours : [(écritures), …], les plus proches de la date d'abord (3 au plus)."""
+    from itertools import combinations
+    ecart = dt.timedelta(days=tolerance())
+    sens = dict(debit__gt=0, credit=ZERO) if l.montant > 0 else dict(credit__gt=0, debit=ZERO)
+    cibles = sorted(ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart),
+                                                **sens),
+                    key=lambda e: (abs((e.mouvement.date - l.date).days), e.mouvement.numero))[:14]
+    trouves = []
+    for n in range(2, maxi + 1):
+        for combi in combinations(cibles, n):
+            if sum(montant(e) for e in combi) == l.montant:
+                trouves.append(combi)
+                if len(trouves) >= 3:
+                    return trouves
+    return trouves
+
+
 def pistes(l, jours=60):
     """Quand rien n'est proposé : pourquoi ? Écritures de même montant hors du cadre habituel.
 

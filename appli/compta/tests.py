@@ -678,6 +678,26 @@ class EcransRapprochement(TestCase):
         self.assertEqual(Mouvement.objects.count(), n + 1)                          # reliée, pas d'écriture en plus
         self.assertContains(self.client.get("/rapprochement/B1/"), "Tout le relevé téléchargé est en comptabilité")
 
+    def test_une_ligne_du_releve_pour_plusieurs_ecritures(self):
+        """Prélèvement Isracard de 760 = deux écritures (160 + 600) passées séparément sur la banque."""
+        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 10), rang=1, operation="ISRACARD", montant=D(-760))
+        es = []
+        for n, m in ((903, 160), (904, 600), (905, 45)):
+            mv = Mouvement.objects.create(numero=n, date=dt.date(2026, 2, 10), journal_id="B1", piece=n)
+            es.append(Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="CARTE", credit=D(m), anal2_id="GEN.004"))
+            Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="CARTE", debit=D(m), anal2_id="GEN.004")
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Plusieurs écritures")
+        self.assertContains(page, f'value="{l.pk}:{es[0].pk},{es[1].pk}"')
+        self.client.post("/rapprochement/B1/", {"relier": f"{l.pk}:{es[0].pk},{es[2].pk}"})       # 205 ≠ 760 : refusé
+        l.refresh_from_db()
+        self.assertIsNone(l.rapprochement_id)
+        r = self.client.post("/rapprochement/B1/", {"relier": f"{l.pk}:{es[0].pk},{es[1].pk}"}, follow=True)
+        self.assertContains(r, "reliée à Mvt 903 + Mvt 904")
+        l.refresh_from_db()
+        self.assertEqual(sorted(e.pk for e in l.rapprochement.ecritures.all()), [es[0].pk, es[1].pk])
+        self.assertEqual(Mouvement.objects.filter(numero__gte=903).count(), 3)                 # aucune écriture créée
+
     def test_pistes_quand_rien_n_est_propose(self):
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 20), rang=1, operation="x", montant=D(-71.93))
         mv = Mouvement.objects.create(numero=902, date=dt.date(2026, 2, 20), journal_id="B1", piece=902)     # 28 jours avant
@@ -1779,7 +1799,9 @@ class Echanges(TransactionTestCase):
 
     def test_deposer_et_telecharger(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
-        self.client.post("/echanges/", {"exporter": "Ecritures"})
+        r = self.client.post("/echanges/", {"exporter": "Ecritures"})
+        self.assertIn("attachment", r["Content-Disposition"])                         # téléchargé aussitôt
+        self.assertIn("spreadsheetml", r["Content-Type"])
         page = self.client.get("/echanges/")
         nom = next(n for n, _ in page.context["exportes"] if n.startswith("Ecritures_"))
         r = self.client.get(f"/echanges/exports/{nom}")

@@ -46,7 +46,7 @@ indiqué (Tiers.xlsx, Tiers_2026-09-27.xlsx…) ; la ligne 1 contient exactement
 <form method="post" id="f-exports">{% csrf_token %}
 <table><tr><th>#</th><th>Fichier</th><th>Contenu</th><th>Colonnes (ligne 1)</th><th></th></tr>
 {% for f in formats %}<tr><td>{{ forloop.counter }}</td><td><b>{{ f.nom }}.xlsx</b></td><td>{{ f.contenu }}</td><td>{{ f.colonnes|join:" · " }}</td>
-<td><button name="exporter" value="{{ f.nom }}">Exporter</button></td></tr>{% endfor %}</table>
+<td><button name="exporter" value="{{ f.nom }}" title="Télécharge le fichier (une copie reste dans le dossier Exports)">Exporter (télécharger)</button></td></tr>{% endfor %}</table>
 <p class="aide">« Tout exporter et sauvegarder la base » écrit le jeu complet (un fichier par format, plus Parametres.xlsx, le classeur complet
 des paramètres) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.</p></form>
 <h3>Fichiers du dossier Exports ({{ exportes|length }})</h3>

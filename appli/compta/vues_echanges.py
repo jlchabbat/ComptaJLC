@@ -49,8 +49,10 @@ def echanges(request):
                 messages.success(request, f"{len(ecrits)} fichiers exportés dans {moteur.exports()} ; "
                                           f"sauvegarde de la base : {sauvegarde}.")
             elif "exporter" in request.POST:
-                noms = [f.nom for f in moteur.FORMATS] if request.POST["exporter"] == "tout" else [request.POST["exporter"]]
-                for nom in noms:
+                if request.POST["exporter"] != "tout":            # un seul fichier : copie dans Exports et téléchargement
+                    chemin, _ = moteur.exporter(moteur.PAR_NOM[request.POST["exporter"]], auteur)
+                    return FileResponse(open(chemin, "rb"), as_attachment=True, filename=chemin.name)
+                for nom in [f.nom for f in moteur.FORMATS]:
                     chemin, n = moteur.exporter(moteur.PAR_NOM[nom], auteur)
                     messages.success(request, f"Exporté : Exports\\{chemin.name} ({n} ligne(s)).")
             elif "convertir" in request.POST:
