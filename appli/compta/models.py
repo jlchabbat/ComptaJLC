@@ -203,6 +203,30 @@ class Ligne(models.Model):
         return self.debit - self.credit
 
 
+class Justificatif(models.Model):
+    """Scan ou photo d'une pièce (facture, reçu, relevé…) rattaché à un mouvement.
+
+    Le fichier est rangé dans le dossier des données (Justificatifs/<année>/) ; chemin = chemin relatif."""
+
+    mouvement = models.ForeignKey(Mouvement, on_delete=models.CASCADE, related_name="justificatifs")
+    chemin = models.CharField(max_length=255, unique=True)
+    nom = models.CharField("fichier d'origine", max_length=150)
+    description = models.CharField(max_length=150, blank=True)
+    taille = models.PositiveIntegerField(default=0)
+    ajoute_le = models.DateTimeField("ajouté le", auto_now_add=True)
+    ajoute_par = models.CharField("ajouté par", max_length=100, blank=True)
+
+    class Meta:
+        ordering = ["mouvement", "ajoute_le", "id"]
+
+    def __str__(self):
+        return f"Mvt {self.mouvement.numero} · {self.nom}"
+
+    @property
+    def est_image(self):
+        return self.nom.lower().rsplit(".", 1)[-1] in ("jpg", "jpeg", "png", "gif", "webp")
+
+
 class Modification(models.Model):
     """Journal des modifications (cahier des charges §9)."""
 

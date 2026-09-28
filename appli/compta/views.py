@@ -82,7 +82,7 @@ def ecritures(request):
     debut, fin = periode(request)
     qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1", "anal2")
           .order_by("-mouvement__date", "-mouvement__numero", "ordre"))
-    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q")}
+    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q", "just")}
     if f["journal"]:
         qs = qs.filter(mouvement__journal_id=f["journal"])
     if f["compte"]:
@@ -91,6 +91,8 @@ def ecritures(request):
         qs = qs.filter(anal2_id=f["anal2"])
     if f["q"]:
         qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
+    if f["just"] in ("avec", "sans"):                   # mouvements avec / sans justificatif joint
+        qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
     d, c, _ = soldes(qs)
     # tri par colonne (sur toutes les pages) : ?tri=<colonne>&ordre=asc|desc
     tri, ordre = request.GET.get("tri", ""), request.GET.get("ordre", "asc")
@@ -105,8 +107,12 @@ def ecritures(request):
         entetes.append({"titre": titre, "url": "?" + params.urlencode(), "sens": ordre if tri == cle else "",
                         "n": cle in ("debit", "credit")})
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
+    from .models import Justificatif
+    pieces = {}
+    for mvt in Justificatif.objects.filter(mouvement__in={l.mouvement_id for l in page}).values_list("mouvement", flat=True):
+        pieces[mvt] = pieces.get(mvt, 0) + 1
     return render(request, "compta/ecritures.html", {
-        "page": page, "filtres": f, "entetes": entetes, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
+        "page": page, "pieces": pieces, "filtres": f, "entetes": entetes, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
         "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2), "comptes": Compte.objects.all(),
     })
 
@@ -116,8 +122,13 @@ def ecritures(request):
 def mouvement(request, numero):
     m = get_object_or_404(Mouvement.objects.select_related("journal"), numero=numero)
     from .corrections import verrou
+    from .justificatifs import refus_suppression
+    from .vues_justificatifs import peut_ajouter
+    pieces = list(m.justificatifs.all())
     return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2"),
-                                                     "verrou": verrou(m)})
+                                                     "verrou": verrou(m), "justificatifs": pieces,
+                                                     "peut_joindre": peut_ajouter(request.user),
+                                                     "refus_suppression": refus_suppression(pieces[0]) if pieces else ""})
 
 
 @login_required

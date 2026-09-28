@@ -41,7 +41,7 @@ Version du 26/09/2026</div>
 <li><a href="#c1">Accès, connexion et rôles</a></li>
 <li><a href="#c2">Se repérer dans l'application</a></li>
 <li><a href="#c3">Saisir une opération (saisie guidée)</a></li>
-<li><a href="#c4">Écriture libre, modifier ou annuler une écriture</a></li>
+<li><a href="#c4">Écriture libre, modifier ou annuler une écriture, justificatifs</a></li>
 <li><a href="#c5">Codes analytiques et nouveaux tiers</a></li>
 <li><a href="#c6">Tiers : fiches, import, impayés, cotisations, lettrage</a></li>
 <li><a href="#c7">Fiches bénévoles</a></li>
@@ -144,7 +144,7 @@ virement vers un autre compte, code axe 2, compte de la bonne classe, écritures
 (même date, libellé et montant : cocher « ce n'est pas un doublon » si c'est voulu).</p>
 
 <!-- 4 -->
-<h1 id="c4">4. Écriture libre, modifier ou annuler une écriture</h1>
+<h1 id="c4">4. Écriture libre, modifier ou annuler une écriture, justificatifs</h1>
 <h2>Ouvrir un mouvement</h2>
 <p>Cliquer sur un <b>n° Mvt</b> (Écritures, Journaux, Grand livre…). La page montre les lignes, le lettrage, le pointage bancaire et les commentaires.</p>
 <figure><img src="images/04_mouvement.png"><figcaption>Un mouvement et ses boutons de correction (trésorier).</figcaption></figure>
@@ -162,6 +162,20 @@ l'original reste visible et leur total s'annule. C'est la méthode à utiliser p
 <h2>Écriture libre</h2>
 <p><span class="menu">Saisie › Écriture libre</span> : saisir un mouvement ligne par ligne (opération diverse, reclassement),
 avec journal, date et objet. Mêmes contrôles (équilibre, exercice ouvert).</p>
+<h2>Joindre les justificatifs (scans, photos)</h2>
+<p>En bas de la page d'un mouvement, cadre <b>Joindre un scan ou une photo</b> : choisir un ou plusieurs fichiers (PDF ou image :
+JPG, PNG, HEIC ; 10 Mo au plus chacun), ajouter si besoin une description (« facture traiteur n° 1234 »), puis <b>Joindre</b>.
+Sur un téléphone, le bouton propose aussi de <b>prendre une photo</b> du reçu. Après une saisie guidée, l'application ouvre
+justement la page du mouvement créé : on y joint aussitôt la pièce.</p>
+<figure><img src="images/21_justificatifs.png"><figcaption>Mouvement avec ses deux justificatifs joints.</figcaption></figure>
+<ul><li>Cliquer sur le nom du document l'ouvre dans un nouvel onglet ; <b>Télécharger</b> l'enregistre sur le poste.</li>
+<li>Tous les utilisateurs qui consultent la comptabilité voient les justificatifs (le vérificateur notamment) ; seuls ceux qui saisissent
+peuvent en joindre, et seul le trésorier peut en supprimer.</li>
+<li>Un justificatif peut encore être joint dans un exercice clos, mais plus supprimé. Ajouts et suppressions sont inscrits dans l'Historique.</li>
+<li>Menu <span class="menu">Consulter › Écritures</span> : la colonne 📎 signale les mouvements qui ont des justificatifs, et le filtre
+<b>Justificatif : Sans</b> liste les mouvements à compléter.</li>
+<li>Les fichiers sont rangés sur le site dans <code>comptabb-data/Justificatifs</code> et sont repris dans l'<b>export complet</b>.
+Offre gratuite PythonAnywhere : 512 Mo d'espace en tout ; préférer des PDF ou photos de taille raisonnable.</li></ul>
 
 <!-- 5 -->
 <h1 id="c5">5. Codes analytiques et nouveaux tiers</h1>
@@ -229,7 +243,8 @@ Dans la fiche d'un membre qui doit, un <b>texte de relance</b> est prêt : <b>Co
 <h2>Tableau de bord</h2>
 <p>Produits, charges, résultat, trésorerie par compte, état des contrôles, résultat par activité (axe 1) et par événement (axe 2), sur la période choisie (Du / Au).</p>
 <h2>Écritures</h2>
-<p>Toutes les lignes, filtrées par période, journal, compte (début de numéro ou choix dans la liste), code axe 2 ou texte. Tri par colonne sur toutes les pages.</p>
+<p>Toutes les lignes, filtrées par période, journal, compte (début de numéro ou choix dans la liste), code axe 2, texte ou présence
+d'un justificatif (colonne 📎). Tri par colonne sur toutes les pages.</p>
 <figure><img src="images/12_ecritures.png"><figcaption>Écritures triées par débit décroissant.</figcaption></figure>
 <h2>Journaux (banque, caisse…)</h2>
 <p><span class="menu">Consulter › Journaux</span> : choisir le journal et la période.</p>
@@ -321,7 +336,7 @@ l'application ne dépend d'aucun fichier. Le dossier <b>Exports</b> contient :</
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes et remise à zéro.</figcaption></figure>
 <p><b>Tout exporter</b> (export complet, en une seule opération) : crée dans Exports un fichier <b>Export_complet_….zip</b> avec
 la sauvegarde de la base, Parametres.xlsx, Tiers.xlsx, Donnees.xlsx (écritures, exercices, relevés, pointages, budget,
-fiches bénévoles, historique), les états de chaque exercice et un fichier de contrôle. Les 20 derniers sont gardés ; téléchargez-les
+fiches bénévoles, historique), les <b>justificatifs</b> (scans et photos), les états de chaque exercice et un fichier de contrôle. Les 20 derniers sont gardés ; téléchargez-les
 (liste « Exports complets ») pour les ranger sur le PC ou OneDrive.</p>
 <p><b>Faire un test sans risque</b> : 1. <b>Tout exporter</b> ; 2. faire les essais voulus (saisies, clôture…) ;
 3. <b>Remettre à zéro et recharger</b> en choisissant l'export complet (taper REMPLACER). La comptabilité est vidée puis rechargée

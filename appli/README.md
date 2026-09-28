@@ -107,6 +107,11 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   31–90, > 90 jours ; règlements imputés sur les factures les plus
   anciennes), historique, texte de relance à copier ou à ouvrir dans la
   messagerie.
+- **Justificatifs** (page d'un mouvement) : scans PDF ou photos joints au mouvement (plusieurs par
+  mouvement, 10 Mo au plus chacun, photo directe sur téléphone) ; consultables par tous les rôles qui voient
+  la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
+  filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
+  repris par l'export complet.
 - **Impayés** triés par montant ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique

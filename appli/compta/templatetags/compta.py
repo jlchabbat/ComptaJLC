@@ -23,3 +23,9 @@ def zero_vide(v):
 @register.filter
 def sub(a, b):
     return Decimal(a or 0) - Decimal(b or 0)
+
+
+@register.filter
+def get_item(dictionnaire, cle):
+    """Valeur d'un dictionnaire dans un gabarit : {{ d|get_item:cle }}."""
+    return dictionnaire.get(cle) if dictionnaire else None

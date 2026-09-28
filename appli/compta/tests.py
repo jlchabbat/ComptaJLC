@@ -1327,3 +1327,94 @@ class ExportComplet(TransactionTestCase):
         b.groups.add(Group.objects.get(name="Bureau"))
         self.client.force_login(b)
         self.assertEqual(self.client.get(f"/base/export/{nom}").status_code, 403)
+
+
+from . import justificatifs as just  # noqa: E402
+from .models import Justificatif  # noqa: E402
+
+
+@override_settings(**temporaire())
+class Justificatifs(TransactionTestCase):
+    def setUp(self):
+        ExportComplet.setUp(self)
+        self.m = Mouvement.objects.get(numero=1)
+
+    def fichier(self, nom="facture.pdf", contenu=b"%PDF-1.4 facture"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return SimpleUploadedFile(nom, contenu)
+
+    def test_ajout_consultation_suppression(self):
+        self.client.force_login(self.u)
+        r = self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier(), self.fichier("recu.jpg", b"\xff\xd8photo")],
+                                                             "description": "Traiteur"})
+        self.assertRedirects(r, "/mouvement/1/")
+        self.assertEqual(self.m.justificatifs.count(), 2)
+        j = self.m.justificatifs.first()
+        self.assertTrue(just.chemin(j).exists())
+        self.assertRegex(j.chemin, r"^2026/Mvt1_\d+_facture\.pdf$")
+        page = self.client.get("/mouvement/1/")
+        self.assertContains(page, "facture.pdf")
+        self.assertIn("<title>Mvt 1 ", page.content.decode())            # section dans la page, pas dans le titre
+        self.assertNotIn("Justificatifs", page.content.decode().split("</title>")[0])
+        self.assertContains(page, "Traiteur")
+        r = self.client.get(f"/justificatif/{j.pk}/")
+        self.assertEqual(b"".join(r.streaming_content), b"%PDF-1.4 facture")
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertIn("attachment", self.client.get(f"/justificatif/{j.pk}/?telecharger=1")["Content-Disposition"])
+        # colonne 📎 et filtre des écritures
+        self.assertContains(self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31"), "📎2")
+        sans = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&just=sans").context["page"]
+        avec = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&just=avec").context["page"]
+        self.assertNotIn(1, {l.mouvement.numero for l in sans})
+        self.assertEqual({l.mouvement.numero for l in avec}, {1})
+        self.assertEqual(avec.paginator.count, 2)
+        # suppression tracée, fichier effacé
+        fichier = just.chemin(j)
+        self.client.post(f"/justificatif/{j.pk}/supprimer/")
+        self.assertFalse(fichier.exists())
+        self.assertEqual(self.m.justificatifs.count(), 1)
+        self.assertTrue(Modification.objects.filter(action="Suppression d'un justificatif").exists())
+        self.assertTrue(Modification.objects.filter(action="Ajout d'un justificatif").exists())
+
+    def test_refus(self):
+        self.client.force_login(self.u)
+        self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier("virus.exe", b"MZ")]})
+        self.assertEqual(Justificatif.objects.count(), 0)
+        with self.assertRaises(ValueError):
+            just.ajouter(self.m, self.fichier("gros.pdf", b"x" * (just.TAILLE_MAXI + 1)))
+        # vérificateur : consulte mais ne joint ni ne supprime
+        j = just.ajouter(self.m, self.fichier(), auteur="tresorier")
+        v = User.objects.create_user("verif")
+        v.groups.add(Group.objects.get(name="Vérificateur"))
+        self.client.force_login(v)
+        self.assertEqual(self.client.get(f"/justificatif/{j.pk}/").status_code, 200)
+        self.assertEqual(self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier()]}).status_code, 403)
+        self.assertEqual(self.client.post(f"/justificatif/{j.pk}/supprimer/").status_code, 403)
+        self.assertNotContains(self.client.get("/mouvement/1/"), "Joindre")
+        # exercice clos : on peut encore joindre, plus supprimer
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        with self.assertRaises(ValueError):
+            just.supprimer(j)
+        self.assertTrue(just.chemin(j).exists())
+        just.ajouter(self.m, self.fichier("complement.png", b"\x89PNG"))
+
+    def test_export_complet_avec_justificatifs(self):
+        j = just.ajouter(self.m, self.fichier(), "Traiteur", "tresorier")
+        contenu = just.chemin(j).read_bytes()
+        chemin = ec.exporter(auteur="tresorier")
+        with zipfile.ZipFile(chemin) as z:
+            self.assertEqual(z.read(f"Justificatifs/{j.chemin}"), contenu)
+        just.chemin(j).unlink()                              # fichier perdu sur le serveur
+        Justificatif.objects.all().delete()
+        message, _ = ec.reinjecter(chemin, auteur="tresorier")
+        self.assertIn("1 justificatif", message)
+        j = Justificatif.objects.get()
+        self.assertEqual((j.description, just.chemin(j).read_bytes()), ("Traiteur", contenu))
+        # export dont le scan a été altéré : refusé, rien n'est modifié
+        altere = chemin.with_name("Export_complet_scan_altere.zip")
+        with zipfile.ZipFile(chemin) as z, zipfile.ZipFile(altere, "w") as sortie:
+            for n in z.namelist():
+                sortie.writestr(n, b"%PDF autre" if n.startswith("Justificatifs/") else z.read(n))
+        with self.assertRaises(ec.ExportInvalide):
+            ec.reinjecter(altere)
+        self.assertEqual(just.chemin(Justificatif.objects.get()).read_bytes(), contenu)

@@ -7,14 +7,15 @@
 <form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Export complet</h2>
 <p class="aide">En une seule opération, crée dans le dossier Exports un fichier <b>Export_complet_….zip</b> qui contient :
 la sauvegarde de la base, <b>Parametres.xlsx</b>, <b>Tiers.xlsx</b>, <b>Donnees.xlsx</b> (écritures, exercices, relevés, pointages,
-budget, fiches bénévoles, historique), les <b>états</b> de chaque exercice et un fichier de contrôle.</p>
+budget, fiches bénévoles, historique), les <b>justificatifs</b> (scans), les <b>états</b> de chaque exercice et un fichier de contrôle.</p>
 <p class="aide">Pour un test : faire l'export complet, puis « Remettre à zéro et recharger » en choisissant cet export.
 L'application vérifie que la base rechargée est <b>identique</b> à l'export ; sinon, rien n'est modifié.</p>
 <div class="boutons"><button class="principal" name="export_complet" value="1">Tout exporter</button></div></form>
 
 <form method="post" class="carte">{% csrf_token %}<h2 style="margin-top:0">Sauvegarder</h2>
 <p class="aide">Crée une copie datée de toute la base (écritures, tiers, fiches, pointages, utilisateurs) sur le site.
-Conseillé chaque mois et avant une clôture ; téléchargez-la aussi sur votre PC ou OneDrive.</p>
+Conseillé chaque mois et avant une clôture ; téléchargez-la aussi sur votre PC ou OneDrive.
+Les scans des justificatifs n'y sont pas : ils sont dans l'export complet.</p>
 <div class="boutons"><button class="principal" name="sauvegarder" value="1">Créer une sauvegarde</button>
 <a class="bouton" href="{% url 'base_telecharger' %}">Télécharger la base maintenant</a></div></form>
 </div>

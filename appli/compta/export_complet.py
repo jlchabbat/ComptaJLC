@@ -4,7 +4,9 @@ L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
 - comptabb.sqlite3 : sauvegarde de la base (restauration exacte, comptes utilisateurs compris) ;
 - Parametres.xlsx : les paramètres (même classeur que la page Paramètres) ;
 - Tiers.xlsx : les fiches tiers (même format que l'import Tiers.xlsx) ;
-- Donnees.xlsx : comptes de tiers, exercices, écritures, pointages, relevés, budget, fiches bénévoles, historique ;
+- Donnees.xlsx : comptes de tiers, exercices, écritures, pointages, relevés, budget, fiches bénévoles, justificatifs,
+  historique ;
+- Justificatifs/ : les scans et photos joints aux mouvements ;
 - Etats_<exercice>.xlsx : états de chaque exercice (lecture seule) ;
 - controle.json : nombres et totaux, pour vérifier une réinjection.
 
@@ -27,7 +29,7 @@ from django.utils import timezone
 
 from . import membres, parametres
 from .models import (
-    ZERO, Budget, CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneReleve, LigneSchema, Membre,
+    ZERO, Budget, CodeAnalytique, Compte, Exercice, Fiche, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, LigneSchema, Membre,
     ModeFiche, ModeleOperation, Modification, Mouvement, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe,
     Rapprochement, Reglage, TiersProvisoire, Traduction, TypeTiers, arrondi,
 )
@@ -101,7 +103,7 @@ def _nom_utilisateur(u):
 
 COMPTES = [Compte, Journal, CodeAnalytique, Prefixe, Reglage, TypeTiers, MoyenPaiement, LigneSchema, ModeleOperation,
            NatureFiche, ModeFiche, Traduction, ParametreReleve, Exercice, Mouvement, Ligne, Rapprochement, LigneReleve,
-           Budget, Membre, TiersProvisoire, Fiche, LigneFiche]
+           Budget, Membre, TiersProvisoire, Fiche, LigneFiche, Justificatif]
 
 
 def empreinte():
@@ -186,6 +188,7 @@ FEUILLES = {
                          "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Axe 2", "Mvt", "Créé par",
                          "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
+    "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte"],
 }
 
 
@@ -218,8 +221,16 @@ def _lignes_donnees():
                                 l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
+    from .justificatifs import chemin as chemin_justificatif
+    yield "Justificatifs", ([j.mouvement.numero, j.chemin, j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
+                             _empreinte_fichier(chemin_justificatif(j))]
+                            for j in Justificatif.objects.select_related("mouvement").order_by("mouvement__numero", "pk"))
     yield "Historique", ([_heure(m.date), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres]
                          for m in Modification.objects.order_by("date", "pk"))
+
+
+def _empreinte_fichier(chemin):
+    return hashlib.sha256(chemin.read_bytes()).hexdigest()[:16] if chemin.exists() else "absent"
 
 
 def classeur_donnees():
@@ -292,6 +303,10 @@ def exporter(auteur=""):
         for ex in Exercice.objects.all():
             nom = "".join(c if c.isalnum() else "_" for c in ex.libelle)
             z.writestr(f"Etats_{nom}.xlsx", _octets(classeur_exercice(ex)))
+        from .justificatifs import chemin as chemin_justificatif
+        for j in Justificatif.objects.all():
+            if chemin_justificatif(j).exists():
+                z.write(chemin_justificatif(j), f"Justificatifs/{j.chemin}")
         z.writestr("controle.json", json.dumps(controle, ensure_ascii=False, indent=1))
         z.writestr("LISEZMOI.txt", __doc__.strip() + "\n")
     for vieux in liste()[GARDER:]:
@@ -312,8 +327,13 @@ def vider():
         m.objects.all().delete()
 
 
+FACULTATIVES = ("Justificatifs",)       # absentes des exports faits avant leur création
+
+
 def _rangees(wb, nom):
     if nom not in wb.sheetnames:
+        if nom in FACULTATIVES:
+            return
         raise ExportInvalide(f"Feuille « {nom} » absente de Donnees.xlsx.")
     rangees = wb[nom].iter_rows(values_only=True)
     entetes = [str(e or "") for e in next(rangees, [])]
@@ -331,7 +351,7 @@ def _charger_comptes_tiers(wb):
                               lettrable=_lire_oui(r["Lettrable"]), actif=_lire_oui(r["Actif"]))
 
 
-def _charger_donnees(wb):
+def _charger_donnees(wb, pieces=None, ecrits=None):
     utilisateurs = {u.get_username(): u for u in get_user_model().objects.all()}
     qui = lambda v: utilisateurs.get(_texte(v))  # noqa: E731
     an = {}
@@ -413,6 +433,21 @@ def _charger_donnees(wb):
             justificatif=_texte(r["Justificatif"]), remarque=_texte(r["Remarque"]), compte_id=_texte(r["Compte"]) or None,
             anal2_id=_texte(r["Axe 2"]) or None, mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
+    from .justificatifs import dossier as dossier_justificatifs
+    for r in _rangees(wb, "Justificatifs"):
+        relatif = _texte(r["Fichier"])
+        contenu = (pieces or {}).get(relatif)
+        if contenu is None:
+            raise ExportInvalide(f"Justificatif {relatif} absent de l'export.")
+        cible = dossier_justificatifs() / relatif
+        if not cible.exists() or cible.read_bytes() != contenu:
+            ecrits.append((cible, cible.read_bytes() if cible.exists() else None))   # pour tout remettre en cas d'échec
+            cible.parent.mkdir(parents=True, exist_ok=True)
+            cible.write_bytes(contenu)
+        j = Justificatif.objects.create(mouvement_id=ids[_entier(r["Mvt"])], chemin=relatif, nom=_texte(r["Nom"]),
+                                        description=_texte(r["Description"]), taille=_entier(r["Taille"]) or 0,
+                                        ajoute_par=_texte(r["Ajouté par"]))
+        Justificatif.objects.filter(pk=j.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or j.ajoute_le)
     historique = []
     for r in _rangees(wb, "Historique"):
         historique.append((Modification(auteur=_texte(r["Auteur"]), lot=_texte(r["Lot"]), action=_texte(r["Action"]),
@@ -435,7 +470,10 @@ def lire_export(source):
         manque = [n for n in FICHIERS_REINJECTES if n not in noms]
         if manque:
             raise ExportInvalide(f"Export complet incomplet : {', '.join(manque)} absent(s).")
-        return {n: z.read(n) for n in FICHIERS_REINJECTES}
+        fichiers = {n: z.read(n) for n in FICHIERS_REINJECTES}
+        fichiers["justificatifs"] = {n[len("Justificatifs/"):]: z.read(n) for n in noms
+                                     if n.startswith("Justificatifs/") and not n.endswith("/")}
+        return fichiers
 
 
 def reinjecter(source, auteur=""):
@@ -446,6 +484,22 @@ def reinjecter(source, auteur=""):
     fichiers = lire_export(source)
     attendu = json.loads(fichiers["controle.json"])
     avant = base_donnees.sauvegarder("avant-reinjection")
+    ecrits = []
+    try:
+        _reinjecter(fichiers, attendu, auteur, ecrits)
+    except Exception:
+        for cible, ancien in reversed(ecrits):             # fichiers remis comme avant
+            if ancien is None:
+                cible.unlink(missing_ok=True)
+            else:
+                cible.write_bytes(ancien)
+        raise
+    return (f"Export du {attendu.get('cree_le', '?')} réinjecté : {attendu['nombres']['mouvement']} mouvements, "
+            f"{attendu['nombres']['ligne']} lignes, {attendu['nombres']['membre']} tiers, "
+            f"{attendu['nombres'].get('justificatif', 0)} justificatif(s). Contrôle : base identique à l'export."), avant
+
+
+def _reinjecter(fichiers, attendu, auteur, ecrits):
     with transaction.atomic():
         vider()
         r = parametres.importer(fichiers["Parametres.xlsx"], auteur=auteur, tracer=False)
@@ -456,13 +510,11 @@ def reinjecter(source, auteur=""):
         t = membres.importer_tableau(membres.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
         if t.erreurs:
             raise ExportInvalide("Tiers.xlsx : " + " · ".join(t.erreurs[:10]))
-        _charger_donnees(wb)
+        _charger_donnees(wb, fichiers["justificatifs"], ecrits)
         differences = ecarts(attendu, empreinte())
         if differences:
             raise ExportInvalide("La base rechargée diffère de l'export : " + " · ".join(differences[:10]))
         Modification.objects.create(auteur=auteur, lot="Base de données", action="Réinjection d'un export complet",
                                     objet=f"export du {attendu.get('cree_le', '?')}",
                                     apres=f"{attendu['nombres']['mouvement']} Mvt, contrôle identique")
-    return (f"Export du {attendu.get('cree_le', '?')} réinjecté : {attendu['nombres']['mouvement']} mouvements, "
-            f"{attendu['nombres']['ligne']} lignes, {attendu['nombres']['membre']} tiers. Contrôle : base identique à l'export."), avant
 
