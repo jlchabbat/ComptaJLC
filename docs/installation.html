@@ -100,6 +100,14 @@ Parametres.xlsx et une copie de la base).</li>
 <span class="cmd">COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</span>
 
 <h2 class="saut">5. Réglages de l'association</h2>
+<h3>Site neuf : l'assistant de premier démarrage</h3>
+<ol><li>Dans la console du site, <code>python manage.py preparer</code> affiche un <b>code d'installation</b>.</li>
+<li>Ouvrir le site : la page « Bienvenue dans ComptaBB » demande ce code, puis l'identifiant et le mot de passe (12 caractères au moins) de l'administrateur.</li>
+<li>La page « Premier démarrage » décrit l'association : nom, devise, plan comptable (plan de base proposé, ou vos propres fichiers à partir des
+<b>modèles vierges</b>), premier exercice, jusqu'à trois banques avec le format de leur relevé, caisse, options.
+« Démarrer ComptaBB » crée tout d'un coup ; tout reste modifiable ensuite.</li>
+<li>Pour une <b>réinstallation</b>, « Recharger une sauvegarde » remplace l'assistant : Administration › Base de données.</li></ol>
+<p>Un site qui a déjà des journaux ou des écritures (celui de la Loge) ne voit jamais l'assistant.</p>
 <p>Chaque association a son propre site ; ce qui lui est propre se règle dans <span class="menu">Administration › Paramètres (Excel)</span>
 (fichier Parametres.xlsx : exporter, modifier la colonne Valeur, réimporter). Une valeur vide désactive l'option.</p>
 <table><tr><th style="width:24%">Clé</th><th style="width:22%">Valeur de la Loge</th><th>Effet</th></tr>

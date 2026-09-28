@@ -18,3 +18,8 @@ class Command(BaseCommand):
         initialiser_parametres()
         from compta.models import Mouvement
         self.stdout.write(self.style.SUCCESS(f"ComptaBB prêt : {Mouvement.objects.count()} mouvements dans la base."))
+        from compta.demarrage import code_installation
+        code = code_installation()                      # site neuf : premier administrateur à créer dans le navigateur
+        if code:
+            self.stdout.write(self.style.WARNING(
+                f"Site neuf : ouvrez le site dans le navigateur et saisissez le code d'installation {code}"))

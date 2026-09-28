@@ -331,6 +331,65 @@ class ReglagesAssociation(TestCase):
         self.assertNotContains(self.client.get("/"), "Traductions du relevé")
 
 
+
+class PremierDemarrage(TestCase):
+    """Site neuf : premier administrateur (code d'installation), puis assistant de démarrage."""
+
+    def setUp(self):
+        call_command("migrate", verbosity=0)                   # rôles
+        from . import demarrage
+        demarrage.chemin_code().unlink(missing_ok=True)
+
+    def administrateur(self):
+        from . import demarrage
+        self.assertRedirects(self.client.get("/ecritures/"), "/demarrage/compte/")
+        code = demarrage.code_installation()
+        r = self.client.post("/demarrage/compte/", {"code": "FAUX", "identifiant": "tresorerie@asso.org",
+                                                    "mot_de_passe": "une phrase longue 2026", "confirmation": "une phrase longue 2026"})
+        self.assertContains(r, "installation incorrect")
+        r = self.client.post("/demarrage/compte/", {"code": code.lower(), "identifiant": "tresorerie@asso.org",
+                                                    "mot_de_passe": "une phrase longue 2026", "confirmation": "une phrase longue 2026"})
+        self.assertRedirects(r, "/demarrage/", fetch_redirect_response=False)
+        u = User.objects.get(username="tresorerie@asso.org")
+        self.assertTrue(u.is_superuser and u.groups.filter(name="Administrateur").exists())
+        self.assertFalse(demarrage.chemin_code().exists())
+        self.assertEqual(demarrage.code_installation(), "")         # plus de code une fois l'administrateur créé
+        self.assertRedirects(self.client.get("/"), "/demarrage/")
+        self.assertEqual(self.client.get("/base/").status_code, 200)   # recharger une sauvegarde reste possible
+
+    def test_plan_de_base(self):
+        from .models import ModeFiche, MoyenPaiement
+        self.administrateur()
+        r = self.client.post("/demarrage/", {"nom": "Amis du musée", "devise": "€", "plan": "base", "debut": "2027-01-01",
+                                             "fin": "2027-12-31", "banque1": "Banque Leumi", "format1": "excel",
+                                             "banque2": "Bit", "format2": "bit", "banque3": "", "format3": "excel",
+                                             "caisse": "on", "carte": "", "hebergeur": ""})
+        self.assertRedirects(r, "/", fetch_redirect_response=False)
+        self.assertEqual(sorted(Journal.objects.values_list("code", flat=True)), ["AN", "B1", "B2", "CA", "HA", "OD", "VT"])
+        self.assertEqual(Journal.objects.get(code="B1").compte_id, "512000")
+        self.assertEqual([reglages.lire(c) for c in ("nom_association", "devise", "releves_mizrahi", "releve_bit",
+                                                     "carte_bancaire", "traductions_releve")], ["Amis du musée", "€", "", "B2", "", "non"])
+        self.assertEqual(Exercice.objects.get().libelle, "2027")
+        self.assertEqual(set(MoyenPaiement.objects.values_list("libelle", flat=True)),
+                         {"Banque Leumi", "BIT", "Caisse (espèces)", "Non réglé"})
+        self.assertEqual(ModeleOperation.objects.count(), 13)                      # pas de carte
+        self.assertEqual(ModeFiche.objects.get(libelle="Bit").compte_id, "512100")  # compte du journal Bit
+        r = self.client.get("/")
+        self.assertContains(r, "Amis du musée")
+        self.assertContains(r, " €</div>")
+        self.assertRedirects(self.client.get("/demarrage/"), "/", fetch_redirect_response=False)   # une seule fois
+        self.assertEqual(controles.etat_general(controles.executer())[0], "OK")
+
+    def test_mes_propres_fichiers(self):
+        self.administrateur()
+        r = self.client.post("/demarrage/", {"nom": "Club", "devise": "$", "plan": "importer", "debut": "2027-01-01",
+                                             "fin": "2027-12-31", "format1": "excel", "format2": "excel", "format3": "excel"})
+        self.assertRedirects(r, "/echanges/", fetch_redirect_response=False)
+        self.assertFalse(Journal.objects.exists() or Compte.objects.exists())
+        self.assertEqual((reglages.lire("devise"), Reglage.lire("demarrage")), ("$", "fait"))
+        self.assertEqual(self.client.get("/").status_code, 200)
+
+
 class Ecrans(TestCase):
     def setUp(self):
         referentiels_saisie()

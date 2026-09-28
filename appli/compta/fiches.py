@@ -195,7 +195,10 @@ def initialiser():
             compte = Reglage.lire("compte_virement") or None
             if not compte:
                 continue
-        if not Journal.objects.filter(code=jnl).exists() or (compte and not Compte.objects.filter(numero=compte).exists()):
+        j = Journal.objects.filter(code=jnl).first()
+        if genre == "TRESO" and j and j.compte_id and compte != Reglage.lire("compte_virement"):
+            compte = j.compte_id                          # compte de trésorerie du journal
+        if not j or (compte and not Compte.objects.filter(numero=compte).exists()):
             continue
         ModeFiche.objects.get_or_create(type_fiche=t, sens=s, libelle=lib,
                                         defaults={"genre": genre, "journal_id": jnl, "compte_id": compte, "ordre": i})
