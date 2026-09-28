@@ -834,6 +834,29 @@ def classeur_lexique():
     return wb
 
 
+def kit_modeles():
+    """ZIP des fichiers types : un modèle vierge par format (ligne 1 = colonnes), le lexique et un mode d'emploi."""
+    import io
+    import zipfile
+    tampon = io.BytesIO()
+    with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as z:
+        for i, f in enumerate(FORMATS, 1):
+            octets = io.BytesIO()
+            classeur(f, []).save(octets)
+            z.writestr(f"{i:02d}_{f.nom}.xlsx", octets.getvalue())
+        octets = io.BytesIO()
+        classeur_lexique().save(octets)
+        z.writestr("Lexique.xlsx", octets.getvalue())
+        z.writestr("LISEZMOI.txt", "Modèles vierges des fichiers d'import et d'export de ComptaBB\r\n\r\n"
+                   "- Un fichier par nature de données, numéroté dans l'ordre d'import conseillé : chaque fichier ne cite que\r\n"
+                   "  des codes définis par les précédents (exercices, réglages, axes, plan comptable, journaux, tiers...).\r\n"
+                   "- Ligne 1 = les colonnes attendues, à ne pas modifier ; données à partir de la ligne 2.\r\n"
+                   "- Lexique.xlsx : contenu de chaque fichier, colonnes obligatoires, formats et règles.\r\n"
+                   "- Pour importer : retirer le numéro du nom (ex. Tiers.xlsx ou Tiers_2026.xlsx), puis\r\n"
+                   "  Administration > Imports / Exports > Déposer, puis Importer.\r\n")
+    return tampon.getvalue()
+
+
 def ecrire_lexiques():
     """(Ré)écrit Lexique.xlsx dans Imports et dans Exports ; ignoré si le fichier est ouvert dans Excel."""
     for d in (imports(), exports()):

@@ -2,6 +2,7 @@
 <h1>Imports / Exports</h1>
 <div class="barre"><button form="f-exports" class="principal" name="exporter" value="tout">Tout exporter</button>
 <button form="f-exports" class="principal" name="tout_sauvegarder" value="1">Tout exporter et sauvegarder la base</button>
+<a class="bouton" href="{% url 'echanges_modeles' %}" title="Un modèle vierge de chaque fichier, le lexique et un mode d'emploi (ZIP)">Modèles vierges (ZIP)</a>
 <button form="f-dossiers" name="dossiers" value="1">Enregistrer les dossiers</button>
 <button form="f-reinjecter" name="reinjecter" value="1" onclick="return confirm('Remplacer les données par les fichiers du dossier Imports ?')">Tout réinjecter</button></div>
 <p>Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>,

@@ -80,6 +80,16 @@ def echanges(request):
 
 @login_required
 @tresorier
+def modeles(request):
+    """Kit de démarrage : modèles vierges de tous les fichiers d'import / export, lexique et mode d'emploi (ZIP)."""
+    from django.http import HttpResponse
+    r = HttpResponse(moteur.kit_modeles(), content_type="application/zip")
+    r["Content-Disposition"] = 'attachment; filename="ComptaBB_modeles_vierges.zip"'
+    return r
+
+
+@login_required
+@tresorier
 def telecharger(request, nom):
     """Télécharge un fichier du dossier Exports (indispensable sur le site, dont les dossiers ne sont pas visibles)."""
     chemin = next((p for p in moteur.fichiers_exportes() if p.name == nom), None)

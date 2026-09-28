@@ -1761,6 +1761,18 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer(chemin.name), "1 mouvement(s) ajouté(s), 0 modifié(s)")
         self.assertEqual(Mouvement.objects.count(), n + 1)
 
+    def test_kit_des_modeles_vierges(self):
+        self.assertContains(self.client.get("/echanges/"), "Modèles vierges (ZIP)")
+        r = self.client.get("/echanges/modeles.zip")
+        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+            noms = z.namelist()
+            self.assertIn("Lexique.xlsx", noms)
+            self.assertIn("LISEZMOI.txt", noms)
+            self.assertEqual(len([n for n in noms if n[:2].isdigit()]), len(ech.FORMATS))
+            tiers = next(n for n in noms if n.endswith("_Tiers.xlsx"))
+            ws = openpyxl.load_workbook(io.BytesIO(z.read(tiers))).active
+            self.assertEqual((ws.max_row, ws["C1"].value), (1, "Nom"))                      # vierge : les colonnes seulement
+
     def test_supprimer_un_fichier_du_dossier_imports(self):
         self.fichier("Axe1.xlsx", [["ZZZ.1", "Essai"]])
         page = self.client.get("/echanges/")
