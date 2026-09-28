@@ -10,19 +10,19 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>
 <nav class="menus">
-{% if perms.compta.add_mouvement or perms.compta.view_fiche %}<div class="menu"><button type="button">Saisie ▾</button><div class="sous">
+{% if perms.compta.add_mouvement or perms.compta.view_fiche %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
 {% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie guidée</a>
 {% url 'mouvement_nouveau' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écriture libre</a>
 {% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes et nouveaux tiers</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
 </div></div>{% endif %}
-{% if perms.compta.view_membre %}<div class="menu"><button type="button">Tiers ▾</button><div class="sous">
+{% if perms.compta.view_membre %}<div class="menu m-tiers"><button type="button">Tiers ▾</button><div class="sous">
 {% url 'membres' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":9" == "/membres/" and request.path|length > 9 and request.path != "/membres/cotisations/" %}class="actif"{% endif %}>Liste des tiers</a>
 {% url 'cotisations' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Cotisations des membres</a>
 {% if perms.compta.gerer_fiche %}{% url 'provisoires' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tiers provisoires</a>{% endif %}
 </div></div>{% endif %}
-{% if perms.compta.view_mouvement %}<div class="menu"><button type="button">Consulter ▾</button><div class="sous">
+{% if perms.compta.view_mouvement %}<div class="menu m-consulter"><button type="button">Consulter ▾</button><div class="sous">
 {% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
 {% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":11" == "/mouvement/" %}class="actif"{% endif %}>Écritures</a>
 {% url 'journaux' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journaux (banque, caisse…)</a>
@@ -30,15 +30,15 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
 {% url 'analytique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analytique</a>
 </div></div>
-<div class="menu"><button type="button">Banque ▾</button><div class="sous">
+<div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
 {% if perms.compta.pointer_releve %}{% url 'traductions' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Traductions du relevé</a>{% endif %}
 </div></div>
-<div class="menu"><button type="button">Contrôle ▾</button><div class="sous">
+<div class="menu m-controle"><button type="button">Contrôle ▾</button><div class="sous">
 {% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
 {% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>
 </div></div>{% endif %}
-<div class="menu"><button type="button">Éditions ▾</button><div class="sous">
+<div class="menu m-editions"><button type="button">Éditions ▾</button><div class="sous">
 {% if perms.compta.view_mouvement %}{% url 'situation' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Situation financière</a>
 {% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code (axe 1 / axe 2)</a>
 {% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
@@ -46,7 +46,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
 <a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
 </div></div>
-{% if user.is_staff or perms.compta.parametrer %}<div class="menu admin"><button type="button">Administration ▾</button><div class="sous">
+{% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
 <div class="groupe">Utilisateurs et paramétrage</div>
 {% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
@@ -66,6 +66,9 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
 <form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
 </header>{% endif %}
+<script>addEventListener("DOMContentLoaded", function () {     // onglet de la page affichée mis en couleur
+  document.querySelectorAll(".menu .sous a.actif").forEach(function (a) { a.closest(".menu").classList.add("actif"); });
+});</script>
 <script>addEventListener("DOMContentLoaded", function () {     // aides et messages : une remarque par ligne
   // coupe après « . » suivi d'une majuscule (et, dans les messages, autour de « ; » et « · »),
   // seulement dans le texte de premier niveau (jamais dans une balise ni dans un passage en gras ou un lien)

@@ -252,3 +252,42 @@ td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; ma
 .menu .sous .groupe:first-child { border-top: 0; }
 nav.menus { flex: 1; }
 .menu.admin .sous { right: 0; left: auto; }
+
+/* ===== Tableaux « comme dans Excel » (tri.js) : largeur réglable, tri, choix des valeurs ; lignes compactes ===== */
+th.outils { position: sticky; padding-right: 22px; white-space: nowrap; }        /* sticky : reste un repère pour la poignée */
+th.outils .poignee { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 2; }
+th.outils .poignee:hover { background: rgba(31,56,100,.25); }
+th.outils .choix-colonne { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 11px;
+  color: #7a869a; padding: 0 2px; border-radius: 3px; }
+th.outils .choix-colonne:hover { background: #dde5f2; color: var(--bleu); }
+.sit-table th.outils .choix-colonne { color: #c9d6ee; }
+th.filtre-actif .choix-colonne { color: #fff !important; background: #c0504d; }
+.menu-colonne { position: absolute; z-index: 100; background: #fff; border: 1px solid #b8c4d8; border-radius: 6px; padding: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18); width: 260px; font-size: 13px; }
+.menu-colonne input[type=search] { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.menu-colonne .valeurs { max-height: 240px; overflow-y: auto; border: 1px solid var(--ligne); padding: 4px; margin: 4px 0; }
+.menu-colonne label { display: block; padding: 1px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.menu-colonne .boutons-colonne { display: flex; gap: 6px; justify-content: flex-end; }
+/* lignes de données aussi basses que possible */
+table td { padding-top: 2px; padding-bottom: 2px; line-height: 1.25; }
+table th { padding-top: 4px; padding-bottom: 4px; }
+.sit-table td { padding-top: 3px; padding-bottom: 3px; }
+table td input, table td select, table td button { padding-top: 1px; padding-bottom: 1px; }
+@media print { th.outils .poignee, th.outils .choix-colonne, .barre-filtre, .menu-colonne { display: none !important; } th.outils { padding-right: 8px; } }
+
+/* ===== Barre d'onglets principale : sur sa propre ligne, plus haute, une couleur par onglet ===== */
+header { padding: 0 16px; }
+header .marque { padding: 8px 12px 8px 0; }
+header nav.menus { order: 3; flex: 1 1 100%; margin: 0 -16px; padding: 0 12px; gap: 4px; background: #16294d;
+  border-top: 1px solid rgba(255,255,255,.12); }
+.menu { --c: #8fb3ff; }
+.m-saisie { --c: #3fae6a; } .m-tiers { --c: #25a7b8; } .m-consulter { --c: #4f8fe6; } .m-banque { --c: #9b7be0; }
+.m-controle { --c: #f0a030; } .m-editions { --c: #e0607e; } .m-admin { --c: #d9b44a; }
+.menu > button { font-size: 17px; font-weight: 700; padding: 18px 20px 14px; color: #fff; border-top: 5px solid var(--c);
+  background: color-mix(in srgb, var(--c) 18%, transparent); border-radius: 6px 6px 0 0; margin-top: 6px; }
+.menu > button:hover, .menu:focus-within > button { background: var(--c); color: #fff; }
+.menu.actif > button { background: var(--c); color: #fff; box-shadow: 0 -2px 8px rgba(0,0,0,.25); }
+.menu .sous { border-top: 4px solid var(--c); }
+.menu .sous a.actif { box-shadow: inset 4px 0 0 var(--c); background: color-mix(in srgb, var(--c) 12%, #fff); }
+.menu.admin { margin-left: auto; border-left: 0; }
+.menu.admin > button { color: #fff; }
