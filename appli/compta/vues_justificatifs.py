@@ -62,3 +62,74 @@ def supprimer(request, pk):
     except ValueError as e:
         messages.error(request, str(e))
     return redirect("mouvement", numero)
+
+
+# ---------------------------------------------------------------- documents existants (dépôt en masse)
+
+echanger = permission_required("compta.echanger_fichiers", raise_exception=True)
+
+
+@login_required
+@echanger
+def a_classer(request):
+    """Déposer des documents existants (fichiers ou ZIP), vérifier les rattachements proposés, rattacher."""
+    auteur = request.user.get_username()
+    if request.method == "POST":
+        if "ecarter" in request.POST:
+            try:
+                moteur.ecarter(request.POST["ecarter"])
+                messages.info(request, f"« {moteur.nom_affiche(request.POST['ecarter'])} » écarté (fichier supprimé).")
+            except ValueError as e:
+                messages.error(request, str(e))
+        elif "deposer" in request.POST:
+            n, refus = 0, []
+            for f in request.FILES.getlist("fichiers"):
+                if f.size > 200 * 1024 * 1024:
+                    refus.append(f"« {f.name} » : plus de 200 Mo ; le découper en plusieurs ZIP.")
+                    continue
+                deposes, r = moteur.deposer(f.name, f.read())
+                n, refus = n + len(deposes), refus + r
+            messages.success(request, f"{n} document(s) déposé(s) : vérifiez les rattachements proposés puis cliquez « Rattacher ».")
+            for e in refus[:20]:
+                messages.error(request, e)
+        elif "rattacher" in request.POST:
+            faits, erreurs = 0, []
+            for i, nom in enumerate(request.POST.getlist("nom")):
+                if not request.POST.get(f"garder_{i}"):
+                    continue
+                numero = request.POST.get(f"mvt_{i}", "").strip()
+                m = Mouvement.objects.filter(numero=numero).first() if numero.isdigit() else None
+                if not m:
+                    erreurs.append(f"« {moteur.nom_affiche(nom)} » : n° de Mvt {numero or 'vide'} inconnu, non rattaché.")
+                    continue
+                try:
+                    moteur.rattacher(nom, m, request.POST.get(f"desc_{i}", "").strip(), auteur)
+                    faits += 1
+                except ValueError as e:
+                    erreurs.append(str(e))
+            messages.success(request, f"{faits} document(s) rattaché(s) à leur mouvement.")
+            for e in erreurs[:20]:
+                messages.error(request, e)
+        return redirect("justificatifs_a_classer")
+    lignes = moteur.a_classer()
+    for l in lignes:
+        m = l["mouvement"]
+        if m:
+            premiere = m.lignes.order_by("ordre").first()
+            l["detail"] = f"{m.date:%d/%m/%Y} · {m.journal_id} · pièce {m.piece} · {premiere.libelle if premiere else ''}"
+            l["montant"] = m.total_debit
+    from django.shortcuts import render
+    return render(request, "compta/justificatifs_a_classer.html", {
+        "lignes": lignes, "proposes": sum(1 for l in lignes if l["mouvement"]), "surs": sum(1 for l in lignes if l["sur"])})
+
+
+@login_required
+@echanger
+def voir_a_classer(request):
+    try:
+        f = moteur.fichier_a_classer(request.GET.get("nom", ""))
+    except ValueError:
+        raise Http404
+    import mimetypes
+    return FileResponse(open(f, "rb"), filename=moteur.nom_affiche(f.name),
+                        content_type=mimetypes.guess_type(f.name)[0] or "application/octet-stream")

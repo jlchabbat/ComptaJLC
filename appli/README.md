@@ -112,6 +112,11 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
   filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
+- **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
+  fichiers), rattachement proposé d'après le nom du fichier (« Mvt 389 », « Pièce 739 », numéro seul,
+  date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
+  rattachés restent « à classer ». En ligne de commande :
+  `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.
 - **Impayés** triés par montant ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique

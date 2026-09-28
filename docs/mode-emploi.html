@@ -176,6 +176,19 @@ peuvent en joindre, et seul le trésorier peut en supprimer.</li>
 <b>Justificatif : Sans</b> liste les mouvements à compléter.</li>
 <li>Les fichiers sont rangés sur le site dans <code>comptabb-data/Justificatifs</code> et sont repris dans l'<b>export complet</b>.
 Offre gratuite PythonAnywhere : 512 Mo d'espace en tout ; préférer des PDF ou photos de taille raisonnable.</li></ul>
+<h2>Documents existants : dépôt en masse</h2>
+<p><span class="menu">Administration › Justificatifs existants</span> (administrateur et trésorier) : pour joindre d'un coup les scans
+déjà faits.</p>
+<ol><li><b>Déposer</b> un fichier ZIP (dossiers compris) ou plusieurs fichiers sélectionnés ensemble.</li>
+<li>L'application propose pour chaque document le mouvement correspondant d'après le <b>nom du fichier</b> :
+« Mvt 389 », « Pièce 739 » (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt), ou une date et un montant
+(« 2026-03-15 facture 450,00.pdf »). Les propositions sûres sont déjà cochées ; les autres sont signalées « à vérifier »
+(par exemple un numéro qui est à la fois un n° de pièce et un n° de Mvt, ou plusieurs mouvements à la même date).</li>
+<li>Corriger ou saisir le n° de Mvt si besoin (cliquer sur le nom pour ouvrir le document), cocher, puis <b>Rattacher les lignes cochées</b>.
+Les documents non cochés restent « à classer » pour plus tard ; <b>Écarter</b> supprime un document déposé par erreur.</li></ol>
+<figure><img src="images/22_justificatifs_existants.png"><figcaption>Documents déposés : propositions sûres cochées, cas douteux à vérifier.</figcaption></figure>
+<p class="aide">Conseil : si les scans ne portent pas encore de numéro, les renommer avec le n° de pièce écrit sur le document
+(« Pièce 739.pdf ») rend le rattachement automatique.</p>
 
 <!-- 5 -->
 <h1 id="c5">5. Codes analytiques et nouveaux tiers</h1>

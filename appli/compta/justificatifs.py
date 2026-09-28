@@ -86,3 +86,153 @@ def supprimer(j, auteur=""):
     j.delete()
     if fichier.exists():
         fichier.unlink()
+
+
+# ---------------------------------------------------------------- documents existants : dépôt, proposition, rattachement
+
+def a_classer_dossier():
+    d = dossier() / "_a_classer"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _deposer_un(nom, contenu):
+    """Range un fichier dans « à classer » ; renvoie son nom, ou lève ValueError."""
+    from django.core.files.base import ContentFile
+    erreur = verifier(ContentFile(contenu, name=nom))
+    if erreur:
+        raise ValueError(erreur)
+    base = "__".join(_nom_sur(p) for p in re.split(r"[\\/]+", nom) if p)[-150:]
+    racine, point, ext = base.rpartition(".")
+    cible, lettres = a_classer_dossier() / base, iter("bcdefghijklmnopqrstuvwxyz")
+    while cible.exists():                                   # doublon : suffixe en lettres (un chiffre fausserait la proposition)
+        cible = a_classer_dossier() / f"{racine}__doublon_{next(lettres)}{point}{ext}"
+    cible.write_bytes(contenu)
+    return cible.name
+
+
+def deposer(nom, contenu):
+    """Dépose un fichier ou un ZIP (dossiers compris). Renvoie (déposés, refus)."""
+    import io
+    import zipfile
+    deposes, refus = [], []
+    if nom.lower().endswith(".zip"):
+        try:
+            z = zipfile.ZipFile(io.BytesIO(contenu))
+        except zipfile.BadZipFile:
+            return [], [f"« {nom} » : ZIP illisible."]
+        with z:
+            for info in z.infolist():
+                n = info.filename
+                if info.is_dir() or "__MACOSX" in n or n.rsplit("/", 1)[-1].startswith("."):
+                    continue
+                try:
+                    deposes.append(_deposer_un(n, z.read(info)))
+                except ValueError as e:
+                    refus.append(str(e))
+        return deposes, refus
+    try:
+        deposes.append(_deposer_un(nom, contenu))
+    except ValueError as e:
+        refus.append(str(e))
+    return deposes, refus
+
+
+def _nombre(texte):
+    from decimal import Decimal
+    return Decimal(texte.replace(",", "."))
+
+
+def proposer(nom):
+    """Mouvement proposé d'après le nom du fichier : (mouvement ou None, raison, sûr)."""
+    import datetime as dt
+    from django.db.models import Q
+    from .models import Ligne, Mouvement
+    base = nom.rsplit(".", 1)[0]
+    m = re.search(r"(?i)(?:^|[^a-z])mvt[\s_.\-n°o]*(\d{1,6})", base)
+    if m:
+        mv = Mouvement.objects.filter(numero=int(m.group(1))).first()
+        return (mv, f"« Mvt {m.group(1)} » dans le nom", True) if mv else (None, f"Mvt {m.group(1)} inconnu", False)
+    m = re.search(r"(?i)(?:^|[^a-z])(?:piece|pce|pc|pj)[\s_.\-n°o]*(\d{1,6})", base)
+    if m:
+        mv = Mouvement.objects.filter(piece=int(m.group(1))).first()
+        return (mv, f"« pièce {m.group(1)} » dans le nom", True) if mv else (None, f"pièce {m.group(1)} inconnue", False)
+    reste = base
+    date = None
+    for motif, ordre in ((r"(20\d\d)[-_.](\d\d)[-_.](\d\d)", "amj"), (r"(\d\d)[-_.](\d\d)[-_.](20\d\d)", "jma"),
+                         (r"(?<!\d)(\d\d)(\d\d)(20\d\d)(?!\d)", "jma"), (r"(?<!\d)(20\d\d)(\d\d)(\d\d)(?!\d)", "amj")):
+        d = re.search(motif, reste)
+        if d:
+            a, b, c = (int(x) for x in d.groups())
+            try:
+                date = dt.date(a, b, c) if ordre == "amj" else dt.date(c, b, a)
+            except ValueError:
+                continue
+            reste = reste[:d.start()] + " " + reste[d.end():]
+            break
+    montant = None
+    d = re.search(r"(?<![\d.,])(\d{1,7}[.,]\d\d)(?![\d])", reste)
+    if d:
+        montant = _nombre(d.group(1))
+        reste = reste[:d.start()] + " " + reste[d.end():]
+    if date:
+        qs = Mouvement.objects.filter(date=date)
+        if montant is not None:
+            qs = qs.filter(pk__in=Ligne.objects.filter(mouvement__date=date).filter(
+                Q(debit=montant) | Q(credit=montant)).values("mouvement"))
+            if qs.count() == 1:
+                return qs.first(), f"date {date:%d/%m/%Y} et montant {montant} dans le nom", True
+        elif qs.count() == 1:
+            return qs.first(), f"seul mouvement du {date:%d/%m/%Y} (à vérifier)", False
+    indice = ""
+    if date:
+        n = Mouvement.objects.filter(date=date).count()
+        indice = (f"{n} mouvements le {date:%d/%m/%Y}" + (f" (montant {montant} introuvable)" if montant is not None else "")
+                  + " : saisir le n° de Mvt") if n else f"aucun mouvement le {date:%d/%m/%Y}"
+    for n in re.findall(r"(?<!\d)(\d{1,6})(?!\d)", reste):
+        n = int(n)
+        piece, mvt = Mouvement.objects.filter(piece=n).first(), Mouvement.objects.filter(numero=n).first()
+        if piece and mvt and piece != mvt:
+            return piece, f"{n} = n° de pièce (c'est aussi le Mvt {n} : à vérifier)", False
+        if piece:
+            return piece, f"{n} = n° de pièce", True
+        if mvt:
+            return mvt, f"{n} = n° de Mvt (à vérifier)", False
+    return None, indice or "aucun numéro, date ou montant reconnu", False
+
+
+def a_classer():
+    """Fichiers déposés en attente, avec la proposition de rattachement."""
+    res = []
+    for f in sorted(a_classer_dossier().iterdir(), key=lambda p: p.name.lower()):
+        if f.is_file():
+            mv, raison, sur = proposer(re.sub(r"__doublon_[b-z]", "", f.name))
+            res.append({"nom": f.name, "affiche": nom_affiche(f.name), "taille": f.stat().st_size, "mouvement": mv,
+                        "raison": raison, "sur": sur})
+    return res
+
+
+def fichier_a_classer(nom):
+    f = a_classer_dossier() / nom
+    if "/" in nom or "\\" in nom or nom.startswith(".") or not f.is_file():
+        raise ValueError("Fichier introuvable.")
+    return f
+
+
+def nom_affiche(nom):
+    """Nom du document sans les dossiers du ZIP ni le suffixe de doublon."""
+    nom = re.sub(r"__doublon_[b-z](?=\.[^.]*$|$)", "", nom)          # « facture__doublon_b.pdf » → facture.pdf
+    return nom.split("__")[-1]
+
+
+def rattacher(nom, mouvement, description="", auteur=""):
+    from django.core.files import File
+    f = fichier_a_classer(nom)
+    with open(f, "rb") as flux:
+        j = ajouter(mouvement, File(flux, name=nom_affiche(nom)), description, auteur)
+    f.unlink()
+    return j
+
+
+def ecarter(nom):
+    fichier_a_classer(nom).unlink()

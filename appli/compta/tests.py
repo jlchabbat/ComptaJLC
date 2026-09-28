@@ -1418,3 +1418,72 @@ class Justificatifs(TransactionTestCase):
         with self.assertRaises(ec.ExportInvalide):
             ec.reinjecter(altere)
         self.assertEqual(just.chemin(Justificatif.objects.get()).read_bytes(), contenu)
+
+
+@override_settings(**temporaire())
+class JustificatifsExistants(TransactionTestCase):
+    def setUp(self):
+        ExportComplet.setUp(self)                         # Mvt 1 : pièce 1, 01/02/2026, 400,00
+        import shutil
+        shutil.rmtree(just.dossier())                     # dossier partagé par les tests de la classe
+        Mouvement.objects.filter(numero=1).update(piece=739)
+        m = Mouvement.objects.create(numero=5, date=dt.date(2026, 3, 15), journal_id="OD", piece=740)
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600000", libelle="TRAITEUR", debit=D("450.00"), anal2_id="MAN.001")
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="TRAITEUR", credit=D("450.00"), anal2_id="MAN.001")
+
+    def test_propositions(self):
+        cas = {"Mvt 5 facture.pdf": (5, True), "mvt_1.jpg": (1, True), "Pièce 739.pdf": (1, True),
+               "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, True), "2026-03-15 traiteur 450,00.pdf": (5, True),
+               "15.03.2026.pdf": (5, False), "5.pdf": (5, False), "photo.jpg": (None, False), "Mvt 999.pdf": (None, False)}
+        self.assertIn("aucun mouvement le 16/03/2026", just.proposer("2026-03-16 recu.pdf")[1])
+        for nom, (numero, sur) in cas.items():
+            m, raison, s = just.proposer(nom)
+            self.assertEqual((m.numero if m else None, s), (numero, sur), f"{nom} : {raison}")
+
+    def test_depot_zip_et_rattachement(self):
+        import io
+        tampon = io.BytesIO()
+        with zipfile.ZipFile(tampon, "w") as z:
+            z.writestr("Factures 2026/Piece 739.pdf", b"%PDF 739")
+            z.writestr("Factures 2026/Piece 739.pdf.bak", b"x")                 # format refusé
+            z.writestr("__MACOSX/._Piece 739.pdf", b"x")                        # ignoré
+            z.writestr("Divers/photo reçu.jpg", b"\xff\xd8photo")
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.u)
+        self.client.post("/justificatifs/a-classer/", {"deposer": "1", "fichiers": [
+            SimpleUploadedFile("scans.zip", tampon.getvalue()), SimpleUploadedFile("Mvt 5.pdf", b"%PDF 5"),
+            SimpleUploadedFile("Mvt 5.pdf", b"%PDF 5 bis")]})
+        lignes = just.a_classer()
+        self.assertEqual(len(lignes), 4)
+        page = self.client.get("/justificatifs/a-classer/")
+        self.assertContains(page, "Piece_739.pdf")
+        noms = [l["nom"] for l in page.context["lignes"]]
+        self.assertTrue(any("doublon" in n for n in noms))                       # deux « Mvt 5.pdf »
+        donnees = {"rattacher": "1", "nom": noms}
+        for i, l in enumerate(page.context["lignes"]):
+            donnees[f"mvt_{i}"] = str(l["mouvement"].numero) if l["mouvement"] else "1"   # photo : saisie à la main
+            donnees[f"garder_{i}"] = "1"
+            donnees[f"desc_{i}"] = "reprise"
+        self.client.post("/justificatifs/a-classer/", donnees)
+        self.assertEqual(just.a_classer(), [])
+        self.assertEqual(Justificatif.objects.filter(mouvement__numero=5).count(), 2)
+        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=1).values_list("nom", flat=True)),
+                         {"Piece_739.pdf", "photo_recu.jpg"})
+        self.assertEqual(set(Justificatif.objects.filter(mouvement__numero=5).values_list("nom", flat=True)), {"Mvt_5.pdf"})
+        # écarter, droits
+        just.deposer("inutile.pdf", b"%PDF")
+        self.client.post("/justificatifs/a-classer/", {"ecarter": just.a_classer()[0]["nom"]})
+        self.assertEqual(just.a_classer(), [])
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
+
+    def test_commande(self):
+        dossier = Path(tempfile.mkdtemp()) / "Scans"
+        (dossier / "2026").mkdir(parents=True)
+        (dossier / "2026" / "Pièce 740.pdf").write_bytes(b"%PDF 740")
+        (dossier / "inconnu.jpg").write_bytes(b"\xff\xd8")
+        call_command("importer_justificatifs", str(dossier), "--rattacher", stdout=open("/dev/null", "w"))
+        self.assertEqual(Justificatif.objects.get().mouvement.numero, 5)
+        self.assertEqual([l["affiche"] for l in just.a_classer()], ["inconnu.jpg"])
