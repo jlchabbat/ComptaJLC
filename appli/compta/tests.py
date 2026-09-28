@@ -14,7 +14,7 @@ import openpyxl
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.db import IntegrityError
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.table import Table
 
@@ -429,6 +429,35 @@ class Fiches(TestCase):
         with self.assertRaises(ValueError):
             fiches_moteur.reporter(self.ges, u)
         self.assertFalse(Mouvement.objects.filter(numero=427).exists())
+
+
+class DocumentsFichesExport(TransactionTestCase):
+    """Export complet puis réinjection avec des reçus de bénévoles (sauvegarde de la base : hors transaction de test)."""
+
+    def setUp(self):
+        EcransFiches.setUp(self)
+
+    def ligne_post(self, **k):
+        return EcransFiches.ligne_post(self, **k)
+
+    @override_settings(DATA_DIR=Path(tempfile.mkdtemp()), EXPORTS_DIR=Path(tempfile.mkdtemp()))
+    def test_documents_de_fiche_dans_l_export_complet(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile as F
+        from . import export_complet
+        self.client.force_login(self.benevole)
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
+        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": self.act.lignes.get().pk,
+                                                     "documents": [F("recu.pdf", b"%PDF-1.4 recu")]})
+        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": "", "documents": [F("tout.pdf", b"%PDF t")]})
+        chemin = export_complet.exporter()
+        export_complet.reinjecter(chemin)                                            # contrôle : base identique à l'export
+        f = Fiche.objects.get(titre="Rallye")
+        docs = {d.nom: d for d in f.documents.all()}
+        self.assertEqual(set(docs), {"recu.pdf", "tout.pdf"})
+        self.assertEqual(docs["recu.pdf"].ligne, f.lignes.get())
+        self.assertIsNone(docs["tout.pdf"].ligne)
+        from . import justificatifs as just
+        self.assertEqual((just.dossier() / docs["recu.pdf"].chemin).read_bytes(), b"%PDF-1.4 recu")
 
 
 class EcransFiches(TestCase):
@@ -1198,7 +1227,7 @@ class Journaux(TestCase):
 
 # ---------------------------------------------------------------- base de données : sauvegarde, restauration, reprise
 
-from django.test import TransactionTestCase  # noqa: E402
+
 
 from . import base_donnees as bd  # noqa: E402
 
