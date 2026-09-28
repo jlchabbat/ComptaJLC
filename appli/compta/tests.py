@@ -739,7 +739,7 @@ class EcransRapprochement(TestCase):
         self.assertContains(self.client.get("/?du=2026-01-01&au=2026-12-31"), "Situation (PDF)")
         page = self.client.get("/situation/?du=2026-01-01&au=2026-12-31")
         for texte in ("Situation financière", "Période du <b>01/01/2026</b> au <b>31/12/2026</b>", "Charges par compte", "600100",
-                      "Résultat par activité (axe 1)"):
+                      "Résultat par nature (axe 1)"):
             self.assertContains(page, texte)
         r = self.client.get("/situation/excel/?du=2026-01-01&au=2026-12-31")
         self.assertIn("Situation_2026-01-01_2026-12-31.xlsx", r["Content-Disposition"])

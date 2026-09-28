@@ -70,7 +70,7 @@ def classeur(d):
     p.tableau(["Journal", "Compte", "Solde"],
               [[t["journal"].code, f"{t['journal'].compte_id} – {t['journal'].compte.libelle}", t["solde"]] for t in d["tresorerie"]],
               montants=(3,), total=["Total", "", d["total_tresorerie"]])
-    for titre, cle in (("Résultat par activité (axe 1)", "axe1"), ("Résultat par événement / projet (axe 2)", "axe2")):
+    for titre, cle in (("Résultat par nature (axe 1)", "axe1"), ("Résultat par événement / projet (axe 2)", "axe2")):
         p.section(titre)
         ls = d[cle]
         p.tableau(["Code", "Libellé", "Produits", "Charges", "Résultat"],

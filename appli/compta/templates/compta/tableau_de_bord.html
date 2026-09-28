@@ -13,6 +13,6 @@
 </div>
 <h2>Trésorerie</h2><table><tr><th>Journal</th><th>Compte</th><th class="n">Solde</th></tr>
 {% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td><a href="{% url 'grand_livre' %}?compte={{ t.journal.compte_id }}">{{ t.journal.compte }}</a></td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}</table>
-<div class="deux"><div>{% include "compta/_axe.html" with titre="Résultat par activité (axe 1)" lignes=axe1 %}</div>
+<div class="deux"><div>{% include "compta/_axe.html" with titre="Résultat par nature (axe 1)" lignes=axe1 %}</div>
 <div>{% include "compta/_axe.html" with titre="Résultat par événement / projet (axe 2)" lignes=axe2 %}</div></div>
 {% endblock %}
