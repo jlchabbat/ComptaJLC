@@ -3,7 +3,9 @@
 <p>Pour joindre d'un coup les scans déjà faits : déposez-les ici, l'application propose pour chacun le mouvement correspondant
 d'après le <b>nom du fichier</b>, vous vérifiez, puis vous rattachez.</p>
 
-<form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
+<form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
+      onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
+<input type="hidden" name="deposer" value="1">
 <h2 style="margin-top:0">1. Déposer les documents</h2>
 <div class="barre"><button class="principal" name="deposer" value="1">Déposer</button></div>
 <p class="aide">Un <b>fichier ZIP</b> (dossiers compris), plusieurs fichiers PDF / images sélectionnés ensemble, ou un <b>extrait Excel
@@ -15,7 +17,9 @@ ou une <b>date et un montant</b> (« 2026-03-15 facture 450,00.pdf »). Les docu
 plusieurs ZIP de 50 Mo au plus, ou l'envoyer par PythonAnywhere › Files puis, dans une console Bash :
 <code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; COMPTABB_DATA=~/comptabb-data python manage.py importer_justificatifs ~/Justificatifs.zip --rattacher</code></p>
 <div class="formulaire"><label for="id_fichiers">Fichiers ou ZIP</label>
-<div><input type="file" id="id_fichiers" name="fichiers" multiple accept=".zip,application/zip,.xlsx,application/pdf,image/*" required></div></div></form>
+<div><input type="file" id="id_fichiers" name="fichiers" multiple accept=".zip,application/zip,.xlsx,application/pdf,image/*" required>
+<button class="principal" name="deposer" value="1">Déposer</button>
+<span id="envoi" class="message info" hidden>Envoi en cours… patientez, la page va se recharger.</span></div></div></form>
 
 {% if en_ligne %}<form method="post" class="carte">{% csrf_token %}
 <h2 style="margin-top:0">Documents encore en ligne ({{ en_ligne }})</h2>
