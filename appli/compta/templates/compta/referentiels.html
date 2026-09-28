@@ -1,0 +1,11 @@
+{% extends "compta/base.html" %}{% block titre %}Exports{% endblock %}{% block contenu %}
+<h1>Exports des référentiels et des écritures</h1>
+<div class="barre"><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Tout exporter (.zip, écritures comprises)</a>
+<a class="bouton" href="{% url 'referentiel_export' 'Parametres' %}">Parametres.xlsx</a></div>
+<p class="aide">Un fichier Excel par référentiel ou nature de données (écritures, relevés, budget), téléchargé et copié dans le dossier Exports.
+« Tout exporter » les réunit dans un .zip, avec Parametres.xlsx et Lexique.xlsx (description des colonnes).
+Les paramètres se réimportent par Administration › Paramètres (Excel) ; les autres fichiers, tels quels, par Administration › Imports / Exports.</p>
+<table class="triable"><tr><th>Référentiel</th><th>Contenu</th><th>Fichier</th></tr>
+{% for fichier, nom, aide, _ in referentiels %}<tr><td><b>{{ nom }}</b></td><td>{{ aide }}</td>
+<td><a class="bouton" href="{% url 'referentiel_export' fichier %}">{{ fichier }}.xlsx</a></td></tr>{% endfor %}</table>
+{% endblock %}

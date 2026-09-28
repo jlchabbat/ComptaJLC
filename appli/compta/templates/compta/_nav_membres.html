@@ -1,0 +1,2 @@
+<div class="onglets">{% url 'membres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Liste des tiers</a>
+{% url 'cotisations' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Cotisations des membres</a></div>

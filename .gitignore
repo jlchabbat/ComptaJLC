@@ -1,0 +1,48 @@
+# Classeurs : données de l'association (noms des membres), hors Git
+# tant que leur versionnement n'est pas autorisé (§12 du cahier)
+*.xlsm
+*.xlsx
+!Imports/modeles/*.xlsx
+
+# Fichiers échangés par l'application (données personnelles et bancaires)
+Imports/*
+!Imports/README.md
+!Imports/modeles/
+!Imports/reprise/
+Imports/reprise/*
+!Imports/reprise/.gitkeep
+Exports/
+
+# Fichiers temporaires Excel et Office
+~$*
+*.tmp
+*.bak
+
+# Sauvegardes datées
+Sauvegardes/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets
+.env
+*.key
+*.pem
+
+# Relevés bancaires téléchargés (données bancaires)
+Releves/
+
+# Classeur de saisie généré (référentiels : noms des membres)
+*_Saisie.xlsx
+*_Liaison*.xlsx
+
+# Application web : données locales et fichiers échangés (sauvegardes, archives, Parametres.xlsx)
+appli/data/
+data/
+Exports/
+
+# clé privée des licences (éditeur)
+comptabb-licence/
+*.pem

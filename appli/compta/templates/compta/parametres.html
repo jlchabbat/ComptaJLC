@@ -1,0 +1,43 @@
+{% extends "compta/base.html" %}{% block titre %}Paramètres (Excel){% endblock %}{% block contenu %}
+<h1>Paramètres (Excel)</h1>
+<div class="barre"><button form="f-dossier" name="preparer" value="1" {% if modifie %}onclick="return confirm('Remplacer Imports/Parametres.xlsx par les paramètres actuels ? (L\'ancien est copié dans Exports.)')"{% endif %}>Préparer Imports/Parametres.xlsx</button>
+<button form="f-dossier" class="principal" name="importer_dossier" value="1" {% if not modifie %}disabled{% endif %}>Importer Imports/Parametres.xlsx</button><button form="f-envoi" class="principal">Importer le fichier envoyé</button></div>
+<p>Les paramètres de ComptaBB (plan comptable, journaux, codes analytiques, modèles de saisie, traductions…) tiennent dans
+un classeur <b>Parametres.xlsx</b> qu'on modifie dans Excel puis qu'on réinjecte. Réservé à l'administrateur et au trésorier.</p>
+
+<div class="deux">
+<form method="post" class="carte" id="f-dossier">{% csrf_token %}<h2 style="margin-top:0">Par le dossier Imports</h2>
+<p class="aide">Sur le PC où tourne ComptaBB. <b>1.</b> « Préparer » écrit les paramètres actuels dans <b>Imports/Parametres.xlsx</b>
+(l'ancien fichier est d'abord copié dans Exports). <b>2.</b> Modifiez-le dans Excel, enregistrez, fermez-le.
+<b>3.</b> « Importer » le réinjecte.</p>
+<p>{% if modifie %}Imports/Parametres.xlsx : modifié le {{ modifie|date:"d/m/Y à H:i" }}.{% else %}Pas encore de fichier dans Imports.{% endif %}</p>
+</form>
+
+<form method="post" enctype="multipart/form-data" class="carte" id="f-envoi">{% csrf_token %}<h2 style="margin-top:0">Par le navigateur</h2>
+<p class="aide">Depuis n'importe quel poste (site hébergé). <b>1.</b> <a href="{% url 'parametres_telecharger' %}">Télécharger Parametres.xlsx</a>
+(une copie reste dans Exports). <b>2.</b> Modifiez-le dans Excel. <b>3.</b> Envoyez-le ci-dessous.</p>
+<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>
+</div>
+
+<ul class="aide"><li>Clé connue (colonne grise) : l'élément est mis à jour ; clé nouvelle : il est créé.</li>
+<li>Une cellule vide ne change rien ; rien n'est supprimé (pour retirer un élément : Actif = Non).</li>
+<li>Au moindre problème, <b>rien n'est enregistré</b> et les lignes à corriger sont listées.</li>
+<li>Une sauvegarde de la base est faite juste avant (Exports/Sauvegardes) ; chaque changement est inscrit dans l'Historique.</li>
+<li>Les comptes de tiers n'y figurent pas : fichier Tiers.xlsx, menu Tiers.</li></ul>
+
+{% if rapport %}
+{% if rapport.erreurs %}<h2 style="color:var(--ko)">Lignes à corriger ({{ rapport.erreurs|length }})</h2>
+<p class="aide">Corrigez-les dans le classeur puis importez-le de nouveau. Aucune donnée n'a été modifiée.</p>
+<ul>{% for e in rapport.erreurs %}<li>{{ e }}</li>{% endfor %}</ul>
+{% else %}<h2>Résultat de l'import</h2>
+<p>Feuilles lues : {{ rapport.feuilles|join:", " }}. {{ rapport.resume }}.</p>
+{% if rapport.crees %}<h3>Créés ({{ rapport.crees|length }})</h3><ul>{% for e in rapport.crees %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+{% if rapport.modifies %}<h3>Modifiés ({{ rapport.modifies|length }})</h3><ul>{% for e in rapport.modifies %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+{% endif %}{% endif %}
+
+<h2>Contenu du classeur</h2>
+<table><tr><th>Feuille</th><th>Contenu</th><th>Clé</th></tr>
+{% for f in feuilles %}<tr><td>{{ f.nom }}</td><td>{{ f.aide }}</td><td>{% for c in f.colonnes %}{% if c.champ in f.cles %}{{ c.entete }} {% endif %}{% endfor %}</td></tr>{% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "compta/base.html" %}{% block titre %}Licence{% endblock %}{% block contenu %}
+<h1>Licence du site</h1>
+<form method="post">{% csrf_token %}
+<div class="barre"><button class="principal">Enregistrer la licence</button></div>
+{% if not active %}<p class="aide">Les licences ne sont pas encore en service : aucune licence n'est demandée.</p>
+{% elif etat.code == "exempt" %}<p class="aide">Ce site a été installé avant l'assistant de premier démarrage : aucune licence ne lui est demandée.</p>
+{% else %}
+<div class="carte"><table class="sans-outils">
+<tr><th style="width:30%">État</th><td>{% if etat.code == "valide" %}✅ Licence valable{% elif etat.code == "essai" %}Période d'essai{% else %}⛔ Lecture seule{% endif %}</td></tr>
+{% if etat.message %}<tr><th>Détail</th><td>{{ etat.message }}</td></tr>{% endif %}
+{% if etat.licence %}<tr><th>Association</th><td>{{ etat.licence.association }}</td></tr>
+<tr><th>Site</th><td>{{ etat.licence.site }}</td></tr><tr><th>Fin</th><td>{{ etat.licence.fin|date:"d/m/Y" }}</td></tr>{% endif %}
+<tr><th>Adresse de ce site</th><td>{{ sites|join:", " }}</td></tr></table></div>
+<p class="aide">Sans licence valable, le site passe en lecture seule : on consulte, on imprime et on exporte (export complet compris), on ne saisit plus.
+La licence est un texte qui commence par CBB1. : la coller en entier ci-dessous.</p>
+{% endif %}
+{% if active %}<div class="formulaire"><label for="id_licence">Nouvelle licence</label>
+<div><textarea id="id_licence" name="licence" rows="4" style="width:100%;max-width:640px" required placeholder="CBB1.…"></textarea></div></div>{% endif %}
+</form>{% endblock %}

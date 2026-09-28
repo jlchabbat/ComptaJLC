@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Présentation</title>
+<style>
+@page { size: A4; margin: 14mm; }
+body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
+.bandeau { background: #1f3864; color: #fff; padding: 8mm 9mm; border-radius: 3mm; margin-bottom: 5mm; }
+.bandeau h1 { margin: 0; font-size: 24pt; } .bandeau p { margin: 2mm 0 0; font-size: 11.5pt; color: #dfe7f5; }
+.bandeau a { color: #fff; }
+h2 { color: #1f3864; font-size: 14pt; border-bottom: 2px solid #1f3864; padding-bottom: 1mm; margin: 6mm 0 3mm; break-after: avoid; }
+ul, ol { padding-left: 6mm; margin: 1mm 0 3mm; } li { margin: 1mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 3mm; font-size: 10pt; }
+th, td { border: 1px solid #c9d3e3; padding: 1.8mm 2.2mm; text-align: left; vertical-align: top; }
+th { background: #1f3864; color: #fff; } tr { break-inside: avoid; }
+td:first-child { font-weight: 600; color: #1f3864; white-space: nowrap; }
+.chiffres { display: flex; gap: 3mm; margin: 3mm 0; }
+.chiffres div { flex: 1; border: 1px solid #c9d3e3; border-radius: 2mm; padding: 2.5mm 3mm; background: #f6f8fc; }
+.chiffres b { display: block; font-size: 12pt; white-space: nowrap; color: #1f3864; } .chiffres span { font-size: 8.5pt; color: #555; text-transform: uppercase; }
+figure { margin: 3mm 0; text-align: center; break-inside: avoid; }
+figure img { max-width: 100%; max-height: 95mm; border: 1px solid #c9d3e3; border-radius: 2mm; }
+figcaption { font-size: 8.5pt; color: #555; font-style: italic; }
+.deux { display: flex; gap: 4mm; } .deux figure { flex: 1; }
+.case { display: inline-block; width: 3.2mm; height: 3.2mm; border: 1px solid #333; margin-right: 2mm; vertical-align: -0.4mm; }
+ul.points { list-style: none; padding-left: 0; }
+.petit { font-size: 9pt; color: #555; }
+</style></head><body>
+<div class="bandeau"><h1>ComptaBB</h1>
+<p>La comptabilité de la Loge Bnei Brith, en ligne · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 27/09/2026</p></div>
+
+<p><b>ComptaBB est une application web qui tient la comptabilité en shekels de la Loge</b> : saisie guidée, fiches des bénévoles, tiers et membres,
+relevés bancaires passés en comptabilité, journaux, états annuels et clôture. Elle s'ouvre depuis un ordinateur, une tablette ou un téléphone,
+et remplace le classeur Excel.</p>
+<div class="chiffres"><div><span>Mouvements repris</span><b>421</b></div><div><span>Lignes d'écritures</span><b>1 544</b></div>
+<div><span>Débit = crédit</span><b>1 451 040,66 ₪</b></div><div><span>Tests automatiques</span><b>83</b></div></div>
+
+<h2>Ce que fait ComptaBB</h2>
+<p>Une seule base, partagée par tous, remplace le classeur et les fichiers envoyés par e-mail : chacun voit les mêmes chiffres à jour.</p>
+<ul>
+<li><b>Saisir sans être comptable</b> : on choisit un type d'opération (cotisation, don, facture, frais, virement, carte Isracard…) et l'application
+génère les écritures équilibrées ; écriture libre et modification (motif obligatoire, avant / après gardés) restent possibles.</li>
+<li><b>Faire participer les bénévoles</b> : chaque bénévole, toujours choisi parmi les membres, note en ligne les recettes et dépenses de son activité ;
+le trésorier complète et reporte. Le code axe 2 d'une activité se choisit ou se crée avec la fiche.</li>
+<li><b>Suivre les tiers</b> : membres, fournisseurs et autres, avec adresse ; import d'un fichier Tiers.xlsx ; le solde du compte suffit à savoir
+qui doit quoi ; cotisations, lettrage.</li>
+<li><b>Passer la banque en comptabilité</b> : le relevé Mizrahi (PDF en hébreu), BIT ou la caisse se télécharge sans doublon ; pour chaque ligne
+sans écriture, on choisit le compte de contrepartie et le code axe 2, et l'écriture est créée. Une écriture déjà saisie est repérée et reliée.</li>
+<li><b>Tenir les journaux</b> : banque et caisse avec solde progressif, imprimables et exportables en Excel.</li>
+<li><b>Éditer</b> : compte de résultat, bilan, budget, comparaison avec l'année précédente, clôture avec à-nouveaux et archive figée ;
+export Excel de chaque référentiel ; présentation et mode d'emploi en PDF, livrés avec l'application.</li>
+</ul>
+<div class="deux"><figure><img src="images/03_saisie.png"><figcaption>Saisie guidée : aperçu des écritures et contrôles.</figcaption></figure>
+<figure><img src="images/13_banque.png"><figcaption>Banque : lignes du relevé à passer en comptabilité.</figcaption></figure></div>
+
+<h2>Qui fait quoi</h2>
+<table><tr><th>Rôle</th><th>Ce qu'il fait</th><th>Ce qu'il voit</th></tr>
+<tr><td>Administrateur</td><td>Tous les droits, dont le paramétrage de base (référentiels, Paramètres Excel, Imports / Exports), les utilisateurs et la base de données</td><td>Tout</td></tr>
+<tr><td>Trésorier</td><td>Tout sauf le paramétrage de base : saisie, corrections, codes d'axe 2, tiers, fiches, banque, budget, clôture, exports</td><td>Tout</td></tr>
+<tr><td>Bureau</td><td>Consultation seulement</td><td>Tableau de bord, écritures, journaux, états, tiers, banque, contrôles</td></tr>
+<tr><td>Bénévole</td><td>La liaison seulement : les lignes de ses fiches, des tiers provisoires, la transmission</td><td>Seulement ses fiches, ni soldes ni écritures</td></tr></table>
+<p>Il n'y a pas d'autre rôle. Chacun change son identifiant (un nom ou son adresse e-mail) et son mot de passe dans <b>Mon compte</b>.</p>
+
+<h2>Fonctionnalités</h2>
+<p>Les pages sont rangées en sept menus. Sur chaque page, <b>tous les boutons sont regroupés en haut à gauche</b>, sous le titre, et restent visibles
+pendant le défilement ; dans toutes les listes, on cherche en tapant une partie du code ou du libellé.</p>
+<table><tr><th>Menu</th><th>Ce qu'on y fait</th></tr>
+<tr><td>Saisie</td><td>Saisie guidée (aperçu et contrôles), écriture libre, modification d'une écriture rappelée par son numéro, codes analytiques et nouveaux tiers, fiches bénévoles</td></tr>
+<tr><td>Tiers</td><td>Liste et fiches (adresse, CP, ville), import Tiers.xlsx, solde, cotisations et taux de recouvrement, lettrage, tiers provisoires</td></tr>
+<tr><td>Consulter</td><td>Tableau de bord, écritures, journaux de banque et de caisse, grand livre, balance, analytique</td></tr>
+<tr><td>Banque</td><td>Relevés à passer en compta : téléchargement sans doublon, compte de contrepartie et code axe 2, création des écritures ; traductions de l'hébreu</td></tr>
+<tr><td>Contrôle</td><td>État des règles comptables ; historique de toutes les actions (recherche, Excel)</td></tr>
+<tr><td>Éditions</td><td>États annuels et budget (N et N-1), clôture, exports des référentiels, présentation et mode d'emploi (PDF)</td></tr>
+<tr><td>Administration</td><td>Utilisateurs, référentiels, Paramètres (Excel), Imports / Exports et dossiers, base de données : sauvegardes, restauration, remise à zéro</td></tr></table>
+<figure><img src="images/02_accueil_menu.png" style="max-height:80mm"><figcaption>Tableau de bord et menus.</figcaption></figure>
+
+<h2>Accès</h2>
+<ol>
+<li>Ouvrir <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> et se connecter avec son identifiant ou son e-mail.</li>
+<li>Icône sur le Bureau : Edge › … › Applications › Installer ce site en tant qu'application ; Chrome › ⋮ › Caster, enregistrer et partager › Installer la page en tant qu'application.</li>
+<li>Les boutons A− A A+ en haut à droite règlent la taille des caractères, mémorisée sur chaque appareil.</li>
+<li>Un nouvel utilisateur reçoit son compte de l'administrateur (Administration › Utilisateurs ; un bénévole : Fiches bénévoles › Nouveau bénévole, parmi les membres).</li>
+</ol>
+<p>L'hébergement est en essai gratuit chez PythonAnywhere ; s'il convient, l'offre payante coûte environ 5 $ par mois, sans engagement.
+Les mises à jour se font en une commande (<code>bash ~/maj.sh</code>), avec sauvegarde automatique et retour arrière possible.</p>
+
+<h2>Garde-fous</h2>
+<ul>
+<li>Chaque mouvement est équilibré (débit = crédit) et chaque ligne porte soit un débit, soit un crédit.</li>
+<li>Comptes, journaux et codes doivent exister ; la date doit tomber dans l'exercice ouvert ; un exercice clôturé est verrouillé.</li>
+<li>Pas de doublon : relevé retéléchargé sans ligne en double, une seule écriture par ligne du relevé, écriture déjà saisie signalée.</li>
+<li>Une correction exige un motif ; l'avant et l'après sont gardés. L'historique note qui a fait quoi et quand.</li>
+<li>Connexion chiffrée (HTTPS), mot de passe par personne, droits selon le rôle ; le paramétrage de base est réservé à l'administrateur.</li>
+<li>Sauvegardes à chaque mise à jour, chaque nuit et à la demande ; restauration par la page Base de données ou la commande <code>restaurer</code> ;
+jeu complet d'exports vers le dossier Exports ; archive Excel figée à chaque clôture.</li>
+</ul>
+
+<h2>Points en suspens</h2>
+<ul class="points">
+<li><span class="case"></span>Tester l'application avec l'administrateur, le trésorier, le bureau et une bénévole, puis décider de garder l'hébergement.</li>
+<li><span class="case"></span>Créer le compte du trésorier (Administration › Utilisateurs) ; l'ancien compte principal est devenu administrateur.</li>
+<li><span class="case"></span>Activer la sauvegarde automatique de nuit (PythonAnywhere › Tasks).</li>
+<li><span class="case"></span>Télécharger le vrai relevé Mizrahi (tnuot.pdf) et passer les lignes en comptabilité.</li>
+<li><span class="case"></span>Importer les coordonnées des tiers (Tiers.xlsx) et la cotisation attendue des membres.</li>
+<li><span class="case"></span>Solder le compte de virements internes 580000 et vérifier les soldes d'ouverture de la caisse et de BIT.</li>
+<li><span class="case"></span>Affecter le résultat de l'exercice court 2025 (+6 678,60 ₪), repris à la clôture 2026.</li>
+</ul>
+<p class="petit">Documents associés : mode d'emploi détaillé (Éditions › Mode d'emploi, PDF) · protocole de mise à jour (PDF).</p>
+</body></html>

@@ -1,0 +1,59 @@
+{% extends "compta/base.html" %}{% block titre %}Base de données{% endblock %}{% block contenu %}
+<h1>Base de données</h1>
+<div class="barre"><button form="f-export" class="principal" name="export_complet" value="1">Tout exporter</button><button form="f-sauver" class="principal" name="sauvegarder" value="1">Créer une sauvegarde</button><a class="bouton" href="{% url 'base_telecharger' %}">Télécharger la base maintenant</a><button form="f-remplacer" class="principal" name="remplacer" value="1" style="background:var(--ko);border-color:var(--ko)"
+ onclick="return confirm('Remplacer TOUTES les données de ComptaBB ?')">Remettre à zéro et recharger</button></div>
+<p>La base contient <b>{{ mouvements }}</b> mouvements et <b>{{ lignes }}</b> lignes d'écritures.</p>
+
+
+<div class="deux">
+<div>
+<form method="post" class="carte" id="f-export">{% csrf_token %}<h2 style="margin-top:0">Export complet</h2>
+<p class="aide">En une seule opération, crée dans le dossier Exports un fichier <b>Export_complet_….zip</b> qui contient :
+la sauvegarde de la base, <b>Parametres.xlsx</b>, <b>Tiers.xlsx</b>, <b>Ecritures.xlsx</b>, <b>Donnees.xlsx</b> (comptes de tiers,
+exercices, relevés, pointages, budget, fiches bénévoles, justificatifs, historique), les <b>justificatifs</b> (scans), les <b>états</b>
+de chaque exercice et un fichier de contrôle. Tout y est, sauf les comptes utilisateurs (seulement dans la sauvegarde de la base).</p>
+<p class="aide">Pour un test : faire l'export complet, puis « Remettre à zéro et recharger » en choisissant cet export.
+L'application vérifie que la base rechargée est <b>identique</b> à l'export ; sinon, rien n'est modifié.</p>
+<p class="aide"><b>Corriger en masse</b> : décompresser l'export, modifier dans Excel Ecritures.xlsx, Tiers.xlsx, Parametres.xlsx ou
+Donnees.xlsx (sans toucher aux en-têtes de colonnes), recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
+puis « Remettre à zéro et recharger » avec ce .zip en cochant <b>Fichiers modifiés</b>. Les Mvt doivent rester équilibrés et les
+codes (comptes, journaux, axes) exister ; sinon, rien n'est modifié.</p>
+</form>
+
+<form method="post" class="carte" id="f-sauver">{% csrf_token %}<h2 style="margin-top:0">Sauvegarder</h2>
+<p class="aide">Crée une copie datée de toute la base (écritures, tiers, fiches, pointages, utilisateurs) sur le site.
+Conseillé chaque mois et avant une clôture ; téléchargez-la aussi sur votre PC ou OneDrive.
+Les scans des justificatifs n'y sont pas : ils sont dans l'export complet.</p>
+</form>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="carte" style="border-color:var(--ko)" id="f-remplacer">{% csrf_token %}
+<h2 style="margin-top:0;color:var(--ko)">Remettre à zéro et recharger</h2>
+<p>Remplace <b>toutes</b> les données par un existant :</p>
+<ul><li><b>une sauvegarde</b> (.sqlite3) : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris ;</li>
+<li><b>un export complet</b> (.zip) : la comptabilité est vidée puis rechargée depuis ses fichiers Excel (paramètres, tiers, écritures,
+données), et comparée à l'export ; les comptes utilisateurs sont gardés. Export modifié dans Excel : cocher « Fichiers modifiés » ;</li>
+<li><b>le classeur ComptaBB.xlsm</b> : la comptabilité est vidée puis reprise du classeur (plan, journaux, codes, écritures, relevé) ;
+les comptes utilisateurs sont gardés, les fiches bénévoles, budgets et pointages sont effacés.</li></ul>
+<p class="aide">Une sauvegarde de la base actuelle est faite juste avant : en cas d'erreur, choisissez-la ici pour tout remettre comme avant.</p>
+<div class="formulaire">{{ form.non_field_errors }}{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>
+</div>
+
+<h2>Exports complets ({{ exports|length }})</h2>
+<p class="aide">Dossier Exports. À télécharger et ranger sur le PC ou OneDrive.</p>
+<table class="triable"><tr><th>Fichier</th><th class="n">Taille (Ko)</th><th></th></tr>
+{% for nom, ko in exports %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'base_export' nom %}">Télécharger</a></td></tr>
+{% empty %}<tr><td colspan="3">Aucun export complet.</td></tr>{% endfor %}</table>
+
+<h2>Sauvegardes sur le site ({{ sauvegardes|length }})</h2>
+<p class="aide">Les 3 dernières sont gardées (dont celles faites automatiquement par les mises à jour).</p>
+<table class="triable"><tr><th>Fichier</th><th class="n">Taille (Ko)</th><th></th></tr>
+{% for nom, ko in sauvegardes %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'base_telecharger_fichier' nom %}">Télécharger</a></td></tr>
+{% empty %}<tr><td colspan="3">Aucune sauvegarde.</td></tr>{% endfor %}</table>
+<h2>Archives Excel ({{ archives|length }})</h2>
+<p class="aide">Archives de clôture et copies de l'historique effacé.</p>
+<table class="triable"><tr><th>Fichier</th><th class="n">Taille (Ko)</th><th></th></tr>
+{% for nom, ko in archives %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'base_archive' nom %}">Télécharger</a></td></tr>
+{% empty %}<tr><td colspan="3">Aucune archive.</td></tr>{% endfor %}</table>
+{% endblock %}

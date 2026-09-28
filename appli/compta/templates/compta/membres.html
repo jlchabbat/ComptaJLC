@@ -1,0 +1,26 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Tiers{% endblock %}{% block contenu %}
+<h1>Tiers</h1>{% include "compta/_nav_membres.html" %}
+<div class="barre">{% if peut_importer %}<button form="f-import" class="principal">Importer Tiers.xlsx</button><a class="bouton" href="{% url 'modele_tiers' %}">Modèle Tiers.xlsx</a>{% endif %}{% if peut %}<button form="f-lettrage" name="lettrage_auto" value="1">Lettrer automatiquement</button>{% endif %}{% if perms.compta.echanger_fichiers %}<a class="bouton" href="{% url 'referentiel_export' 'Tiers' %}">Exporter (Excel)</a>{% endif %}</div>
+<form class="filtres" method="get"><label>Recherche <input name="q" value="{{ q }}" placeholder="nom, compte, ville, e-mail"></label>
+<label>Type <select name="type"><option value="">Tous</option>{% for t in types %}<option value="{{ t.pk|stringformat:'d' }}" {% if type == t.pk|stringformat:'d' %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+<label>Statut <select name="statut"><option value="">Tous</option>{% for k, v in statuts %}<option value="{{ k }}" {% if statut == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+<button class="principal">Filtrer</button></form>
+<p>{{ lignes|length }} tiers · total dû {{ total_du|shekel }}</p>
+<table class="triable"><tr><th>Nom</th><th>Prénom</th><th>Type</th><th>Compte</th><th>Statut</th><th>Ville</th><th>Téléphone</th><th>E-mail</th><th class="n">Cotisation</th><th class="n">Solde</th></tr>
+{% for m, solde in lignes %}<tr><td><a href="{% url 'membre' m.compte_id %}">{{ m.nom }}</a></td><td>{{ m.prenom }}</td><td>{{ m.type|default:"" }}</td><td>{{ m.compte_id }}</td><td>{% if m.est_membre %}{{ m.get_statut_display }}{% endif %}</td>
+<td>{{ m.ville }}</td><td>{{ m.telephone }}</td><td>{% if m.email %}<a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}</td><td class="n">{{ m.cotisation|zero_vide }}</td>
+<td class="n {% if solde > 0 %}neg{% endif %}">{{ solde|zero_vide }}</td></tr>{% empty %}<tr><td colspan="10">Aucun tiers.</td></tr>{% endfor %}</table>
+{% if peut or peut_importer %}<div class="deux" style="margin-top:16px">
+{% if peut_importer %}<form method="post" enctype="multipart/form-data" class="carte" id="f-import">{% csrf_token %}<h2 style="margin-top:0">Importer des tiers (Tiers.xlsx)</h2>
+<p class="aide">Un classeur Excel (ou CSV), une ligne par tiers. Colonnes reconnues : Compte, Type, Nom, Prénom, Adresse, Code postal (ou CP),
+Ville, Téléphone (ou Tél), E-mail (ou Mail), Date d'adhésion, Statut, Cotisation. Seul le Nom est obligatoire ; sans compte, il est créé
+d'après le type (Membre par défaut). Un tiers déjà présent est mis à jour ; une cellule vide ne remplace rien ; rien n'est supprimé.
+<a href="{% url 'modele_tiers' %}">Télécharger le modèle Tiers.xlsx</a></p>
+<div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div></form>
+{% else %}<div class="carte"><h2 style="margin-top:0">Importer des tiers (Tiers.xlsx)</h2>
+<p class="aide">Import réservé à l'administrateur et au trésorier.</p></div>{% endif %}
+{% if peut %}<form method="post" class="carte" id="f-lettrage">{% csrf_token %}<h2 style="margin-top:0">Lettrage automatique</h2>
+<p class="aide">Pour tous les tiers : facture et règlement de même montant dans une même opération, puis facture et premier règlement
+ultérieur de même montant. Les lettrages se vérifient et s'annulent depuis la fiche du membre.</p>
+</form>{% endif %}</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Installation et mises à jour</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 16mm; }
+body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
+.bandeau { background: #1f3864; color: #fff; padding: 7mm 9mm; border-radius: 3mm; margin-bottom: 5mm; }
+.bandeau h1 { margin: 0; font-size: 22pt; } .bandeau p { margin: 2mm 0 0; font-size: 11pt; color: #dfe7f5; }
+.bandeau a { color: #fff; }
+h2 { color: #1f3864; font-size: 14pt; border-bottom: 2px solid #1f3864; padding-bottom: 1mm; margin: 7mm 0 3mm; break-after: avoid; }
+h3 { color: #1f3864; font-size: 11.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.5mm 0 2.5mm; }
+ol, ul { padding-left: 6mm; margin: 1mm 0 3mm; } li { margin: 1mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9.8pt; }
+th, td { border: 1px solid #c9d3e3; padding: 1.6mm 2.2mm; text-align: left; vertical-align: top; }
+th { background: #1f3864; color: #fff; } tr { break-inside: avoid; }
+td:first-child { font-weight: 600; color: #1f3864; }
+code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; background: #f1f4f9; padding: 0 1mm; }
+.cmd { display: block; padding: 2mm 3mm; margin: 1.5mm 0 3mm; border-left: 3px solid #1f3864; white-space: pre-wrap; }
+.cadre { border: 1.5px solid #1f3864; border-radius: 3mm; padding: 2.5mm 4mm; margin: 3mm 0; break-inside: avoid; background: #eef3fb; }
+.attention { border-color: #c00000; background: #fdf1ec; }
+.menu { font-weight: bold; color: #1f3864; }
+.saut { break-before: page; }
+</style></head><body>
+<div class="bandeau"><h1>ComptaBB – Installation et mises à jour</h1>
+<p>Le site · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 27/09/2026</p></div>
+
+<h2>1. Une application en ligne</h2>
+<p>ComptaBB est un <b>site</b> hébergé chez PythonAnywhere : on s'y connecte de partout (ordinateur, tablette, téléphone), par internet,
+avec une connexion chiffrée. Il n'y a rien à installer sur les ordinateurs. Les données sont dans <code>comptabb-data</code> sur PythonAnywhere,
+sauvegardées automatiquement chaque nuit et à chaque mise à jour ; les exports se téléchargent depuis l'application.
+(L'ancien programme Windows, ComptaBB.exe, est abandonné.)</p>
+
+<h2>2. Les rôles et les mots de passe</h2>
+<table><tr><th style="width:21%">Rôle</th><th>Droits</th></tr>
+<tr><td>Administrateur</td><td>Tous les droits, dont le paramétrage de base, les utilisateurs et la base de données</td></tr>
+<tr><td>Trésorier</td><td>La tenue quotidienne : saisie, tiers, consultation, banque, contrôles, éditions (ni paramétrage, ni imports / exports, ni base de données)</td></tr>
+<tr><td>Bureau</td><td>Consultation seulement</td></tr>
+<tr><td>Bénévole</td><td>La liaison seulement : ses fiches bénévoles</td></tr></table>
+<h3>Créer un compte</h3>
+<ul><li><b>Trésorier ou bureau</b> : <span class="menu">Administration › Utilisateurs</span>, carte « Nouvel utilisateur » : identifiant (un nom ou une adresse e-mail),
+prénom, nom, e-mail, rôle, mot de passe provisoire ; <b>Créer l'utilisateur</b> en haut à gauche.</li>
+<li><b>Bénévole</b> : <span class="menu">Saisie › Fiches bénévoles</span>, carte « Nouveau bénévole » : choisir le membre (le bénévole est toujours un
+membre), identifiant et mot de passe ; <b>Créer le bénévole</b> en haut.</li></ul>
+<h3>Changer un mot de passe</h3>
+<ol><li><b>Par l'administrateur, pour quelqu'un d'autre</b> : <span class="menu">Administration › Utilisateurs</span>, clic sur l'identifiant de la personne,
+taper le mot de passe dans « Nouveau mot de passe » (vide = inchangé), <b>Enregistrer</b> en haut à gauche, puis le transmettre. La même page permet de
+changer l'identifiant, l'e-mail, le rôle, ou de bloquer l'accès (décocher « Peut se connecter »).</li>
+<li><b>Par chacun, pour lui-même</b> : clic sur <b>son nom</b> en haut à droite (<span class="menu">Mon compte</span>), ancien mot de passe puis le nouveau
+deux fois, <b>Changer le mot de passe</b> en haut à gauche. On y change aussi son identifiant et son e-mail ; on peut se connecter avec l'un ou l'autre.</li></ol>
+<p>Conseil : l'administrateur donne un mot de passe provisoire, chacun le remplace par le sien. Un mot de passe compte au moins 8 caractères,
+pas uniquement des chiffres, ne ressemble pas à l'identifiant et n'est pas trop courant ; en cas de refus, le motif s'affiche sous la case.</p>
+
+<h2 class="saut">3. Mettre à jour le site (PythonAnywhere)</h2>
+<h3>1. Télécharger le code sur GitHub</h3>
+<ol><li>Ouvrir la page du <b>code</b> de la branche à installer, par exemple
+<a href="https://github.com/jlchabbat/ComptaBB/tree/claude/keen-tesla-q5sib5">github.com/jlchabbat/ComptaBB/tree/claude/keen-tesla-q5sib5</a>.
+Le sélecteur de branche, au-dessus de la liste des fichiers, doit afficher le nom de la branche.</li>
+<li>Bouton vert <b>&lt;&gt; Code</b> (à droite de « Add file ») › <b>Download ZIP</b>.</li>
+<li>Le fichier s'appelle <code>ComptaBB-&lt;nom de la branche&gt;.zip</code>, par exemple <code>ComptaBB-claude-keen-tesla-q5sib5.zip</code>.</li></ol>
+<div class="cadre attention">Toujours prendre la branche indiquée : les branches ne se cumulent pas entre elles. Dans une même branche,
+le dernier envoi contient tous les précédents.</div>
+<h3>2. L'envoyer sur PythonAnywhere</h3>
+<p>Onglet <b>Files</b>, dossier <code>/home/ComptaBB/</code>, <b>Upload a file</b>.</p>
+<h3>3. Installer, dans une console Bash</h3>
+<p>Onglet <b>Consoles</b> › <b>Bash</b>. <b>Taper</b> les commandes au clavier plutôt que les coller (un collage peut ajouter le texte de la ligne
+précédente) ; le tilde <code>~</code> s'obtient avec AltGr + 2 puis Espace, ou écrire <code>/home/ComptaBB/</code> à sa place.</p>
+<span class="cmd">ls ~/*.zip</span>
+<p>Le nom doit commencer par <code>ComptaBB-</code>. Sinon, le renommer : <code>mv ~/"NOM AFFICHÉ.zip" ~/ComptaBB-maj.zip</code>. Pour vérifier la version :
+<code>unzip -l ~/ComptaBB-….zip | head -5</code> doit montrer un dossier <code>ComptaBB-&lt;branche&gt;/</code>.</p>
+<span class="cmd">bash ~/maj.sh</span>
+<p>Le script affiche 5 étapes : sauvegarde de la base, nouveau code, bibliothèques, base de données et paramètres, rechargement du site ;
+puis « MISE À JOUR TERMINÉE ». L'ancien code est gardé dans <code>ComptaBB-ancien</code>, le ZIP est supprimé.</p>
+<h3>4. Vérifier</h3>
+<p>Ouvrir le site et appuyer sur <b>Ctrl+F5</b>. En cas de problème, remettre la version précédente du code :</p>
+<span class="cmd">bash ~/maj.sh --retour</span>
+<p>Les données (<code>comptabb-data</code>) ne sont jamais touchées par une mise à jour. La présentation et le mode d'emploi du menu Éditions sont mis à jour en même temps.</p>
+<h3>Les coches de GitHub</h3>
+<p>Dans l'onglet Actions, chaque envoi est vérifié (tests automatiques). Une <b>coche verte</b> : tout est passé ;
+une <b>croix rouge</b> : un contrôle a échoué, à signaler avant d'installer. Une vérification n'ajoute ni n'enlève rien au code.</p>
+
+<h2 class="saut">4. Sauvegarder et restaurer</h2>
+<h3>Par l'application</h3>
+<ul><li><span class="menu">Administration › Base de données</span> : <b>Créer une sauvegarde</b>, <b>Télécharger la base maintenant</b>, <b>Tout exporter</b>
+(export complet .zip), <b>Remettre à zéro et recharger</b> depuis une sauvegarde, un export complet ou le classeur (taper REMPLACER).</li>
+<li><span class="menu">Administration › Imports / Exports</span> : <b>Tout exporter et sauvegarder la base</b> (un fichier par nature de données,
+Parametres.xlsx et une copie de la base).</li>
+<li><span class="menu">Éditions › Exports (référentiels, écritures)</span> : un fichier Excel par référentiel, les écritures, relevés et budget ; « Tout exporter » en .zip.</li></ul>
+<h3>Par la console (site)</h3>
+<p>Se placer d'abord dans l'application :</p>
+<span class="cmd">cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTABB_DATA=~/comptabb-data</span>
+<table><tr><th style="width:42%">Commande</th><th>Effet</th></tr>
+<tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (les 3 dernières sont gardées).</td></tr>
+<tr><td><code>python manage.py restaurer</code></td><td>Liste les sauvegardes, les plus récentes d'abord.</td></tr>
+<tr><td><code>python manage.py restaurer 3</code><br><code>python manage.py restaurer derniere</code></td><td>Remet la base dans l'état de la sauvegarde n° 3 (ou de la plus récente), après confirmation REMPLACER ; l'état actuel est sauvegardé juste avant.</td></tr>
+<tr><td><code>python manage.py exporter_tout</code></td><td>Jeu complet d'exports et sauvegarde de la base.</td></tr>
+<tr><td><code>python manage.py changepassword identifiant</code></td><td>Nouveau mot de passe pour un utilisateur (secours).</td></tr>
+<tr><td><code>python manage.py creer_administrateur</code></td><td>Crée un compte administrateur (secours).</td></tr></table>
+<h3>Sauvegarde automatique chaque nuit (site)</h3>
+<p>PythonAnywhere, onglet <b>Tasks</b>, tâche quotidienne avec la commande :</p>
+<span class="cmd">COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</span>
+
+<h2 class="saut">5. Réglages de l'association</h2>
+
+<p>Chaque association a son propre site ; ce qui lui est propre se règle dans <span class="menu">Administration › Paramètres (Excel)</span>
+(fichier Parametres.xlsx : exporter, modifier la colonne Valeur, réimporter). Une valeur vide désactive l'option.</p>
+<table><tr><th style="width:24%">Clé</th><th style="width:22%">Valeur de la Loge</th><th>Effet</th></tr>
+<tr><td><code>nom_association</code></td><td>Loge Bnei Brith</td><td>Nom affiché en haut des pages, sur la situation financière et les éditions.</td></tr>
+<tr><td><code>devise</code></td><td>₪</td><td>Symbole des montants (écrans, Excel, messages). Nouvelle association : €.</td></tr>
+<tr><td><code>releves_mizrahi</code></td><td>B1,B2</td><td>Journaux dont le relevé PDF est au format Mizrahi-Tefahot (hébreu). Vide : relevés en Excel, CSV ou PDF en tableau.</td></tr>
+<tr><td><code>releve_bit</code></td><td>B3</td><td>Journal du relevé Bit (format imposé, remplace le précédent). Vide : pas de Bit (ni moyen de paiement BIT).</td></tr>
+<tr><td><code>carte_bancaire</code></td><td>Isracard</td><td>Carte réglée par la banque le mois suivant (modèle « Paiement carte … », mode « Carte … » des fiches). Vide : pas de carte.</td></tr>
+<tr><td><code>hebergeur_liens</code></td><td>SUMIT</td><td>Site qui héberge des justificatifs gardés en lien (cadre « Joindre un lien » d'un mouvement). Vide : pas de lien.</td></tr>
+<tr><td><code>traductions_releve</code></td><td>oui</td><td>Traduction hébreu → français des libellés du relevé (menu Banque › Traductions). Non : libellés tels quels.</td></tr></table>
+<p>Les moyens de paiement, modèles de saisie et modes des fiches déjà créés ne changent pas quand on modifie un réglage :
+ils se corrigent dans <span class="menu">Administration › Référentiels</span>.</p>
+
+<h2 class="saut">6. Installer le site d'une nouvelle association</h2>
+<p>Chaque association a son propre site, avec le même programme que celui de la Loge et ses propres données. Compter une demi-heure.</p>
+<h3>A. Le compte et l'application web (PythonAnywhere)</h3>
+<ol><li>Sur <b>www.pythonanywhere.com</b> : <b>Pricing &amp; signup</b> › <b>Create a Beginner account</b> (gratuit pour essayer ; environ 5 $ par mois ensuite).
+L'identifiant choisi donne l'adresse du site : <code>amisdumusee</code> → <code>amisdumusee.pythonanywhere.com</code>. Confirmer l'adresse e-mail.</li>
+<li>Onglet <b>Web</b> › <b>Add a new web app</b> › Next › <b>Manual configuration</b> › <b>Python 3.12</b> › Next.</li></ol>
+<h3>B. Le programme</h3>
+<ol><li>Sur GitHub, dépôt ComptaBB, la branche en service › <b>Code</b> › <b>Download ZIP</b>.</li>
+<li>PythonAnywhere, onglet <b>Files</b> › <b>Upload a file</b> : envoyer le ZIP (sans le renommer ni l'ouvrir).</li>
+<li>Onglet <b>Consoles</b> › <b>Bash</b>, puis copier cette ligne et appuyer sur Entrée :</li></ol>
+<span class="cmd">unzip -qo ComptaBB-*.zip -d ~/inst &amp;&amp; bash ~/inst/*/appli/deploiement/installer.sh</span>
+<p>Le script installe le programme et ses bibliothèques (quelques minutes), crée la base vide, écrit le fichier WSGI du site et le script de mise à jour
+<code>~/maj.sh</code>. Il termine par <b>INSTALLATION TERMINÉE</b> et un <b>code d'installation</b> de 8 caractères : le noter.</p>
+<h3>C. Les réglages de l'application web</h3>
+<p>Onglet <b>Web</b>, sur la page de l'application :</p>
+<table><tr><th style="width:30%">Rubrique</th><th>Valeur (remplacer NOM par l'identifiant)</th></tr>
+<tr><td>Virtualenv</td><td><code>/home/NOM/venv</code></td></tr>
+<tr><td>Static files</td><td>URL <code>/static/</code>, dossier <code>/home/NOM/comptabb-data/static</code></td></tr>
+<tr><td>Force HTTPS</td><td>Enabled</td></tr></table>
+<p>Puis le bouton vert <b>Reload</b>.</p>
+<h3>D. Le premier démarrage (dans le navigateur)</h3>
+<ol><li>Ouvrir <code>https://NOM.pythonanywhere.com</code> : la page « Bienvenue dans ComptaBB » demande le <b>code d'installation</b>, puis l'identifiant et le mot de passe
+(12 caractères au moins) de l'administrateur.</li>
+<li>La page « Premier démarrage » décrit l'association : nom, devise, plan comptable (plan de base proposé, ou vos propres fichiers à partir des
+<b>modèles vierges</b>), premier exercice, jusqu'à trois banques avec le format de leur relevé, caisse, options.
+« Démarrer ComptaBB » crée tout d'un coup ; tout reste modifiable ensuite (chapitre 5).</li>
+<li>Créer les utilisateurs (Administration › Utilisateurs) et importer les membres (modèle vierge Tiers).</li>
+<li>Sauvegarde automatique de chaque nuit : chapitre 4 (onglet Tasks), avec l'identifiant de l'association.</li></ol>
+<p>Pour une <b>réinstallation</b> (nouveau compte, données existantes) : après l'étape D.1, « Recharger une sauvegarde » (Administration › Base de données)
+remplace l'assistant. Un site qui a déjà des journaux ou des écritures ne voit jamais l'assistant.</p>
+<h3>E. Les mises à jour</h3>
+<p>Comme pour la Loge (chapitre 3) : envoyer le nouveau ZIP dans Files, puis <code>bash ~/maj.sh</code>. Les données de l'association ne sont jamais touchées.
+Tous les 3 mois avec l'offre gratuite : onglet Web › <b>Run until 3 months from today</b>.</p>
+
+<h3>F. La licence</h3>
+<p>Un site créé par l'assistant a <b>60 jours d'essai</b>. Ensuite, sans licence valable, il passe en <b>lecture seule</b> : on consulte, on imprime et on exporte
+(export complet compris), on ne saisit plus. Le site de la Loge, installé avant l'assistant, n'est jamais concerné.</p>
+<p><b>Côté éditeur</b> (sur votre propre compte, console du site) :</p>
+<table><tr><th style="width:52%">Commande</th><th>Effet</th></tr>
+<tr><td><code>python manage.py licence cles</code></td><td>Une seule fois : crée la clé privée dans <code>~/comptabb-licence</code> (à garder secrète et à sauvegarder hors du site)
+et affiche la clé publique, à inscrire dans le programme (<code>compta/licence.py</code>, CLE_PUBLIQUE). Tant qu'elle n'y est pas, aucune licence n'est demandée.</td></tr>
+<tr><td><code>python manage.py licence creer --association "Amis du musée" --site amisdumusee.pythonanywhere.com --fin 2027-12-31</code></td><td>Affiche la licence (texte CBB1.…) à envoyer à l'association.</td></tr>
+<tr><td><code>python manage.py licence verifier "CBB1.…"</code></td><td>Affiche l'association, le site et la date de fin d'une licence.</td></tr></table>
+<p><b>Côté association</b> : Administration › <b>Licence</b>, coller le texte reçu, « Enregistrer la licence ».</p>
+
+<h2>7. Problèmes rencontrés</h2>
+<table><tr><th style="width:38%">Situation</th><th>Que faire</th></tr>
+<tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaBB/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>
+<tr><td><code>maj.sh</code> : « Aucun fichier ComptaBB-….zip »</td><td>Le ZIP n'est pas envoyé, ou son nom ne commence pas par <code>ComptaBB-</code> : le renommer (chapitre 3).</td></tr>
+<tr><td>« No such file or directory » avec un nom collé (<code>maj.shbash</code>)</td><td>La commande a été collée deux fois : effacer la ligne et la taper au clavier.</td></tr>
+<tr><td>La page n'a pas changé</td><td>Ctrl+F5 sur une page de ComptaBB.</td></tr>
+<tr><td>Mot de passe oublié</td><td>L'administrateur en donne un nouveau (chapitre 2) ; sinon, commande <code>changepassword</code> (chapitre 5).</td></tr>
+<tr><td>Le site ne répond plus (offre gratuite)</td><td>PythonAnywhere › Web › <b>Run until 3 months from today</b>, tous les 3 mois.</td></tr>
+</table>
+</body></html>

@@ -1,0 +1,5 @@
+{% load compta %}<table class="sit-table sit-parts"><tr><th>Compte</th><th class="n">Montant</th><th class="part">Part</th></tr>
+{% for c, lib, m in lignes %}<tr><td><span class="code">{{ c }}</span> {{ lib }}</td><td class="n">{{ m|shekel }}</td>
+<td class="part"><span class="jauge {{ classe }}" style="width:{% widthratio m total 100 %}%"></span><span class="pc">{% widthratio m total 100 %} %</span></td></tr>
+{% empty %}<tr><td colspan="3">Aucun.</td></tr>{% endfor %}
+<tr class="total"><td>Total</td><td class="n">{{ total|shekel }}</td><td></td></tr></table>

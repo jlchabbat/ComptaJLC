@@ -1,0 +1,43 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}États annuels{% endblock %}{% block contenu %}
+<h1>États annuels{% if exercice %} · {{ exercice.libelle }}{% endif %}</h1>
+<div class="barre">{% if exercice %}<a class="bouton" href="{% url 'export_etats' %}?exercice={{ exercice.pk|stringformat:'d' }}">Télécharger en Excel</a>{% endif %}<button type="button" onclick="window.print()">Imprimer / PDF</button>{% if budget_form %}<button form="f-budget" class="principal" name="ajouter_budget" value="1">Ajouter la ligne de budget</button>{% endif %}</div>
+{% if not exercice %}<p class="carte">Aucun exercice.</p>{% else %}
+<form class="filtres ecran" method="get"><label>Exercice <select name="exercice" onchange="this.form.submit()">{% for e in exercices %}<option value="{{ e.pk|stringformat:'d' }}" {% if e == exercice %}selected{% endif %}>{{ e.libelle }}{% if e.clos %} (clos){% endif %}</option>{% endfor %}</select></label>
+</form>
+<p class="aide">Du {{ exercice.debut|date:"d/m/Y" }} au {{ exercice.fin|date:"d/m/Y" }}{% if exercice.clos %} · clos{% if exercice.cloture_le %} le {{ exercice.cloture_le|date:"d/m/Y" }} par {{ exercice.cloture_par }}{% endif %}{% else %} · ouvert : chiffres provisoires{% endif %}
+{% if precedent %} · comparaison avec {{ precedent.libelle }}{% endif %}</p>
+<nav class="onglets ecran"><a href="#resultat">Compte de résultat</a><a href="#axes">Par axe</a><a href="#bilan">Bilan</a><a href="#budget">Budget</a></nav>
+
+<section id="resultat" class="carte"><h2 style="margin-top:0">Compte de résultat</h2>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">{{ exercice.libelle }}</th><th class="n">{{ precedent.libelle|default:"N-1" }}</th><th class="n">Variation</th></tr>
+{% for s in cr.sections %}<tr><th colspan="5">{{ s.titre }}</th></tr>
+{% for l in s.lignes %}<tr><td>{{ l.numero }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.n|zero_vide }}</td><td class="n">{{ l.n1|zero_vide }}</td><td class="n">{% if precedent %}{{ l.n|sub:l.n1|zero_vide }}{% endif %}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total {{ s.titre|lower }}</td><td class="n">{{ s.total_n|shekel }}</td><td class="n">{{ s.total_n1|shekel }}</td><td class="n">{% if precedent %}{{ s.total_n|sub:s.total_n1|shekel }}{% endif %}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Résultat (excédent si positif)</td><td class="n {% if cr.resultat_n < 0 %}neg{% endif %}">{{ cr.resultat_n|shekel }}</td><td class="n {% if cr.resultat_n1 < 0 %}neg{% endif %}">{{ cr.resultat_n1|shekel }}</td><td class="n">{% if precedent %}{{ cr.resultat_n|sub:cr.resultat_n1|shekel }}{% endif %}</td></tr></table></section>
+
+<section id="axes" class="deux">{% for titre, lignes in axes %}<div class="carte"><h2 style="margin-top:0">{{ titre }}</h2>
+<table><tr><th>Code</th><th>Libellé</th><th class="n">Produits</th><th class="n">Charges</th><th class="n">Résultat</th><th class="n">N-1</th></tr>
+{% for r in lignes %}<tr><td>{{ r.code|default:"—" }}</td><td>{{ r.libelle }}</td><td class="n">{{ r.produits|zero_vide }}</td><td class="n">{{ r.charges|zero_vide }}</td>
+<td class="n {% if r.resultat < 0 %}neg{% endif %}">{{ r.resultat|shekel }}</td><td class="n">{{ r.resultat_n1|zero_vide }}</td></tr>{% endfor %}</table></div>{% endfor %}</section>
+
+<section id="bilan" class="carte"><h2 style="margin-top:0">Bilan simplifié au {{ bilan.date|date:"d/m/Y" }}
+<span class="statut {% if bilan.equilibre %}OK{% else %}Anomalie{% endif %}">{% if bilan.equilibre %}équilibré{% else %}déséquilibré{% endif %}</span></h2>
+<div class="deux"><table><tr><th colspan="2">Actif</th><th class="n">Montant</th>{% if bilan_n1 %}<th class="n">Au {{ bilan_n1.date|date:"d/m/Y" }}</th>{% endif %}</tr>
+{% for classe, lib, ls in bilan.actif %}<tr><th colspan="{% if bilan_n1 %}4{% else %}3{% endif %}">{{ lib }}</th></tr>{% for l in ls %}<tr><td>{{ l.numero }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.montant|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ l.n1|zero_vide }}</td>{% endif %}</tr>{% endfor %}{% endfor %}
+<tr class="total"><td colspan="2">Total actif</td><td class="n">{{ bilan.total_actif|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ bilan_n1.total_actif|shekel }}</td>{% endif %}</tr></table>
+<table><tr><th colspan="2">Passif</th><th class="n">Montant</th>{% if bilan_n1 %}<th class="n">Au {{ bilan_n1.date|date:"d/m/Y" }}</th>{% endif %}</tr>
+{% for classe, lib, ls in bilan.passif %}<tr><th colspan="{% if bilan_n1 %}4{% else %}3{% endif %}">{{ lib }}</th></tr>{% for l in ls %}<tr><td>{{ l.numero }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.montant|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ l.n1|zero_vide }}</td>{% endif %}</tr>{% endfor %}{% endfor %}
+<tr><td colspan="2">Résultat de l'exercice</td><td class="n {% if bilan.resultat < 0 %}neg{% endif %}">{{ bilan.resultat|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ bilan_n1.resultat|shekel }}</td>{% endif %}</tr>
+{% if bilan.resultats_anterieurs %}<tr><td colspan="2">Résultats antérieurs non reportés <span class="aide">(à affecter par la clôture)</span></td><td class="n">{{ bilan.resultats_anterieurs|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ bilan_n1.resultats_anterieurs|zero_vide }}</td>{% endif %}</tr>{% endif %}
+<tr class="total"><td colspan="2">Total passif</td><td class="n">{{ bilan.total_passif|shekel }}</td>{% if bilan_n1 %}<td class="n">{{ bilan_n1.total_passif|shekel }}</td>{% endif %}</tr></table></div></section>
+
+<section id="budget" class="carte"><h2 style="margin-top:0">Budget et réalisé</h2>
+<table class="triable"><tr><th>Nature</th><th>Compte ou code</th><th class="n">Budget</th><th class="n">Réalisé</th><th class="n">Écart</th><th class="n">Écart %</th>{% if budget_form %}<th class="ecran"></th>{% endif %}</tr>
+{% for x in budget %}<tr><td>{{ x.budget.get_nature_display }}</td><td>{{ x.budget.cible }}</td><td class="n">{{ x.budget.montant|shekel }}</td><td class="n">{{ x.realise|shekel }}</td>
+<td class="n {% if x.budget.nature == 'C' and x.ecart > 0 or x.budget.nature == 'P' and x.ecart < 0 %}neg{% endif %}">{{ x.ecart|shekel }}</td><td class="n">{% if x.pourcent is not None %}{{ x.pourcent }} %{% endif %}</td>
+{% if budget_form %}<td class="ecran"><form method="post">{% csrf_token %}<button name="supprimer_budget" value="{{ x.budget.pk|stringformat:'d' }}">Supprimer</button></form></td>{% endif %}</tr>
+{% empty %}<tr><td colspan="7">Aucun budget pour cet exercice.</td></tr>{% endfor %}</table>
+{% if budget_form %}<form method="post" class="ecran" style="margin-top:12px" id="f-budget">{% csrf_token %}<h3>Ajouter une ligne de budget</h3>
+<div class="formulaire">{{ budget_form.non_field_errors }}{% for f in budget_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>{% endif %}</section>
+{% endif %}{% endblock %}

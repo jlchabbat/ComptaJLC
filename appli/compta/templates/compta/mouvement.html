@@ -1,0 +1,52 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Mvt {{ m.numero }}{% endblock %}{% block contenu %}
+<h1>Mouvement {{ m.numero }}</h1>
+{% if perms.compta.change_mouvement %}<div class="barre">{% if verrou %}<span class="aide">{{ verrou }}</span>{% else %}
+<a class="bouton principal" href="{% url 'mouvement_modifier' m.numero %}">Modifier</a>{% endif %}</div>{% endif %}
+<div class="carte">Date {{ m.date|date:"d/m/Y" }} · journal {{ m.journal }} · pièce {{ m.piece }} · origine {{ m.get_origine_display }}{% if m.cree_par %} · saisi par {{ m.cree_par }}{% endif %}
+{% if m.commentaire %}<div class="aide" style="white-space:pre-line;margin-top:6px">{{ m.commentaire }}</div>{% endif %}</div>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 2</th><th>Let</th><th>Pointage</th></tr>
+{% for l in lignes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ l.compte_id }}">{{ l.compte }}</a></td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td>{{ l.anal2 }}</td><td>{{ l.lettrage }}</td><td>{% if l.rapprochement_id %}R{{ l.rapprochement_id|stringformat:"d" }}{% endif %}</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total</td><td class="n">{{ m.total_debit|shekel }}</td><td class="n">{{ m.total_credit|shekel }}</td><td colspan="3"></td></tr></table>
+<h2>Justificatifs ({{ justificatifs|length }})</h2>
+{% if justificatifs %}<table><tr><th>Document</th><th>Description</th><th class="n">Taille</th><th>Ajouté</th><th></th></tr>
+{% for j in justificatifs %}<tr><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% else %}<a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
+<td>{{ j.description }}</td><td class="n">{% if j.lien %}lien{% elif j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
+<td>{{ j.ajoute_le|date:"d/m/Y H:i" }}{% if j.ajoute_par %} · {{ j.ajoute_par }}{% endif %}</td>
+<td>{% if not j.lien %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
+{% if perms.compta.change_mouvement and not refus_suppression %}<form method="post" action="{% url 'justificatif_supprimer' j.pk %}" style="display:inline">{% csrf_token %}
+<button onclick="return confirm('Supprimer ce justificatif ?')">Supprimer</button></form>{% endif %}
+{% if peut_joindre %}<form method="post" action="{% url 'justificatif_copier' j.pk %}" style="display:inline" title="Joindre aussi ce document à un autre mouvement (plusieurs : 412+430)">{% csrf_token %}
+<input name="mvt" size="7" inputmode="numeric" placeholder="n° Mvt" required> <button>Joindre aussi</button></form>{% endif %}</td></tr>{% endfor %}</table>
+{% if refus_suppression %}<p class="aide">{{ refus_suppression }}</p>{% endif %}
+{% else %}<p class="aide">Aucun document joint à ce mouvement.</p>{% endif %}
+{% if a_classer %}<form method="post" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}
+<h3 style="margin-top:0">Choisir un document déjà déposé ({{ a_classer|length }} à classer)</h3>
+<div class="barre"><button class="principal">Rattacher à ce mouvement</button>
+<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tous les documents à classer</a></div>
+<p class="aide">Documents déposés dans Administration › Justificatifs existants et pas encore rattachés. Choisir un ou plusieurs documents
+(Ctrl+clic), puis « Rattacher à ce mouvement ». « Voir » ouvre le document choisi.</p>
+<div class="formulaire"><label for="id_a_classer">Documents</label>
+<div><select id="id_a_classer" name="a_classer" multiple size="{% if a_classer|length > 8 %}8{% else %}{{ a_classer|length }}{% endif %}" style="width:100%" required>
+{% for nom, affiche in a_classer %}<option value="{{ nom }}">{{ affiche }}</option>{% endfor %}</select>
+<button type="button" onclick="var s = document.getElementById('id_a_classer'); if (s.value) window.open('{% url 'justificatif_a_classer_voir' %}?nom=' + encodeURIComponent(s.value), '_blank')">Voir</button></div>
+<label for="id_description_a_classer">Description (facultatif)</label>
+<div><input id="id_description_a_classer" name="description" maxlength="150"></div></div></form>{% endif %}
+{% if peut_joindre %}<form method="post" enctype="multipart/form-data" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}
+<h3 style="margin-top:0">Joindre un scan ou une photo</h3>
+<div class="barre"><button class="principal">Joindre</button></div>
+<p class="aide">Facture, reçu, ticket, relevé… en PDF ou en image (JPG, PNG, HEIC), 10 Mo au plus par fichier ; plusieurs fichiers possibles.
+Sur un téléphone, le bouton propose aussi de prendre une photo.</p>
+<div class="formulaire"><label for="id_fichiers">Fichiers</label>
+<div><input type="file" id="id_fichiers" name="fichiers" multiple accept="application/pdf,image/*" required></div>
+<label for="id_description">Description (facultatif)</label>
+<div><input id="id_description" name="description" maxlength="150" placeholder="ex. facture traiteur n° 1234"></div></div></form>
+{% if hebergeur_liens %}<form method="post" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}
+<h3 style="margin-top:0">Ou joindre un lien (document resté dans {{ hebergeur_liens }})</h3>
+<div class="barre"><button class="principal">Joindre le lien</button></div>
+<p class="aide">Coller l'adresse du document : ComptaBB garde le lien 🔗, le document reste dans {{ hebergeur_liens }}.
+Pour beaucoup de liens d'un coup : Administration › Justificatifs existants, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
+<div class="formulaire"><label for="id_lien">Lien</label>
+<div><input type="url" id="id_lien" name="lien" maxlength="500" required placeholder="https://…" style="width:100%"></div>
+<label for="id_description_lien">Description (facultatif)</label>
+<div><input id="id_description_lien" name="description" maxlength="150"></div></div></form>{% endif %}{% endif %}
+{% endblock %}

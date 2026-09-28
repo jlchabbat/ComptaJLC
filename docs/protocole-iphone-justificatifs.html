@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Joindre des documents avec un iPhone</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+body { font: 10.5pt/1.45 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
+h1 { color: #1f3864; font-size: 19pt; margin: 0 0 2mm; }
+.sous { color: #555; margin: 0 0 5mm; }
+h2 { color: #1f3864; font-size: 13pt; border-bottom: 2px solid #1f3864; padding-bottom: 1mm; margin: 7mm 0 3mm; break-after: avoid; }
+h3 { font-size: 11pt; margin: 4mm 0 1.5mm; color: #1f3864; break-after: avoid; }
+ol, ul { margin: 1mm 0 2mm; padding-left: 6mm; } li { margin: 1mm 0; }
+code { font-family: "DejaVu Sans Mono", Consolas, monospace; font-size: 9.5pt; background: #f1f4f9; padding: 0 1mm; }
+.cadre { border: 1.5px solid #1f3864; border-radius: 3mm; padding: 3mm 4mm; margin: 3mm 0; break-inside: avoid; }
+.memo { background: #eef3fb; }
+.attention { border-color: #c00000; background: #fdf1ec; }
+.ok { border-color: #375623; background: #eef6e8; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 3mm; }
+th, td { border: 1px solid #c9d3e3; padding: 1.5mm 2mm; text-align: left; vertical-align: top; }
+th { background: #1f3864; color: #fff; }
+tr { break-inside: avoid; }
+.etape { display: inline-block; background: #1f3864; color: #fff; border-radius: 50%; width: 6mm; height: 6mm; text-align: center;
+         line-height: 6mm; font-weight: bold; margin-right: 2mm; font-size: 9pt; }
+.bouton { display: inline-block; border: 1px solid #1f3864; border-radius: 1.5mm; padding: 0 1.5mm; font-weight: bold; color: #1f3864; }
+.petit { font-size: 9pt; color: #555; }
+a { color: #1f5fbf; word-break: break-all; }
+</style></head><body>
+
+<h1>ComptaBB – Joindre des documents avec un iPhone</h1>
+<p class="sous">Factures, reçus, tickets : les photographier ou les scanner avec l'iPhone et les joindre au mouvement ·
+site <b><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></b> · version du 28/09/2026</p>
+
+<div class="cadre memo"><b>Aide-mémoire</b>
+<ol>
+<li>Ouvrir ComptaBB sur l'iPhone (icône de l'écran d'accueil) et se connecter.</li>
+<li>Ouvrir le <b>mouvement</b> : juste après la saisie guidée, ou <b>Consulter › Écritures</b>, filtre <b>Justificatif : Sans</b>, toucher le n° de Mvt.</li>
+<li>Cadre <b>Joindre un scan ou une photo</b> › <b>Choisir des fichiers</b> › <b>Prendre une photo</b>, <b>Photothèque</b> ou <b>Choisir un fichier</b>.</li>
+<li>Description facultative (« facture traiteur n° 1234 »), puis <span class="bouton">Joindre</span>. Le document apparaît dans la liste 📎.</li>
+</ol></div>
+
+<h2>1. Avant de commencer (une seule fois)</h2>
+<h3><span class="etape">1</span>Avoir le droit de joindre</h3>
+<p>Il faut un compte <b>Trésorier</b> ou <b>Administrateur</b> (les rôles qui saisissent). Le rôle <b>Bureau</b> voit les justificatifs mais
+ne peut pas en joindre ; un <b>bénévole</b> non plus : il remet ses reçus au trésorier.</p>
+<h3><span class="etape">2</span>Mettre ComptaBB sur l'écran d'accueil</h3>
+<ol>
+<li>Ouvrir <b>Safari</b> et aller sur <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a>.</li>
+<li>Toucher le bouton <b>Partager</b> (carré avec une flèche vers le haut), puis <b>Sur l'écran d'accueil</b> › <b>Ajouter</b>.</li>
+<li>L'icône <b>ComptaBB</b> est sur l'écran d'accueil ; se connecter une fois (identifiant ou adresse e-mail, mot de passe).</li>
+</ol>
+<p class="petit">Les caractères sont trop petits ? Boutons <b>A+</b> / <b>A−</b> en haut de la page (réglage gardé sur l'iPhone). On peut aussi
+tourner le téléphone à l'horizontale pour les tableaux.</p>
+
+<h2>2. Joindre un document à un mouvement</h2>
+<h3><span class="etape">A</span>Ouvrir le mouvement</h3>
+<ul>
+<li><b>Opération qu'on vient de saisir</b> : après <b>Saisie › Saisie guidée</b>, l'application ouvre d'elle-même la page du mouvement créé.
+On y joint aussitôt la pièce.</li>
+<li><b>Opération déjà saisie</b> : menu <b>Consulter › Écritures</b>, choisir <b>Justificatif : Sans</b> (et au besoin la période, le journal ou un mot
+du libellé), toucher <span class="bouton">Filtrer</span>, puis le <b>n° de Mvt</b> (colonne Mvt) de l'opération.</li>
+<li>La colonne <b>📎</b> des Écritures signale les mouvements qui ont déjà un justificatif.</li>
+</ul>
+
+<h3><span class="etape">B</span>Choisir le document</h3>
+<p>En bas de la page du mouvement, cadre <b>Joindre un scan ou une photo</b>, toucher <b>Choisir des fichiers</b>. L'iPhone propose :</p>
+<table><tr><th style="width:30%">Choix</th><th>Quand l'utiliser</th></tr>
+<tr><td><b>Prendre une photo ou une vidéo</b></td><td>Le reçu est devant vous : poser le papier à plat, bien éclairé, cadrer tout le document,
+prendre la photo puis <b>Utiliser la photo</b>.</td></tr>
+<tr><td><b>Photothèque</b></td><td>La photo est déjà dans l'iPhone. On peut en cocher <b>plusieurs</b> (toutes rattachées au même mouvement).</td></tr>
+<tr><td><b>Choisir un fichier</b></td><td>Un <b>PDF</b> : facture reçue par e-mail et enregistrée dans Fichiers, ou document scanné (voir ci-dessous).</td></tr>
+</table>
+
+<h3><span class="etape">C</span>Joindre</h3>
+<ol>
+<li>Facultatif : taper une <b>description</b> (« facture traiteur n° 1234 », « reçu dons gala »).</li>
+<li>Toucher <span class="bouton">Joindre</span>. Le message « 1 justificatif(s) joint(s) au mouvement … » s'affiche en haut de la page.</li>
+<li>Le document figure dans la liste <b>Justificatifs</b> du mouvement : le toucher pour le revoir.</li>
+</ol>
+<div class="cadre ok"><b>C'est fait.</b> Le document est rangé sur le site, inscrit dans l'Historique et repris dans l'export complet.
+Le papier peut être classé (conserver les originaux selon les règles de l'association).</div>
+
+<h2>3. Pour un résultat bien lisible : scanner en PDF</h2>
+<p>Une photo convient, mais un <b>scan</b> est plus net (bords recadrés, fond blanc, plusieurs pages dans un seul PDF). Avec l'application
+<b>Notes</b> de l'iPhone :</p>
+<ol>
+<li>Ouvrir <b>Notes</b>, créer une note, toucher le <b>trombone</b> (ou l'appareil photo) › <b>Scanner des documents</b>.</li>
+<li>Viser le document : la prise est automatique ; ajouter les pages suivantes s'il y en a, puis <b>Enregistrer</b>.</li>
+<li>Toucher le scan dans la note › bouton <b>Partager</b> › <b>Enregistrer dans Fichiers</b> › <b>Sur mon iPhone</b>, en le nommant
+par exemple <code>389 facture.pdf</code> (n° de Mvt en tête).</li>
+<li>Dans ComptaBB : page du mouvement › <b>Choisir des fichiers</b> › <b>Choisir un fichier</b> › le PDF › <span class="bouton">Joindre</span>.</li>
+</ol>
+<p class="petit">L'application <b>Fichiers</b> sait aussi scanner : bouton <b>…</b> en haut à droite › <b>Scanner des documents</b>.</p>
+
+<h2>4. Plusieurs documents d'un coup (trésorier, administrateur)</h2>
+<p>Pour rattraper les reçus accumulés, sans ouvrir chaque mouvement :</p>
+<ol>
+<li>Nommer chaque scan avec le <b>n° de Mvt en tête, suivi d'une espace</b> (« 389 facture traiteur.pdf »). Un scan sans n° en tête
+reste « à classer » jusqu'à ce qu'on lui trouve son mouvement.</li>
+<li>Menu <b>Administration › Justificatifs existants</b> › <b>Choisir des fichiers</b> : cocher tous les scans (Photothèque ou Fichiers) ›
+<span class="bouton">Déposer</span>.</li>
+<li>L'application propose le mouvement de chaque document : les propositions sûres sont déjà cochées, les autres « à vérifier ».
+Corriger le n° de Mvt si besoin, puis <span class="bouton">Rattacher les lignes cochées</span>.</li>
+</ol>
+<p class="petit">Cette page, avec son grand tableau, est plus confortable sur un ordinateur ; elle fonctionne aussi sur l'iPhone à l'horizontale.</p>
+
+<h2>5. Règles et problèmes fréquents</h2>
+<table><tr><th style="width:36%">Situation</th><th>Que faire</th></tr>
+<tr><td>Formats acceptés</td><td>PDF, JPG, PNG, HEIC (photos de l'iPhone), GIF, WEBP, TIFF.</td></tr>
+<tr><td>« fichier trop volumineux (10 Mo au plus) »</td><td>Reprendre la photo, ou scanner avec Notes (fichier plus léger). Une vidéo n'est pas acceptée.</td></tr>
+<tr><td>Le cadre « Joindre un scan ou une photo » n'apparaît pas</td><td>Votre rôle ne permet pas de joindre (Bureau, bénévole) : remettre le document au trésorier.</td></tr>
+<tr><td>Erreur de mouvement ou de document</td><td>Le <b>trésorier</b> peut toucher <b>Supprimer</b> à côté du document, puis le joindre au bon mouvement.
+Impossible dans un exercice <b>clos</b> (on peut encore y joindre, plus supprimer).</td></tr>
+<tr><td>La page demande de se reconnecter</td><td>Se reconnecter, rouvrir le mouvement et recommencer : rien n'a été joint.</td></tr>
+<tr><td>Le document ne s'ouvre pas</td><td>Toucher son nom : il s'ouvre dans un nouvel onglet de Safari (revenir par les onglets).</td></tr>
+</table>
+<div class="cadre attention"><b>Données personnelles.</b> Ne pas laisser l'iPhone déverrouillé et connecté à ComptaBB : se déconnecter
+(<b>Se déconnecter</b> en haut à droite) sur un téléphone prêté ou partagé. Les photos prises restent aussi dans la Photothèque : les
+supprimer si besoin après les avoir jointes.</div>
+</body></html>

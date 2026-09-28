@@ -1,0 +1,18 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Tableau de bord{% endblock %}{% block contenu %}
+<h1>Tableau de bord</h1>
+<div class="barre"><a class="bouton principal" href="{% url 'situation' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}" title="Présentation soignée de la situation, à imprimer en PDF">Situation (PDF)</a>
+<a class="bouton principal" href="{% url 'situation_excel' %}?du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}" title="Même présentation dans un classeur Excel mis en page">Situation (Excel)</a></div>
+{% include "compta/_periode.html" %}
+<div class="chiffres">
+<div class="chiffre"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Résultat</div><div class="val {% if resultat < 0 %}neg{% endif %}">{{ resultat|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} {{ devise }}</div></div>
+<div class="chiffre"><div class="lib">Contrôles</div><div class="val"><a href="{% url 'controles' %}"><span class="statut {% if etat == 'OK' %}OK{% else %}Anomalie{% endif %}">{{ etat }}</span></a>{% if a_verifier %} <span class="statut Àvérifier">{{ a_verifier }} à vérifier</span>{% endif %}</div></div>
+<div class="chiffre"><div class="lib">Mouvements sur la période</div><div class="val">{{ nb_mouvements }}</div></div>
+</div>
+<h2>Trésorerie</h2><table><tr><th>Journal</th><th>Compte</th><th class="n">Solde</th></tr>
+{% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td><a href="{% url 'grand_livre' %}?compte={{ t.journal.compte_id }}">{{ t.journal.compte }}</a></td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}</table>
+<div class="deux"><div>{% include "compta/_axe.html" with titre="Résultat par nature (axe 1)" lignes=axe1 %}</div>
+<div>{% include "compta/_axe.html" with titre="Résultat par événement / projet (axe 2)" lignes=axe2 %}</div></div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "compta/base.html" %}{% block titre %}Premier démarrage{% endblock %}{% block contenu %}
+<h1>Premier démarrage : votre association</h1>
+<form method="post" id="demarrage">{% csrf_token %}
+<div class="barre"><button class="principal">Démarrer ComptaBB</button>
+<a class="bouton" href="{% url 'echanges_modeles' %}" title="Un fichier Excel vide par nature de données, le lexique et un mode d'emploi">Modèles vierges (.zip)</a>
+{% if user.is_superuser %}<a class="bouton" href="{% url 'base' %}" title="Réinstallation : recharger une sauvegarde de la base ou un export complet au lieu de partir de zéro">Recharger une sauvegarde</a>{% endif %}</div>
+<p class="aide">Une seule fois, à l'installation. Tout reste modifiable ensuite : Administration › Paramètres (Excel) pour les réglages,
+Administration › Référentiels pour les comptes, journaux et codes.</p>
+{% if form.non_field_errors %}<div class="carte message error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+<div class="carte"><h2 style="margin-top:0">1. L'association</h2>
+<div class="formulaire">{% with f=form.nom %}{% include "compta/_champ.html" %}{% endwith %}{% with f=form.devise %}{% include "compta/_champ.html" %}{% endwith %}</div>
+<datalist id="devises">{% for d in devises %}<option value="{{ d }}">{% endfor %}</datalist></div>
+
+<div class="carte"><h2 style="margin-top:0">2. Le plan comptable</h2>
+{% for r in form.plan %}<div style="margin:4px 0">{{ r }}</div>{% endfor %}
+<p class="aide">Plan de base : comptes de tiers (401, 411), banques (512…), caisse (530), virements internes (580), attente (470), charges (6…) et produits (7…) d'une association,
+journaux de recettes, achats, opérations diverses et à-nouveaux, codes analytiques de nature (axe 1) et préfixes d'objet (axe 2).
+Avec vos propres fichiers : seuls les réglages ci-dessous sont enregistrés ; importez ensuite les modèles vierges remplis, dans l'ordre de leur numéro.</p></div>
+
+<div class="carte bloc-base"><h2 style="margin-top:0">3. Exercice, banques et caisse</h2>
+<div class="formulaire">{% with f=form.debut %}{% include "compta/_champ.html" %}{% endwith %}{% with f=form.fin %}{% include "compta/_champ.html" %}{% endwith %}
+{% for b, fmt in form.banques %}{% with f=b %}{% include "compta/_champ.html" %}{% endwith %}{% with f=fmt %}{% include "compta/_champ.html" %}{% endwith %}{% endfor %}
+{% with f=form.caisse %}{% include "compta/_champ.html" %}{% endwith %}</div>
+<p class="aide">Chaque banque devient un journal (B1, B2, B3) et un compte 512…. Relevé « PDF Mizrahi » : le relevé PDF en hébreu de la banque Mizrahi-Tefahot est lu tel quel.
+Relevé « Bit » : fichier au format imposé, qui remplace le précédent. Sinon : Excel ou CSV de la banque.</p></div>
+
+<div class="carte"><h2 style="margin-top:0">4. Options</h2>
+<div class="formulaire">{% with f=form.carte %}{% include "compta/_champ.html" %}{% endwith %}{% with f=form.hebergeur %}{% include "compta/_champ.html" %}{% endwith %}
+{% with f=form.traductions %}{% include "compta/_champ.html" %}{% endwith %}</div></div>
+</form>
+<script>(function () {      // la partie 3 ne sert qu'au plan de base
+  var f = document.getElementById("demarrage");
+  function maj() { var b = f.querySelector("input[name=plan]:checked"); f.querySelector(".bloc-base").style.opacity = b && b.value === "importer" ? .45 : 1; }
+  f.querySelectorAll("input[name=plan]").forEach(function (r) { r.addEventListener("change", maj); }); maj();
+})();</script>
+{% endblock %}

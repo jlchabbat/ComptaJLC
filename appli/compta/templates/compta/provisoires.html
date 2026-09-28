@@ -1,0 +1,13 @@
+{% extends "compta/base.html" %}{% block titre %}Tiers provisoires{% endblock %}{% block contenu %}
+<p><a href="{% url 'fiches' %}">← Fiches bénévoles</a></p>
+<h1>Tiers provisoires</h1>
+<p class="aide">Nouveaux tiers créés par les bénévoles. Rattachez-les à un compte existant, ou laissez la case vide pour créer un compte de membre.</p>
+{% for p, form, n in en_attente %}<form method="post" class="carte">{% csrf_token %}<input type="hidden" name="provisoire" value="{{ p.pk|stringformat:"d" }}">
+<div class="barre"><button class="principal">Attribuer le compte</button></div>
+<b>{{ p.nom|upper }} {{ p.prenom|upper }}</b> <span class="aide">· créé par {{ p.cree_par.get_full_name|default:p.cree_par.username|default:"?" }} le {{ p.cree_le|date:"d/m/Y" }} · {{ n }} ligne{{ n|pluralize }}{% if p.remarque %} · {{ p.remarque }}{% endif %}</span>
+<div class="formulaire" style="margin-top:8px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>
+{% empty %}<p class="carte">Aucun tiers provisoire en attente.</p>{% endfor %}
+{% if faits %}<h2>Déjà attribués</h2><table class="triable"><tr><th>Tiers</th><th>Compte</th><th>Créé le</th></tr>
+{% for p in faits %}<tr><td>{{ p.nom|upper }} {{ p.prenom|upper }}</td><td>{{ p.compte }}</td><td>{{ p.cree_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>{% endif %}
+{% endblock %}

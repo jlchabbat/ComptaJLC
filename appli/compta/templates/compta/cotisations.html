@@ -1,0 +1,12 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Cotisations{% endblock %}{% block contenu %}
+<h1>Cotisations{% if exercice %} · {{ exercice.libelle }}{% endif %}</h1>{% include "compta/_nav_membres.html" %}
+<form class="filtres" method="get"><label>Exercice <select name="exercice" onchange="this.form.submit()">{% for e in exercices %}<option value="{{ e.pk|stringformat:'d' }}" {% if e == exercice %}selected{% endif %}>{{ e.libelle }}</option>{% endfor %}</select></label></form>
+<div class="chiffres"><div class="chiffre"><div class="lib">Attendues (membres actifs)</div><div class="val">{{ total.attendue|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Facturées</div><div class="val">{{ total.facturee|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Reçues</div><div class="val">{{ total.recue|shekel }}</div></div>
+<div class="chiffre"><div class="lib">Taux de recouvrement</div><div class="val">{% if total.taux is not None %}{{ total.taux }} %{% else %}—{% endif %}</div></div></div>
+<table class="triable" style="margin-top:12px"><tr><th>Membre</th><th>Statut</th><th class="n">Attendue</th><th class="n">Facturée</th><th class="n">Reçue</th><th class="n">Reste dû</th></tr>
+{% for r in lignes %}<tr><td><a href="{% url 'membre' r.membre.compte_id %}">{{ r.membre }}</a></td><td>{{ r.membre.get_statut_display }}</td><td class="n">{{ r.attendue|zero_vide }}</td>
+<td class="n">{{ r.facturee|zero_vide }}</td><td class="n">{{ r.recue|zero_vide }}</td><td class="n {% if r.du %}neg{% endif %}">{{ r.du|zero_vide }}</td></tr>
+{% empty %}<tr><td colspan="6">Aucune cotisation attendue ni facturée : renseigner la cotisation annuelle dans les fiches.</td></tr>{% endfor %}</table>
+<p class="aide">Facturée : cotisations passées au compte {{ total.compte }} dans l'exercice. Taux = reçues / facturées. Attendue : cotisation annuelle de la fiche, membres actifs.</p>{% endblock %}

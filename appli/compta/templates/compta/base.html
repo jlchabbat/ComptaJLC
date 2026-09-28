@@ -1,0 +1,102 @@
+{% load static %}<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titre %}ComptaBB{% endblock %} – {{ association|default:"ComptaBB" }}</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
+<link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
+<link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
+<script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
+<body>
+{% if user.is_authenticated %}
+<header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
+<nav class="menus">
+{% if perms.compta.add_mouvement or perms.compta.view_fiche %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
+{% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie guidée</a>
+{% url 'mouvement_nouveau' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écriture libre</a>
+{% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
+{% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes et nouveaux tiers</a>{% endif %}
+{% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
+</div></div>{% endif %}
+{% if perms.compta.view_membre %}<div class="menu m-tiers"><button type="button">Tiers ▾</button><div class="sous">
+{% url 'membres' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":9" == "/membres/" and request.path|length > 9 and request.path != "/membres/cotisations/" %}class="actif"{% endif %}>Liste des tiers</a>
+{% url 'cotisations' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Cotisations des membres</a>
+{% if perms.compta.gerer_fiche %}{% url 'provisoires' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tiers provisoires</a>{% endif %}
+</div></div>{% endif %}
+{% if perms.compta.view_mouvement %}<div class="menu m-consulter"><button type="button">Consulter ▾</button><div class="sous">
+{% url 'tableau_de_bord' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Tableau de bord</a>
+{% url 'ecritures' as u %}<a href="{{ u }}" {% if request.path == u or request.path|slice:":11" == "/mouvement/" %}class="actif"{% endif %}>Écritures</a>
+{% url 'journaux' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journaux (banque, caisse…)</a>
+{% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
+{% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
+{% url 'analytique' as u %}<a href="{{ u }}?axe=1" {% if request.path == u and request.GET.axe != "2" %}class="actif"{% endif %}>Analytique – Nature (axe 1)</a>
+<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>
+</div></div>
+<div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
+{% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
+{% if perms.compta.pointer_releve and avec_traductions %}{% url 'traductions' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Traductions du relevé</a>{% endif %}
+</div></div>
+<div class="menu m-controle"><button type="button">Contrôle ▾</button><div class="sous">
+{% url 'controles' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Contrôles</a>
+{% url 'modifications' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique</a>
+</div></div>{% endif %}
+<div class="menu m-editions"><button type="button">Éditions ▾</button><div class="sous">
+{% if perms.compta.view_mouvement %}{% url 'situation' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Situation financière</a>
+{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code (axe 1 / axe 2)</a>
+{% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
+{% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
+<a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
+<a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
+</div></div>
+{% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
+<div class="groupe">Utilisateurs et paramétrage</div>
+{% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
+{% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
+{% if perms.compta.parametrer %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
+<div class="groupe">Données : imports, exports, reprise</div>
+{% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports / Exports</a>{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports (référentiels, écritures)</a>
+{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs existants (dépôt en masse)</a>{% endif %}
+{% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données (sauvegardes, rechargement)</a>{% endif %}
+<div class="groupe">Installation</div>
+<a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>
+{% if licence_etat and perms.compta.parametrer %}{% url 'licence' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Licence</a>{% endif %}
+</div></div>{% endif %}
+</nav>
+<span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
+<span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
+<button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>
+<a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
+<form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button>Se déconnecter</button></form></span>
+</header>{% endif %}
+<script>addEventListener("DOMContentLoaded", function () {     // onglet de la page affichée mis en couleur
+  document.querySelectorAll(".menu .sous a.actif").forEach(function (a) { a.closest(".menu").classList.add("actif"); });
+});</script>
+<script>addEventListener("DOMContentLoaded", function () {     // aides et messages : une remarque par ligne
+  // coupe après « . » suivi d'une majuscule (et, dans les messages, autour de « ; » et « · »),
+  // seulement dans le texte de premier niveau (jamais dans une balise ni dans un passage en gras ou un lien)
+  var phrase = /(?<=\.)\s+(?=[A-ZÀ-ÖØ-Ý«(]|$)/,                                   // aides : une phrase par ligne
+      message = /(?<=\.)\s+(?=[A-ZÀ-ÖØ-Ý«(]|$)|\s;\s|\s·\s(?=[A-ZÀ-ÖØ-Ý«0-9])/;    // messages : aussi « ; » et « · »
+  document.querySelectorAll("p.aide, div.aide, .message").forEach(function (bloc) {
+    var coupe = bloc.classList.contains("message") ? message : phrase;
+    var morceaux = [""], niveau = 0;
+    bloc.innerHTML.trim().split(/(<[^>]+>)/).forEach(function (t) {
+      if (t.charAt(0) === "<") {
+        if (/^<\//.test(t)) niveau--; else if (!/\/>$|^<(br|img|input|wbr)\b/i.test(t)) niveau++;
+        morceaux[morceaux.length - 1] += t;
+      } else if (niveau > 0) morceaux[morceaux.length - 1] += t;
+      else t.split(coupe).forEach(function (x, k) { if (k) morceaux.push(""); morceaux[morceaux.length - 1] += x; });
+    });
+    morceaux = morceaux.filter(function (m) { return m.trim(); });
+    if (morceaux.length > 1)
+      bloc.innerHTML = morceaux.map(function (m) { return '<span class="ligne-aide">' + m + "</span>"; }).join("");
+  });
+});</script>
+<script>addEventListener("DOMContentLoaded", function () {     // les en-têtes de tableau restent sous la barre des boutons
+  var b = document.querySelector("main > .barre"); if (b) document.documentElement.style.setProperty("--haut-barre", b.offsetHeight + "px");
+  var propres = document.querySelector("main .barre [onclick*='print']");     // la page a déjà ses boutons Excel et PDF
+  if (propres) { var e = document.querySelector(".qui .editer"); if (e) e.hidden = true; }
+  var x = document.getElementById("vers-excel");                 // « Excel » : les tableaux de la page, mêmes filtres
+  if (x && document.querySelector("main table")) { var u = new URL(location.href); u.searchParams.delete("page");
+    u.searchParams.set("tout", "1"); u.searchParams.set("export", "xlsx"); x.href = u.pathname + u.search; x.hidden = false; } });</script>
+<main>{% if licence_etat.message and licence_etat.lecture_seule or licence_etat.message and perms.compta.parametrer %}<div class="carte message {% if licence_etat.lecture_seule %}error{% else %}warning{% endif %}">{{ licence_etat.message }}{% if perms.compta.parametrer %} <a href="{% url 'licence' %}">Licence</a>{% endif %}</div>{% endif %}{% if messages %}{% for m in messages %}<div class="carte message {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}{% block contenu %}{% endblock %}</main>
+</body></html>

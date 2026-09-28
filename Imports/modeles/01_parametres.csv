@@ -1,0 +1,6 @@
+﻿Nom;Valeur;Description
+P_DebutExercice;01/01/2026;Premier jour de l'exercice ouvert
+P_FinExercice;31/12/2026;Dernier jour de l'exercice ouvert
+P_DateCloture;31/12/2025;Dernière date close : aucune saisie à cette date ou avant
+P_Tolerance;3;Écart de dates admis (jours) pour le pointage automatique
+CheminReleveB1;Releves\B1.pdf;Relevé Banque 1, relatif au dossier du classeur

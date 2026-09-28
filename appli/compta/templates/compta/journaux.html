@@ -1,0 +1,23 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Journaux{% endblock %}{% block contenu %}
+<h1>Journal {% if journal %}{{ journal }}{% endif %}</h1>
+<div class="barre">{% if journal %}<a class="bouton" href="?journal={{ journal.code }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}&format=xlsx">Télécharger en Excel</a>{% endif %}<button type="button" onclick="window.print()">Imprimer / PDF</button></div>
+<form class="filtres ecran" method="get"><label>Journal <select name="journal" onchange="this.form.submit()">{% for j in journaux %}<option value="{{ j.code }}" {% if j == journal %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
+<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
+<button class="principal">Afficher</button>
+</form>
+<p class="aide">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }}{% if tresorerie %} · compte {{ journal.compte }} · solde progressif{% endif %}</p>
+{% if tresorerie %}
+<table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>Contrepartie</th><th class="n">Recette</th><th class="n">Dépense</th><th class="n">Solde</th></tr>
+<tr class="total"><td colspan="7">Solde au {{ debut|date:"d/m/Y" }}</td><td class="n">{{ ouverture|shekel }}</td></tr>
+{% for x in lignes %}<tr><td>{{ x.l.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' x.l.mouvement.numero %}">{{ x.l.mouvement.numero }}</a></td><td>{{ x.l.mouvement.piece }}</td>
+<td>{{ x.l.libelle }}</td><td class="aide">{{ x.contrepartie }}</td><td class="n">{{ x.l.debit|zero_vide }}</td><td class="n">{{ x.l.credit|zero_vide }}</td>
+<td class="n {% if x.solde < 0 %}neg{% endif %}">{{ x.solde|shekel }}</td></tr>{% empty %}<tr><td colspan="8">Aucune opération sur la période.</td></tr>{% endfor %}
+<tr class="total"><td colspan="5">Totaux et solde au {{ fin|date:"d/m/Y" }}</td><td class="n">{{ recettes|shekel }}</td><td class="n">{{ depenses|shekel }}</td><td class="n {% if cloture < 0 %}neg{% endif %}">{{ cloture|shekel }}</td></tr></table>
+{% elif journal %}
+<table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 2</th></tr>
+{% for m in mouvements %}{% for l in m.lignes.all %}<tr {% if forloop.first %}style="border-top:2px solid var(--ligne)"{% endif %}><td>{% if forloop.first %}{{ m.date|date:"d/m/Y" }}{% endif %}</td>
+<td>{% if forloop.first %}<a href="{% url 'mouvement' m.numero %}">{{ m.numero }}</a>{% endif %}</td><td>{% if forloop.first %}{{ m.piece }}{% endif %}</td>
+<td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td>{{ l.anal2_id }}</td></tr>{% endfor %}
+{% empty %}<tr><td colspan="8">Aucune opération sur la période.</td></tr>{% endfor %}
+<tr class="total"><td colspan="5">Totaux</td><td class="n">{{ total_debit|shekel }}</td><td class="n">{{ total_credit|shekel }}</td><td></td></tr></table>
+{% endif %}{% endblock %}

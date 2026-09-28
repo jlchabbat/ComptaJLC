@@ -1,0 +1,19 @@
+{% extends "compta/base.html" %}{% block titre %}Historique{% endblock %}{% block contenu %}
+<h1>Historique des opérations</h1>
+<div class="barre"><a class="bouton" href="{% url 'historique_excel' %}{% if q %}?q={{ q|urlencode }}{% endif %}">Télécharger en Excel</a>{% if user.is_superuser %}<button form="f-effacer" class="principal" style="background:var(--ko);border-color:var(--ko)" onclick="return confirm('Effacer l\'historique jusqu\'à cette date ?')">Effacer</button>{% endif %}</div>
+{% if user.is_superuser %}<details class="carte" ><summary>Effacer l'historique</summary>
+<form method="post" action="{% url 'effacer_historique' %}" style="margin-top:10px" id="f-effacer">{% csrf_token %}
+<p class="aide">Conseillé seulement après une clôture (l'archive de clôture contient déjà l'historique de l'exercice). Avant d'effacer,
+une copie Excel de ce qui est effacé et une sauvegarde de la base sont faites ; une ligne « Historique effacé » reste pour la trace.</p>
+<div class="formulaire"><label for="jusquau">Effacer les opérations jusqu'au</label><div><input type="date" id="jusquau" name="jusquau" value="{% now 'Y-m-d' %}"></div>
+<label for="conf">Tapez EFFACER pour confirmer</label><div><input id="conf" name="confirmation" autocomplete="off"></div></div>
+</form></details>{% endif %}
+<p class="aide">Toutes les actions faites dans ComptaBB (saisies, corrections, reports, pointages, lettrages, imports, clôtures…), avec leur auteur
+et leur date. Il ne s'efface pas : c'est la piste d'audit du vérificateur aux comptes.</p>
+<form class="filtres" method="get"><label>Recherche <input name="q" value="{{ q }}" placeholder="auteur, action, Mvt…"></label><button class="principal">Filtrer</button>
+</form>
+<p>{{ total }} opération{{ total|pluralize }}</p>
+<table class="triable"><tr><th>Date</th><th>Auteur</th><th>Lot</th><th>Action</th><th>Objet</th><th>Avant</th><th>Après</th></tr>
+{% for m in page %}<tr><td>{{ m.date|date:"d/m/Y H:i" }}</td><td>{{ m.auteur }}</td><td>{{ m.lot }}</td><td>{{ m.action }}</td><td>{{ m.objet }}</td><td>{{ m.avant }}</td><td>{{ m.apres }}</td></tr>{% endfor %}</table>
+{% include "compta/_pages.html" %}
+{% endblock %}

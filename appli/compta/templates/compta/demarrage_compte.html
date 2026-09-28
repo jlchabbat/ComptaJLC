@@ -1,0 +1,8 @@
+{% extends "compta/base.html" %}{% block titre %}Premier démarrage{% endblock %}{% block contenu %}
+<div class="carte" style="max-width:760px;margin:24px auto">
+<h1 style="margin-top:0">Bienvenue dans ComptaBB</h1>
+<p class="aide">Ce site est neuf : créez d'abord le compte de l'administrateur, qui aura tous les droits (utilisateurs, paramétrage, imports).
+Le code d'installation s'affiche dans la console du site à la commande « python manage.py preparer » : il prouve que vous êtes bien la personne qui installe le site.</p>
+<form method="post">{% csrf_token %}{% if form.non_field_errors %}<div class="carte message error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<p><button class="principal">Créer l'administrateur</button></p></form></div>{% endblock %}

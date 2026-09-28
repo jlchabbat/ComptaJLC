@@ -1,0 +1,30 @@
+{{ parametres|json_script:"parametres-fiche" }}
+<script>
+(function () {
+  // natures et modes : seulement ceux du sens choisi (recette ou dépense)
+  var p = JSON.parse(document.getElementById("parametres-fiche").textContent);
+  var nature = document.getElementById("id_nature"), mode = document.getElementById("id_mode");
+  var pers = document.getElementById("id_personnes"), justif = document.getElementById("id_justificatif");
+  function filtrer(sel, table, sens, tous) {
+    if (!sel) return;
+    for (var i = 0; i < sel.options.length; i++) {
+      var o = sel.options[i], s = table[o.value];
+      o.hidden = !!(o.value && s !== sens && !(tous && s === "*"));
+    }
+    if (sel.selectedOptions[0] && sel.selectedOptions[0].hidden) sel.value = "";
+    if (sel.majListe) sel.majListe();
+  }
+  function ligneDe(el) { return el ? [el.closest("div"), el.closest("div").previousElementSibling] : []; }
+  function maj() {
+    var coche = document.querySelector("input[name=sens]:checked");
+    var sens = coche ? coche.value : "R";
+    filtrer(nature, p.natures, sens, false);
+    filtrer(mode, p.modes, sens, true);
+    ligneDe(pers).forEach(function (e) { e.style.display = sens === "R" ? "" : "none"; });
+    ligneDe(justif).forEach(function (e) { e.style.display = sens === "D" ? "" : "none"; });
+  }
+  document.querySelectorAll("input[name=sens]").forEach(function (r) { r.addEventListener("change", maj); });
+  maj();
+  window.addEventListener("DOMContentLoaded", maj);
+})();
+</script>
