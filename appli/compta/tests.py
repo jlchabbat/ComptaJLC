@@ -14,7 +14,7 @@ import openpyxl
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.table import Table
 
@@ -477,6 +477,31 @@ class EcransFiches(TestCase):
         self.assertEqual(self.act.lignes.count(), 2)
         self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.first().pk}/").status_code, 403)
 
+    @override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
+    def test_documents_du_benevole_deviennent_justificatifs(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile as F
+        self.client.force_login(self.benevole)
+        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
+        l = self.act.lignes.get()
+        page = self.client.get(f"/fiches/{self.act.pk}/")
+        self.assertContains(page, "Documents (reçus, factures)")
+        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": l.pk, "description": "reçu Bit",
+                                                     "documents": [F("recu.pdf", b"%PDF-1.4 recu")]})
+        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": "",
+                                                     "documents": [F("affiche.jpg", b"\xff\xd8x"), F("virus.exe", b"MZ")]})
+        self.assertEqual(sorted(self.act.documents.values_list("nom", flat=True)), ["affiche.jpg", "recu.pdf"])
+        d = self.act.documents.get(nom="recu.pdf")
+        self.assertEqual(b"".join(self.client.get(f"/fiches/document/{d.pk}/").streaming_content), b"%PDF-1.4 recu")
+        autre = User.objects.create_user("autre")
+        autre.groups.add(Group.objects.get(name="Bénévole"))
+        self.client.force_login(autre)                                           # pas sa fiche
+        self.assertEqual(self.client.get(f"/fiches/document/{d.pk}/").status_code, 403)
+        self.client.force_login(self.tresorier)
+        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
+        m = Mouvement.objects.get(origine="liaison")
+        self.assertEqual(sorted(m.justificatifs.values_list("nom", flat=True)), ["affiche.jpg", "recu.pdf"])
+        self.assertEqual(m.justificatifs.get(nom="recu.pdf").description, "reçu Bit")
+
     def test_tresorier(self):
         self.client.force_login(self.benevole)
         self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(nouveau_nom="Cohen", nouveau_prenom="Dan"))
@@ -790,7 +815,7 @@ class EcransRapprochement(TestCase):
 from . import cloture as clot  # noqa: E402
 from . import etats  # noqa: E402
 from .models import Budget  # noqa: E402
-from django.test import override_settings  # noqa: E402
+
 
 
 def temporaire(d=None):

@@ -40,6 +40,7 @@ urlpatterns = [
     path("fiches/<int:pk>/", vues_fiches.fiche, name="fiche"),
     path("fiches/<int:pk>/modifier/", vues_fiches.fiche_modifier, name="fiche_modifier"),
     path("fiches/ligne/<int:pk>/", vues_fiches.ligne, name="ligne_fiche"),
+    path("fiches/document/<int:pk>/", vues_fiches.document, name="document_fiche"),
     path("rapprochement/", rap.accueil, name="rapprochement"),
     path("rapprochement/traductions/", rap.traductions, name="traductions"),
     path("rapprochement/<str:code>/", rap.accueil, name="rapprochement_journal"),

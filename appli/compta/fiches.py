@@ -136,6 +136,8 @@ def reporter(fiche, utilisateur):
                                          anal2=anal2(l)) for k, x in enumerate(r.lignes)])
         l.mouvement = mv
         l.save(update_fields=["mouvement"])
+        from .justificatifs import documents_vers_justificatifs
+        documents_vers_justificatifs(l, mv, utilisateur.get_username())      # reçus du bénévole → justificatifs
         crees.append(mv)
     fiche.statut = "reportee"
     fiche.save(update_fields=["statut"])

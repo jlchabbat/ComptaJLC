@@ -204,6 +204,26 @@ class Ligne(models.Model):
         return self.debit - self.credit
 
 
+class DocumentFiche(models.Model):
+    """Reçu, facture ou photo transmis par un bénévole avec sa fiche ; au report, il devient justificatif des mouvements."""
+
+    fiche = models.ForeignKey("Fiche", on_delete=models.CASCADE, related_name="documents")
+    ligne = models.ForeignKey("LigneFiche", on_delete=models.SET_NULL, null=True, blank=True, related_name="documents",
+                              help_text="Vide = document de toute la fiche.")
+    chemin = models.CharField(max_length=255, unique=True)
+    nom = models.CharField("fichier d'origine", max_length=150)
+    description = models.CharField(max_length=150, blank=True)
+    taille = models.PositiveIntegerField(default=0)
+    ajoute_le = models.DateTimeField("ajouté le", auto_now_add=True)
+    ajoute_par = models.CharField("ajouté par", max_length=100, blank=True)
+
+    class Meta:
+        ordering = ["fiche", "ajoute_le", "id"]
+
+    def __str__(self):
+        return f"Fiche {self.fiche_id} · {self.nom}"
+
+
 class Justificatif(models.Model):
     """Scan ou photo d'une pièce (facture, reçu, relevé…) rattaché à un mouvement.
 

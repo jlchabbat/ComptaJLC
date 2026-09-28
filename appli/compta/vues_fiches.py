@@ -94,6 +94,31 @@ def fiche(request, pk):
     if saisie:
         form = LigneFicheForm(request.POST if "ajouter" in request.POST else None, fiche=fiche, tresorier=est_tresorier,
                               initial={"sens": "R", "date": dt.date.today()})
+    peut_joindre = saisie or est_tresorier
+    if request.method == "POST" and "joindre_document" in request.POST:          # reçus, factures (PDF ou photo)
+        if not peut_joindre:
+            raise PermissionDenied
+        from . import justificatifs as just
+        ligne_choisie = fiche.lignes.filter(pk=request.POST.get("ligne") or 0).first()
+        faits = 0
+        for f in request.FILES.getlist("documents"):
+            try:
+                just.ajouter_document_fiche(fiche, f, ligne_choisie, request.POST.get("description", "").strip(),
+                                            request.user.get_username())
+                faits += 1
+            except ValueError as e:
+                messages.error(request, str(e))
+        if faits:
+            messages.success(request, f"{faits} document(s) joint(s) à la fiche.")
+        return redirect("fiche", fiche.pk)
+    if request.method == "POST" and "retirer_document" in request.POST:
+        from . import justificatifs as just
+        d = get_object_or_404(fiche.documents, pk=request.POST["retirer_document"])
+        if not (est_tresorier or (saisie and d.ajoute_par == request.user.get_username())):
+            raise PermissionDenied
+        just.supprimer_document_fiche(d, request.user.get_username())
+        messages.success(request, f"Document « {d.nom} » retiré de la fiche.")
+        return redirect("fiche", fiche.pk)
     if request.method == "POST":
         action = next((a for a in ("ajouter", "transmettre", "rouvrir", "reporter", "modifier") if a in request.POST), None)
         if action == "ajouter" and form and form.is_valid():
@@ -130,7 +155,25 @@ def fiche(request, pk):
         "a_corriger": sum(1 for l, r in lignes if not l.mouvement_id and not r.ok),
         "a_reporter": sum(1 for l, r in lignes if not l.mouvement_id),
         "fiche_form": FicheForm(instance=fiche, prefix="fiche") if est_tresorier else None, "parametres": _parametres_js(fiche),
+        "documents": fiche.documents.select_related("ligne", "ligne__nature"), "peut_joindre": peut_joindre,
+        "toutes_lignes": fiche.lignes.select_related("nature").order_by("date", "pk"),
     })
+
+
+@login_required
+@voir_fiches
+def document(request, pk):
+    """Ouvre un document joint à une fiche (bénévoles de la fiche, trésorier, lecteurs de la comptabilité)."""
+    from django.http import FileResponse, Http404
+    from . import justificatifs as just
+    from .models import DocumentFiche
+    d = get_object_or_404(DocumentFiche.objects.select_related("fiche"), pk=pk)
+    _fiche(request, d.fiche_id)
+    chemin = just.dossier() / d.chemin
+    if not chemin.exists():
+        raise Http404("Fichier introuvable sur le site.")
+    import mimetypes
+    return FileResponse(open(chemin, "rb"), filename=d.nom, content_type=mimetypes.guess_type(d.nom)[0] or "application/octet-stream")
 
 
 @login_required
