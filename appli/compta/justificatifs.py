@@ -260,11 +260,12 @@ def proposer(nom):
     from django.db.models import Q
     from .models import Ligne, Mouvement
     base = nom.rsplit(".", 1)[0]
-    m = re.search(r"(?i)(?:^|[^a-z])mvt[\s_.\-n°o]*(\d{1,6})", base)
+    m = re.search(r"(?i)(?:^|[^a-z])mvt[\s_.\-n°o]*(\d{1,6})", base) or re.match(r"(\d{1,6}) ", base.split("__")[-1])
+    # « Mvt 389 … » ou « 389 facture » (n° de Mvt en tête du nom, suivi d'une espace) ; dossiers du ZIP ignorés
     if m:
         mv = Mouvement.objects.filter(numero=int(m.group(1))).first()
         return (mv, f"« Mvt {m.group(1)} » dans le nom", True) if mv else (None, f"Mvt {m.group(1)} inconnu", False)
-    m = re.search(r"(?i)(?:^|[^a-z])(?:piece|pce|pc|pj)[\s_.\-n°o]*(\d{1,6})", base)
+    m = re.search(r"(?i)(?:^|[^a-z])(?:pi[eè]ce|pce|pc|pj)[\s_.\-n°o]*(\d{1,6})", base)
     if m:
         mv = Mouvement.objects.filter(piece=int(m.group(1))).first()
         return (mv, f"« pièce {m.group(1)} » dans le nom", True) if mv else (None, f"pièce {m.group(1)} inconnue", False)
@@ -292,7 +293,7 @@ def proposer(nom):
             qs = qs.filter(pk__in=Ligne.objects.filter(mouvement__date=date).filter(
                 Q(debit=montant) | Q(credit=montant)).values("mouvement"))
             if qs.count() == 1:
-                return qs.first(), f"date {date:%d/%m/%Y} et montant {montant} dans le nom", True
+                return qs.first(), f"date {date:%d/%m/%Y} et montant {montant} dans le nom (à vérifier)", False
         elif qs.count() == 1:
             return qs.first(), f"seul mouvement du {date:%d/%m/%Y} (à vérifier)", False
     indice = ""
@@ -306,7 +307,7 @@ def proposer(nom):
         if piece and mvt and piece != mvt:
             return piece, f"{n} = n° de pièce (c'est aussi le Mvt {n} : à vérifier)", False
         if piece:
-            return piece, f"{n} = n° de pièce", True
+            return piece, f"{n} = n° de pièce (à vérifier)", False
         if mvt:
             return mvt, f"{n} = n° de Mvt (à vérifier)", False
     return None, indice or "aucun numéro, date ou montant reconnu", False

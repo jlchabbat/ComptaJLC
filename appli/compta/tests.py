@@ -2163,8 +2163,11 @@ class JustificatifsExistants(TransactionTestCase):
 
     def test_propositions(self):
         cas = {"Mvt 5 facture.pdf": (5, True), "mvt_1.jpg": (1, True), "Pièce 739.pdf": (1, True),
-               "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, True), "2026-03-15 traiteur 450,00.pdf": (5, True),
-               "15.03.2026.pdf": (5, False), "5.pdf": (5, False), "photo.jpg": (None, False), "Mvt 999.pdf": (None, False)}
+               "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, False), "2026-03-15 traiteur 450,00.pdf": (5, False),
+               "15.03.2026.pdf": (5, False), "5.pdf": (5, False), "photo.jpg": (None, False), "Mvt 999.pdf": (None, False),
+               # n° de Mvt en tête du nom puis une espace (convention du trésorier), y compris dans un dossier du ZIP
+               "5 facture traiteur.pdf": (5, True), "1 cotisation 2026-03-15 450,00.pdf": (1, True),
+               "Justificatifs__5 recu.pdf": (5, True), "739 facture.pdf": (None, False)}
         self.assertIn("aucun mouvement le 16/03/2026", just.proposer("2026-03-16 recu.pdf")[1])
         for nom, (numero, sur) in cas.items():
             m, raison, s = just.proposer(nom)

@@ -194,15 +194,16 @@ Offre gratuite PythonAnywhere : 512 Mo d'espace en tout ; préférer des PDF ou 
 <p><span class="menu">Administration › Justificatifs existants</span> (administrateur et trésorier) : pour joindre d'un coup les scans
 déjà faits.</p>
 <ol><li><b>Déposer</b> un fichier ZIP (dossiers compris) ou plusieurs fichiers sélectionnés ensemble.</li>
-<li>L'application propose pour chaque document le mouvement correspondant d'après le <b>nom du fichier</b> :
-« Mvt 389 », « Pièce 739 » (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt), ou une date et un montant
-(« 2026-03-15 facture 450,00.pdf »). Les propositions sûres sont déjà cochées ; les autres sont signalées « à vérifier »
-(par exemple un numéro qui est à la fois un n° de pièce et un n° de Mvt, ou plusieurs mouvements à la même date).</li>
+<li>L'application propose pour chaque document le mouvement correspondant d'après le <b>nom du fichier</b>.
+Convention conseillée : <b>le n° de Mvt en tête du nom, suivi d'une espace</b> (« 389 facture traiteur.pdf ») ; ces documents sont
+cochés d'office. Un fichier sans n° en tête n'a pas encore de mouvement : il reste « à classer ». Sont aussi reconnus, mais seulement
+proposés (« à vérifier », non cochés) : « Mvt 389 », « Pièce 739 », un numéro seul, ou une date et un montant
+(« 2026-03-15 facture 450,00.pdf »).</li>
 <li>Corriger ou saisir le n° de Mvt si besoin (cliquer sur le nom pour ouvrir le document), cocher, puis <b>Rattacher les lignes cochées</b>.
 Les documents non cochés restent « à classer » pour plus tard ; <b>Écarter</b> supprime un document déposé par erreur.</li></ol>
 <figure><img src="images/22_justificatifs_existants.png"><figcaption>Documents déposés : propositions sûres cochées, cas douteux à vérifier.</figcaption></figure>
-<p class="aide">Conseil : si les scans ne portent pas encore de numéro, les renommer avec le n° de pièce écrit sur le document
-(« Pièce 739.pdf ») rend le rattachement automatique.</p>
+<p class="aide">Conseil : si les scans ne portent pas encore de numéro, les renommer avec le n° de Mvt en tête suivi d'une espace
+(« 389 facture.pdf ») rend le rattachement automatique.</p>
 <h2>Documents restés dans SUMIT</h2>
 <p>Sur la même page, déposer l'<b>extrait Excel de SUMIT</b> (EXTRACT_SUMIT_….xlsx). Chaque ligne qui a un lien vers un document
 (feuille DEPENSES, colonne « קובץ מקושר ») est proposée au mouvement de <b>même date et même montant</b>. Le document reste dans
@@ -216,7 +217,7 @@ possibles, saisir le bon. Redéposer un extrait plus récent n'ajoute que les no
 reste noté dans l'Historique). Pour les liens restés en 🔗, <span class="menu">Administration › Justificatifs existants</span> ›
 <b>Les enregistrer sur le site</b> (25 par clic ; en console : <code>python manage.py rapatrier_justificatifs</code>). Si SUMIT refuse
 (connexion demandée) ou si l'offre gratuite de PythonAnywhere n'autorise pas ce site, télécharger les PDF sur le PC, les ranger dans un
-dossier (par exemple <code>D:\OneDrive\Applications\ComptaBB\Justificatifs</code>), les nommer « Mvt 389.pdf » ou « Pièce 739.pdf »,
+dossier (par exemple <code>D:\OneDrive\Applications\ComptaBB\Justificatifs</code>), les nommer avec le n° de Mvt en tête (« 389 facture.pdf »),
 compresser le dossier (clic droit › Envoyer vers › Dossier compressé) et déposer le ZIP sur la même page.</p>
 
 <!-- 5 -->

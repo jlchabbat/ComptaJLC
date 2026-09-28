@@ -113,7 +113,8 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
 - **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
-  fichiers), rattachement proposé d'après le nom du fichier (« Mvt 389 », « Pièce 739 », numéro seul,
+  fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
+  seul cas coché d'office ; « Mvt 389 », « Pièce 739 », numéro seul,
   date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
   rattachés restent « à classer ». En ligne de commande :
   `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.

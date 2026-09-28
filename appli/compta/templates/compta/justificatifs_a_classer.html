@@ -8,8 +8,8 @@ d'après le <b>nom du fichier</b>, vous vérifiez, puis vous rattachez.</p>
 <div class="barre"><button class="principal" name="deposer" value="1">Déposer</button></div>
 <p class="aide">Un <b>fichier ZIP</b> (dossiers compris), plusieurs fichiers PDF / images sélectionnés ensemble, ou un <b>extrait Excel
 de SUMIT</b> (EXTRACT_SUMIT….xlsx) : ses lignes qui ont un lien vers un document (feuille DEPENSES, colonne « קובץ מקושר ») sont
-proposées au mouvement de même date et même montant ; le document reste dans SUMIT et s'ouvre par son lien. Noms de fichiers reconnus :
-<b>« Mvt 389 »</b>, <b>« Pièce 739 »</b> (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt),
+proposées au mouvement de même date et même montant ; le document reste dans SUMIT et s'ouvre par son lien. Noms de fichiers reconnus : <b>le n° de Mvt en tête du nom, suivi d'une espace</b> (« 389 facture traiteur.pdf » ; seuls ces
+fichiers sont cochés d'office, les autres restent à classer), <b>« Mvt 389 »</b>, <b>« Pièce 739 »</b> (ou pce, pc, pj), un numéro seul (n° de pièce, sinon n° de Mvt),
 ou une <b>date et un montant</b> (« 2026-03-15 facture 450,00.pdf »). Les documents restent ici tant qu'ils ne sont pas rattachés.</p>
 <div class="formulaire"><label for="id_fichiers">Fichiers ou ZIP</label>
 <div><input type="file" id="id_fichiers" name="fichiers" multiple accept=".zip,application/zip,.xlsx,application/pdf,image/*" required></div></div></form>
