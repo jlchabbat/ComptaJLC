@@ -2546,6 +2546,14 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(list(m.justificatifs.values_list("pk", flat=True)), [j.pk])
         self.assertFalse(Justificatif.objects.filter(pk=lien.pk).exists())
 
+    def test_supprimer_les_lignes_cochees(self):
+        self.client.force_login(self.u)
+        just.deposer("a.pdf", b"%PDF-1.4 a")
+        just.deposer("b.pdf", b"%PDF-1.4 b")
+        noms = [l["nom"] for l in just.a_classer()]
+        self.client.post("/justificatifs/a-classer/", {"ecarter_coches": "1", "nom": noms, "garder_0": "1"})
+        self.assertEqual([l["nom"] for l in just.a_classer()], [noms[1]])
+
     def test_propositions(self):
         cas = {"Mvt 5 facture.pdf": (5, True), "mvt_1.jpg": (1, True), "Pièce 739.pdf": (1, True),
                "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, False), "2026-03-15 traiteur 450,00.pdf": (5, False),
