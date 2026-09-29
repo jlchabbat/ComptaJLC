@@ -13,10 +13,11 @@ ADRESSE="$MIN.pythonanywhere.com"
 WSGI="/var/www/${MIN}_pythonanywhere_com_wsgi.py"
 trap 'echo; echo "ÉCHEC de l installation : copiez ce qui s affiche ci-dessus et envoyez-le à la personne qui vous aide."' ERR
 
-if [ -d ~/ComptaBB ]; then
+if [ -d ~/ComptaBB ] && [ -f ~/maj.sh ]; then
   echo "ComptaBB est déjà installé (dossier ~/ComptaBB). Pour une mise à jour : bash ~/maj.sh"
   exit 1
 fi
+rm -rf ~/ComptaBB                      # installation précédente interrompue avant la fin : on recommence
 ZIP=$(ls -t ~/ComptaBB-*.zip 2>/dev/null | head -1 || true)
 if [ -z "$ZIP" ]; then
   echo "Aucun fichier ComptaBB-….zip : envoyez-le d'abord (onglet Files > Upload a file)."
@@ -28,7 +29,8 @@ rm -rf ~/maj && mkdir ~/maj && unzip -q "$ZIP" -d ~/maj
 NOUVEAU=$(ls -d ~/maj/*/ | head -1)
 [ -f "$NOUVEAU/appli/manage.py" ] || { echo "Ce ZIP ne contient pas ComptaBB."; exit 1; }
 mv "$NOUVEAU" ~/ComptaBB
-rm -rf ~/maj ~/inst "$ZIP"
+rm -rf ~/maj "$ZIP"
+rm -rf ~/inst 2>/dev/null || true      # le script tourne depuis ~/inst : son propre fichier peut rester (disque réseau)
 
 echo "2/5 Python et bibliothèques (quelques minutes)"
 PY=""
