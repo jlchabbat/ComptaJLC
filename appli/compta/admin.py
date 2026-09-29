@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TauxChange, TiersProvisoire, Traduction, TypeTiers,
+    AxeCompte, Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TauxChange, TiersProvisoire, Traduction, TypeTiers, ValeurCompte,
 )
 
 
@@ -18,8 +18,14 @@ class PrefixeAdmin(admin.ModelAdmin):
     list_display = ("prefixe", "axe", "libelle", "code_suivant")
 
 
+class ValeurCompteInline(admin.TabularInline):
+    model = ValeurCompte
+    extra = 1
+
+
 @admin.register(Compte)
 class CompteAdmin(admin.ModelAdmin):
+    inlines = [ValeurCompteInline]
     list_display = ("numero", "libelle", "anal1", "lettrable", "actif")
     list_filter = ("anal1", "actif")
     search_fields = ("numero", "libelle")
@@ -36,6 +42,11 @@ class JournalAdmin(admin.ModelAdmin):
 @admin.register(Exercice)
 class ExerciceAdmin(admin.ModelAdmin):
     list_display = ("libelle", "debut", "fin", "clos")
+
+
+@admin.register(AxeCompte)
+class AxeCompteAdmin(admin.ModelAdmin):
+    list_display = ("nom", "ordre")
 
 
 @admin.register(TauxChange)

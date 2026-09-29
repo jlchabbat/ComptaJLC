@@ -9,6 +9,8 @@ Sorties (dossier de sortie et son ZIP), à déposer dans Administration › Impo
     Reglages.xlsx      un seul axe (axe 2 masqué), traductions des relevés
     Exercices.xlsx     exercices des dates des écritures
     Axe1.xlsx          codes analytiques Ciel (0BILAN, 1VERL…)
+    AxesComptes.xlsx   autres classements du plan (RubDecl, RubCh, RubType, Cat, RubrCat, Groupe…), combinables dans
+                       Consulter › Analyse par axes de comptes
     PlanComptable.xlsx comptes du plan et des écritures ; 401/411 lettrables
     Journaux.xlsx      journaux, compte de trésorerie (colonne Journ du plan), devise (Dev : € → vide, Nis → ILS, $ → USD)
     Ecritures.xlsx     Mvt renumérotés 1, 2, 3… dans l'ordre des dates ; Pièce = n° du mouvement Ciel ; montant d'origine
@@ -32,6 +34,7 @@ import openpyxl
 
 RACINE = Path(__file__).resolve().parent.parent
 DEVISES = {"€": "", "EUR": "", "NIS": "ILS", "ILS": "ILS", "₪": "ILS", "$": "USD", "USD": "USD"}
+NON_AXES = {"Compte", "LibelCompte", "Anal", "LibelAnal", "Journ"}      # le reste du plan : axes de comptes
 ECRITURES = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"]
 
 
@@ -55,11 +58,13 @@ def lire_plan(chemin):
     ws = wb["Plan"]
     entetes = [_t(c) for c in next(ws.iter_rows(max_row=1, values_only=True))]
     k = {e: i for i, e in enumerate(entetes)}
+    autres = [e for e in entetes if e and e not in NON_AXES]            # RubDecl, RubCh, RubType, Cat, RubrCat, Groupe…
     for r in ws.iter_rows(min_row=2, values_only=True):
         numero = _t(r[k["Compte"]])
         if numero:
             comptes[numero] = {"libelle": _t(r[k["LibelCompte"]]), "anal": _t(r[k["Anal"]]), "libanal": _t(r[k["LibelAnal"]]),
-                               "journal": _t(r[k["Journ"]]).upper() if "Journ" in k else ""}
+                               "journal": _t(r[k["Journ"]]).upper() if "Journ" in k else "",
+                               "axes": {a: _t(r[k[a]]) for a in autres if _t(r[k[a]])}}
     journaux = OrderedDict()
     for r in wb["Journ"].iter_rows(min_row=2, values_only=True):
         if _t(r[0]):
@@ -139,6 +144,10 @@ def reprendre(plan, journaux, lignes, comptes_rimport, traductions=None):
     fichiers["PlanComptable.xlsx"] = (["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], [
         [n, (c["libelle"] or n)[:100], c["anal"], "oui" if n.startswith(("401", "411")) else "non", "oui"]
         for n, c in comptes.items()])
+    axes = list(OrderedDict.fromkeys(a for c in comptes.values() for a in c.get("axes", {})))
+    if axes:                                              # axes de comptes : colonnes non vides du plan
+        fichiers["AxesComptes.xlsx"] = (["Compte"] + axes, [[n] + [c.get("axes", {}).get(a, "") for a in axes]
+                                                            for n, c in comptes.items() if c.get("axes")])
 
     # journaux : compte de trésorerie = compte du plan rattaché au journal (le plus utilisé dans ses écritures)
     usage = defaultdict(Counter)
@@ -188,7 +197,8 @@ def reprendre(plan, journaux, lignes, comptes_rimport, traductions=None):
     rapport += [
         f"Écritures Ciel : {len(ops)} mouvements, {len(sortie)} lignes, du {min(l['date'] for l in lignes):%d/%m/%Y} "
         f"au {max(l['date'] for l in lignes):%d/%m/%Y} ; renumérotées Mvt 1 à {len(ordre)} (pièce = n° Ciel).",
-        f"Comptes : {len(comptes)} ; codes axe 1 : {len(codes)} ; journaux : {len(lignes_j)} "
+        f"Comptes : {len(comptes)} ; codes axe 1 : {len(codes)} ; axes de comptes : {', '.join(axes) or 'aucun'} ; "
+        f"journaux : {len(lignes_j)} "
         f"(en devise : {', '.join(f'{j[0]} {j[5]}' for j in lignes_j if j[5]) or 'aucun'}).",
         f"Total des débits : {sum(l['montant'] for l in lignes if l['sens'] == 'D')} € ; "
         f"des crédits : {sum(l['montant'] for l in lignes if l['sens'] != 'D')} €.",

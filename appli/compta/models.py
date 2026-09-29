@@ -528,9 +528,20 @@ class Traduction(models.Model):
 
     @classmethod
     def traduire(cls, texte):
+        """Traduction du libellé entier ; sinon de sa partie hébraïque seule, l'en-tête latin gardé (carte Isracard :
+        « 5524 26/08/2026 הראל » → « 5524 26/08/2026 HAREL »), comme le lexique de l'appli Banque."""
         cle = cls.cle_de(texte)
         t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
-        return t.traduction if t else ""
+        if t:
+            return t.traduction
+        texte = texte or ""
+        debut = next((i for i, c in enumerate(texte) if "\u0590" <= c <= "\u05ff"), None)
+        if debut:
+            cle = cls.cle_de(texte[debut:])
+            t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
+            if t:
+                return f"{texte[:debut].strip()} {t.traduction}".strip()
+        return ""
 
 
 class ParametreReleve(models.Model):
@@ -597,6 +608,36 @@ class LigneReleve(models.Model):
             return "Solde d'ouverture"
         from .reglages import oui
         return Traduction.traduire(self.operation) or ("À traduire" if oui("traductions_releve") else self.operation)
+
+
+class AxeCompte(models.Model):
+    """Classement libre des comptes (rubrique de déclaration, type, catégorie, groupe…), repris du plan (Ciel)."""
+
+    nom = models.CharField(max_length=40, unique=True)
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordre", "nom"]
+        verbose_name = "axe de comptes"
+        verbose_name_plural = "axes de comptes"
+
+    def __str__(self):
+        return self.nom
+
+
+class ValeurCompte(models.Model):
+    compte = models.ForeignKey(Compte, on_delete=models.CASCADE, related_name="valeurs_axes")
+    axe = models.ForeignKey(AxeCompte, on_delete=models.CASCADE, related_name="valeurs")
+    valeur = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ["axe", "compte"]
+        unique_together = [("compte", "axe")]
+        verbose_name = "valeur d'axe de comptes"
+        verbose_name_plural = "valeurs d'axes de comptes"
+
+    def __str__(self):
+        return f"{self.compte_id} · {self.axe} = {self.valeur}"
 
 
 class TauxChange(models.Model):

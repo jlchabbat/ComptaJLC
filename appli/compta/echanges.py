@@ -7,6 +7,7 @@ après un import réussi, ils sont déplacés et datés dans Imports/Importés. 
 """
 
 import datetime as dt
+import io
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass
@@ -193,9 +194,22 @@ class Format:
     importer: object         # (lignes [(n° de ligne Excel, {colonne: valeur})], fichier, utilisateur) -> résumé
     montants: tuple = ()     # colonnes (1 = A) au format montant
     facultatives: tuple = ()  # dernières colonnes, absentes des fichiers plus anciens
+    libres: bool = False      # colonnes supplémentaires libres (une par axe de comptes)
+    alias: tuple = ()         # autres débuts de nom de fichier reconnus
+    csv: bool = False         # accepte aussi un .csv (point-virgule, Windows-1252)
+    synonymes: tuple = ()     # autres en-têtes acceptés, dans le même ordre (ex. Lexique.xlsx de l'appli Banque)
+
+    def entetes(self):
+        if self.libres:
+            from .models import AxeCompte
+            return self.colonnes + list(AxeCompte.objects.values_list("nom", flat=True))
+        return self.colonnes
 
     def reconnait(self, chemin):
-        return _sans_accent(Path(chemin).stem.split("_")[0].strip()) == self.nom.lower()   # « Libellés_… » = Libelles
+        if Path(chemin).suffix.lower() == ".csv" and not self.csv:
+            return False
+        debut = _sans_accent(Path(chemin).stem.split("_")[0].strip())          # « Libellés_… » = Libelles
+        return debut == self.nom.lower() or debut.lstrip("0123456789") in (self.nom.lower(),) + self.alias
 
 
 def maj_ou_cree(modele, cles, valeurs, compteur):
@@ -357,6 +371,93 @@ def imp_tiers(lignes, fichier, utilisateur=None):
     if r.erreurs:
         raise Refus(r.erreurs)
     return f"{len(r.crees)} créé(s), {len(r.mis_a_jour)} mis à jour"
+
+
+# ---- axes de comptes (colonnes libres)
+
+def exp_axes_comptes():
+    from .models import AxeCompte, ValeurCompte
+    axes = list(AxeCompte.objects.values_list("nom", flat=True))
+    vals = defaultdict(dict)
+    for v in ValeurCompte.objects.select_related("axe"):
+        vals[v.compte_id][v.axe.nom] = v.valeur
+    return [[c] + [vals[c].get(a, "") for a in axes] for c in sorted(vals)]
+
+
+def imp_axes_comptes(lignes, fichier, utilisateur=None):
+    """Une colonne par axe (son en-tête est le nom de l'axe) ; une cellule vide ne remplace rien ; rien n'est supprimé."""
+    from .models import AxeCompte, ValeurCompte
+    L, a_faire = Lecteur(), []
+    comptes = set(Compte.objects.values_list("numero", flat=True))
+    for n, d in lignes:
+        numero = L.texte(n, d, "Compte", True, 20)
+        if numero and numero not in comptes:
+            L.erreur(n, f"compte {numero} inconnu (importer d'abord PlanComptable.xlsx).")
+        for axe, v in d.items():
+            if axe != "Compte" and v not in (None, ""):
+                a_faire.append((numero, axe[:40], str(v).strip()[:100]))
+    L.verifier()
+    c = defaultdict(int)
+    for i, nom in enumerate(dict.fromkeys(a for _, a, _ in a_faire)):
+        AxeCompte.objects.get_or_create(nom=nom, defaults={"ordre": i})
+    axes = {a.nom: a for a in AxeCompte.objects.all()}
+    for numero, axe, v in a_faire:
+        maj_ou_cree(ValeurCompte, {"compte_id": numero, "axe": axes[axe]}, {"valeur": v}, c)
+    return resume(c)
+
+
+# ---- écritures de l'appli Banque (Ecrt.csv, RImport.xlsx)
+
+ENTETES_BANQUE = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Npiece", "Anal", "LibelAnal"]
+
+
+def imp_banque_ecrt(lignes, fichier, utilisateur=None):
+    """Écritures rapprochées par l'appli Banque : une opération = la ligne de banque et sa contrepartie, en euros ;
+    Npiece = montant d'origine (journal en devise). Chaque opération reçoit un nouveau n° de Mvt (pièce = n° de l'appli
+    Banque) ; une opération déjà en compta (même date, journal, comptes et montants) est ignorée. Les journaux concernés
+    sont ensuite pointés automatiquement contre leurs relevés."""
+    from .reglages import code_axe2_defaut
+    L, ops = Lecteur(), defaultdict(list)
+    comptes = set(Compte.objects.values_list("numero", flat=True))
+    journaux = {j.code.upper(): j for j in Journal.objects.all()}
+    defaut2 = code_axe2_defaut() or (CodeAnalytique.objects.filter(axe=2).values_list("code", flat=True).first())
+    for n, d in lignes:
+        numero, jnl = L.entier(n, d, "Mvt", range(0, 10 ** 9)), L.texte(n, d, "Journ", True).upper()
+        compte = L.texte(n, d, "Compte", True).upper()
+        debit, credit = abs(L.montant(n, d, "Debit") or ZERO), abs(L.montant(n, d, "Credit") or ZERO)
+        if jnl and jnl not in journaux:
+            L.erreur(n, f"journal {jnl} inconnu.")
+        if compte and compte not in comptes:
+            L.erreur(n, f"compte {compte} inconnu ({L.texte(n, d, 'LibelCompte')}) : le créer dans le plan comptable.")
+        if (debit > 0) == (credit > 0):
+            L.erreur(n, "un débit OU un crédit (RG-03).")
+        devise = L.montant(n, d, "Npiece")
+        ops[numero].append((n, L.date(n, d, "Date"), jnl, compte, L.texte(n, d, "Libelle", True, 200), debit, credit,
+                            abs(devise) if devise else None))
+    for numero, ls in ops.items():
+        if sum(x[5] for x in ls) != sum(x[6] for x in ls):
+            L.erreur(ls[0][0], f"opération {numero} déséquilibrée.")
+        if len({(x[1], x[2]) for x in ls}) > 1:
+            L.erreur(ls[0][0], f"opération {numero} : même date et journal attendus.")
+    L.verifier()
+    en_base = {empreinte(m.date, m.journal_id, [(l.compte_id, l.debit, l.credit) for l in m.lignes.all()])
+               for m in Mouvement.objects.prefetch_related("lignes")}
+    crees, deja, touches = 0, 0, set()
+    for numero, ls in sorted(ops.items()):
+        _, date, jnl, *_ = ls[0]
+        j = journaux[jnl]
+        if empreinte(date, j.code, [(x[3], x[5], x[6]) for x in ls]) in en_base:
+            deja += 1
+            continue
+        m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal=j, piece=numero or Mouvement.prochaine_piece(),
+                                     origine="import", commentaire=f"Appli Banque, {fichier} (opération {numero})", cree_par=utilisateur)
+        Ligne.objects.bulk_create([Ligne(mouvement=m, ordre=i, compte_id=x[3], libelle=x[4], debit=x[5], credit=x[6],
+                                         anal2_id=defaut2, montant_devise=x[7] if j.devise else None) for i, x in enumerate(ls)])
+        crees += 1
+        touches.add(j)
+    from . import releves
+    pointes = sum(releves.automatique(j, utilisateur) for j in touches if j.compte_id)
+    return f"{crees} écriture(s) créée(s), {deja} déjà en compta" + (f", {pointes} ligne(s) de relevé pointée(s)" if pointes else "")
 
 
 # ---- liens des documents en ligne
@@ -786,10 +887,13 @@ FORMATS = [
     Format("Axe2", "Codes analytiques axe 2 (événement, projet)", ["Code", "Libellé", "Statut"], exp_axe(2), imp_axe(2)),
     Format("Prefixes", "Préfixes des codes analytiques", ["Préfixe", "Axe", "Libellé"], exp_prefixes, imp_prefixes),
     Format("PlanComptable", "Plan comptable", ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], exp_plan, imp_plan),
+    Format("AxesComptes", "Axes de comptes (rubriques, catégories, groupes…), une colonne par axe", ["Compte"],
+           exp_axes_comptes, imp_axes_comptes, libres=True),
     Format("Journaux", "Journaux", ["Code", "Intitulé", "Type", "Compte de trésorerie", "Actif", "Devise"], exp_journaux,
            imp_journaux, facultatives=("Devise",)),
     Format("Tiers", "Tiers : membres, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers, (12,)),
-    Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions),
+    Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions,
+           synonymes=(("Libellé hébreu", "Traduction"),)),
     Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"], exp_budget, imp_budget, (6,)),
     Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)",
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"], exp_ecritures,
@@ -797,6 +901,8 @@ FORMATS = [
     Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"], exp_ecritures,
            imp_libelles, (7, 8, 11), ("Montant devise",)),
+    Format("Ecrt", "Écritures rapprochées de l'appli Banque (Ecrt.csv ou RImport.xlsx)", ENTETES_BANQUE, lambda: [],
+           imp_banque_ecrt, (7, 8, 9), alias=("rimport",), csv=True),
     Format("Liens", "Liens des documents en ligne (SUMIT…), joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
@@ -840,6 +946,8 @@ AIDE = {
         "Compte": (O, CODE, "Numéro de compte (ex. 512000, 411TAIEB001)"), "Libellé": (O, TEXTE, "Intitulé du compte"),
         "Axe 1": (F, CODE, "Code axe 1 du compte (Axe1.xlsx)"), "Lettrable": (F, OUI, "Compte de tiers lettrable (non par défaut)"),
         "Actif": (F, OUI, "Utilisable en saisie (oui par défaut)")}),
+    "AxesComptes": ("Une ligne par compte, une colonne par axe (l'en-tête est le nom de l'axe, créé au besoin) ; une cellule vide ne remplace rien.", {
+        "Compte": (O, CODE, "Compte (PlanComptable.xlsx)")}),
     "Journaux": ("Mise à jour par code.", {
         "Code": (O, CODE, "B1, B2, B3, CA, OD, VT, HA, AN…"), "Intitulé": (O, TEXTE, "Nom du journal"), "Type": (F, TEXTE, "Type libre (BQ, CA…)"),
         "Compte de trésorerie": (F, CODE, "Compte 5xx des journaux de banque et de caisse (PlanComptable.xlsx)"),
@@ -864,6 +972,10 @@ AIDE = {
         "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx) ; facultatif avec un seul axe (réglage un_seul_axe)"),
         "Let": (F, TEXTE, "Code de lettrage"),
         "Montant devise": (F, MONTANT, "Journal en devise : montant d'origine dans la devise du journal ; colonne facultative")}),
+    "Ecrt": ("Fichier produit par l'appli Banque (Ecrt.csv, 1Ecrt.csv ou RImport.xlsx) : chaque opération devient une écriture (nouveau n° de Mvt, pièce = n° de l'appli Banque) ; une opération déjà en compta est ignorée ; les relevés des journaux concernés sont pointés ensuite.", {
+        "Mvt": (O, "entier", "N° d'opération de l'appli Banque"), "Journ": (O, CODE, "Journal"), "Date": (O, DATE, ""),
+        "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libelle": (O, TEXTE, ""), "Debit": (F, MONTANT, "en euros"),
+        "Credit": (F, MONTANT, "en euros"), "Npiece": (F, MONTANT, "montant d'origine (journal en devise)")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
               "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
@@ -941,7 +1053,7 @@ def format_de(chemin):
 def classeur(f, lignes):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-    ws = export.feuille(wb, f.nom, f.colonnes, lignes, f.montants)
+    ws = export.feuille(wb, f.nom, f.entetes(), lignes, f.montants)
     for row in ws.iter_rows(min_row=2):
         for c in row:
             if isinstance(c.value, (dt.date, dt.datetime)):
@@ -960,29 +1072,41 @@ def exporter(f, auteur=""):
 
 def lire(chemin, f):
     """Lignes du fichier : [(n° de ligne Excel, {colonne: valeur})] ; refuse des en-têtes non conformes."""
-    wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
-    rangees = wb.worksheets[0].iter_rows(values_only=True)
+    if Path(chemin).suffix.lower() == ".csv":             # CSV (appli Banque) : point-virgule, Windows-1252
+        import csv as csv_
+        texte = Path(chemin).read_bytes().decode("cp1252", errors="replace").lstrip("\ufeff")
+        wb = None
+        rangees = iter(list(csv_.reader(io.StringIO(texte), delimiter=";")))
+    else:
+        wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
+        rangees = wb.worksheets[0].iter_rows(values_only=True)
     entetes = [("" if c is None else str(c).strip()) for c in next(rangees, [])]
     while entetes and not entetes[-1]:
         entetes.pop()
     permis = [f.colonnes[:len(f.colonnes) - k] for k in range(len(f.facultatives) + 1)]
-    if entetes not in permis:
-        wb.close()
-        raise Refus([f"En-têtes de la ligne 1 non conformes. Attendu : {' | '.join(f.colonnes)}. "
-                     f"Trouvé : {' | '.join(entetes) or '(vide)'}."])
+    if f.libres and entetes[:len(f.colonnes)] == f.colonnes and "" not in entetes:
+        colonnes = entetes                                # colonnes libres : leurs en-têtes sont les noms des axes
+    elif entetes in permis or entetes in [list(x) for x in f.synonymes]:
+        colonnes = f.colonnes
+    else:
+        if wb:
+            wb.close()
+        raise Refus([f"En-têtes de la ligne 1 non conformes. Attendu : {' | '.join(f.colonnes)}"
+                     + (" puis une colonne par axe" if f.libres else "") + f". Trouvé : {' | '.join(entetes) or '(vide)'}."])
     lignes = []
     for n, r in enumerate(rangees, 2):
-        r = list(r) + [None] * len(f.colonnes)
-        if any(v not in (None, "") for v in r[:len(f.colonnes)]):
-            lignes.append((n, dict(zip(f.colonnes, r))))
-    wb.close()
+        r = list(r) + [None] * len(colonnes)
+        if any(v not in (None, "") for v in r[:len(colonnes)]):
+            lignes.append((n, dict(zip(colonnes, r))))
+    if wb:
+        wb.close()
     return lignes
 
 
 def a_importer():
     """Fichiers présents dans Imports : [(chemin, format ou None)] ; les PDF sont des relevés à convertir."""
     return [(p, format_de(p)) for p in sorted(imports().iterdir())
-            if p.is_file() and p.suffix.lower() in (".xlsx", ".pdf") and not p.name.startswith("~$") and p.stem != LEXIQUE]
+            if p.is_file() and p.suffix.lower() in (".xlsx", ".pdf", ".csv") and not p.name.startswith("~$") and p.stem != LEXIQUE]
 
 
 def retirer(nom, auteur=""):
@@ -994,7 +1118,7 @@ def retirer(nom, auteur=""):
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Fichier retiré du dossier Imports", objet=nom[:200])
 
 
-DEPOSABLES = (".xlsx", ".pdf")
+DEPOSABLES = (".xlsx", ".pdf", ".csv")
 
 
 def deposer(nom, contenu, auteur=""):
@@ -1028,7 +1152,7 @@ def importer_tout(utilisateur=None):
     rien n'est enregistré. Rien n'est supprimé (contrairement à Tout réinjecter). Renvoie (comptes rendus, ignorés)."""
     from .base_donnees import sauvegarder
     ordre = {f.nom: i for i, f in enumerate(FORMATS)}
-    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() == ".xlsx"),
+    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in (".xlsx", ".csv")),
                      key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
     ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() == ".xlsx"]
     if not choisis:
@@ -1085,7 +1209,7 @@ def importer(nom, utilisateur=None):
     from .base_donnees import sauvegarder
     chemin = fichier_d_import(nom)
     f = format_de(chemin)
-    if not f or chemin.suffix.lower() != ".xlsx":
+    if not f or chemin.suffix.lower() not in (".xlsx", ".csv"):
         raise Refus([f"{chemin.name} : nom non reconnu. Le nom doit commencer par "
                      + ", ".join(x.nom for x in FORMATS) + " (par exemple Tiers.xlsx ou Tiers_2026-09-27.xlsx)."])
     lignes = lire(chemin, f)

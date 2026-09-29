@@ -31,6 +31,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'journaux' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journaux (banque, caisse…)</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
+{% url 'axes_comptes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analyse par axes de comptes</a>
 {% url 'analytique' as u %}<a href="{{ u }}?axe=1" {% if request.path == u and request.GET.axe != "2" %}class="actif"{% endif %}>Analytique – Nature (axe 1)</a>
 {% if deux_axes %}<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>{% endif %}
 </div></div>

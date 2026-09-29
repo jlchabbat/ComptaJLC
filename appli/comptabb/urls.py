@@ -30,6 +30,7 @@ urlpatterns = [
     path("mouvement/rappel/", vues_corrections.rappeler, name="mouvement_rappel"),
     path("mouvement/nouveau/", vues_corrections.nouveau, name="mouvement_nouveau"),
     path("grand-livre/", views.grand_livre, name="grand_livre"),
+    path("axes/", vues_analytique.axes_comptes, name="axes_comptes"),
     path("balance/", views.balance, name="balance"),
     path("analytique/", vues_analytique.analytique, name="analytique"),
     path("analytique/detail/", vues_analytique.analytique_detail, name="analytique_detail"),

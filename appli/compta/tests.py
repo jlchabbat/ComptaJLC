@@ -1996,7 +1996,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens"):
+            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
                 continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
@@ -2054,6 +2054,44 @@ class Echanges(TransactionTestCase):
         wb.active.delete_cols(6)
         wb.save(ech.imports() / "Journaux.xlsx")
         self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
+
+    def test_axes_de_comptes(self):
+        """AxesComptes.xlsx : une colonne par axe ; analyse croisée avec filtres ; export complet et réinjection."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        for r in (["Compte", "RubDecl", "Groupe"], ["600100", "I-06-Frais", "Verl"], ["600000", "I-06-Frais", "Soco"], ["700000", "", "Verl"]):
+            ws.append(r)
+        wb.save(ech.imports() / "AxesComptes.xlsx")
+        self.assertContains(self.importer("AxesComptes.xlsx"), "AxesComptes.xlsx importé (")
+        from . import axes_comptes as ax
+        self.assertEqual(ax.axes()[3:], ["RubDecl", "Groupe"])
+        t = ax.analyser(dt.date(2026, 1, 1), dt.date(2026, 12, 31), "Groupe", "RubDecl", {"Classe": ["6"]})
+        self.assertTrue(all(l["valeur"] in ("Verl", "Soco", "(sans)") for l in t["lignes"]))
+        r = self.client.get("/axes/?lignes=Groupe&colonnes=RubDecl")
+        self.assertContains(r, "Analyse par axes de comptes")
+        chemin, n = ech.exporter(ech.PAR_NOM["AxesComptes"])
+        self.assertEqual((n, [c.value for c in openpyxl.load_workbook(chemin).active[1]]), (3, ["Compte", "RubDecl", "Groupe"]))
+
+    def test_ecritures_de_l_appli_banque(self):
+        """Ecrt.csv de l'appli Banque : écritures créées (montant d'origine gardé), relevé pointé, pas de doublon."""
+        from .models import LigneReleve
+        from . import releves
+        Compte.objects.create(numero="512510", libelle="BQUE REVOLUT NIS", anal1_id=Compte.objects.get(numero="512000").anal1_id)
+        j = Journal.objects.create(code="R2", intitule="REVOLUT NIS", compte_id="512510", devise="ILS")
+        releves.importer(j, [{"date": dt.date(2026, 9, 6), "reference": "", "operation": "Shufersal Deal", "montant": D("-603.32"),
+                              "solde": D("1000.00")}], "revolut.csv")
+        texte = ("Mvt;Journ;Date;Compte;LibelCompte;Libelle;Debit;Credit;Npiece;Anal;LibelAnal\r\n"
+                 "1;R2;06/09/2026;512510;BQUE REVOLUT NIS;SHUFERSAL DEAL;0;174.40;-603.32;0BILAN;BILAN\r\n"
+                 "1;R2;06/09/2026;600100;VIE GRDE SURFACES;SHUFERSAL DEAL;174.40;0;603.32;3VIE;DEP DE VIE\r\n")
+        (ech.imports() / "1Ecrt.csv").write_bytes(texte.encode("cp1252"))
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "1Ecrt.csv : 1 écriture(s) créée(s), 0 déjà en compta, 1 ligne(s) de relevé pointée(s)")
+        m = Mouvement.objects.get(commentaire__contains="Appli Banque")
+        self.assertEqual([(l.compte_id, l.debit, l.credit, l.montant_devise) for l in m.lignes.all()],
+                         [("512510", D(0), D("174.40"), D("603.32")), ("600100", D("174.40"), D(0), D("603.32"))])
+        self.assertTrue(LigneReleve.objects.get(journal=j, ouverture=False).rapprochement_id)
+        (ech.imports() / "Ecrt.csv").write_bytes(texte.encode("cp1252"))
+        self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "0 écriture(s) créée(s), 1 déjà en compta")
 
     def test_tout_importer(self):
         """Tous les fichiers déposés, dans l'ordre du lexique (le compte avant les écritures, les écritures avant leurs
@@ -2979,3 +3017,19 @@ class RelevesEnDevise(TestCase):
         self.assertEqual(self.rel.montant(mv.lignes.get(compte_id="512510")), D("-200.00"))         # comparé au relevé en ILS
         with mock.patch.object(taux, "telecharger", side_effect=OSError("bloqué")):
             self.assertIn("BCE injoignable", taux.actualiser())
+
+    def test_memoire_des_affectations_et_traduction_partielle(self):
+        """Un libellé déjà passé en compta propose son compte (sans rien enregistrer) ; la traduction ne porte que sur la
+        partie hébraïque d'un libellé de carte."""
+        from .models import Traduction
+        Traduction.objects.create(cle=Traduction.cle_de("הראל ביטוח"), hebreu="הראל ביטוח", traduction="HAREL ASSURANC")
+        self.assertEqual(Traduction.traduire("5524 26/08/2026 הראל ביטוח"), "5524 26/08/2026 HAREL ASSURANC")
+        m = Mouvement.objects.create(numero=990, date=dt.date(2026, 9, 2), journal=self.j, piece=990)
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="512510", libelle="5524 27/08/2026 HAREL ASSURANC", credit=D(50),
+                             anal2_id="GEN.004", montant_devise=D(200))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600100", libelle="5524 27/08/2026 HAREL ASSURANC", debit=D(50),
+                             anal2_id="GEN.004", montant_devise=D(200))
+        self.rel.importer(self.j, [{"date": dt.date(2026, 10, 2), "reference": "", "operation": "5524 26/09/2026 הראל ביטוח",
+                                    "montant": D("-210.00"), "solde": D("0")}], "isracard.xlsx")
+        l = LigneReleve.objects.get(journal=self.j, ouverture=False)
+        self.assertEqual(self.rel.proposition(l, self.rel.memoire_affectations()).numero, "600100")

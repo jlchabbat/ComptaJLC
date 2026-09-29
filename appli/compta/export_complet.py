@@ -203,6 +203,7 @@ FEUILLES = {
     "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte", "Lien"],
     # reçus des bénévoles ; Ligne = rang de la ligne dans « Lignes de fiches » (1 = la première), vide = toute la fiche
     "Documents fiches": ["Fiche", "Ligne", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte"],
+    "Axes de comptes": ["Compte", "Axe", "Ordre", "Valeur"],
 }
 
 
@@ -236,6 +237,9 @@ def _lignes_donnees():
                                 l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
+    from .models import ValeurCompte
+    yield "Axes de comptes", ([v.compte_id, v.axe.nom, v.axe.ordre, v.valeur]
+                              for v in ValeurCompte.objects.select_related("axe").order_by("axe__ordre", "axe__nom", "compte"))
     from .justificatifs import chemin as chemin_justificatif
     yield "Justificatifs", ([j.mouvement.numero, j.chemin or "", j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
                              "lien" if j.lien else _empreinte_fichier(chemin_justificatif(j)), j.lien]
@@ -351,13 +355,14 @@ def exporter(auteur=""):
 def vider():
     """Efface toute la comptabilité ; les comptes utilisateurs sont gardés."""
     Exercice.objects.update(mouvement_an=None)
-    for m in (Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, DocumentFiche, LigneFiche, Fiche, TiersProvisoire,
+    from .models import AxeCompte, ValeurCompte
+    for m in (ValeurCompte, AxeCompte, Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, DocumentFiche, LigneFiche, Fiche, TiersProvisoire,
               NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers,
               Journal, Compte, Prefixe, CodeAnalytique, Exercice, Reglage):
         m.objects.all().delete()
 
 
-FACULTATIVES = ("Justificatifs", "Documents fiches")       # absentes des exports faits avant leur création
+FACULTATIVES = ("Justificatifs", "Documents fiches", "Axes de comptes")       # absentes des exports faits avant leur création
 COLONNES_FACULTATIVES = {"Lien", "Montant devise"}         # idem pour les colonnes
 
 
@@ -469,6 +474,10 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
             anal2_id=_texte(r["Axe 2"]) or None, mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
         lignes_fiches.append(l)
+    from .models import AxeCompte, ValeurCompte
+    for r in _rangees(wb, "Axes de comptes"):
+        axe, _ = AxeCompte.objects.get_or_create(nom=_texte(r["Axe"]), defaults={"ordre": _entier(r["Ordre"]) or 0})
+        ValeurCompte.objects.create(compte_id=_texte(r["Compte"]), axe=axe, valeur=_texte(r["Valeur"]))
     from .justificatifs import dossier as dossier_justificatifs
     for r in _rangees(wb, "Justificatifs"):
         if _texte(r.get("Lien")):                           # document resté en ligne : seulement son lien

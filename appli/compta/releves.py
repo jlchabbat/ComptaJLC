@@ -621,3 +621,39 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
 def relier(l, ecriture, utilisateur=None):
     """La ligne du relevé est déjà en compta : on la relie à cette écriture (aucune écriture créée)."""
     return pointer(l.journal, [l], [ecriture], utilisateur, "manuel")
+
+
+# ---------------------------------------------------------------- mémoire des affectations (reprise de l'appli Banque)
+
+BRUIT = re.compile(r"\b[A-Z0-9]{8,}\b|\b\d{2}/\d{2}/\d{4}\b|\b\d{3,}\b")   # références, dates, n° de carte
+
+
+def cle_libelle(libelle):
+    """Libellé rapproché de ses voisins : capitales, sans références ni dates (même règle que l'appli Banque)."""
+    return " ".join(BRUIT.sub(" ", (libelle or "").upper()).split())
+
+
+def memoire_affectations():
+    """{libellé normalisé : compte de contrepartie} tiré des écritures de banque déjà passées (la plus récente l'emporte) :
+    l'historique repris (Ciel…) sert donc de mémoire dès le premier relevé."""
+    from .models import Journal
+    tresorerie = set(Journal.objects.exclude(compte__isnull=True).values_list("compte_id", flat=True))
+    memo = {}
+    lignes = (Ligne.objects.filter(compte_id__in=tresorerie).exclude(mouvement__origine="cloture")
+              .select_related("mouvement").prefetch_related("mouvement__lignes__compte").order_by("mouvement__date", "pk"))
+    for l in lignes:
+        autres = [x for x in l.mouvement.lignes.all() if x.compte_id not in tresorerie]
+        if len(autres) == 1:
+            for cle in {cle_libelle(l.libelle), cle_libelle(l.mouvement.lignes.all()[0].libelle)}:
+                if cle:
+                    memo[cle] = autres[0].compte
+    return memo
+
+
+def proposition(l, memo):
+    """Compte proposé pour une ligne de relevé, ou None."""
+    for texte in (l.traduction, l.operation):
+        c = memo.get(cle_libelle(texte))
+        if c:
+            return c
+    return None
