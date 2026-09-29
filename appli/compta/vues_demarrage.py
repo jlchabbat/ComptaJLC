@@ -68,7 +68,7 @@ class AssociationForm(forms.Form):
     caisse = forms.BooleanField(label="Une caisse (espèces)", required=False, initial=True)
     carte = forms.CharField(label="Carte de paiement réglée le mois suivant (nom, ex. Isracard)", max_length=40, required=False,
                             help_text="Vide : pas de carte.")
-    hebergeur = forms.CharField(label="Site qui héberge des justificatifs en lien (ex. SUMIT)", max_length=40, required=False,
+    hebergeur = forms.CharField(label="Site qui héberge des justificatifs en lien (nom du site)", max_length=40, required=False,
                                 help_text="Vide : les justificatifs sont tous déposés sur le site.")
     traductions = forms.BooleanField(label="Relevés en hébreu à traduire en français", required=False)
 

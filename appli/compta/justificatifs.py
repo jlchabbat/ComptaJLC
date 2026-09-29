@@ -72,7 +72,7 @@ def ajouter(mouvement, fichier, description="", auteur=""):
 
 
 def ajouter_lien(mouvement, lien, nom="", description="", auteur=""):
-    """Rattache un document resté en ligne (SUMIT…) : on garde son lien. Lève ValueError si refusé."""
+    """Rattache un document resté en ligne : on garde son lien. Lève ValueError si refusé."""
     lien = (lien or "").strip()
     if not re.match(r"^https://", lien):
         raise ValueError(f"Lien refusé (adresse https:// attendue) : {lien[:80]}")
@@ -139,9 +139,9 @@ def rapatrier(j, auteur=""):
     if not ext:
         debut = contenu[:500].lower()
         if b"<html" in debut or b"<!doctype" in debut:
-            raise ValueError("le lien renvoie une page web (connexion à SUMIT demandée ?), pas le document")
+            raise ValueError("le lien renvoie une page web (connexion demandée ?), pas le document")
         raise ValueError("le lien ne renvoie ni un PDF ni une image")
-    base = nom.rsplit("/", 1)[-1].rsplit("\\", 1)[-1] if nom else f"SUMIT_Mvt{j.mouvement.numero}"
+    base = nom.rsplit("/", 1)[-1].rsplit("\\", 1)[-1] if nom else f"Mvt{j.mouvement.numero}"
     if not base.lower().endswith(EXTENSIONS):
         base = base.rsplit(".", 1)[0] + ext if "." in base else base + ext
     m = j.mouvement
@@ -155,7 +155,7 @@ def rapatrier(j, auteur=""):
     cible.write_bytes(contenu)
     ancien = j.lien
     j.chemin, j.lien, j.taille = relatif, "", len(contenu)
-    if j.nom in ("Document en ligne", "Document SUMIT") or j.nom.startswith(("DEPENSES", "Liens")) or " du " in j.nom or "(lien)" in j.nom:
+    if j.nom in ("Document en ligne",) or j.nom.startswith(("DEPENSES", "Liens")) or " du " in j.nom or "(lien)" in j.nom:
         j.nom = base[:150]
     j.save()
     Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Document en ligne enregistré sur le site",
@@ -335,7 +335,7 @@ def deposer(nom, contenu):
     import io
     import zipfile
     deposes, refus = [], []
-    if nom.lower().endswith((".xlsx", ".xlsm")):                  # extrait (SUMIT…) : les liens de ses lignes
+    if nom.lower().endswith((".xlsx", ".xlsm")):                  # extrait Excel : les liens de ses lignes
         try:
             n = deposer_extrait(contenu)
         except Exception:
@@ -478,7 +478,7 @@ def _numero(v):
 
 
 def lire_extrait(contenu):
-    """Lignes à lien d'un extrait Excel (SUMIT ou tableau fait à la main) : Mvt, pièce, date, montant, description, lien.
+    """Lignes à lien d'un extrait Excel (export d'un autre logiciel ou tableau fait à la main) : Mvt, pièce, date, montant, description, lien.
 
     Une feuille est retenue si une de ses premières lignes a une colonne « Mvt », une colonne « Pièce », ou à la fois
     une colonne date (« תאריך », « date ») et une colonne montant (« סכום », « montant », « amount ») ; le lien est

@@ -39,11 +39,9 @@ def ajouter(request, numero):
         if faits:
             messages.success(request, f"{faits} document(s) déposé(s) rattaché(s) au mouvement {m.numero}.")
         return redirect("mouvement", m.numero)
-    if "lien" in request.POST:                            # document resté en ligne (SUMIT…) : on garde son adresse
-        hebergeur = reglages.lire("hebergeur_liens")
-        nom = f"Document {hebergeur}" if hebergeur and hebergeur.lower() in request.POST["lien"].lower() else ""
+    if "lien" in request.POST:                            # document resté en ligne : on garde son adresse
         try:
-            moteur.ajouter_lien(m, request.POST["lien"], nom,
+            moteur.ajouter_lien(m, request.POST["lien"], "",
                                 request.POST.get("description", "").strip(), request.user.get_username())
             messages.success(request, f"Lien joint au mouvement {m.numero}.")
         except ValueError as e:
@@ -69,7 +67,7 @@ def ajouter(request, numero):
 @xframe_options_sameorigin
 def voir(request, pk):
     j = get_object_or_404(Justificatif.objects.select_related("mouvement"), pk=pk)
-    if j.lien:                                            # document resté en ligne (SUMIT…)
+    if j.lien:                                            # document resté en ligne
         return redirect(j.lien)
     fichier = moteur.chemin(j)
     if not fichier.exists():

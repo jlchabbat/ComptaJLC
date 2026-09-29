@@ -208,18 +208,17 @@ cadre <b>Choisir un document déjà déposé</b>, choisir le ou les documents, <
 <figure><img src="images/22_justificatifs_existants.png"><figcaption>Documents déposés : propositions sûres cochées, cas douteux à vérifier.</figcaption></figure>
 <p class="aide">Conseil : si les scans ne portent pas encore de numéro, les renommer avec le n° de Mvt en tête suivi d'une espace
 (« 389 facture.pdf ») rend le rattachement automatique.</p>
-<h2>Documents restés dans SUMIT</h2>
-<p>Sur la même page, déposer l'<b>extrait Excel de SUMIT</b> (EXTRACT_SUMIT_….xlsx). Chaque ligne qui a un lien vers un document
-(feuille DEPENSES, colonne « קובץ מקושר ») est proposée au mouvement de <b>même date et même montant</b>. Le document reste dans
-SUMIT : ComptaBB garde son <b>lien</b> 🔗, qui l'ouvre dans SUMIT (être connecté à SUMIT dans le navigateur).
+<h2>Documents restés en ligne</h2>
+<p>Sur la même page, déposer un <b>extrait Excel</b> (une ligne par document, avec son lien). Chaque ligne qui a un lien vers un document
+est proposée au mouvement de <b>même date et même montant</b>. Le document reste en ligne : ComptaBB garde son <b>lien</b> 🔗, qui l'ouvre (être connecté au site du document dans le navigateur).
 Les lignes dont la date et le montant correspondent à plusieurs mouvements sont « à vérifier » : la raison indique les n° de Mvt
 possibles, saisir le bon. Redéposer un extrait plus récent n'ajoute que les nouveaux liens.</p>
 <p>Un <b>tableau Excel fait à la main</b> convient aussi : une colonne <b>Mvt</b> (ou <b>Pièce</b>) et, sur chaque ligne, le lien
 (adresse https:// écrite ou lien cliquable). Sur la page d'un mouvement, le cadre <b>Ou joindre un lien</b> accepte un lien collé.</p>
-<h2>Garder les documents sur le site, sans SUMIT</h2>
+<h2>Garder les documents sur le site</h2>
 <p>Chaque lien joint est aussitôt <b>copié sur le site</b> quand c'est possible (le document devient un fichier 📄, le lien est oublié et
 reste noté dans l'Historique). Pour les liens restés en 🔗, <span class="menu">Administration › Justificatifs existants</span> ›
-<b>Les enregistrer sur le site</b> (25 par clic ; en console : <code>python manage.py rapatrier_justificatifs</code>). Si SUMIT refuse
+<b>Les enregistrer sur le site</b> (25 par clic ; en console : <code>python manage.py rapatrier_justificatifs</code>). Si le site du document refuse
 (connexion demandée) ou si l'offre gratuite de PythonAnywhere n'autorise pas ce site, télécharger les PDF sur le PC, les ranger dans un
 dossier (par exemple <code>D:\OneDrive\Applications\ComptaBB\Justificatifs</code>), les nommer avec le n° de Mvt en tête (« 389 facture.pdf »),
 compresser le dossier (clic droit › Envoyer vers › Dossier compressé) et déposer le ZIP sur la même page.</p>

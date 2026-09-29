@@ -111,5 +111,5 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "tableau_de_bord"
 LOGOUT_REDIRECT_URL = "login"
 
-# Justificatifs « lien » (SUMIT…) : copier aussitôt le document sur le site (pas pendant les tests : pas de réseau)
+# Justificatifs « lien » : copier aussitôt le document sur le site (pas pendant les tests : pas de réseau)
 RAPATRIER_LIENS = "test" not in sys.argv
