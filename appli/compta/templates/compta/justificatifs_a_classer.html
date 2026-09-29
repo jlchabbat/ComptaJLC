@@ -13,6 +13,7 @@
 #f-rattaches { font-size: 12.5px; } #f-rattaches th, #f-rattaches td { padding: 1px 5px; line-height: 1.2; } #f-rattaches button { font-size: 13px; }
 </style>
 <h1>Justificatifs existants</h1>
+<div class="barre" style="position:static"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a></div>
 <form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
       onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
 <input type="hidden" name="deposer" value="1">
@@ -38,7 +39,7 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 <div class="barre"><button class="principal" name="rapatrier" value="1">Les enregistrer sur le site</button></div>
 <p class="aide">Ce sont des liens 🔗. Cliquez sur le bouton : 25 documents sont copiés sur le site à chaque clic ; recommencez jusqu'à zéro. Si un lien est refusé, il reste : télécharger le PDF sur le PC puis le déposer au 1.</p></form>{% endif %}
 
-<h2>2. Vérifier et rattacher ({{ lignes|length }} document{{ lignes|length|pluralize }} à classer)</h2>
+<h2 id="a-verifier">2. Vérifier et rattacher ({{ lignes|length }} document{{ lignes|length|pluralize }} à classer)</h2>
 {% if lignes %}
 <p class="aide"><b>Comment faire :</b> 1. Cliquez sur un nom pour voir le document. 2. Corrigez le n° de Mvt si besoin (deux mouvements : 389+412). 3. Cochez « Rattacher ». 4. Cliquez sur « Rattacher les lignes cochées ». <span class="ok">{{ surs }} sûre{{ surs|pluralize }} déjà cochée{{ surs|pluralize }}</span> sur {{ proposes }} proposition{{ proposes|pluralize }}.</p>
 <form method="post" id="f-classer">{% csrf_token %}
@@ -60,7 +61,7 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 </form>
 {% else %}<p class="aide">Aucun document en attente.</p>{% endif %}
 
-<h2>3. Documents déjà rattachés ({{ nb_rattaches }})</h2>
+<h2 id="rattaches">3. Liste des documents déjà rattachés ({{ nb_rattaches }})</h2>
 <form method="get" class="barre" style="position:static"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
 <button>Chercher</button>{% if q %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tout voir</a>{% endif %}</form>
 {% if rattaches %}
