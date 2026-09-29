@@ -280,6 +280,9 @@ def importer_tableau(rangees):
             fiche = fiche or Membre(compte=compte, nom=(nom or compte.libelle).upper())
         else:
             t = t or defaut
+            if not t:
+                rapport.erreurs.append(f"Ligne {n} : type de tiers manquant (Référentiels › Types de tiers).")
+                continue
             fiche = Membre.objects.filter(type=t, nom__iexact=nom, prenom__iexact=texte("prenom")).first()
             nouveau = fiche is None
             if nouveau:

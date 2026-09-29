@@ -379,6 +379,11 @@ class PremierDemarrage(TestCase):
         self.assertContains(r, " €</div>")
         self.assertRedirects(self.client.get("/demarrage/"), "/", fetch_redirect_response=False)   # une seule fois
         self.assertEqual(controles.etat_general(controles.executer())[0], "OK")
+        from .membres import creer_tiers                                         # comptes de tiers : axe 1 du plan
+        for libelle, numero in (("Membre", "411COHEN001"), ("Fournisseur", "401COHEN001")):
+            c = creer_tiers(TypeTiers.objects.get(libelle=libelle), "Cohen", "David")
+            self.assertEqual((c.numero, c.anal1_id, c.lettrable), (numero, "BIL.4", True))
+        self.assertFalse(Membre.objects.filter(compte_id="411000").exists())     # compte collectif : pas de fiche
 
     def test_mes_propres_fichiers(self):
         self.administrateur()
@@ -387,6 +392,11 @@ class PremierDemarrage(TestCase):
         self.assertRedirects(r, "/echanges/", fetch_redirect_response=False)
         self.assertFalse(Journal.objects.exists() or Compte.objects.exists())
         self.assertEqual((reglages.lire("devise"), Reglage.lire("demarrage")), ("$", "fait"))
+        self.assertEqual(sorted(TypeTiers.objects.values_list("prefixe", flat=True)), ["401", "411"])
+        from .membres import importer_tableau
+        Compte.objects.create(numero="411000", libelle="MEMBRES", anal1=CodeAnalytique.objects.create(code="BIL.4", axe=1, libelle="TIERS"))
+        r = importer_tableau([["Type", "Nom", "Prénom"], ["Membre", "Levy", "Sarah"]])
+        self.assertEqual((r.erreurs, Compte.objects.get(numero="411LEVY001").anal1_id), ([], "BIL.4"))
         self.assertEqual(self.client.get("/").status_code, 200)
 
 
