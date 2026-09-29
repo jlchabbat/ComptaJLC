@@ -2538,6 +2538,14 @@ class JustificatifsExistants(TransactionTestCase):
         Ligne.objects.create(mouvement=m, ordre=1, compte_id="600000", libelle="TRAITEUR", debit=D("450.00"), anal2_id="MAN.001")
         Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="TRAITEUR", credit=D("450.00"), anal2_id="MAN.001")
 
+    def test_document_depose_remplace_le_lien_du_meme_mouvement(self):
+        m = Mouvement.objects.get(numero=5)
+        lien = Justificatif.objects.create(mouvement=m, lien="https://documents.exemple.org/fichier/aaa/", nom="Document en ligne")
+        just.deposer("5 facture.pdf", b"%PDF-1.4 test")
+        j = just.rattacher(just.a_classer()[0]["nom"], m, "", "test", remplacer=True)
+        self.assertEqual(list(m.justificatifs.values_list("pk", flat=True)), [j.pk])
+        self.assertFalse(Justificatif.objects.filter(pk=lien.pk).exists())
+
     def test_propositions(self):
         cas = {"Mvt 5 facture.pdf": (5, True), "mvt_1.jpg": (1, True), "Pièce 739.pdf": (1, True),
                "PJ-740 traiteur.pdf": (5, True), "scan 739.pdf": (1, False), "2026-03-15 traiteur 450,00.pdf": (5, False),
@@ -2792,3 +2800,4 @@ class LiensEnLigne(TransactionTestCase):
         ec.reinjecter(chemin)
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
                          {"https://documents.exemple.org/fichier/aaa/", "https://documents.exemple.org/fichier/bbb/"})
+

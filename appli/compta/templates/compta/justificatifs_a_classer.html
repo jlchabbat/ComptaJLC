@@ -47,6 +47,7 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 <p class="aide"><b>Comment faire :</b> 1. Cliquez sur un nom pour voir le document. 2. Corrigez le n° de Mvt si besoin (deux mouvements : 389+412). 3. Cochez « Rattacher ». 4. Cliquez sur « Rattacher les lignes cochées ». <span class="ok">{{ surs }} sûre{{ surs|pluralize }} déjà cochée{{ surs|pluralize }}</span> sur {{ proposes }} proposition{{ proposes|pluralize }}.</p>
 <form method="post" id="f-classer">{% csrf_token %}
 <div class="barre"><button class="principal" name="rattacher" value="1">Rattacher les lignes cochées</button>
+<label title="Le document déposé prend la place du lien du même mouvement (le lien avec l'écriture est conservé)"><input type="checkbox" name="remplacer_liens" value="1"> Remplacer les liens du mouvement</label>
 <button type="button" onclick="document.querySelectorAll('input[name^=garder_]').forEach(c => c.checked = true)">Tout cocher</button>
 <button type="button" onclick="document.querySelectorAll('input[name^=garder_]').forEach(c => c.checked = false)">Tout décocher</button></div>
 <table class="triable"><tr><th>Document</th><th>Mvt</th><th>Mouvement proposé</th><th class="n">Total du Mvt</th><th>Raison</th><th>Description</th><th>Rattacher</th><th></th></tr>

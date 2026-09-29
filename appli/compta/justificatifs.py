@@ -621,7 +621,18 @@ def _lien_en_attente(nom):
     return l, liens
 
 
-def rattacher(nom, mouvement, description="", auteur=""):
+def remplacer_liens(mouvement, garde, auteur=""):
+    """Le document déposé prend la place des liens du mouvement (le lien avec l'écriture est conservé). Renvoie le nombre remplacé."""
+    n = 0
+    for ancien in mouvement.justificatifs.exclude(pk=garde.pk).exclude(lien=""):
+        Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Lien remplacé par le document déposé",
+                                    objet=f"Mvt {mouvement.numero}", avant=f"{ancien.nom} {ancien.lien}"[:300], apres=garde.nom[:300])
+        ancien.delete()
+        n += 1
+    return n
+
+
+def rattacher(nom, mouvement, description="", auteur="", remplacer=False):
     from django.core.files import File
     if nom.startswith("lien:"):
         l, liens = _lien_en_attente(nom)
@@ -634,6 +645,8 @@ def rattacher(nom, mouvement, description="", auteur=""):
     with open(f, "rb") as flux:
         j = ajouter(mouvement, File(flux, name=nom_affiche(nom)), description, auteur)
     f.unlink()
+    if remplacer:
+        remplacer_liens(mouvement, j, auteur)
     return j
 
 
