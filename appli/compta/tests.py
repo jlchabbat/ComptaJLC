@@ -2645,6 +2645,14 @@ class JustificatifsExistants(TransactionTestCase):
         self.client.force_login(b)
         self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
 
+    def test_page_justificatifs_ouverte_au_tresorier(self):
+        t = User.objects.create_user("tresorier_j")
+        t.groups.add(Group.objects.get(name="Trésorier"))
+        self.client.force_login(t)
+        page = self.client.get("/justificatifs/a-classer/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(self.client.get("/"), "Justificatifs (dépôt et classement)")
+
     def test_commande(self):
         dossier = Path(tempfile.mkdtemp()) / "Scans"
         (dossier / "2026").mkdir(parents=True)

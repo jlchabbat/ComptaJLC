@@ -5,15 +5,16 @@
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
 <script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
-  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
 <nav class="menus">
-{% if perms.compta.add_mouvement or perms.compta.view_fiche %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
+{% if perms.compta.add_mouvement or perms.compta.change_mouvement or perms.compta.view_fiche %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
 {% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie guidée</a>
 {% url 'mouvement_nouveau' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écriture libre</a>
 {% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
+{% if perms.compta.add_mouvement or perms.compta.change_mouvement %}{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs (dépôt et classement)</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes et nouveaux tiers</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
 </div></div>{% endif %}
@@ -54,8 +55,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.parametrer %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
 <div class="groupe">Données : imports, exports, reprise</div>
 {% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports / Exports</a>{% endif %}
-{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports (référentiels, écritures)</a>
-{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs existants (dépôt en masse)</a>{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports (référentiels, écritures)</a>{% endif %}
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données (sauvegardes, rechargement)</a>{% endif %}
 <div class="groupe">Installation</div>
 <a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>

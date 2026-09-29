@@ -9,7 +9,7 @@
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ m.total_debit|shekel }}</td><td class="n">{{ m.total_credit|shekel }}</td><td colspan="3"></td></tr></table>
 <h2>Justificatifs ({{ justificatifs|length }})</h2>
 {% if justificatifs %}<table><tr><th>Document</th><th>Description</th><th class="n">Taille</th><th>Ajouté</th><th></th></tr>
-{% for j in justificatifs %}<tr><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% else %}<a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
+{% for j in justificatifs %}<tr {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %}><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% else %}<a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
 <td>{{ j.description }}</td><td class="n">{% if j.lien %}lien{% elif j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
 <td>{{ j.ajoute_le|date:"d/m/Y H:i" }}{% if j.ajoute_par %} · {{ j.ajoute_par }}{% endif %}</td>
 <td>{% if not j.lien %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
@@ -23,7 +23,7 @@
 <h3 style="margin-top:0">Choisir un document déjà déposé ({{ a_classer|length }} à classer)</h3>
 <div class="barre"><button class="principal">Rattacher à ce mouvement</button>
 <a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tous les documents à classer</a></div>
-<p class="aide">Documents déposés dans Administration › Justificatifs existants et pas encore rattachés. Choisir un ou plusieurs documents
+<p class="aide">Documents déposés dans Saisie › Justificatifs et pas encore rattachés. Choisir un ou plusieurs documents
 (Ctrl+clic), puis « Rattacher à ce mouvement ». « Voir » ouvre le document choisi.</p>
 <div class="formulaire"><label for="id_a_classer">Documents</label>
 <div><select id="id_a_classer" name="a_classer" multiple size="{% if a_classer|length > 8 %}8{% else %}{{ a_classer|length }}{% endif %}" style="width:100%" required>
@@ -44,7 +44,7 @@ Sur un téléphone, le bouton propose aussi de prendre une photo.</p>
 <h3 style="margin-top:0">Ou joindre un lien (document resté dans {{ hebergeur_liens }})</h3>
 <div class="barre"><button class="principal">Joindre le lien</button></div>
 <p class="aide">Coller l'adresse du document : ComptaBB garde le lien 🔗, le document reste dans {{ hebergeur_liens }}.
-Pour beaucoup de liens d'un coup : Administration › Justificatifs existants, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
+Pour beaucoup de liens d'un coup : Saisie › Justificatifs, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
 <div class="formulaire"><label for="id_lien">Lien</label>
 <div><input type="url" id="id_lien" name="lien" maxlength="500" required placeholder="https://…" style="width:100%"></div>
 <label for="id_description_lien">Description (facultatif)</label>
