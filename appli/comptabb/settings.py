@@ -85,6 +85,7 @@ TEMPLATES = [{
         "django.contrib.messages.context_processors.messages",
         "compta.reglages.contexte",
         "compta.licence.contexte",
+        "compta.retour.contexte",
     ]},
 }]
 WSGI_APPLICATION = "comptabb.wsgi.application"

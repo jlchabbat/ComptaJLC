@@ -46,3 +46,38 @@ def adresse(request, fiche=None, defaut=None):
     if vues:
         return max(vues)[1]
     return defaut or (reverse(noms[0]) if noms else reverse("tableau_de_bord"))
+
+
+# ---------------------------------------------------------------- bouton « ✕ Fermer » de l'en-tête (toutes les pages)
+
+SANS_FERMER = {"tableau_de_bord", "login", "demarrage", "demarrage_compte"}
+PARENTS = {                                   # page -> page d'où elle s'ouvre (mêmes paramètres d'adresse)
+    "releve_parametres": "rapprochement_journal", "releve_import": "rapprochement_journal",
+    "rapprochement_journal": "rapprochement", "traductions": "rapprochement", "provisoires": "fiches",
+    "archive": "cloture", "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
+}
+
+
+def adresse_fermer(request):
+    """Où mène « Fermer » : la liste d'une fiche, la page d'origine d'une sous-page, sinon le tableau de bord."""
+    m = getattr(request, "resolver_match", None)
+    nom = m.url_name if m else ""
+    if not nom or nom in SANS_FERMER:
+        return ""
+    if nom in LISTES:
+        return adresse(request, nom)
+    if nom == "ligne_fiche":
+        from .models import LigneFiche
+        l = LigneFiche.objects.filter(pk=m.kwargs.get("pk")).first()
+        return reverse("fiche", args=[l.fiche_id]) if l else reverse("fiches")
+    if nom in PARENTS:
+        parent = PARENTS[nom]
+        return reverse(parent, kwargs=m.kwargs if parent == "rapprochement_journal" else None)
+    return reverse("tableau_de_bord")
+
+
+def contexte(request):
+    try:
+        return {"adresse_fermer": adresse_fermer(request)}
+    except Exception:                                     # jamais bloquant pour la page
+        return {"adresse_fermer": ""}

@@ -4,6 +4,9 @@
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
 <script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se ferme ; sinon, retour à la page d'origine
+  if (window.opener || history.length <= 1) { window.close(); setTimeout(function () { location.href = a.href; }, 300); return false; }
+  return true; }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
   document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
 <body>
@@ -63,6 +66,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 </div></div>{% endif %}
 </nav>
 <span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
+{% if adresse_fermer %}<a class="bouton fermer" href="{{ adresse_fermer }}" onclick="return fermer(this)" title="Fermer cette page et revenir d'où vous venez">✕ Fermer</a>{% endif %}
 <span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
 <button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·

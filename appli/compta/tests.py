@@ -2326,6 +2326,35 @@ class ReferentielsEtPages(TransactionTestCase):
     def tearDown(self):
         self.reglage.disable()
 
+    def test_toutes_les_pages_se_ferment(self):
+        """Chaque page (sauf le tableau de bord) a « ✕ Fermer » : fiche → sa liste, sous-page → sa page, sinon l'accueil."""
+        from django.urls import get_resolver
+        t = User.objects.create_user("admin3")
+        donner_role(t, "Administrateur")
+        self.client.force_login(t)
+        Reglage.objects.update_or_create(cle="demarrage", defaults={"valeur": "fait"})
+        m = Mouvement.objects.order_by("numero").first()
+        sans_param = [p.pattern._route for p in get_resolver().url_patterns
+                      if hasattr(p.pattern, "_route") and "<" not in p.pattern._route and getattr(p, "name", None)]
+        vues = 0
+        for route in sans_param + [f"mouvement/{m.numero}/", f"mouvement/{m.numero}/modifier/", "rapprochement/B1/"]:
+            r = self.client.get("/" + route)
+            if r.status_code != 200 or not r.get("Content-Type", "").startswith("text/html") or b"<header>" not in r.content:
+                continue
+            vues += 1
+            if route in ("connexion/",) or route.startswith("demarrage"):
+                continue
+            if route == "":
+                self.assertNotContains(r, "✕ Fermer")
+            else:
+                self.assertContains(r, "✕ Fermer", msg_prefix=route)
+        self.assertGreater(vues, 20)
+        self.client.get("/grand-livre/?compte=512000")
+        self.assertContains(self.client.get(f"/mouvement/{m.numero}/"), 'href="/grand-livre/?compte=512000" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/rapprochement/B1/"), 'href="/rapprochement/" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/balance/"), 'href="/" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/admin/compta/compte/600100/change/"), "✕ Fermer")      # référentiels
+
     def test_export_de_chaque_referentiel(self):
         from .vues_referentiels import referentiels
         t = User.objects.create_user("tresorier")
