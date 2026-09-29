@@ -9,7 +9,6 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from . import justificatifs as moteur
-from . import reglages
 from .models import Justificatif, Mouvement
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
