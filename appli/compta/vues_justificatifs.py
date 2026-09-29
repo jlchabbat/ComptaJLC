@@ -137,6 +137,19 @@ def a_classer(request):
                 messages.info(request, f"« {moteur.nom_affiche(request.POST['ecarter'])} » écarté (fichier supprimé).")
             except ValueError as e:
                 messages.error(request, str(e))
+        elif "ecarter_coches" in request.POST:
+            faits = 0
+            for i, nom in enumerate(request.POST.getlist("nom")):
+                if request.POST.get(f"garder_{i}"):
+                    try:
+                        moteur.ecarter(nom)
+                        faits += 1
+                    except ValueError as e:
+                        messages.error(request, str(e))
+            if faits:
+                messages.info(request, f"{faits} document(s) supprimé(s) de la liste à classer.")
+            else:
+                messages.error(request, "Cochez d'abord au moins un document.")
         elif "rapatrier" in request.POST:                 # par paquets : la page ne doit pas attendre trop longtemps
             faits, erreurs, restent = moteur.rapatrier_tous(auteur, limite=25)
             messages.success(request, f"{faits} document(s) copié(s) sur le site ; {restent} encore en ligne.")
