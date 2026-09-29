@@ -21,7 +21,12 @@ Tiers : le fichier Tiers existant est respecté. Ses tiers (export Tiers.xlsx du
 défaut les tiers d'origine « Fichier Tiers » du classeur) ne sont pas repris dans Tiers.xlsx : leurs fiches et
 coordonnées sur le site restent telles quelles. Seuls les nouveaux tiers sont ajoutés.
 
-    python src/adaptation_sumit.py EXTRACT_SUMIT.xlsx [--tiers-existant Tiers_export.xlsx] [--sortie dossier]
+Mode complément (--ecritures-site, export Ecritures.xlsx du site) : le site a déjà les opérations, sans comptes de tiers
+et sous ses propres n° de Mvt. Chaque opération est retrouvée par son contenu ; ses lignes du site sont gardées à
+l'identique (pointages compris) et les lignes de tiers ajoutées ; seuls Tiers, Ecritures et Liens sont produits.
+
+    python src/adaptation_sumit.py EXTRACT_SUMIT.xlsx [--ecritures-site Ecritures_site.xlsx]
+                                   [--tiers-existant Tiers_export.xlsx] [--sortie dossier]
                                    [--premier-mvt 1] [--axe2-defaut GEN1]
 """
 
@@ -292,6 +297,88 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None, prefixes_types
     return fichiers, rapport
 
 
+def lire_ecritures_site(chemin):
+    """Export Ecritures.xlsx du site : {Mvt: [lignes (dict)]}, dans l'ordre des lignes."""
+    wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
+    rangees = wb.worksheets[0].iter_rows(values_only=True)
+    entetes = [_texte(v) for v in next(rangees, [])]
+    if entetes[:len(ECRITURES)] != ECRITURES:
+        raise ValueError(f"{chemin} : export Ecritures.xlsx du site attendu (colonnes {', '.join(ECRITURES)}).")
+    mvts = OrderedDict()
+    for r in rangees:
+        if r[2] in (None, ""):
+            continue
+        d = dict(zip(ECRITURES, r))
+        mvts.setdefault(int(d["Mvt"]), []).append(d)
+    wb.close()
+    return mvts
+
+
+def completer_site(fichiers, rapport, site, prefixes_tiers):
+    """Mode complément : le site a déjà les opérations (sans comptes de tiers, sous ses propres n° de Mvt).
+
+    Chaque opération du classeur est retrouvée sur le site par sa date, son journal et ses lignes hors tiers (comptes et
+    montants), puis par son libellé en cas d'égalité. Ses lignes du site sont reprises à l'identique, au même rang
+    (pointages, codes analytiques et lettrage gardés), et les lignes de tiers sont ajoutées après, sous le n° de Mvt et
+    de pièce du site. Plan, codes et journaux du site ne sont pas touchés. Renvoie (fichiers, rapport)."""
+    tiers_ = lambda c: c.startswith(tuple(prefixes_tiers))  # noqa: E731
+
+    def cle(date, jnl, lignes):
+        return (_jour(date), jnl, tuple(sorted((_texte(l[0]), _montant(l[1]), _montant(l[2])) for l in lignes if not tiers_(_texte(l[0])))))
+
+    pool = defaultdict(list)
+    for n, ls in site.items():
+        if any(tiers_(_texte(l["Compte"])) for l in ls):
+            continue                                      # déjà complété : laissé tel quel
+        pool[cle(ls[0]["Date"], _texte(ls[0]["Jnl"]), [(l["Compte"], l["Débit"], l["Crédit"]) for l in ls])].append(n)
+    ops = OrderedDict()
+    for l in fichiers["Ecritures.xlsx"][1]:
+        ops.setdefault(l[2], []).append(l)
+    correspondance, sans_site, lignes, completes = {}, [], [], 0
+    for n, ls in ops.items():
+        k = cle(ls[0][0], ls[0][1], [(l[4], l[6], l[7]) for l in ls])
+        candidats = pool.get(k, [])
+        if not candidats:
+            sans_site.append(n)
+            continue
+        libelle = next(l[5] for l in ls if not tiers_(l[4]))
+        m = next((c for c in candidats if _texte(site[c][0]["Libellé"]) == libelle), candidats[0])
+        candidats.remove(m)
+        correspondance[n] = m
+        ajout = [l for l in ls if tiers_(l[4])]
+        if not ajout:
+            continue
+        sl = site[m]
+        piece = sl[0]["Pièce"]
+        anal2 = next((_texte(x["Anal2"]) for x in sl if _texte(x["Compte"])[:1] in "67"), _texte(sl[0]["Anal2"]))
+        for x in sl:                                      # lignes du site, à l'identique et au même rang
+            lignes.append([_jour(x["Date"]), _texte(x["Jnl"]), m, piece, _texte(x["Compte"]), _texte(x["Libellé"]),
+                           x["Débit"], x["Crédit"], _texte(x["Anal2"]), _texte(x["Let"])])
+        for l in ajout:                                   # lignes de tiers ajoutées
+            lignes.append([_jour(sl[0]["Date"]), _texte(sl[0]["Jnl"]), m, piece, l[4], l[5], l[6], l[7], anal2, ""])
+        completes += 1
+    restes = sorted(n for ns in pool.values() for n in ns)
+    liens = [[correspondance[l[0]], l[1], l[2]] for l in fichiers["Liens_documents.xlsx"][1] if l[0] in correspondance]
+    perdus = [l[0] for l in fichiers["Liens_documents.xlsx"][1] if l[0] not in correspondance]
+    nouveaux = OrderedDict([("Tiers.xlsx", fichiers["Tiers.xlsx"]), ("Ecritures.xlsx", (ECRITURES, lignes)),
+                            ("Liens_documents.xlsx", (["Mvt", "Lien", "Description"], liens))])
+    r = [f"MODE COMPLÉMENT (export Ecritures du site : {len(site)} Mvt).",
+         f"Opérations du classeur retrouvées sur le site : {len(correspondance)} sur {len(ops)}.",
+         f"Mvt du site complétés par leurs lignes de tiers : {completes} (lignes du site gardées à l'identique, "
+         "pointages et codes analytiques compris) ; les autres restent inchangés.",
+         f"Documents SUMIT rattachés au n° de Mvt du site : {len(liens)}.",
+         "Plan comptable, codes analytiques, préfixes, journaux et exercices du site : non modifiés (fichiers non fournis)."]
+    if sans_site:
+        r.append("Opérations du classeur introuvables sur le site (non importées, à saisir ou vérifier) : N° base "
+                 + ", ".join(map(str, sans_site)) + ".")
+    if restes:
+        r.append("Mvt du site sans correspondance dans le classeur (laissés tels quels) : " + ", ".join(map(str, restes)) + ".")
+    if perdus:
+        r.append("Documents SUMIT non rattachés (opération introuvable sur le site) : N° base " + ", ".join(map(str, perdus)) + ".")
+    garder = [x for x in rapport if x.startswith(("Tiers existants", "Comptes renumérotés", "Remarque", "Nouveau tiers", "Tiers "))]
+    return nouveaux, r + garder
+
+
 def ecrire(fichiers, rapport, sortie):
     sortie.mkdir(parents=True, exist_ok=True)
     for nom, (entetes, lignes) in fichiers.items():
@@ -328,12 +415,19 @@ def main(argv=None):
     p.add_argument("--type", action="append", default=[], metavar="TYPE=PREFIXE",
                    help="type de tiers du site et préfixe de ses comptes (s'ajoute à Membre=411, Fournisseur=401, "
                         "Amis du Bnei Brith=412)")
+    p.add_argument("--ecritures-site", help="export Ecritures.xlsx du site : mode complément (n° de Mvt du site gardés, "
+                                            "lignes de tiers ajoutées, rien d'autre modifié)")
     p.add_argument("--tiers-existant", help="export Tiers.xlsx du site : ses tiers ne sont ni modifiés ni recréés")
     a = p.parse_args(argv)
     existants = lire_tiers_existants(a.tiers_existant) if a.tiers_existant else None
     types = dict(PREFIXES_TYPES, **dict(t.split("=", 1) for t in a.type))
     fichiers, rapport = adapter(lire(a.classeur), a.premier_mvt, a.axe2_defaut, existants, types)
-    ecrire(fichiers, rapport, Path(a.sortie))
+    if a.ecritures_site:
+        fichiers, rapport = completer_site(fichiers, rapport, lire_ecritures_site(a.ecritures_site), set(types.values()))
+    sortie = Path(a.sortie)
+    for vieux in sortie.glob("*.xlsx") if sortie.exists() else []:
+        vieux.unlink()                                    # pas de fichier d'une version précédente dans le ZIP
+    ecrire(fichiers, rapport, sortie)
     print("\n".join(rapport))
     print(f"Fichiers écrits dans {a.sortie}")
     return 0
