@@ -7,9 +7,10 @@
 set -e
 cd ~
 NOM=$(whoami)
+MIN=$(echo "$NOM" | tr '[:upper:]' '[:lower:]')          # adresse et fichier WSGI : en minuscules (ComptaJLC → comptajlc)
 DATA=~/comptabb-data
-ADRESSE="$NOM.pythonanywhere.com"
-WSGI="/var/www/${NOM}_pythonanywhere_com_wsgi.py"
+ADRESSE="$MIN.pythonanywhere.com"
+WSGI="/var/www/${MIN}_pythonanywhere_com_wsgi.py"
 trap 'echo; echo "ÉCHEC de l installation : copiez ce qui s affiche ci-dessus et envoyez-le à la personne qui vous aide."' ERR
 
 if [ -d ~/ComptaBB ]; then
@@ -46,7 +47,7 @@ rm -f ~/preparer.txt
 cd ~
 
 echo "4/5 Fichier WSGI du site"
-sed "s/VOTRE_NOM/$NOM/g" ~/ComptaBB/appli/deploiement/pythonanywhere_wsgi.py > ~/comptabb_wsgi.py
+sed "s/VOTRE_NOM.pythonanywhere.com/$ADRESSE/; s/VOTRE_NOM/$NOM/g" ~/ComptaBB/appli/deploiement/pythonanywhere_wsgi.py > ~/comptabb_wsgi.py
 if [ -f "$WSGI" ]; then
   cp ~/comptabb_wsgi.py "$WSGI"
   touch "$WSGI"
