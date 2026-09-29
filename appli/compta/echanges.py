@@ -315,7 +315,9 @@ def imp_plan(lignes, fichier, utilisateur=None):
     c = defaultdict(int)
     for numero, valeurs in a_faire:
         maj_ou_cree(Compte, {"numero": numero}, valeurs, c)
-    return resume(c)
+    from .membres import creer_manquants
+    fiches = creer_manquants()                            # une fiche pour chaque nouveau compte de tiers (401…, 411…)
+    return resume(c) + (f" ; {fiches} fiche(s) tiers créée(s)" if fiches else "")
 
 
 def exp_journaux():

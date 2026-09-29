@@ -2,7 +2,7 @@
 <h1>Analytique – {{ a.titre }}</h1>
 <div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
 <a class="bouton principal" href="?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
-<a class="bouton" href="?axe={% if axe == 1 %}2{% else %}1{% endif %}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{% if axe == 1 %}Voir l'analytique Objet (axe 2){% else %}Voir l'analytique Nature (axe 1){% endif %}</a></div>
+{% if deux_axes %}<a class="bouton" href="?axe={% if axe == 1 %}2{% else %}1{% endif %}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{% if axe == 1 %}Voir l'analytique Objet (axe 2){% else %}Voir l'analytique Nature (axe 1){% endif %}</a>{% endif %}</div>
 <form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}"><input type="hidden" name="axe" value="{{ axe }}">
 <label><b>{% if axe == 1 %}Libellé Axe 1 (nature){% else %}Libellé Axe 2 (objet){% endif %}</b>
 <select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">{% if axe == 1 %}Toutes les natures{% else %}Tous les objets{% endif %}</option>
