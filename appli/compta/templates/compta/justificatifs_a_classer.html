@@ -48,7 +48,7 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 <button type="button" onclick="document.querySelectorAll('input[name^=garder_]').forEach(c => c.checked = false)">Tout décocher</button></div>
 <table class="triable"><tr><th>Document</th><th>Mvt</th><th>Mouvement proposé</th><th class="n">Total du Mvt</th><th>Raison</th><th>Description</th><th>Rattacher</th><th></th></tr>
 {% for l in lignes %}<tr>
-<td><input type="hidden" name="nom" value="{{ l.nom }}"><a href="{% if l.lien %}{{ l.lien }}{% else %}{% url 'justificatif_a_classer_voir' %}?nom={{ l.nom|urlencode }}{% endif %}" target="_blank" rel="noopener">{% if l.lien %}🔗 {% endif %}{{ l.affiche }}</a>
+<td><input type="hidden" name="nom" value="{{ l.nom }}"><a href="{% if l.lien %}{{ l.lien }}{% else %}{% url 'justificatif_a_classer_voir' %}?nom={{ l.nom|urlencode }}{% endif %}" {% if not l.lien %}data-apercu="{% url 'justificatif_a_classer_voir' %}?nom={{ l.nom|urlencode }}" data-nom="{{ l.affiche }}"{% endif %} target="_blank" rel="noopener">{% if l.lien %}🔗 {% endif %}{{ l.affiche }}</a>
 <div class="aide">{% if l.lien %}{{ l.feuille }}{% if l.date %} · {{ l.date|slice:"8:10" }}/{{ l.date|slice:"5:7" }}/{{ l.date|slice:":4" }}{% endif %}{% if l.montant_extrait %} · {{ l.montant_extrait }}{% endif %}{% elif l.taille >= 1048576 %}{% widthratio l.taille 1048576 1 %} Mo{% else %}{% widthratio l.taille 1024 1 %} Ko{% endif %}</div></td>
 <td><input name="mvt_{{ forloop.counter0 }}" maxlength="12" value="{% if l.saisie %}{{ l.saisie }}{% elif l.mouvement %}{{ l.mouvement.numero|stringformat:'d' }}{% endif %}"></td>
 <td>{% if l.mouvement %}<div class="lib2"><a href="{% url 'mouvement' l.mouvement.numero %}" target="_blank" rel="noopener">{{ l.detail }}</a></div>{% else %}<span class="ko">—</span>{% endif %}</td>
@@ -77,8 +77,26 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 <table class="compact"><tr><th></th><th>Mvt</th><th>Document</th><th>Description</th><th>Ajouté</th></tr>
 {% for j in rattaches %}<tr><td><input type="checkbox" name="doc" value="{{ j.pk }}"></td>
 <td><a href="{% url 'mouvement' j.mouvement.numero %}" target="_blank" rel="noopener">{{ j.mouvement.numero }}</a></td>
-<td><a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a></td>
+<td><a href="{% url 'justificatif' j.pk %}" {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %} target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a></td>
 <td>{{ j.description }}</td><td>{{ j.ajoute_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>
 </form>
 {% else %}<p class="aide">Aucun document rattaché{% if q %} pour cette recherche{% endif %}.</p>{% endif %}
+<div id="apercu" hidden style="position:fixed;right:12px;top:70px;width:min(460px,45vw);height:calc(100vh - 90px);background:#fff;border:2px solid #5b7fb8;box-shadow:0 4px 18px rgba(0,0,0,.35);z-index:60;pointer-events:none"></div>
+<script>
+(function () {
+  var box = document.getElementById('apercu'), minuteur;
+  document.querySelectorAll('a[data-apercu]').forEach(function (a) {
+    a.addEventListener('mouseenter', function () {
+      clearTimeout(minuteur);
+      minuteur = setTimeout(function () {
+        var image = /\.(jpe?g|png|gif|webp)$/i.test(a.dataset.nom), u = a.dataset.apercu;
+        box.innerHTML = image ? '<img src="' + u + '" style="width:100%;height:100%;object-fit:contain">'
+                              : '<iframe src="' + u + '#toolbar=0&view=FitH" style="width:100%;height:100%;border:0"></iframe>';
+        box.hidden = false;
+      }, 250);
+    });
+    a.addEventListener('mouseleave', function () { clearTimeout(minuteur); box.hidden = true; box.innerHTML = ''; });
+  });
+})();
+</script>
 {% endblock %}

@@ -226,6 +226,7 @@ def _actions_rattaches(request, auteur):
 
 
 @login_required
+@xframe_options_sameorigin
 def voir_a_classer(request):
     if not (request.user.has_perm("compta.echanger_fichiers") or peut_ajouter(request.user)):   # aperçu depuis le mouvement
         raise PermissionDenied
