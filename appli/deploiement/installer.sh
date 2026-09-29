@@ -56,7 +56,7 @@ if [ -f "$WSGI" ]; then
   echo "   $WSGI écrit, site rechargé."
 else
   echo "   Application web introuvable ($WSGI) : créez-la (onglet Web > Add a new web app > Manual configuration >"
-  echo "   Python 3.12), puis relancez seulement : cp ~/comptabb_wsgi.py $WSGI"
+  echo "   Python ${PY#python}), puis relancez seulement : cp ~/comptabb_wsgi.py $WSGI"
 fi
 
 echo "5/5 Script de mise à jour"
@@ -64,6 +64,7 @@ cp ~/ComptaBB/appli/deploiement/maj.sh ~/maj.sh
 
 echo
 echo "INSTALLATION TERMINÉE. Reste à faire dans l'onglet Web :"
+echo "  - Python version : ${PY#python} (la même que l'environnement créé)"
 echo "  - Virtualenv   : $HOME/venv"
 echo "  - Static files : URL /static/   dossier $HOME/comptabb-data/static"
 echo "  - Force HTTPS  : Enabled"
