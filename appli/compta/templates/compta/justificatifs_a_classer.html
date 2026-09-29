@@ -20,7 +20,8 @@ h1 { margin: 4px 0; } h2 { margin: 8px 0 4px; font-size: 17px; } .carte { paddin
 .barre { margin-bottom: 4px; padding: 4px 0; }
 </style>
 <h1>Justificatifs existants</h1>
-<div class="barre"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a></div>
+<div class="barre"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a>
+<a class="bouton" href="{% url 'justificatifs_tout' %}" title="Copie de sécurité de tous les justificatifs du site">Tout télécharger (ZIP)</a></div>
 <form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
       onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
 <input type="hidden" name="deposer" value="1">

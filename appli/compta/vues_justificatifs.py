@@ -76,6 +76,15 @@ def voir(request, pk):
 
 
 @login_required
+@consulter
+def tout_telecharger(request):
+    """Tous les justificatifs du site dans un seul ZIP (sauvegarde sur le PC)."""
+    import datetime
+    return FileResponse(moteur.archive_tout(), as_attachment=True, content_type="application/zip",
+                        filename=f"Justificatifs_{datetime.date.today():%Y-%m-%d}.zip")
+
+
+@login_required
 @require_POST
 def copier(request, pk):
     """Joindre aussi ce document à d'autres mouvements (« 412 » ou « 412+430 »)."""
