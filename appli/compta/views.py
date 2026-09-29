@@ -165,7 +165,7 @@ def ecritures(request):
 @consulter
 def mouvement(request, numero):
     m = get_object_or_404(Mouvement.objects.select_related("journal"), numero=numero)
-    from .corrections import verrou
+    from .corrections import refus_suppression as refus_mvt, verrou
     from .justificatifs import liste_a_classer, refus_suppression
     from .vues_justificatifs import peut_ajouter
     pieces = list(m.justificatifs.all())
@@ -174,7 +174,8 @@ def mouvement(request, numero):
                                                      "verrou": verrou(m), "justificatifs": pieces,
                                                      "peut_joindre": joindre,
                                                      "a_classer": liste_a_classer() if joindre else [],
-                                                     "refus_suppression": refus_suppression(pieces[0]) if pieces else ""})
+                                                     "refus_suppression": refus_suppression(pieces[0]) if pieces else "",
+                                                     "refus_suppression_mvt": refus_mvt(m)})
 
 
 @login_required

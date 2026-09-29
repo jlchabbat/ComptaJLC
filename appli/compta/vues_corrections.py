@@ -86,3 +86,20 @@ def modifier(request, numero):
 @permission_required("compta.add_mouvement", raise_exception=True)
 def nouveau(request):
     return editer(request)
+
+
+@login_required
+@corriger
+def supprimer(request, numero):
+    """Supprimer une écriture (bouton de la fiche du mouvement et de la page de modification ; POST seulement)."""
+    m = get_object_or_404(Mouvement, numero=numero)
+    if request.method != "POST":
+        return redirect("mouvement", numero)
+    from .retour import adresse
+    try:
+        moteur.supprimer(m, request.user)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect("mouvement", numero)
+    messages.success(request, f"Mouvement {numero} supprimé (gardé dans l'historique).")
+    return redirect(adresse(request, "mouvement"))

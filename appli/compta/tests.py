@@ -1279,8 +1279,8 @@ class Corrections(TestCase):
 
     def test_modifier(self):
         b1 = Journal.objects.get(code="B1")
-        with self.assertRaises(ValueError):                      # motif obligatoire
-            corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1), self.saisie(self.l2)], "", self.u)
+        corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1), self.saisie(self.l2)], "", self.u)   # motif facultatif
+        self.assertIn("correction", self.m.commentaire)
         with self.assertRaises(ValueError):                      # déséquilibré
             corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, d=12), self.saisie(self.l2)], "erreur", self.u)
         r = Rapprochement.objects.create(journal=b1, mode="manuel")
@@ -1295,6 +1295,22 @@ class Corrections(TestCase):
         corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, compte="600000", d=10), self.saisie(self.l1, d=2, id=False),
                                                 self.saisie(self.l2, c=12)], "ventilation", self.u)
         self.assertEqual(self.m.lignes.count(), 3)
+
+    def test_supprimer(self):
+        b1 = Journal.objects.get(code="B1")
+        r = Rapprochement.objects.create(journal=b1, mode="manuel")
+        Ligne.objects.filter(pk=self.l2.pk).update(rapprochement=r)
+        self.assertEqual(corr.supprimer(self.m, self.u), 500)
+        self.assertFalse(Mouvement.objects.filter(numero=500).exists() or Rapprochement.objects.filter(pk=r.pk).exists())
+        h = Modification.objects.get(action="Suppression")
+        self.assertEqual(h.objet, "Mvt 500")
+        self.assertIn("600100 D 10", h.avant)                    # l'avant reste dans l'historique
+
+    def test_suppression_refusee_exercice_clos(self):
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        with self.assertRaises(ValueError):
+            corr.supprimer(self.m, self.u)
+        self.assertTrue(Mouvement.objects.filter(numero=500).exists())
 
     def test_verrou_exercice_clos(self):
         Exercice.objects.filter(libelle="2026").update(clos=True)
@@ -1331,6 +1347,16 @@ class EcransCorrections(TestCase):
         self.assertContains(self.client.get("/mouvement/rappel/?numero=9999"), "Aucun mouvement n° 9999")
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
+
+    def test_bouton_supprimer(self):
+        self.client.get("/ecritures/?tri=debit&ordre=desc")
+        self.assertContains(self.client.get("/mouvement/500/"), "Supprimer")
+        self.assertContains(self.client.get("/mouvement/500/modifier/"), "Supprimer l'écriture")
+        self.assertEqual(self.client.get("/mouvement/500/supprimer/").status_code, 302)    # GET : rien n'est supprimé
+        self.assertTrue(Mouvement.objects.filter(numero=500).exists())
+        r = self.client.post("/mouvement/500/supprimer/")
+        self.assertRedirects(r, "/ecritures/?tri=debit&ordre=desc", fetch_redirect_response=False)
+        self.assertFalse(Mouvement.objects.filter(numero=500).exists())
 
     def test_retour_a_la_liste(self):
         """Fiche du mouvement, modification, abandon : retour à la dernière liste consultée, filtres compris, même après

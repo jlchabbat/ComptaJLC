@@ -72,7 +72,8 @@ def _liberer(ligne):
 def modifier(m, date, journal, lignes, motif, utilisateur):
     if verrou(m):
         raise ValueError(verrou(m))
-    erreurs = controler(date, journal, lignes) + ([] if motif.strip() else ["Indiquer le motif de la correction."])
+    motif = motif.strip() or "correction"                 # facultatif : avant / après restent dans l'historique
+    erreurs = controler(date, journal, lignes)
     if erreurs:
         raise ValueError(" ".join(erreurs))
     avant = f"{m.date:%d/%m/%Y} {m.journal_id} · " + resume(m.lignes.all())
@@ -106,7 +107,8 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
 @transaction.atomic
 def creer(date, journal, lignes, motif, utilisateur):
     """Écriture libre (opération diverse, correction)."""
-    erreurs = controler(date, journal, lignes) + ([] if motif.strip() else ["Indiquer l'objet de l'écriture."])
+    motif = motif.strip() or "écriture libre"
+    erreurs = controler(date, journal, lignes)
     if erreurs:
         raise ValueError(" ".join(erreurs))
     m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal=journal, piece=Mouvement.prochaine_piece(),
@@ -119,3 +121,42 @@ def creer(date, journal, lignes, motif, utilisateur):
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",
                                 objet=f"Mvt {m.numero} – {motif.strip()}"[:200], apres=resume(m.lignes.all()))
     return m
+
+
+def refus_suppression(m):
+    """Raison pour laquelle le mouvement ne peut pas être supprimé, ou ''."""
+    if verrou(m):
+        return verrou(m)
+    if Exercice.objects.filter(mouvement_an=m).exists():
+        return "À-nouveaux d'un exercice : ne se suppriment pas."
+    return ""
+
+
+@transaction.atomic
+def supprimer(m, utilisateur):
+    """Supprime le mouvement (trésorier) : ses lignes sortent des pointages et lettrages, ses justificatifs sont effacés,
+    une ligne de fiche bénévole reportée redevient à reporter. L'avant reste dans l'historique."""
+    from . import justificatifs
+    from .models import LigneFiche
+    refus = refus_suppression(m)
+    if refus:
+        raise ValueError(refus)
+    avant = f"{m.date:%d/%m/%Y} {m.journal_id} pièce {m.piece} · " + resume(m.lignes.select_related("compte", "anal2"))
+    for l in m.lignes.all():
+        _liberer(l)
+    fichiers = [justificatifs.chemin(j) for j in m.justificatifs.all()]
+    from .models import Fiche
+    fiches = list(Fiche.objects.filter(lignes__mouvement=m, statut="reportee").distinct())
+    LigneFiche.objects.filter(mouvement=m).update(mouvement=None)
+    for f in fiches:                                      # la ligne est à reporter de nouveau
+        f.statut = "transmise"
+        f.save(update_fields=["statut"])
+    numero = m.numero
+    m.delete()
+    for f in fichiers:
+        if f and f.exists():
+            f.unlink()
+    Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Suppression",
+                                objet=f"Mvt {numero}", avant=avant[:300],
+                                apres=f"{len(fichiers)} justificatif(s) effacé(s)" if fichiers else "")
+    return numero

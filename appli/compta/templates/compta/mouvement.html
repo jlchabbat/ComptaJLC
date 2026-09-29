@@ -2,7 +2,9 @@
 <h1>Mouvement {{ m.numero }}</h1>
 <div class="barre">{% bouton_retour %}
 {% if perms.compta.change_mouvement %}{% if verrou %}<span class="aide">{{ verrou }}</span>{% else %}
-<a class="bouton principal" href="{% url 'mouvement_modifier' m.numero %}">Modifier</a>{% endif %}{% endif %}</div>
+<a class="bouton principal" href="{% url 'mouvement_modifier' m.numero %}">Modifier</a>
+{% if not refus_suppression_mvt %}<form method="post" action="{% url 'mouvement_supprimer' m.numero %}" style="display:inline">{% csrf_token %}
+<button onclick="return confirm('Supprimer le mouvement {{ m.numero }} ?{% if justificatifs %} Ses justificatifs seront effacés aussi.{% endif %}')">Supprimer</button></form>{% endif %}{% endif %}{% endif %}</div>
 <div class="carte">Date {{ m.date|date:"d/m/Y" }} · journal {{ m.journal }} · pièce {{ m.piece }} · origine {{ m.get_origine_display }}{% if m.cree_par %} · saisi par {{ m.cree_par }}{% endif %}
 {% if m.commentaire %}<div class="aide" style="white-space:pre-line;margin-top:6px">{{ m.commentaire }}</div>{% endif %}</div>
 <table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Axe 2</th><th>Let</th><th>Pointage</th></tr>

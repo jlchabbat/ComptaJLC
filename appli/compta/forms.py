@@ -266,7 +266,7 @@ class AttribuerForm(forms.Form):
 class EnteteMouvementForm(forms.Form):
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     journal = forms.ModelChoiceField(Journal.objects.filter(actif=True))
-    motif = forms.CharField(max_length=150, label="Motif (obligatoire, gardé dans l'historique)")
+    motif = forms.CharField(max_length=150, required=False, label="Motif (facultatif)")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)

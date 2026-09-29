@@ -26,6 +26,7 @@ urlpatterns = [
     path("justificatif/<int:pk>/copier/", vues_justificatifs.copier, name="justificatif_copier"),
     path("mouvement/<int:numero>/", views.mouvement, name="mouvement"),
     path("mouvement/<int:numero>/modifier/", vues_corrections.modifier, name="mouvement_modifier"),
+    path("mouvement/<int:numero>/supprimer/", vues_corrections.supprimer, name="mouvement_supprimer"),
     path("mouvement/rappel/", vues_corrections.rappeler, name="mouvement_rappel"),
     path("mouvement/nouveau/", vues_corrections.nouveau, name="mouvement_nouveau"),
     path("grand-livre/", views.grand_livre, name="grand_livre"),

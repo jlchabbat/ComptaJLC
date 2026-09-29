@@ -95,6 +95,11 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
   filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
+- **Corriger ou supprimer une écriture** (trésorier) : Saisie › Modifier une écriture (n° de Mvt), ou boutons Modifier /
+  Supprimer de la fiche du mouvement ; motif facultatif ; l'avant et l'après restent dans l'historique. Refusé dans un
+  exercice clos et pour les à-nouveaux. Une suppression dépointe les lignes, efface les justificatifs du mouvement et
+  remet à reporter la ligne de fiche bénévole d'origine. Chaque fiche a un bouton « ← Retour à la liste » (dernière
+  liste consultée, filtres compris).
 - **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
   fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
   seul cas coché d'office ; « Mvt 389 », « Pièce 739 », numéro seul,
