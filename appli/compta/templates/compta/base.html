@@ -9,7 +9,7 @@ function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se 
   return true; }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
   document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
-<body>
+<body{% if not deux_axes %} class="un-seul-axe"{% endif %}>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
 <nav class="menus">
@@ -32,7 +32,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
 {% url 'analytique' as u %}<a href="{{ u }}?axe=1" {% if request.path == u and request.GET.axe != "2" %}class="actif"{% endif %}>Analytique – Nature (axe 1)</a>
-<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>
+{% if deux_axes %}<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>{% endif %}
 </div></div>
 <div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
@@ -44,7 +44,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 </div></div>{% endif %}
 <div class="menu m-editions"><button type="button">Éditions ▾</button><div class="sous">
 {% if perms.compta.view_mouvement %}{% url 'situation' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Situation financière</a>
-{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code (axe 1 / axe 2)</a>
+{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code{% if deux_axes %} (axe 1 / axe 2){% endif %}</a>
 {% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>

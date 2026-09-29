@@ -1348,6 +1348,20 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
 
+    def test_un_seul_axe(self):
+        """Réglage un_seul_axe : l'axe 2 disparaît des menus et des écrans ; une ligne sans axe 2 reçoit le code d'office."""
+        self.assertContains(self.client.get("/"), "Analytique – Objet (axe 2)")
+        Reglage.objects.create(cle="un_seul_axe", valeur="oui")
+        r = self.client.get("/")
+        self.assertNotContains(r, "Analytique – Objet (axe 2)")
+        self.assertContains(r, '<body class="un-seul-axe">')
+        data = {"date": "2026-03-01", "journal": "B1", "motif": "", "l-TOTAL_FORMS": "2", "l-INITIAL_FORMS": "2",
+                "l-MIN_NUM_FORMS": "0", "l-MAX_NUM_FORMS": "1000",
+                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15",
+                "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15"}
+        self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
+        self.assertEqual({l.anal2_id for l in Mouvement.objects.get(numero=500).lignes.all()}, {"GEN"})
+
     def test_bouton_supprimer(self):
         self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertContains(self.client.get("/mouvement/500/"), "Supprimer")

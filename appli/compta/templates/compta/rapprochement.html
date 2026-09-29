@@ -12,11 +12,11 @@
 libellé), puis <b>Créer les écritures</b>. Chaque écriture créée est reliée à sa ligne, qui disparaît de la liste : pas de double écriture possible.
 Les lignes laissées vides restent à faire.</p>{% endif %}
 <form method="post" id="affectation">{% csrf_token %}
-<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>Code axe 2</th><th>Déjà en compta ?</th>{% endif %}</tr>
+<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>{% if deux_axes %}Code axe 2{% endif %}</th><th>Déjà en compta ?</th>{% endif %}</tr>
 {% for x in lignes %}<tr><td>{{ x.l.date|date:"d/m/Y" }}</td><td title="{{ x.l.operation }}">{% if x.l.traduction == "À traduire" %}<span dir="rtl">{{ x.l.operation }}</span> <span class="aide">(à traduire)</span>{% else %}{{ x.l.traduction }}{% endif %}{% if x.l.reference %} <span class="aide">réf. {{ x.l.reference }}</span>{% endif %}</td>
 <td class="n {% if x.l.montant < 0 %}neg{% endif %}">{{ x.l.montant|shekel }}</td>
 {% if peut %}<td><input name="compte_{{ x.l.pk|stringformat:'d' }}" list="comptes" value="{{ x.compte }}" autocomplete="off" placeholder="Compte ou libellé…" style="min-width:16em"></td>
-<td><input name="anal2_{{ x.l.pk|stringformat:'d' }}" list="codes" value="{{ x.anal2 }}" autocomplete="off" placeholder="Code ou libellé…" style="min-width:12em">
+<td>{% if deux_axes %}<input name="anal2_{{ x.l.pk|stringformat:'d' }}" list="codes" value="{{ x.anal2 }}" autocomplete="off" placeholder="Code ou libellé…" style="min-width:12em">{% endif %}
 {% if x.erreur %}<ul class="erreurs"><li>{{ x.erreur }}</li></ul>{% endif %}</td>
 <td>{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
