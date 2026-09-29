@@ -82,6 +82,21 @@ def voir(request, pk):
 
 @login_required
 @consulter
+def liens_csv(request):
+    """Liste (n° de Mvt ; lien) des documents encore en ligne : sert au script de téléchargement sur le PC."""
+    import csv
+    rep = HttpResponse(content_type="text/csv; charset=utf-8")
+    rep["Content-Disposition"] = 'attachment; filename="Liens_en_ligne.csv"'
+    rep.write("\ufeff")
+    w = csv.writer(rep, delimiter=";")
+    w.writerow(["Mvt", "Lien", "Nom"])
+    for j in Justificatif.objects.exclude(lien="").select_related("mouvement").order_by("mouvement__numero", "id"):
+        w.writerow([j.mouvement.numero, j.lien, j.nom])
+    return rep
+
+
+@login_required
+@consulter
 def tout_telecharger(request):
     """Tous les justificatifs du site dans un seul ZIP (sauvegarde sur le PC)."""
     import datetime

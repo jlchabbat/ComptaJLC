@@ -1,6 +1,7 @@
 """Télécharge, sur votre PC, tous les documents dont un classeur Excel donne le lien, dans un ZIP prêt à déposer dans ComptaBB.
 
-Usage (rien à installer que Python) :   python telecharger_liens.py "EXTRACT.xlsx"
+Usage (rien à installer que Python) :   python telecharger_liens.py "Liens_en_ligne.csv"   (liste exportée par ComptaBB : chaque document
+porte le n° de son mouvement) ou python telecharger_liens.py "EXTRACT.xlsx" (classeur Excel de liens).
 Résultat : un fichier « Documents_<date>.zip » à côté du classeur. Chaque document est nommé « <date> <montant> <libellé>.pdf » :
 ComptaBB le propose alors au mouvement de même date et même montant (Saisie › Justificatifs › Déposer).
 Les liens qui demandent une connexion : être connecté sur le site dans le navigateur ne suffit pas pour ce script ;
@@ -86,11 +87,53 @@ def lire(chemin):
     return resultat
 
 
+def lire_csv(chemin):
+    """Liste des liens en ligne exportée par ComptaBB (« Liste des liens (CSV) ») : [(Mvt, lien)]."""
+    import csv
+    resultat = []
+    with open(chemin, encoding="utf-8-sig", newline="") as f:
+        for ligne in csv.DictReader(f, delimiter=";"):
+            if (ligne.get("Lien") or "").startswith("https://"):
+                resultat.append((int(ligne["Mvt"]), ligne["Lien"]))
+    return resultat
+
+
+def telecharger_csv(chemin):
+    sortie = chemin.rsplit(".", 1)[0] + f"_Documents_{dt.date.today():%Y-%m-%d}.zip"
+    echecs, rang = [], {}
+    liens = lire_csv(chemin)
+    print(f"{len(liens)} lien(s) trouvé(s).")
+    with zipfile.ZipFile(sortie, "w", zipfile.ZIP_DEFLATED) as z:
+        for i, (mvt, lien) in enumerate(liens, 1):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(lien, headers={"User-Agent": "Mozilla/5.0"}), timeout=60) as r:
+                    contenu = r.read()
+            except Exception as e:
+                echecs.append((mvt, lien, str(e)))
+                print(f"  {i}/{len(liens)} Mvt {mvt} ÉCHEC {e}")
+                continue
+            ext = next((e for s, e in SIGNATURES if contenu.startswith(s)), None)
+            if not ext:
+                echecs.append((mvt, lien, "ce n'est ni un PDF ni une image (connexion demandée ?)"))
+                print(f"  {i}/{len(liens)} Mvt {mvt} ÉCHEC : pas un document")
+                continue
+            rang[mvt] = rang.get(mvt, 0) + 1
+            nom = f"{mvt} document{'' if rang[mvt] == 1 else ' (%d)' % rang[mvt]}{ext}"       # « 21 document.pdf » : n° de Mvt en tête
+            z.writestr(nom, contenu)
+            print(f"  {i}/{len(liens)} {nom}")
+    print(f"\nFichier prêt : {sortie}")
+    for mvt, lien, raison in echecs:
+        print(f"  NON TÉLÉCHARGÉ Mvt {mvt} : {lien} - {raison}")
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
         return 1
     chemin = sys.argv[1]
+    if chemin.lower().endswith(".csv"):
+        return telecharger_csv(chemin)
     lignes = lire(chemin)
     print(f"{len(lignes)} lien(s) trouvé(s).")
     sortie = chemin.rsplit(".", 1)[0] + f"_Documents_{dt.date.today():%Y-%m-%d}.zip"
