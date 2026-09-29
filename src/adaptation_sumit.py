@@ -13,6 +13,9 @@ Fichiers produits (dossier de sortie), à importer dans cet ordre :
 Mvt = premier Mvt (1 par défaut) - 1 + N° base ; Pièce = N° base. Une ligne de bilan (classes 1 à 5) prend le code
 axe 2 de la ligne 6/7 de son opération, à défaut le code général (--axe2-defaut, GEN1).
 
+Chaque nouveau tiers prend un compte au préfixe de son type (Membre 411, Fournisseur 401, Amis du Bnei Brith 412 ;
+--type TYPE=PREFIXE pour un autre) : 411LINDA001 d'un ami devient 412LINDA001, dans Tiers.xlsx et dans les écritures.
+
 Tiers : le fichier Tiers existant est respecté. Ses tiers (export Tiers.xlsx du site passé par --tiers-existant, à
 défaut les tiers d'origine « Fichier Tiers » du classeur) ne sont pas repris dans Tiers.xlsx : leurs fiches et
 coordonnées sur le site restent telles quelles. Seuls les nouveaux tiers sont ajoutés.
@@ -35,7 +38,7 @@ RACINE = Path(__file__).resolve().parent.parent
 TIERS = ["Compte", "Type", "Nom", "Prénom", "Adresse", "Code postal", "Ville", "Téléphone", "E-mail",
          "Date d'adhésion", "Statut", "Cotisation annuelle"]
 ECRITURES = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"]
-TYPES_CONNUS = {"Membre", "Fournisseur"}
+PREFIXES_TYPES = {"Membre": "411", "Fournisseur": "401", "Amis du Bnei Brith": "412"}   # types de tiers du site (--type)
 
 
 def _texte(v):
@@ -131,7 +134,7 @@ def _personne(nom, prenom):
     return re.sub(r"[^A-Z]", "", f"{nom}{prenom}".upper())
 
 
-def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None):
+def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None, prefixes_types=None):
     """Renvoie ({nom de fichier: (en-têtes, lignes)}, rapport). existants : fichier Tiers existant ({compte: (nom,
     prénom)}) ; à défaut, les tiers d'origine « Fichier Tiers » du classeur. Les tiers existants ne sont jamais
     repris dans Tiers.xlsx : leurs fiches et coordonnées restent celles du site ; seuls les nouveaux tiers sont ajoutés."""
@@ -177,7 +180,9 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None):
         existants = {_texte(t["Compte"]): (_texte(t["Nom"]), _texte(t["Prénom"])) for t in s["tiers"]
                      if _texte(t["Origine"]) == "Fichier Tiers"}
     personnes = {_personne(*v): c for c, v in existants.items()}
-    tiers, types, gardes = [], Counter(), 0
+    prefixes_types = prefixes_types or PREFIXES_TYPES
+    tiers, types, gardes, renumerotes = [], Counter(), 0, {}
+    pris = {_texte(t["Compte"]) for t in s["tiers"]} | set(existants) | {c[0] for c in plan}
     for t in s["tiers"]:
         compte = _texte(t["Compte"])
         if compte.isdigit():
@@ -192,6 +197,16 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None):
         if homonyme:
             alertes.append(f"Nouveau tiers {compte} ({_texte(t['Nom'])} {_texte(t['Prénom'])}) : même nom que {homonyme} "
                            "du fichier Tiers existant — vérifier s'il s'agit de la même personne.")
+        prefixe = prefixes_types.get(_texte(t["Type"]))
+        if prefixe and not compte.startswith(prefixe):      # compte du préfixe du type : 411LINDA001 → 412LINDA001
+            nouveau, rang = prefixe + compte[3:], 1
+            while nouveau in pris:
+                m = re.match(r"(.*?)(\d+)$", nouveau)
+                rang = int(m.group(2)) + 1 if m else rang + 1
+                nouveau = f"{m.group(1)}{rang:0{len(m.group(2))}d}" if m else f"{prefixe}{compte[3:]}{rang:03d}"
+            pris.add(nouveau)
+            renumerotes[compte] = nouveau
+            compte = nouveau
         types[_texte(t["Type"])] += 1
         tiers.append([compte, _texte(t["Type"]), _texte(t["Nom"]), _texte(t["Prénom"]), _texte(t["Adresse"]),
                       _texte(t["Code postal"]), _texte(t["Ville"]), _texte(t["Téléphone"]), _texte(t["E-mail"]),
@@ -217,6 +232,7 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None):
             alertes.append(f"N° base {n} déséquilibré : débit {td} ≠ crédit {tc}.")
         for e in ls:
             compte = _texte(e["Compte"])
+            compte = renumerotes.get(compte, compte)
             if compte not in connus:
                 alertes.append(f"N° base {n} : compte {compte} absent du Plan et des Tiers.")
             d, c = _montant(e["Débit"]), _montant(e["Crédit"])
@@ -252,16 +268,20 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None):
         f"Codes axe 1 : {len(fichiers['Axe1.xlsx'][1])}, axe 2 : {len(codes2)}, journaux : {len(journaux)}.",
         f"Documents SUMIT rattachés à leur Mvt : {len(liens)}.",
     ]
-    nouveaux = sorted(set(types) - TYPES_CONNUS)
+    if renumerotes:
+        rapport.append(f"Comptes renumérotés d'après le préfixe de leur type de tiers : {len(renumerotes)} ("
+                       + ", ".join(f"{a} → {b}" for a, b in list(renumerotes.items())[:3]) + "…).")
+    nouveaux = sorted(set(types) - set(prefixes_types))
     if nouveaux:
-        rapport.append("À CRÉER AVANT l'import de Tiers.xlsx (Administration › Référentiels › Types de tiers) : "
-                       + ", ".join(f"« {t} » (préfixe 411)" for t in nouveaux) + ".")
+        rapport.append("Types de tiers inconnus (à créer dans Administration › Référentiels › Types de tiers, puis "
+                       "relancer avec --type) : " + ", ".join(f"« {t} »" for t in nouveaux) + ".")
     if hors:
         rapport.append("Dates hors de l'exercice " + str(annees[-1]) + " : " + ", ".join(f"{v} ligne(s) en {a}" for a, v in hors.items())
                        + " — refusées si cet exercice est clos sur le site (RG-04).")
     for r in s["remarques"]:
         if _texte(r["Remarque"]):
-            alertes.append(f"Remarque du classeur — {_texte(r['Tiers SUMIT'])} ({_texte(r['Compte tiers'])}) : {_texte(r['Remarque'])}")
+            c = _texte(r["Compte tiers"])
+            alertes.append(f"Remarque du classeur — {_texte(r['Tiers SUMIT'])} ({renumerotes.get(c, c)}) : {_texte(r['Remarque'])}")
     rapport += alertes or ["Aucune anomalie : chaque opération est équilibrée, tous ses comptes existent."]
     return fichiers, rapport
 
@@ -295,10 +315,14 @@ def main(argv=None):
     p.add_argument("--sortie", default=str(RACINE / "Imports" / "adaptation_sumit"))
     p.add_argument("--premier-mvt", type=int, default=1)
     p.add_argument("--axe2-defaut", default="GEN1")
+    p.add_argument("--type", action="append", default=[], metavar="TYPE=PREFIXE",
+                   help="type de tiers du site et préfixe de ses comptes (s'ajoute à Membre=411, Fournisseur=401, "
+                        "Amis du Bnei Brith=412)")
     p.add_argument("--tiers-existant", help="export Tiers.xlsx du site : ses tiers ne sont ni modifiés ni recréés")
     a = p.parse_args(argv)
     existants = lire_tiers_existants(a.tiers_existant) if a.tiers_existant else None
-    fichiers, rapport = adapter(lire(a.classeur), a.premier_mvt, a.axe2_defaut, existants)
+    types = dict(PREFIXES_TYPES, **dict(t.split("=", 1) for t in a.type))
+    fichiers, rapport = adapter(lire(a.classeur), a.premier_mvt, a.axe2_defaut, existants, types)
     ecrire(fichiers, rapport, Path(a.sortie))
     print("\n".join(rapport))
     print(f"Fichiers écrits dans {a.sortie}")
