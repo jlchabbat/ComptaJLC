@@ -1,7 +1,6 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ fiche.titre }}{% endblock %}{% block contenu %}
-<p><a href="{% url 'fiches' %}">← Fiches bénévoles</a></p>
 <div class="entete-fiche"><h1>{{ fiche.titre }}</h1><span class="statut {% if fiche.statut == 'reportee' %}OK{% else %}Info{% endif %}">{{ fiche.get_statut_display }}</span></div>
-<form method="post" class="barre">{% csrf_token %}
+<form method="post" class="barre">{% csrf_token %}{% bouton_retour "fiche" %}
 {% if saisie and fiche.statut == "ouverte" %}<button name="transmettre" value="1" onclick="return confirm('Transmettre la fiche au trésorier ? Les bénévoles ne pourront plus la modifier.')">Transmettre au trésorier</button>{% endif %}
 {% if tresorier %}{% if fiche.statut != "ouverte" %}<button name="rouvrir" value="1">Rouvrir aux bénévoles</button>{% endif %}
 {% if a_reporter %}<button class="principal" name="reporter" value="1" {% if a_corriger %}disabled title="{{ a_corriger }} ligne(s) à corriger"{% endif %}

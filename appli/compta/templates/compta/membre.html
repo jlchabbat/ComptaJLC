@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ m }}{% endblock %}{% block contenu %}
-<p><a href="{% url 'membres' %}">← Tiers</a></p>
 <div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.type|default:"Tiers" }}{% if m.est_membre %} · {{ m.get_statut_display }}{% endif %}</span></div>
-<div class="barre">{% if peut %}<button form="lettrage" class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
+<div class="barre">{% bouton_retour %}
+{% if peut %}<button form="lettrage" class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
 <button form="lettrage" name="lettrage_auto" value="1">Lettrage automatique</button>
 <span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>{% endif %}{% if form %}<button form="f-membre" name="enregistrer" value="1">Enregistrer la fiche</button>{% endif %}</div>
 <p>Compte {{ m.compte_id }}{% if m.adresse_complete %} · {{ m.adresse_complete }}{% endif %}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}

@@ -6,12 +6,17 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from . import corrections as moteur
 from .forms import EnteteMouvementForm, LignesMouvementFormSet
 from .models import Mouvement
 
 corriger = permission_required("compta.change_mouvement", raise_exception=True)
+
+
+def vers_mouvement(numero):
+    return reverse("mouvement", args=[numero])
 
 
 def lire_lignes(formset):
@@ -26,6 +31,8 @@ def lire_lignes(formset):
 
 
 def editer(request, m=None):
+    from .retour import adresse
+    retour = adresse(request, "mouvement")
     if request.method == "POST":
         entete = EnteteMouvementForm(request.POST)
         formset = LignesMouvementFormSet(request.POST, prefix="l")
@@ -38,7 +45,7 @@ def editer(request, m=None):
                 else:
                     m = moteur.creer(c["date"], c["journal"], lire_lignes(formset), c["motif"], request.user)
                     messages.success(request, f"Mouvement {m.numero} créé.")
-                return redirect("mouvement", m.numero)
+                return redirect(vers_mouvement(m.numero))
             except ValueError as e:
                 messages.error(request, str(e))
     else:
@@ -50,7 +57,7 @@ def editer(request, m=None):
         else:
             entete = EnteteMouvementForm(initial={"date": dt.date.today()})
             formset = LignesMouvementFormSet(prefix="l")
-    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset})
+    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset, "retour": retour})
 
 
 @login_required

@@ -70,6 +70,7 @@ MIDDLEWARE = [
     "compta.demarrage.DemarrageMiddleware",
     "compta.licence.LicenceMiddleware",
     "compta.export_pages.ExportExcelMiddleware",
+    "compta.retour.MemoireListesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

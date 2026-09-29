@@ -1332,6 +1332,19 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
 
+    def test_retour_a_la_liste(self):
+        """Fiche du mouvement, modification, abandon : retour à la dernière liste consultée, filtres compris, même après
+        un enregistrement ; à défaut, la liste des écritures."""
+        self.assertContains(self.client.get("/mouvement/500/"), 'href="/ecritures/">← Retour à la liste')
+        self.client.get("/grand-livre/?compte=512000")
+        self.client.get("/ecritures/?tri=debit&ordre=desc")
+        attendu = 'href="/ecritures/?tri=debit&amp;ordre=desc"'
+        self.assertContains(self.client.get("/mouvement/500/"), attendu)
+        self.assertContains(self.client.get("/mouvement/500/modifier/"), attendu + ' title="Quitter sans rien enregistrer')
+        self.client.get("/grand-livre/?compte=600100")                            # liste la plus récente
+        self.assertContains(self.client.get("/mouvement/500/"), 'href="/grand-livre/?compte=600100">← Retour')
+        self.assertContains(self.client.get("/mouvement/rappel/"), 'href="/ecritures/">Abandonner')
+
     def test_tri_et_droits(self):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête

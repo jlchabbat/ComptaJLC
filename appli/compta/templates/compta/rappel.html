@@ -1,6 +1,7 @@
 {% extends "compta/base.html" %}{% block titre %}Modifier une écriture{% endblock %}{% block contenu %}
 <h1>Modifier une écriture</h1>
-<div class="barre"><button form="f-rappel" class="principal">Rappeler l'écriture</button></div>
+<div class="barre"><button form="f-rappel" class="principal">Rappeler l'écriture</button>
+<a class="bouton" href="{% url 'ecritures' %}">Abandonner</a></div>
 <form method="get" class="carte" id="f-rappel"><div class="formulaire">
 <label for="numero">N° de mouvement</label><div><input type="number" id="numero" name="numero" min="1" value="{{ numero }}" autofocus required></div></div>
 <p class="aide">Le numéro figure dans Écritures, le grand livre et les journaux. L'écriture s'ouvre en modification ; un motif est demandé et l'avant / après est gardé dans l'historique.</p></form>
