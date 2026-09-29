@@ -47,7 +47,7 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 <form method="post" id="f-classer">{% csrf_token %}
 <div class="barre"><button class="principal" name="rattacher" value="1" data-confirme="">Rattacher les lignes cochées</button>
 <button name="ecarter_coches" value="1" formnovalidate data-confirme="Supprimer définitivement les documents cochés">Supprimer les lignes cochées</button>
-<label title="Le document déposé prend la place du lien du même mouvement (le lien avec l'écriture est conservé)"><input type="checkbox" name="remplacer_liens" value="1"> Remplacer les liens du mouvement</label></div>
+<label title="Le document déposé prend la place du lien du même mouvement (le lien avec l'écriture est conservé)"><input type="checkbox" name="remplacer_liens" value="1"> Le fichier remplace l'ancien lien du mouvement</label></div>
 <table class="triable"><tr><th><input type="checkbox" class="tout" title="Tout cocher / tout décocher"></th><th>Document</th><th>Mvt</th><th>Mouvement proposé</th><th class="n">Total du Mvt</th><th>Raison</th><th>Description</th></tr>
 {% for l in lignes %}<tr>
 <td style="text-align:center"><input type="checkbox" name="garder_{{ forloop.counter0 }}" value="1" {% if l.sur %}checked{% endif %}></td>
