@@ -11,9 +11,12 @@
 #f-classer .lib2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 34em; }
 #f-classer button { font-size: 12px; padding: 1px 6px; }
 #f-rattaches { font-size: 12.5px; } #f-rattaches th, #f-rattaches td { padding: 1px 5px; line-height: 1.2; } #f-rattaches button { font-size: 13px; }
+.barre { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; }
+.barre button, .barre a.bouton { flex: none; }
+#f-classer .barre, #f-rattaches .barre { position: sticky; top: 0; }
 </style>
 <h1>Justificatifs existants</h1>
-<div class="barre" style="position:static"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a></div>
+<div class="barre"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a></div>
 <form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
       onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
 <input type="hidden" name="deposer" value="1">
@@ -62,7 +65,7 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 {% else %}<p class="aide">Aucun document en attente.</p>{% endif %}
 
 <h2 id="rattaches">3. Liste des documents déjà rattachés ({{ nb_rattaches }})</h2>
-<form method="get" class="barre" style="position:static"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
+<form method="get" class="barre"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
 <button>Chercher</button>{% if q %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tout voir</a>{% endif %}</form>
 {% if rattaches %}
 <p class="aide"><b>Comment faire :</b> 1. Cochez les documents. 2. <b>Détacher</b> = le document retourne au paragraphe 2, prêt à être rattaché ailleurs.
