@@ -2558,6 +2558,14 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertTrue(any(n.endswith("facture.pdf") for n in noms))
         self.assertIn("Liens.txt", noms)
 
+    def test_liste_des_liens_csv(self):
+        self.client.force_login(self.u)
+        m = Mouvement.objects.get(numero=5)
+        Justificatif.objects.create(mouvement=m, lien="https://documents.exemple.org/fichier/aaa/", nom="Document en ligne")
+        r = self.client.get("/justificatifs/liens.csv")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("5;https://documents.exemple.org/fichier/aaa/;Document en ligne", r.content.decode("utf-8"))
+
     def test_apercu_pdf_en_image(self):
         self.client.force_login(self.u)
         just.deposer("a.pdf", b"%PDF-1.4 pas un vrai pdf")

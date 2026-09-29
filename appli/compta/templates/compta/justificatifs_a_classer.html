@@ -38,7 +38,8 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 
 {% if en_ligne %}<details class="carte" {% if request.GET.en_ligne %}open{% endif %}><summary><b>Documents encore en ligne ({{ en_ligne }})</b> — cliquer pour afficher</summary>
 <form method="post">{% csrf_token %}
-<div class="barre"><button class="principal" name="rapatrier" value="1">Les enregistrer sur le site</button></div>
+<div class="barre"><button class="principal" name="rapatrier" value="1">Les enregistrer sur le site</button>
+<a class="bouton" href="{% url 'justificatifs_liens_csv' %}" title="Pour les télécharger sur le PC avec le script telecharger_liens.py">Liste des liens (CSV)</a></div>
 <p class="mini">Liens 🔗 : 25 documents copiés sur le site par clic ; recommencer jusqu'à zéro. Un lien refusé reste en place.</p></form></details>{% endif %}
 
 <h2 id="a-verifier">2. Vérifier et rattacher ({{ lignes|length }} document{{ lignes|length|pluralize }} à classer)</h2>

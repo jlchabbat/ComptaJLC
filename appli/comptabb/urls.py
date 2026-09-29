@@ -21,6 +21,7 @@ urlpatterns = [
     path("mouvement/<int:numero>/justificatifs/", vues_justificatifs.ajouter, name="justificatif_ajouter"),
     path("justificatif/<int:pk>/", vues_justificatifs.voir, name="justificatif"),
     path("justificatifs/tout.zip", vues_justificatifs.tout_telecharger, name="justificatifs_tout"),
+    path("justificatifs/liens.csv", vues_justificatifs.liens_csv, name="justificatifs_liens_csv"),
     path("justificatifs/a-classer/", vues_justificatifs.a_classer, name="justificatifs_a_classer"),
     path("justificatifs/a-classer/voir/", vues_justificatifs.voir_a_classer, name="justificatif_a_classer_voir"),
     path("justificatif/<int:pk>/supprimer/", vues_justificatifs.supprimer, name="justificatif_supprimer"),
