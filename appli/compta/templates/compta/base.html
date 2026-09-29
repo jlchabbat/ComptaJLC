@@ -5,7 +5,7 @@
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
 <script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
-  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script></head>
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
 <body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
