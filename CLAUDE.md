@@ -35,6 +35,9 @@ un site par association (étape 1 : application générique, réglages par site)
 - `src/classeur_liaison.py` : fichier de liaison bénévole (Activité, Gestion, Tiers,
   Export vers Transmission), formules simples testées par `tests/recette_liaison.py`.
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
+- `src/adaptation_sumit.py` : extrait SUMIT retravaillé → fichiers d'import de l'appli web
+  (Imports/adaptation_sumit/) et liens des documents SUMIT par Mvt ; le fichier Tiers existant et ses
+  données sont respectés (seuls les nouveaux tiers sont exportés).
 - `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
   AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour
