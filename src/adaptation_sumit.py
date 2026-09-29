@@ -209,7 +209,9 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None, prefixes_types
             renumerotes[compte] = nouveau
             compte = nouveau
         types[_texte(t["Type"])] += 1
-        tiers.append([compte, _texte(t["Type"]), _texte(t["Nom"]), _texte(t["Prénom"]), _texte(t["Adresse"]),
+        # autre type que Membre ou Fournisseur : colonne vide, le site le trouve d'après le préfixe du compte (412…)
+        type_ecrit = _texte(t["Type"]) if _texte(t["Type"]) in ("Membre", "Fournisseur") else ""
+        tiers.append([compte, type_ecrit, _texte(t["Nom"]), _texte(t["Prénom"]), _texte(t["Adresse"]),
                       _texte(t["Code postal"]), _texte(t["Ville"]), _texte(t["Téléphone"]), _texte(t["E-mail"]),
                       _jour(t["Date d'adhésion"]) or None, _texte(t["Statut"]),
                       t["Cotisation annuelle"] if t["Cotisation annuelle"] not in (None, "") else None])
