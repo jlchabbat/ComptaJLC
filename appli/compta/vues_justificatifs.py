@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from . import justificatifs as moteur
@@ -65,6 +66,7 @@ def ajouter(request, numero):
 
 @login_required
 @consulter
+@xframe_options_sameorigin
 def voir(request, pk):
     j = get_object_or_404(Justificatif.objects.select_related("mouvement"), pk=pk)
     if j.lien:                                            # document resté en ligne (SUMIT…)
@@ -133,6 +135,8 @@ def a_classer(request):
             messages.success(request, f"{faits} document(s) copié(s) sur le site ; {restent} encore en ligne.")
             for e in erreurs[:20]:
                 messages.error(request, e)
+        elif request.POST.get("action_rattaches"):
+            return _actions_rattaches(request, auteur)
         elif "deposer" in request.POST:
             n, refus = 0, []
             for f in request.FILES.getlist("fichiers"):
@@ -167,6 +171,13 @@ def a_classer(request):
             for e in erreurs[:20]:
                 messages.error(request, e)
         return redirect("justificatifs_a_classer")
+    q = request.GET.get("q", "").strip()
+    rattaches = Justificatif.objects.select_related("mouvement").order_by("-mouvement__numero", "id")
+    if q:
+        nums = moteur.numeros(q)
+        rattaches = rattaches.filter(mouvement__numero__in=nums) if q.replace("+", "").replace(" ", "").isdigit() and nums \
+            else rattaches.filter(nom__icontains=q)
+    nb_rattaches = rattaches.count()
     lignes = moteur.a_classer()
     for l in lignes:
         m = l["mouvement"]
@@ -177,10 +188,45 @@ def a_classer(request):
     from django.shortcuts import render
     return render(request, "compta/justificatifs_a_classer.html", {
         "en_ligne": Justificatif.objects.exclude(lien="").count(),
+        "rattaches": rattaches[:200], "nb_rattaches": nb_rattaches, "q": q,
+        "peut_supprimer": request.user.has_perm("compta.change_mouvement"),
         "lignes": lignes, "proposes": sum(1 for l in lignes if l["mouvement"]), "surs": sum(1 for l in lignes if l["sur"])})
 
 
+def _actions_rattaches(request, auteur):
+    """Désaffecter, supprimer, exporter (ZIP) ou imprimer les documents rattachés cochés."""
+    from django.http import HttpResponse
+    from django.shortcuts import render
+    action = request.POST["action_rattaches"]
+    choisis = list(Justificatif.objects.select_related("mouvement").filter(pk__in=request.POST.getlist("doc")))
+    if not choisis:
+        messages.error(request, "Cochez d'abord au moins un document rattaché.")
+        return redirect("justificatifs_a_classer")
+    if action == "exporter":
+        import datetime
+        rep = HttpResponse(moteur.archive_zip(choisis), content_type="application/zip")
+        rep["Content-Disposition"] = f'attachment; filename="Justificatifs_{datetime.date.today():%Y-%m-%d}.zip"'
+        return rep
+    if action == "imprimer":
+        return render(request, "compta/justificatifs_imprimer.html", {"documents": choisis})
+    if action in ("desaffecter", "supprimer"):
+        if action == "supprimer" and not request.user.has_perm("compta.change_mouvement"):
+            raise PermissionDenied
+        faits = 0
+        for j in choisis:
+            try:
+                (moteur.desaffecter if action == "desaffecter" else moteur.supprimer)(j, auteur)
+                faits += 1
+            except ValueError as e:
+                messages.error(request, f"Mvt {j.mouvement.numero} · {j.nom} : {e}")
+        if faits:
+            messages.success(request, f"{faits} document(s) détaché(s) : ils sont de nouveau dans « Vérifier et rattacher »."
+                             if action == "desaffecter" else f"{faits} document(s) supprimé(s) (inscrit dans l'historique).")
+    return redirect("justificatifs_a_classer")
+
+
 @login_required
+@xframe_options_sameorigin
 def voir_a_classer(request):
     if not (request.user.has_perm("compta.echanger_fichiers") or peut_ajouter(request.user)):   # aperçu depuis le mouvement
         raise PermissionDenied
