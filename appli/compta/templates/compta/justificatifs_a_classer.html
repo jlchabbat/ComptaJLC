@@ -20,7 +20,7 @@ h1 { margin: 4px 0; } h2 { margin: 8px 0 4px; font-size: 17px; } .carte { paddin
 .barre { margin-bottom: 4px; padding: 4px 0; }
 </style>
 <h1>Justificatifs existants</h1>
-<div class="barre"><a class="bouton" href="#rattaches">Liste des documents déjà rattachés ({{ nb_rattaches }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a>
+<div class="barre"><a class="bouton" href="?rattaches=1#rattaches">Liste des documents déjà rattachés ({{ nb_total }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a>
 <a class="bouton" href="{% url 'justificatifs_tout' %}" title="Copie de sécurité de tous les justificatifs du site">Tout télécharger (ZIP)</a></div>
 <form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
       onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
@@ -62,9 +62,10 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 </form>
 {% else %}<p class="aide">Aucun document en attente.</p>{% endif %}
 
-<h2 id="rattaches">3. Liste des documents déjà rattachés ({{ nb_rattaches }})</h2>
-<form method="get" class="barre"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
-<button>Chercher</button>{% if q %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tout voir</a>{% endif %}</form>
+<h2 id="rattaches">3. Documents déjà rattachés ({{ nb_total }})</h2>
+{% if not afficher %}<div class="barre"><a class="bouton principal" href="?rattaches=1#rattaches">Afficher la liste</a></div>
+{% else %}<form method="get" class="barre"><input type="hidden" name="rattaches" value="1"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
+<button>Chercher</button>{% if q %}<a class="bouton" href="?rattaches=1#rattaches">Tout voir</a>{% endif %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Masquer la liste</a></form>
 {% if rattaches %}
 <p class="mini">Cochez, puis <b>Détacher</b> (retour au 2), <b>Supprimer</b>, <b>Exporter</b> (ZIP) ou <b>Imprimer</b>.{% if nb_rattaches > 200 %} 200 premiers affichés : affinez la recherche.{% endif %}</p>
 <form method="post" id="f-rattaches">{% csrf_token %}
@@ -78,7 +79,7 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 <td><a href="{% url 'justificatif' j.pk %}" {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %} target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a></td>
 <td>{{ j.description }}</td><td>{{ j.ajoute_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>
 </form>
-{% else %}<p class="aide">Aucun document rattaché{% if q %} pour cette recherche{% endif %}.</p>{% endif %}
+{% else %}<p class="aide">Aucun document rattaché{% if q %} pour cette recherche{% endif %}.</p>{% endif %}{% endif %}
 <script>
 // Sélection : la case de l'en-tête coche tout ; les boutons agissent sur les lignes cochées seulement (nombre rappelé avant toute suppression).
 document.querySelectorAll('form#f-classer, form#f-rattaches').forEach(function (f) {

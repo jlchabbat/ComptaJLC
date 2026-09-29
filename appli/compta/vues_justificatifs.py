@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
@@ -207,6 +208,7 @@ def a_classer(request):
         nums = moteur.numeros(q)
         rattaches = rattaches.filter(mouvement__numero__in=nums) if q.replace("+", "").replace(" ", "").isdigit() and nums \
             else rattaches.filter(nom__icontains=q)
+    afficher = bool(q or request.GET.get("rattaches"))          # la liste ne s'affiche que sur demande
     nb_rattaches = rattaches.count()
     lignes = moteur.a_classer()
     for l in lignes:
@@ -218,7 +220,8 @@ def a_classer(request):
     from django.shortcuts import render
     return render(request, "compta/justificatifs_a_classer.html", {
         "en_ligne": Justificatif.objects.exclude(lien="").count(),
-        "rattaches": rattaches[:200], "nb_rattaches": nb_rattaches, "q": q,
+        "rattaches": rattaches[:200] if afficher else [], "nb_rattaches": nb_rattaches, "q": q, "afficher": afficher,
+        "nb_total": nb_rattaches if not q else Justificatif.objects.count(),
         "peut_supprimer": request.user.has_perm("compta.change_mouvement"),
         "lignes": lignes, "proposes": sum(1 for l in lignes if l["mouvement"]), "surs": sum(1 for l in lignes if l["sur"])})
 
@@ -231,7 +234,7 @@ def _actions_rattaches(request, auteur):
     choisis = list(Justificatif.objects.select_related("mouvement").filter(pk__in=request.POST.getlist("doc")))
     if not choisis:
         messages.error(request, "Cochez d'abord au moins un document rattaché.")
-        return redirect("justificatifs_a_classer")
+        return redirect(reverse("justificatifs_a_classer") + "?rattaches=1#rattaches")
     if action == "exporter":
         import datetime
         rep = HttpResponse(moteur.archive_zip(choisis), content_type="application/zip")
@@ -252,7 +255,7 @@ def _actions_rattaches(request, auteur):
         if faits:
             messages.success(request, f"{faits} document(s) détaché(s) : ils sont de nouveau dans « Vérifier et rattacher »."
                              if action == "desaffecter" else f"{faits} document(s) supprimé(s) (inscrit dans l'historique).")
-    return redirect("justificatifs_a_classer")
+    return redirect(reverse("justificatifs_a_classer") + "?rattaches=1#rattaches")
 
 
 @login_required

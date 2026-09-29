@@ -2563,6 +2563,7 @@ class JustificatifsExistants(TransactionTestCase):
         just.deposer("a.pdf", b"%PDF-1.4 a")
         just.deposer("b.pdf", b"%PDF-1.4 b")
         noms = [l["nom"] for l in just.a_classer()]
+        self.assertNotContains(self.client.get("/justificatifs/a-classer/"), 'id="f-rattaches"')      # liste sur demande seulement
         self.client.post("/justificatifs/a-classer/", {"ecarter_coches": "1", "nom": noms, "garder_0": "1"})
         self.assertEqual([l["nom"] for l in just.a_classer()], [noms[1]])
 
