@@ -3,7 +3,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -72,6 +72,10 @@ def voir(request, pk):
     fichier = moteur.chemin(j)
     if not fichier.exists():
         raise Http404("Fichier introuvable sur le serveur.")
+    if "apercu" in request.GET:
+        png = moteur.apercu_png(fichier)
+        if png:
+            return HttpResponse(png, content_type="image/png")
     return FileResponse(open(fichier, "rb"), as_attachment="telecharger" in request.GET, filename=j.nom,
                         content_type=moteur.type_mime(j))
 
@@ -275,5 +279,9 @@ def voir_a_classer(request):
     except ValueError:
         raise Http404
     import mimetypes
+    if "apercu" in request.GET:
+        png = moteur.apercu_png(f)
+        if png:
+            return HttpResponse(png, content_type="image/png")
     return FileResponse(open(f, "rb"), filename=moteur.nom_affiche(f.name),
                         content_type=mimetypes.guess_type(f.name)[0] or "application/octet-stream")

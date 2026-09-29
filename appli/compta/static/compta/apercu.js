@@ -16,9 +16,12 @@
     if (!l) return;
     clearTimeout(minuteur);
     minuteur = setTimeout(function () {
-      var u = l.getAttribute("data-apercu"), image = /\.(jpe?g|png|gif|webp)$/i.test(l.getAttribute("data-nom") || ""), b = panneau();
-      b.innerHTML = image ? '<img src="' + u + '" style="width:100%;height:100%;object-fit:contain">'
-                          : '<iframe src="' + u + '#toolbar=0&view=FitH" style="width:100%;height:100%;border:0"></iframe>';
+      var u = l.getAttribute("data-apercu"), b = panneau(), img = document.createElement("img");
+      img.style.cssText = "width:100%;height:100%;object-fit:contain;background:#fff";
+      // un PDF est affiché par sa première page (image) ; si le navigateur ne peut pas, repli sur l'affichage direct
+      img.onerror = function () { b.innerHTML = '<iframe src="' + u + '#toolbar=0&view=FitH" style="width:100%;height:100%;border:0"></iframe>'; };
+      img.src = u + (u.indexOf("?") < 0 ? "?" : "&") + "apercu=1";
+      b.innerHTML = ""; b.appendChild(img);
       b.style.display = "block";
     }, 250);
   });
