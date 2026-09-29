@@ -266,6 +266,47 @@ def supprimer(j, auteur=""):
         fichier.unlink()
 
 
+def desaffecter(j, auteur=""):
+    """Détache le document du mouvement et le remet dans « à classer » (rien n'est perdu). Lève ValueError si refusé."""
+    refus = refus_suppression(j)
+    if refus:
+        raise ValueError(refus.replace("ne se suppriment plus", "ne se détachent plus"))
+    numero, nom = j.mouvement.numero, j.nom
+    if j.lien:
+        import uuid
+        ecrire_liens(lire_liens() + [{"id": uuid.uuid4().hex[:10], "lien": j.lien, "description": nom, "date": "",
+                                      "montant": "", "feuille": "Lien détaché"}])
+        fichier = None
+    else:
+        fichier = chemin(j)
+        if not fichier or not fichier.exists():
+            raise ValueError(f"Fichier de « {nom} » introuvable sur le site.")
+        _deposer_un(nom, fichier.read_bytes())
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Justificatif détaché du mouvement",
+                                objet=f"Mvt {numero}", avant=f"{nom} {j.description}"[:300])
+    j.delete()
+    if fichier:
+        fichier.unlink()
+
+
+def archive_zip(justificatifs):
+    """ZIP en mémoire des documents choisis (Mvt<n°>_<rang>_<nom>) ; les liens vont dans Liens.txt."""
+    import io
+    import zipfile
+    tampon, liens = io.BytesIO(), []
+    with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as z:
+        for j in justificatifs:
+            if j.lien:
+                liens.append(f"Mvt {j.mouvement.numero} · {j.nom} : {j.lien}")
+                continue
+            f = chemin(j)
+            if f and f.exists():
+                z.write(f, f.name)
+        if liens:
+            z.writestr("Liens.txt", "\n".join(liens))
+    return tampon.getvalue()
+
+
 # ---------------------------------------------------------------- documents existants : dépôt, proposition, rattachement
 
 def a_classer_dossier():

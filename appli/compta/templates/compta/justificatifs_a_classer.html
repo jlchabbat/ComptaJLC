@@ -10,6 +10,7 @@
 #f-classer input[name^=desc_] { font-size: 12.5px; padding: 0 3px; }
 #f-classer .lib2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 34em; }
 #f-classer button { font-size: 12px; padding: 1px 6px; }
+#f-rattaches { font-size: 12.5px; } #f-rattaches th, #f-rattaches td { padding: 1px 5px; line-height: 1.2; } #f-rattaches button { font-size: 13px; }
 </style>
 <h1>Justificatifs existants</h1>
 <form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
@@ -58,4 +59,25 @@ Message « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo 
 </tr>{% endfor %}</table>
 </form>
 {% else %}<p class="aide">Aucun document en attente.</p>{% endif %}
+
+<h2>3. Documents déjà rattachés ({{ nb_rattaches }})</h2>
+<form method="get" class="barre" style="position:static"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
+<button>Chercher</button>{% if q %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tout voir</a>{% endif %}</form>
+{% if rattaches %}
+<p class="aide"><b>Comment faire :</b> 1. Cochez les documents. 2. <b>Détacher</b> = le document retourne au paragraphe 2, prêt à être rattaché ailleurs.
+<b>Supprimer</b> = effacé définitivement. <b>Exporter</b> = fichier ZIP. <b>Imprimer</b> = page prête à imprimer. {% if nb_rattaches > 200 %}Les 200 premiers sont affichés : affinez la recherche.{% endif %}</p>
+<form method="post" id="f-rattaches">{% csrf_token %}
+<div class="barre"><button name="action_rattaches" value="desaffecter" onclick="return confirm('Détacher les documents cochés de leur mouvement ?')">Détacher du mouvement</button>
+{% if peut_supprimer %}<button name="action_rattaches" value="supprimer" onclick="return confirm('Supprimer définitivement les documents cochés ?')">Supprimer</button>{% endif %}
+<button name="action_rattaches" value="exporter">Exporter (ZIP)</button>
+<button name="action_rattaches" value="imprimer" formtarget="_blank">Imprimer</button>
+<button type="button" onclick="document.querySelectorAll('input[name=doc]').forEach(c => c.checked = true)">Tout cocher</button>
+<button type="button" onclick="document.querySelectorAll('input[name=doc]').forEach(c => c.checked = false)">Tout décocher</button></div>
+<table class="compact"><tr><th></th><th>Mvt</th><th>Document</th><th>Description</th><th>Ajouté</th></tr>
+{% for j in rattaches %}<tr><td><input type="checkbox" name="doc" value="{{ j.pk }}"></td>
+<td><a href="{% url 'mouvement' j.mouvement.numero %}" target="_blank" rel="noopener">{{ j.mouvement.numero }}</a></td>
+<td><a href="{% url 'justificatif' j.pk %}" target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a></td>
+<td>{{ j.description }}</td><td>{{ j.ajoute_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>
+</form>
+{% else %}<p class="aide">Aucun document rattaché{% if q %} pour cette recherche{% endif %}.</p>{% endif %}
 {% endblock %}
