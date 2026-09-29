@@ -353,6 +353,39 @@ def imp_tiers(lignes, fichier, utilisateur=None):
     return f"{len(r.crees)} créé(s), {len(r.mis_a_jour)} mis à jour"
 
 
+# ---- liens des documents en ligne
+
+def exp_liens():
+    from .models import Justificatif
+    return [[j.mouvement.numero, j.lien, j.description] for j in Justificatif.objects.exclude(lien="").select_related("mouvement")]
+
+
+def imp_liens(lignes, fichier, utilisateur=None):
+    from . import justificatifs as just
+    from .models import Justificatif
+    L, a_faire = Lecteur(), []
+    for n, d in lignes:
+        numero, lien = L.entier(n, d, "Mvt", range(1, 10 ** 9)), L.texte(n, d, "Lien", True, 500)
+        m = Mouvement.objects.filter(numero=numero).first() if numero else None
+        if numero and not m:
+            L.erreur(n, f"Mvt {numero} inconnu (importer d'abord Ecritures.xlsx).")
+        if lien and not lien.startswith("https://"):
+            L.erreur(n, "adresse https:// attendue.")
+        a_faire.append((m, lien, L.texte(n, d, "Description", longueur=150)))
+    L.verifier()
+    auteur = utilisateur.get_username() if utilisateur else ""
+    c = defaultdict(int)
+    for m, lien, description in a_faire:
+        deja = (Justificatif.objects.filter(lien=lien).exists()               # encore en ligne, ou déjà copié sur le site
+                or Modification.objects.filter(action="Document en ligne enregistré sur le site", avant=lien[:300]).exists())
+        if deja:
+            c["déjà joint(s)"] += 1
+            continue
+        just.ajouter_lien(m, lien, "Document en ligne", description, auteur, rapatrier_aussitot=False)
+        c["joint(s)"] += 1
+    return resume(c)
+
+
 # ---- traductions des relevés
 
 def exp_traductions():
@@ -748,6 +781,7 @@ FORMATS = [
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_ecritures, (7, 8)),
     Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_libelles, (7, 8)),
+    Format("Liens", "Liens des documents en ligne (SUMIT…), joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
     Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
@@ -811,6 +845,10 @@ AIDE = {
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Pièce": (O, "entier", "N° de pièce"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),
         "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx)"), "Let": (F, TEXTE, "Code de lettrage")}),
+    "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
+              "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
+        "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
+        "Description": (F, TEXTE, "Tiers, catégorie…")}),
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
     "Banque1": ("Relevé du journal B1. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Banque2": ("Relevé du journal B2. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
@@ -963,6 +1001,42 @@ def deposer(nom, contenu, auteur=""):
     (imports() / nom).write_bytes(contenu)
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Dépôt dans Imports", objet=nom[:200])
     return [nom]
+
+
+def importer_tout(utilisateur=None):
+    """Importe tous les fichiers reconnus du dossier Imports dans l'ordre du lexique, tout ou rien : à la moindre erreur,
+    rien n'est enregistré. Rien n'est supprimé (contrairement à Tout réinjecter). Renvoie (comptes rendus, ignorés)."""
+    from .base_donnees import sauvegarder
+    ordre = {f.nom: i for i, f in enumerate(FORMATS)}
+    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() == ".xlsx"),
+                     key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
+    ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() == ".xlsx"]
+    if not choisis:
+        raise Refus(["Aucun fichier à importer dans le dossier Imports."])
+    lus, erreurs = [], []
+    for f, chemin in choisis:
+        try:
+            lus.append((f, chemin, lire(chemin, f)))
+        except Refus as e:
+            erreurs += [f"{chemin.name} : {x}" for x in e.erreurs]
+    if erreurs:
+        raise Refus(erreurs)
+    sauvegarder("avant-import")
+    auteur = utilisateur.get_username() if utilisateur else ""
+    comptes_rendus = []
+    with transaction.atomic():
+        for f, chemin, lignes in lus:
+            try:
+                texte = f.importer(lignes, chemin.name, utilisateur) if lignes else "vide"
+            except Refus as e:
+                raise Refus([f"{chemin.name} : {x}" for x in e.erreurs] + [
+                    f"Rien n'a été enregistré. Corriger {chemin.name}, le déposer à nouveau, puis relancer Tout importer."])
+            Modification.objects.create(auteur=auteur, lot="Échanges", action=f"Import {f.nom}", objet=chemin.name[:200],
+                                        apres=texte[:300])
+            comptes_rendus.append(f"{chemin.name} : {texte}")
+    for _, chemin, _ in lus:
+        ranger(chemin)
+    return comptes_rendus, ignores
 
 
 def fichiers_exportes():

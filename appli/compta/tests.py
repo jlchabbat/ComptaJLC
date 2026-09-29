@@ -1943,8 +1943,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions"):
-                continue                        # écritures : Mvt déjà présents ; relevés et budget vides
+            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens"):
+                continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
             r = self.importer(source.name)
@@ -1978,6 +1978,32 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s), 0 modifié(s), 0 inchangé(s)")
         m = Mouvement.objects.get(numero=900)
         self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
+
+    def test_tout_importer(self):
+        """Tous les fichiers déposés, dans l'ordre du lexique (le compte avant les écritures, les écritures avant leurs
+        liens) ; tout ou rien ; un second passage n'ajoute rien."""
+        d = dt.datetime(2026, 3, 1)
+        lien = "https://app.sumit.co.il/crm/downloadfile/abc/"
+        self.fichier("Liens_documents.xlsx", [[901, lien, "Traiteur"]])
+        self.fichier("Ecritures.xlsx", [[d, "B1", 901, 901, "600900", "TRAITEUR", 10, None, "GEN.004", ""],
+                                        [d, "B1", 901, 901, "512000", "TRAITEUR", None, 10, "GEN.004", ""]])
+        self.fichier("PlanComptable.xlsx", [["600900", "TRAITEUR", "", "non", "oui"]])
+        openpyxl.Workbook().save(ech.imports() / "Inconnu.xlsx")
+        self.fichier("Liens_faux.xlsx", [[999, lien, ""]])                        # Mvt inconnu : tout est refusé
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "Liens_faux.xlsx : Ligne 2 : Mvt 999 inconnu")
+        self.assertFalse(Compte.objects.filter(numero="600900").exists() or Mouvement.objects.filter(numero=901).exists())
+        (ech.imports() / "Liens_faux.xlsx").unlink()
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "Tout importé (3 fichier(s))")
+        self.assertContains(r, "Liens_documents.xlsx : 1 joint(s)")
+        self.assertContains(r, "Non importé(s), nom non reconnu : Inconnu.xlsx")
+        from .models import Justificatif
+        j = Justificatif.objects.get(lien=lien)
+        self.assertEqual((j.mouvement.numero, j.description), (901, "Traiteur"))
+        self.fichier("Liens_documents.xlsx", [[901, lien, "Traiteur"]])
+        self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "1 déjà joint(s)")
+        self.assertEqual(Justificatif.objects.count(), 1)
 
     def test_ecritures_modifiees_a_la_main(self):
         """Exporter, corriger le fichier dans Excel, le réinjecter : seuls les Mvt changés sont mis à jour."""

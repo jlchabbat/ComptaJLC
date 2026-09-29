@@ -4,10 +4,11 @@ Le classeur source est lu en valeurs (celles calculées par Excel au dernier enr
 Feuilles lues : Plan (comptes, journaux, codes axe 1 et axe 2), Tiers (comptes de tiers et coordonnées), Ecritures
 (2 ou 4 lignes par opération de la Base), Base (lien « Pièce PDF » du document SUMIT de chaque opération).
 
-Fichiers produits (dossier de sortie), à importer dans cet ordre :
+Fichiers produits (dossier de sortie, et leur ZIP adaptation_sumit.zip à côté), importés dans cet ordre :
     Exercices.xlsx, Axe1.xlsx, Axe2.xlsx, Prefixes.xlsx, PlanComptable.xlsx, Journaux.xlsx, Tiers.xlsx, Ecritures.xlsx
     (Administration › Imports / Exports), puis
-    Liens_documents.xlsx (Administration › Justificatifs existants) : un lien SUMIT par opération, avec son n° de Mvt.
+    Liens_documents.xlsx (format Liens) : un lien SUMIT par opération, avec son n° de Mvt.
+    Dans l'appli : déposer le ZIP de ces fichiers dans Administration › Imports / Exports, puis « Tout importer ».
     Rapport.txt : chiffres, points à vérifier, types de tiers à créer avant l'import.
 
 Mvt = premier Mvt (1 par défaut) - 1 + N° base ; Pièce = N° base. Une ligne de bilan (classes 1 à 5) prend le code
@@ -255,9 +256,12 @@ def adapter(s, premier_mvt=1, axe2_defaut="GEN1", existants=None, prefixes_types
         if n not in ecrits:
             alertes.append(f"N° base {n} : document SUMIT sans écriture ({b['lien']}).")
             continue
-        liens.append([n + decalage, n, _jour(b["Date"]), abs(float(b["Montant"] or 0)), _texte(b["Tiers"]),
-                      _texte(b["Catégorie"]), b["lien"]])
-    fichiers["Liens_documents.xlsx"] = (["Mvt", "Pièce", "Date", "Montant", "Tiers", "Catégorie", "Lien"], liens)
+        d = _jour(b["Date"])
+        description = " · ".join(x for x in (_texte(b["Tiers"]), _texte(b["Catégorie"]),
+                                             f"{d:%d/%m/%Y}" if isinstance(d, dt.date) else "",
+                                             f"{abs(float(b['Montant'] or 0)):.2f}") if x)
+        liens.append([n + decalage, b["lien"], description[:150]])
+    fichiers["Liens_documents.xlsx"] = (["Mvt", "Lien", "Description"], liens)
 
     hors = Counter(d.year for d in dates if d.year != annees[-1])
     rapport += [
@@ -307,6 +311,10 @@ def ecrire(fichiers, rapport, sortie):
             ws.column_dimensions[openpyxl.utils.get_column_letter(k)].width = max(10, min(60, len(e) + 6))
         wb.save(sortie / nom)
     (sortie / "Rapport.txt").write_text("\n".join(rapport) + "\n", encoding="utf-8")
+    import zipfile
+    with zipfile.ZipFile(sortie.with_suffix(".zip"), "w", zipfile.ZIP_DEFLATED) as z:
+        for nom in list(fichiers) + ["Rapport.txt"]:
+            z.write(sortie / nom, nom)
 
 
 def main(argv=None):

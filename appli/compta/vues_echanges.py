@@ -37,6 +37,14 @@ def echanges(request):
             elif "retirer" in request.POST:
                 moteur.retirer(request.POST["retirer"], auteur)
                 messages.success(request, f"« {request.POST['retirer']} » supprimé du dossier Imports.")
+            elif "tout_importer" in request.POST:
+                comptes_rendus, ignores = moteur.importer_tout(request.user)
+                messages.success(request, f"Tout importé ({len(comptes_rendus)} fichier(s)) ; les fichiers sont rangés dans "
+                                          f"Imports\\{moteur.IMPORTES}.")
+                for x in comptes_rendus:
+                    messages.info(request, x)
+                if ignores:
+                    messages.warning(request, "Non importé(s), nom non reconnu : " + ", ".join(ignores) + ".")
             elif "importer" in request.POST:
                 f, texte = moteur.importer(request.POST["importer"], request.user)
                 messages.success(request, f"{request.POST['importer']} importé ({f.contenu}) : {texte}. "

@@ -21,6 +21,10 @@ ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est rem
 <button name="journal" value="B1">Convertir en Banque1.xlsx</button> <button name="journal" value="B2">Convertir en Banque2.xlsx</button></form>
 <form method="post" style="display:inline">{% csrf_token %}<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ?')">Supprimer</button></form></td></tr>{% endfor %}</table></div>{% endif %}
 <form method="post">{% csrf_token %}
+{% if a_importer %}<p><button class="principal" name="tout_importer" value="1"
+ onclick="return confirm('Importer tous les fichiers reconnus, dans l\'ordre du lexique ? Tout ou rien ; rien n\'est supprimé.')">Tout importer</button>
+<span class="aide">tous les fichiers reconnus, dans le bon ordre (exercices, axes, plan, journaux, tiers, écritures, liens des documents…) ;
+à la moindre erreur, rien n'est enregistré.</span></p>{% endif %}
 <table><tr><th>Fichier dans Imports</th><th>Contenu</th><th></th></tr>
 {% for nom, f in a_importer %}<tr><td>{{ nom }}</td><td>{% if f %}{{ f.contenu }}{% else %}<span class="neg">nom non reconnu</span>{% endif %}</td>
 <td>{% if f %}<button class="principal" name="importer" value="{{ nom }}">Importer</button>{% endif %}

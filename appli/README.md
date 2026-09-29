@@ -120,7 +120,9 @@ PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2
 structure à l'import et à l'export, décrit dans `Lexique.xlsx` et dans [`Imports/README.md`](../Imports/README.md).
 Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiables dans la page (réglages
 `dossier_imports`, `dossier_exports`). Import tout ou rien, sauvegarde avant ; fichier rangé dans
-`Imports/Importés`. Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
+`Imports/Importés`. **Tout importer** importe en une fois tous les fichiers déposés (un ZIP convient), dans l'ordre
+du lexique, tout ou rien, sans rien supprimer ; `Liens.xlsx` (Mvt, Lien, Description) joint les documents en ligne à leur Mvt.
+Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
 remplace écritures, relevés et budget par les fichiers présents.
 
 ## Documentation intégrée
