@@ -6,7 +6,7 @@ from collections import OrderedDict, defaultdict
 
 from django.db.models import Sum
 
-from .models import ZERO, AxeCompte, Compte, Ligne, ValeurCompte
+from .models import ZERO, AxeCompte, Compte, Ligne, ValeurCompte, arrondi
 
 INTEGRES = ["Compte", "Classe", "Axe 1"]
 SANS = "(sans)"
@@ -44,7 +44,7 @@ def analyser(debut, fin, lignes_axe, colonnes_axe="", filtres=None, mesure="sold
                 .values("compte_id").annotate(d=Sum("debit"), c=Sum("credit")))
     par_compte = {}
     for m in montants:
-        d, c = m["d"] or ZERO, m["c"] or ZERO
+        d, c = arrondi(m["d"] or ZERO), arrondi(m["c"] or ZERO)
         par_compte[m["compte_id"]] = {"debit": d, "credit": c, "solde": d - c}[mesure]
     cellules = defaultdict(lambda: defaultdict(lambda: ZERO))
     comptes = defaultdict(list)

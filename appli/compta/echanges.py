@@ -431,7 +431,7 @@ def imp_banque_ecrt(lignes, fichier, utilisateur=None):
             L.erreur(n, f"compte {compte} inconnu ({L.texte(n, d, 'LibelCompte')}) : le créer dans le plan comptable.")
         if (debit > 0) == (credit > 0):
             L.erreur(n, "un débit OU un crédit (RG-03).")
-        devise = L.montant(n, d, "Npiece")
+        devise = L.montant(n, d, "Npiece")                # montant dans la devise d'origine (0.00)
         ops[numero].append((n, L.date(n, d, "Date"), jnl, compte, L.texte(n, d, "Libelle", True, 200), debit, credit,
                             abs(devise) if devise else None))
     for numero, ls in ops.items():
@@ -902,7 +902,8 @@ FORMATS = [
            ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"], exp_ecritures,
            imp_libelles, (7, 8, 11), ("Montant devise",)),
     Format("Ecrt", "Écritures rapprochées de l'appli Banque (Ecrt.csv ou RImport.xlsx)", ENTETES_BANQUE, lambda: [],
-           imp_banque_ecrt, (7, 8, 9), alias=("rimport",), csv=True),
+           imp_banque_ecrt, (7, 8, 9), alias=("rimport",), csv=True,
+           synonymes=(tuple("Montant devise" if c == "Npiece" else c for c in ENTETES_BANQUE),)),
     Format("Liens", "Liens des documents en ligne (SUMIT…), joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
@@ -975,7 +976,8 @@ AIDE = {
     "Ecrt": ("Fichier produit par l'appli Banque (Ecrt.csv, 1Ecrt.csv ou RImport.xlsx) : chaque opération devient une écriture (nouveau n° de Mvt, pièce = n° de l'appli Banque) ; une opération déjà en compta est ignorée ; les relevés des journaux concernés sont pointés ensuite.", {
         "Mvt": (O, "entier", "N° d'opération de l'appli Banque"), "Journ": (O, CODE, "Journal"), "Date": (O, DATE, ""),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libelle": (O, TEXTE, ""), "Debit": (F, MONTANT, "en euros"),
-        "Credit": (F, MONTANT, "en euros"), "Npiece": (F, MONTANT, "montant d'origine (journal en devise)")}),
+        "Credit": (F, MONTANT, "en euros"),
+        "Npiece": (F, MONTANT, "montant dans la devise d'origine, 0.00 (journal en devise) ; en-tête « Montant devise » accepté aussi")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
               "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
