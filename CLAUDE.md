@@ -80,7 +80,7 @@ python -m unittest discover tests
   T_Prefixes[Axe] : 1 = axe 1, 2 = axe 2. Statut T_Axe2[Actif] : 0 Non
   affecté, 1 En cours, 2 Terminé.
 - Application web : ce qui est propre à l'association (nom, devise, relevés Mizrahi/Bit,
-  carte Isracard, liens SUMIT, traductions) passe par `appli/compta/reglages.py`
+  carte Isracard, traductions) passe par `appli/compta/reglages.py`
   (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
   Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).
   Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptabb-licence`) ne va jamais dans le dépôt.

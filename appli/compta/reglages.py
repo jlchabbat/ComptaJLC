@@ -15,7 +15,7 @@ REGLAGES = [
     ("releve_bit", "Journal du relevé Bit (format imposé, remplace le précédent) ; vide : pas de Bit", "", "B3"),
     ("carte_bancaire", "Nom de la carte de paiement réglée par la banque le mois suivant (passe par le compte de "
                        "virement interne) ; vide : pas de carte", "", "Isracard"),
-    ("hebergeur_liens", "Site qui héberge des justificatifs gardés en lien (ex. SUMIT) ; vide : pas de lien", "", "SUMIT"),
+    ("hebergeur_liens", "Site qui héberge des justificatifs gardés en lien (nom du site) ; vide : pas de lien", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]
 NEUTRES = {cle: neutre for cle, _, neutre, _ in REGLAGES}

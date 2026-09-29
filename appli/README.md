@@ -101,11 +101,11 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
   rattachés restent « à classer » ; la page d'un mouvement permet de les y rattacher (liste des documents déposés). En ligne de commande :
   `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.
-  Un **extrait Excel SUMIT** déposé sur la même page fournit des **liens** (documents restés dans SUMIT),
+  Un **extrait Excel** (un lien par ligne) déposé sur la même page fournit des **liens** (documents restés en ligne),
   proposés au mouvement de même date et même montant ; seuls les nouveaux liens sont repris. Un Excel fait à la main
   (colonne Mvt ou Pièce + lien) convient aussi ; un lien peut être collé sur la page du mouvement. Les documents des liens
   sont copiés sur le site (aussitôt, ou bouton « Les enregistrer sur le site », ou
-  `python manage.py rapatrier_justificatifs`) : plus besoin de SUMIT ensuite.
+  `python manage.py rapatrier_justificatifs`) .
 - Pas de suivi des impayés : le solde du compte tiers suffit ; **cotisations** de l'exercice attendues,
   facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique

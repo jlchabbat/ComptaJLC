@@ -22,7 +22,7 @@ from . import controles, reglages
 from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, soldes
 
 D = Decimal
-# Les tests décrivent le site de la Loge : un réglage absent y prend la valeur de la Loge (Mizrahi, Bit, Isracard, SUMIT…).
+# Les tests décrivent le site de la Loge : un réglage absent y prend la valeur de la Loge (Mizrahi, Bit, Isracard…).
 # La classe ReglagesAssociation vérifie les valeurs neutres d'une nouvelle association.
 NEUTRES = dict(reglages.NEUTRES)
 reglages.NEUTRES.update({cle: loge for cle, _, _, loge in reglages.REGLAGES})
@@ -2669,20 +2669,21 @@ class JustificatifsExistants(TransactionTestCase):
 
 
 @override_settings(**temporaire())
-class LiensSumit(TransactionTestCase):
+class LiensEnLigne(TransactionTestCase):
     def setUp(self):
         JustificatifsExistants.setUp(self)               # Mvt 1 (01/02/2026, 400) et Mvt 5 (15/03/2026, 450)
+        Reglage.objects.update_or_create(cle="hebergeur_liens", defaults={"valeur": "Documents en ligne"})
 
     def extrait(self):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "DEPENSES"
         ws.append(["Card name", "תאריך", "ספק/ית", "סכום", "פריט הוצאה", "סוג תשלום", "סטטוס", "קובץ מקושר"])
-        for date, somme, item, lien in ((dt.datetime(2026, 3, 15), -450, "2 - FETES - RALLYE", "https://app.sumit.co.il/crm/downloadfile/aaa/"),
-                                        (dt.datetime(2026, 2, 1), -400, "1 - LOGE - COTISATION", "https://app.sumit.co.il/crm/downloadfile/bbb/"),
-                                        (dt.datetime(2026, 4, 1), -99, "4 - FRAIS", "https://app.sumit.co.il/crm/downloadfile/ccc/"),
+        for date, somme, item, lien in ((dt.datetime(2026, 3, 15), -450, "2 - FETES - RALLYE", "https://documents.exemple.org/fichier/aaa/"),
+                                        (dt.datetime(2026, 2, 1), -400, "1 - LOGE - COTISATION", "https://documents.exemple.org/fichier/bbb/"),
+                                        (dt.datetime(2026, 4, 1), -99, "4 - FRAIS", "https://documents.exemple.org/fichier/ccc/"),
                                         (dt.datetime(2026, 4, 2), -10, "4 - FRAIS", None)):
-            ws.append(["חשבונית", date, None, somme, item, "Cash", "Draft", "https://app.sumit.co.il/crm/downloadfile" if lien else None])
+            ws.append(["חשבונית", date, None, somme, item, "Cash", "Draft", "https://documents.exemple.org/fichier" if lien else None])
             if lien:
                 ws.cell(ws.max_row, 8).hyperlink = lien
         return self.octets(wb)
@@ -2696,20 +2697,20 @@ class LiensSumit(TransactionTestCase):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.append(["תאריך", "סכום", "קובץ מקושר"])
-        ws.append([dt.datetime(2026, 3, 15), -450, "https://app.sumit.co.il/crm/downloadfile/ddd/"])     # sans hyperlien
-        self.assertEqual(len(just.deposer("EXTRACT_SUMIT.xlsx", self.octets(wb))[0]), 1)
+        ws.append([dt.datetime(2026, 3, 15), -450, "https://documents.exemple.org/fichier/ddd/"])     # sans hyperlien
+        self.assertEqual(len(just.deposer("EXTRAIT.xlsx", self.octets(wb))[0]), 1)
         l = just.a_classer()[0]
-        self.assertEqual((l["lien"], l["mouvement"].numero), ("https://app.sumit.co.il/crm/downloadfile/ddd/", 5))
+        self.assertEqual((l["lien"], l["mouvement"].numero), ("https://documents.exemple.org/fichier/ddd/", 5))
 
     def test_excel_fait_a_la_main(self):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Liens"
         ws.append(["Mvt", "Pièce", "Lien", "Remarque"])
-        ws.append([1, None, "https://app.sumit.co.il/crm/downloadfile/m01/", "cotisation"])
-        ws.append([None, Mouvement.objects.get(numero=5).piece, "https://app.sumit.co.il/crm/downloadfile/p05/", None])
-        ws.append([999, None, "https://app.sumit.co.il/crm/downloadfile/x99/", None])
-        ws.append([None, None, "https://app.sumit.co.il/crm/downloadfile/sans/", None])        # rien pour le rattacher
+        ws.append([1, None, "https://documents.exemple.org/fichier/m01/", "cotisation"])
+        ws.append([None, Mouvement.objects.get(numero=5).piece, "https://documents.exemple.org/fichier/p05/", None])
+        ws.append([999, None, "https://documents.exemple.org/fichier/x99/", None])
+        ws.append([None, None, "https://documents.exemple.org/fichier/sans/", None])        # rien pour le rattacher
         self.assertEqual(len(just.deposer("Liens.xlsx", self.octets(wb))[0]), 3)
         lignes = {l["lien"][-4:-1]: l for l in just.a_classer()}
         self.assertEqual((lignes["m01"]["mouvement"].numero, lignes["m01"]["sur"], lignes["m01"]["affiche"]), (1, True, "cotisation"))
@@ -2723,9 +2724,9 @@ class LiensSumit(TransactionTestCase):
     def test_documents_en_ligne_copies_sur_le_site(self):
         from unittest import mock
         m = Mouvement.objects.get(numero=5)
-        a = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/aaa/", "Document SUMIT")
-        b = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/bbb/", "Document SUMIT")
-        c = just.ajouter_lien(m, "https://app.sumit.co.il/crm/downloadfile/ccc/", "Document SUMIT")
+        a = just.ajouter_lien(m, "https://documents.exemple.org/fichier/aaa/", "Document en ligne")
+        b = just.ajouter_lien(m, "https://documents.exemple.org/fichier/bbb/", "Document en ligne")
+        c = just.ajouter_lien(m, "https://documents.exemple.org/fichier/ccc/", "Document en ligne")
         reponses = {"aaa": (b"%PDF-1.4 facture", "Facture 12.pdf"), "bbb": (b"<!DOCTYPE html><html>connexion", "")}
 
         def faux(lien):
@@ -2737,7 +2738,7 @@ class LiensSumit(TransactionTestCase):
         with mock.patch.object(just, "telecharger", faux):
             r = self.client.post("/justificatifs/a-classer/", {"rapatrier": "1"}, follow=True)
         self.assertContains(r, "1 document(s) copié(s) sur le site ; 2 encore en ligne")
-        self.assertContains(r, "page web (connexion à SUMIT")
+        self.assertContains(r, "page web (connexion demandée")
         a.refresh_from_db()
         self.assertEqual((a.lien, a.nom, a.taille), ("", "Facture 12.pdf", 16))
         self.assertEqual(just.chemin(a).read_bytes(), b"%PDF-1.4 facture")
@@ -2751,18 +2752,18 @@ class LiensSumit(TransactionTestCase):
     def test_lien_colle_sur_le_mouvement(self):
         self.client.force_login(self.u)
         self.assertContains(self.client.get("/mouvement/5/"), "Joindre le lien")
-        adresse = "https://app.sumit.co.il/crm/downloadfile/a2be4b4f-5493-4433-b40e-f6c0d81eaa83/"
+        adresse = "https://documents.exemple.org/fichier/a2be4b4f-5493-4433-b40e-f6c0d81eaa83/"
         self.assertRedirects(self.client.post("/mouvement/5/justificatifs/", {"lien": adresse, "description": "Traiteur"}), "/mouvement/5/")
         j = Justificatif.objects.get(mouvement__numero=5)
-        self.assertEqual((j.lien, j.nom, j.description), (adresse, "Document SUMIT", "Traiteur"))
+        self.assertEqual((j.lien, j.nom, j.description), (adresse, "Document en ligne", "Traiteur"))
         self.client.post("/mouvement/5/justificatifs/", {"lien": adresse})                     # pas deux fois
         self.client.post("/mouvement/5/justificatifs/", {"lien": "javascript:alert(1)"})       # https seulement
         self.assertEqual(Justificatif.objects.count(), 1)
 
     def test_liens(self):
-        deposes, refus = just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())
+        deposes, refus = just.deposer("EXTRAIT.xlsx", self.extrait())
         self.assertEqual((len(deposes), refus), (3, []))
-        self.assertEqual(just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())[0], [])       # pas de doublon
+        self.assertEqual(just.deposer("EXTRAIT.xlsx", self.extrait())[0], [])       # pas de doublon
         lignes = {l["lien"][-4:-1]: l for l in just.a_classer()}
         self.assertEqual(lignes["aaa"]["mouvement"].numero, 5)
         self.assertTrue(lignes["aaa"]["sur"])
@@ -2771,23 +2772,23 @@ class LiensSumit(TransactionTestCase):
         self.assertIsNone(lignes["ccc"]["mouvement"])
         self.client.force_login(self.u)
         page = self.client.get("/justificatifs/a-classer/")
-        self.assertContains(page, "https://app.sumit.co.il/crm/downloadfile/aaa/")
+        self.assertContains(page, "https://documents.exemple.org/fichier/aaa/")
         donnees = {"rattacher": "1", "nom": [l["nom"] for l in page.context["lignes"]]}
         for i, l in enumerate(page.context["lignes"]):
             if l["mouvement"]:
                 donnees.update({f"mvt_{i}": str(l["mouvement"].numero), f"garder_{i}": "1"})
         self.client.post("/justificatifs/a-classer/", donnees)
         j = Justificatif.objects.get(mouvement__numero=5)
-        self.assertEqual((j.lien, j.chemin, j.nom), ("https://app.sumit.co.il/crm/downloadfile/aaa/", None, "DEPENSES du 15/03/2026"))
+        self.assertEqual((j.lien, j.chemin, j.nom), ("https://documents.exemple.org/fichier/aaa/", None, "DEPENSES du 15/03/2026"))
         self.assertEqual(self.client.get(f"/justificatif/{j.pk}/")["Location"], j.lien)
         self.assertContains(self.client.get("/mouvement/5/"), "🔗")
         self.assertEqual([l["lien"][-4:-1] for l in just.a_classer()], ["ccc"])          # reste à classer
         just.ecarter(just.a_classer()[0]["nom"])
         self.assertEqual(just.a_classer(), [])
-        self.assertEqual(just.deposer("EXTRACT_SUMIT.xlsx", self.extrait())[0], ["lien 0"])  # seul « ccc » revient
+        self.assertEqual(just.deposer("EXTRAIT.xlsx", self.extrait())[0], ["lien 0"])  # seul « ccc » revient
         # export complet : les liens reviennent à la réinjection
         chemin = ec.exporter()
         Justificatif.objects.all().delete()
         ec.reinjecter(chemin)
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
-                         {"https://app.sumit.co.il/crm/downloadfile/aaa/", "https://app.sumit.co.il/crm/downloadfile/bbb/"})
+                         {"https://documents.exemple.org/fichier/aaa/", "https://documents.exemple.org/fichier/bbb/"})
