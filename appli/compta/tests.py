@@ -2646,7 +2646,7 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
 
     def test_page_justificatifs_ouverte_au_tresorier(self):
-        t = User.objects.create_user("tresorier")
+        t = User.objects.create_user("tresorier_j")
         t.groups.add(Group.objects.get(name="Trésorier"))
         self.client.force_login(t)
         page = self.client.get("/justificatifs/a-classer/")
