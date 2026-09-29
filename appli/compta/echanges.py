@@ -192,6 +192,7 @@ class Format:
     exporter: object         # () -> lignes
     importer: object         # (lignes [(n° de ligne Excel, {colonne: valeur})], fichier, utilisateur) -> résumé
     montants: tuple = ()     # colonnes (1 = A) au format montant
+    facultatives: tuple = ()  # dernières colonnes, absentes des fichiers plus anciens
 
     def reconnait(self, chemin):
         return _sans_accent(Path(chemin).stem.split("_")[0].strip()) == self.nom.lower()   # « Libellés_… » = Libelles
@@ -318,7 +319,7 @@ def imp_plan(lignes, fichier, utilisateur=None):
 
 
 def exp_journaux():
-    return [[j.code, j.intitule, j.type, j.compte_id or "", oui_non(j.actif)] for j in Journal.objects.all()]
+    return [[j.code, j.intitule, j.type, j.compte_id or "", oui_non(j.actif), j.devise] for j in Journal.objects.all()]
 
 
 def imp_journaux(lignes, fichier, utilisateur=None):
@@ -329,8 +330,11 @@ def imp_journaux(lignes, fichier, utilisateur=None):
         compte = L.texte(n, d, "Compte de trésorerie")
         if compte and compte not in comptes:
             L.erreur(n, f"compte {compte} inconnu (importer d'abord PlanComptable.xlsx).")
-        a_faire.append((code, {"intitule": intitule, "type": L.texte(n, d, "Type", longueur=10), "compte_id": compte or None,
-                               "actif": L.oui(n, d, "Actif", True)}))
+        valeurs = {"intitule": intitule, "type": L.texte(n, d, "Type", longueur=10), "compte_id": compte or None,
+                   "actif": L.oui(n, d, "Actif", True)}
+        if "Devise" in d:                                 # colonne absente des fichiers plus anciens : devise inchangée
+            valeurs["devise"] = L.texte(n, d, "Devise", longueur=3).upper()
+        a_faire.append((code, valeurs))
     L.verifier()
     c = defaultdict(int)
     for code, valeurs in a_faire:
@@ -442,7 +446,7 @@ def imp_budget(lignes, fichier, utilisateur=None):
 
 def exp_ecritures():
     return [[l.mouvement.date, l.mouvement.journal_id, l.mouvement.numero, l.mouvement.piece, l.compte_id, l.libelle,
-             l.debit or None, l.credit or None, l.anal2_id, l.lettrage]
+             l.debit or None, l.credit or None, l.anal2_id, l.lettrage, l.montant_devise]
             for l in Ligne.objects.select_related("mouvement").order_by("mouvement__numero", "ordre")]
 
 
@@ -461,10 +465,14 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     journaux = set(Journal.objects.values_list("code", flat=True))
     axe2 = set(CodeAnalytique.objects.filter(axe=2).values_list("code", flat=True))
     existants = set(Mouvement.objects.values_list("numero", flat=True))
+    from .reglages import code_axe2_defaut
+    defaut2 = code_axe2_defaut()                          # un seul axe : Anal2 facultatif, code d'office
+    if defaut2:
+        axe2.add(defaut2)
     for n, d in lignes:
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
         numero, piece = L.entier(n, d, "Mvt", range(1, 10 ** 9)), L.entier(n, d, "Pièce", range(0, 10 ** 9))
-        compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2", True)
+        compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2", not defaut2) or defaut2
         debit, credit = L.montant(n, d, "Débit") or ZERO, L.montant(n, d, "Crédit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
@@ -474,8 +482,11 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             L.erreur(n, f"code axe 2 « {anal2} » inconnu.")
         if (debit > 0) == (credit > 0) or debit < 0 or credit < 0:
             L.erreur(n, "un débit OU un crédit, positif (RG-03).")
+        devise = L.montant(n, d, "Montant devise") if d.get("Montant devise") not in (None, "") else None
+        if devise is not None and devise < 0:
+            L.erreur(n, "montant devise positif attendu (même sens que le débit ou le crédit).")
         mvts[numero].append((n, date, jnl, piece, compte, L.texte(n, d, "Libellé", True, 200), debit, credit, anal2,
-                             L.texte(n, d, "Let", longueur=10)))
+                             L.texte(n, d, "Let", longueur=10), devise))
     for numero, ls in mvts.items():
         if numero is None:
             continue
@@ -500,8 +511,8 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             if ls[0][1] and ls[0][2] != "AN" and Exercice.date_close(ls[0][1]):
                 L.erreur(ls[0][0], f"Mvt {numero} : date dans un exercice clos (RG-04).")
             continue
-        actuel = [(m.date, m.journal_id, m.piece, l.compte_id, l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage)
-                  for l in m.lignes.all()]
+        actuel = [(m.date, m.journal_id, m.piece, l.compte_id, l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage,
+                   l.montant_devise) for l in m.lignes.all()]
         if actuel != [tuple(x[1:4]) + tuple(x[4:]) for x in ls]:
             if corrections.verrou(m):
                 L.erreur(ls[0][0], f"Mvt {numero} modifié dans le fichier, mais non modifiable : {corrections.verrou(m)}")
@@ -518,15 +529,15 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
                                                           CodeAnalytique.objects.get(code=x[8])) for i, x in enumerate(ls)],
                                  f"import {fichier}", utilisateur)
             for l, x in zip(m.lignes.all(), ls):
-                if l.lettrage != x[9]:
-                    Ligne.objects.filter(pk=l.pk).update(lettrage=x[9])
+                if (l.lettrage, l.montant_devise) != (x[9], x[10]):
+                    Ligne.objects.filter(pk=l.pk).update(lettrage=x[9], montant_devise=x[10])
             if m.piece != piece:
                 Mouvement.objects.filter(pk=m.pk).update(piece=piece)
         elif numero not in existants:
             m = Mouvement.objects.create(numero=numero, date=date, journal_id=jnl, piece=piece, origine="import",
                                          commentaire=f"Import {fichier}", cree_par=utilisateur)
             Ligne.objects.bulk_create([Ligne(mouvement=m, ordre=i, compte_id=x[4], libelle=x[5], debit=x[6], credit=x[7],
-                                             anal2_id=x[8], lettrage=x[9]) for i, x in enumerate(ls)])
+                                             anal2_id=x[8], lettrage=x[9], montant_devise=x[10]) for i, x in enumerate(ls)])
             crees += 1
     return f"{crees} mouvement(s) ajouté(s), {len(modifies)} modifié(s), {len(mvts) - crees - len(modifies)} inchangé(s)"
 
@@ -773,14 +784,17 @@ FORMATS = [
     Format("Axe2", "Codes analytiques axe 2 (événement, projet)", ["Code", "Libellé", "Statut"], exp_axe(2), imp_axe(2)),
     Format("Prefixes", "Préfixes des codes analytiques", ["Préfixe", "Axe", "Libellé"], exp_prefixes, imp_prefixes),
     Format("PlanComptable", "Plan comptable", ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], exp_plan, imp_plan),
-    Format("Journaux", "Journaux", ["Code", "Intitulé", "Type", "Compte de trésorerie", "Actif"], exp_journaux, imp_journaux),
+    Format("Journaux", "Journaux", ["Code", "Intitulé", "Type", "Compte de trésorerie", "Actif", "Devise"], exp_journaux,
+           imp_journaux, facultatives=("Devise",)),
     Format("Tiers", "Tiers : membres, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers, (12,)),
     Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions),
     Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"], exp_budget, imp_budget, (6,)),
     Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)",
-           ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_ecritures, (7, 8)),
+           ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"], exp_ecritures,
+           imp_ecritures, (7, 8, 11), ("Montant devise",)),
     Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
-           ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures, imp_libelles, (7, 8)),
+           ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let", "Montant devise"], exp_ecritures,
+           imp_libelles, (7, 8, 11), ("Montant devise",)),
     Format("Liens", "Liens des documents en ligne (SUMIT…), joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
@@ -827,6 +841,7 @@ AIDE = {
     "Journaux": ("Mise à jour par code.", {
         "Code": (O, CODE, "B1, B2, B3, CA, OD, VT, HA, AN…"), "Intitulé": (O, TEXTE, "Nom du journal"), "Type": (F, TEXTE, "Type libre (BQ, CA…)"),
         "Compte de trésorerie": (F, CODE, "Compte 5xx des journaux de banque et de caisse (PlanComptable.xlsx)"),
+        "Devise": (F, "code ISO", "Devise du compte si ce n'est pas celle de la compta (ILS, USD…) ; colonne facultative"),
         "Actif": (F, OUI, "Utilisable (oui par défaut)")}),
     "Tiers": ("Tiers retrouvé par compte, sinon par type + nom + prénom ; une cellule vide ne remplace rien ; rien n'est supprimé.", {
         "Compte": (F, CODE, "Compte du tiers ; vide = créé d'après le type (411 + 5 lettres du nom + rang)"),
@@ -844,7 +859,9 @@ AIDE = {
         "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Pièce": (O, "entier", "N° de pièce"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),
-        "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx)"), "Let": (F, TEXTE, "Code de lettrage")}),
+        "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx) ; facultatif avec un seul axe (réglage un_seul_axe)"),
+        "Let": (F, TEXTE, "Code de lettrage"),
+        "Montant devise": (F, MONTANT, "Journal en devise : montant d'origine dans la devise du journal ; colonne facultative")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
               "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
@@ -946,7 +963,8 @@ def lire(chemin, f):
     entetes = [("" if c is None else str(c).strip()) for c in next(rangees, [])]
     while entetes and not entetes[-1]:
         entetes.pop()
-    if entetes != f.colonnes:
+    permis = [f.colonnes[:len(f.colonnes) - k] for k in range(len(f.facultatives) + 1)]
+    if entetes not in permis:
         wb.close()
         raise Refus([f"En-têtes de la ligne 1 non conformes. Attendu : {' | '.join(f.colonnes)}. "
                      f"Trouvé : {' | '.join(entetes) or '(vide)'}."])

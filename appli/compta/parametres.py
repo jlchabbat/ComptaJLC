@@ -225,6 +225,7 @@ FEUILLES = [
         Colonne("Type", "type", Texte(10), False, 12),
         Colonne("Compte", "compte", COMPTE, False, 14, "compte de trésorerie (banque, caisse)"),
         Colonne("Actif", "actif", Booleen(), False, 9, "Oui ou Non"),
+        Colonne("Devise", "devise", Texte(3), False, 8, "ILS, USD… si le compte n'est pas dans la devise de la compta ; vide sinon"),
     ], "Journaux (banques, caisse, achats, ventes, opérations diverses)."),
     Feuille("Types de tiers", TypeTiers, ["libelle"], [
         Colonne("Libellé", "libelle", Texte(30), True, 20),

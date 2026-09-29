@@ -79,6 +79,8 @@ class Journal(models.Model):
     type = models.CharField(max_length=10, blank=True)
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True,
                                help_text="Compte de trésorerie des journaux de banque et de caisse.")
+    devise = models.CharField(max_length=3, blank=True, help_text="Devise du compte (ILS, USD…) si ce n'est pas celle "
+                              "de la comptabilité : les écritures gardent aussi leur montant d'origine. Vide = devise de la compta.")
     actif = models.BooleanField(default=True)
 
     class Meta:
@@ -183,6 +185,8 @@ class Ligne(models.Model):
     anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
                               verbose_name="axe 2")
     lettrage = models.CharField(max_length=10, blank=True)
+    montant_devise = models.DecimalField("montant d'origine", max_digits=14, decimal_places=2, null=True, blank=True,
+                                         help_text="Journal en devise : montant dans la devise du journal (même sens).")
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
     class Meta:

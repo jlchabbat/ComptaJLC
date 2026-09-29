@@ -26,7 +26,7 @@ def lire_lignes(formset):
         if not c or c.get("DELETE") or f.vide():
             continue
         res.append(moteur.LigneSaisie(c.get("id"), c["compte"], c.get("libelle") or "", c.get("debit") or Decimal("0"),
-                                      c.get("credit") or Decimal("0"), c["anal2"]))
+                                      c.get("credit") or Decimal("0"), c["anal2"], c.get("montant_devise")))
     return res
 
 
@@ -53,11 +53,13 @@ def editer(request, m=None):
             entete = EnteteMouvementForm(initial={"date": m.date, "journal": m.journal_id})
             formset = LignesMouvementFormSet(prefix="l", initial=[
                 {"id": l.pk, "compte": l.compte_id, "libelle": l.libelle, "debit": l.debit or None, "credit": l.credit or None,
-                 "anal2": l.anal2_id} for l in m.lignes.all()])
+                 "anal2": l.anal2_id, "montant_devise": l.montant_devise} for l in m.lignes.all()])
         else:
             entete = EnteteMouvementForm(initial={"date": dt.date.today()})
             formset = LignesMouvementFormSet(prefix="l")
-    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset, "retour": retour})
+    from .models import Journal
+    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset, "retour": retour,
+                                                             "avec_devises": Journal.objects.exclude(devise="").exists()})
 
 
 @login_required

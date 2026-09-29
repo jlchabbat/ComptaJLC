@@ -18,6 +18,7 @@ class LigneSaisie:
     debit: Decimal
     credit: Decimal
     anal2: CodeAnalytique
+    montant_devise: Decimal | None = None       # journal en devise : montant d'origine
 
 
 def verrou(m):
@@ -87,10 +88,11 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
                 _liberer(l)
                 l.refresh_from_db()
             l.ordre, l.compte, l.libelle, l.debit, l.credit, l.anal2 = ordre, s.compte, s.libelle.strip(), s.debit, s.credit, s.anal2
+            l.montant_devise = s.montant_devise
             l.save()
         else:
             Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit,
-                                 credit=s.credit, anal2=s.anal2)
+                                 credit=s.credit, anal2=s.anal2, montant_devise=s.montant_devise)
     for pk, l in existantes.items():
         if pk not in gardees:
             _liberer(l)
@@ -115,7 +117,7 @@ def creer(date, journal, lignes, motif, utilisateur):
                                  origine="correction", cree_par=utilisateur)
     for ordre, s in enumerate(lignes):
         Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit, credit=s.credit,
-                             anal2=s.anal2)
+                             anal2=s.anal2, montant_devise=s.montant_devise)
     trace(m, f"écriture libre – {motif.strip()}", utilisateur)
     m.save(update_fields=["commentaire"])
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",

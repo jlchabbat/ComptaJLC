@@ -1992,7 +1992,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
         self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 9)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
-        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"])
+        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2",
+                                                         "Let", "Montant devise"])
         self.assertEqual(wb.active["C2"].value, 421)
 
     def test_refus_tout_ou_rien(self):
@@ -2017,6 +2018,28 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s), 0 modifié(s), 0 inchangé(s)")
         m = Mouvement.objects.get(numero=900)
         self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
+
+    def test_devise_par_journal_et_un_seul_axe(self):
+        """Journal en devise (colonne Devise) ; écritures avec leur montant d'origine ; un seul axe : Anal2 facultatif ;
+        les fichiers sans ces colonnes (plus anciens) restent acceptés."""
+        Reglage.objects.update_or_create(cle="un_seul_axe", defaults={"valeur": "oui"})
+        self.fichier("Journaux.xlsx", [["M1", "MIZRAHI NIS", "BQ", "512000", "oui", "ils"]])
+        self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
+        self.assertEqual(Journal.objects.get(code="M1").devise, "ILS")
+        d = dt.datetime(2026, 3, 2)
+        self.fichier("Ecritures.xlsx", [[d, "M1", 950, 950, "600100", "FRAIS", 2.35, None, None, "", 11.16],
+                                        [d, "M1", 950, 950, "512000", "FRAIS", None, 2.35, None, "", 11.16]])
+        self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s)")
+        m = Mouvement.objects.get(numero=950)
+        self.assertEqual([(l.anal2_id, l.montant_devise) for l in m.lignes.all()], [("GEN", D("11.16")), ("GEN", D("11.16"))])
+        r = self.client.get("/journaux/?journal=M1&du=2026-01-01&au=2026-12-31")
+        self.assertContains(r, "Montant ILS")
+        self.assertContains(r, "−11,16")
+        self.assertContains(self.client.get("/mouvement/950/"), "11,16")
+        wb = ech.classeur(ech.PAR_NOM["Journaux"], [["B9", "ANCIEN FORMAT", "BQ", "", "oui"]])   # sans colonne Devise
+        wb.active.delete_cols(6)
+        wb.save(ech.imports() / "Journaux.xlsx")
+        self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
 
     def test_tout_importer(self):
         """Tous les fichiers déposés, dans l'ordre du lexique (le compte avant les écritures, les écritures avant leurs
