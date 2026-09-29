@@ -2924,3 +2924,58 @@ class LiensSumit(TransactionTestCase):
         ec.reinjecter(chemin)
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
                          {"https://app.sumit.co.il/crm/downloadfile/aaa/", "https://app.sumit.co.il/crm/downloadfile/bbb/"})
+
+
+class RelevesEnDevise(TestCase):
+    """Journal en devise : relevés Revolut (CSV), carte Isracard (deux cartes, signe inversé), pointage sur le montant
+    d'origine, écriture créée au cours BCE du jour."""
+
+    def setUp(self):
+        from . import releves
+        self.rel = releves
+        referentiels_saisie()
+        Reglage.objects.update_or_create(cle="devise", defaults={"valeur": "€"})
+        Compte.objects.create(numero="512510", libelle="REVOLUT NIS", anal1_id=Compte.objects.get(numero="512000").anal1_id)
+        self.j = Journal.objects.create(code="R2", intitule="REVOLUT NIS", compte_id="512510", devise="ILS")
+
+    def test_revolut_csv(self):
+        csv_ = ("Type,Produit,Date de début,Date de fin,Description,Montant,Frais,Devise,État,Solde\n"
+                "Paiement par carte,Valeur actuelle,2026-08-30 12:17:53,2026-09-01 18:11:34,Beit Adasa,-56.00,0.00,ILS,TERMINÉ,4794.57\n"
+                "DAB,Valeur actuelle,2026-09-03 14:45:53,2026-09-04 04:28:09,Retrait,-2013.90,40.28,ILS,TERMINÉ,2740.39\n"
+                "Paiement par carte,Valeur actuelle,2026-09-04 11:58:30,,Harel,-1.00,0.00,ILS,EN ATTENTE,\n").encode()
+        ls = self.rel.lire("releve.csv", csv_)
+        self.assertEqual([(l["date"], l["operation"], l["montant"]) for l in ls],
+                         [(dt.date(2026, 9, 1), "Beit Adasa", D("-56.00")), (dt.date(2026, 9, 4), "Retrait", D("-2054.18"))])
+        self.assertEqual(self.rel.importer(self.j, ls, "releve.csv"), (2, 0, 0))    # frais compris : soldes cohérents
+
+    def test_carte_deux_cartes_signe_inverse(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        for r in (["שם כרטיס: מאסטרקארד    ארבע ספרות אחרונות 5524 "], [], ["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"],
+                  ["02/10/2026", "26/08/2026", "הראל", 1623, 405], ["שם כרטיס: ויזה    ארבע ספרות אחרונות 8240 "],
+                  ["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"], ["02/10/2026", "19/09/2026", "זיכוי", -50, -50]):
+            ws.append(r)
+        tampon = __import__("io").BytesIO()
+        wb.save(tampon)
+        ls = self.rel.lire("Isracard.xlsx", tampon.getvalue())
+        self.assertEqual([(l["date"], l["operation"], l["montant"]) for l in ls],
+                         [(dt.date(2026, 10, 2), "5524 26/08/2026 הראל (SUR 1623,00)", D("-405")),
+                          (dt.date(2026, 10, 2), "8240 19/09/2026 זיכוי", D("50"))])
+        self.assertEqual(self.rel.importer(self.j, ls, "Isracard.xlsx")[0], 2)      # sans solde : ouverture à 0
+        self.assertEqual(LigneReleve.objects.get(journal=self.j, ouverture=True).montant, D(0))
+
+    def test_pointage_et_ecriture_au_cours_bce(self):
+        from unittest import mock
+        from . import taux
+        from .models import TauxChange
+        self.rel.importer(self.j, [{"date": dt.date(2026, 9, 7), "reference": "", "operation": "Shufersal", "montant": D("-200.00"),
+                                    "solde": D("800.00")}], "r.csv")
+        l = LigneReleve.objects.get(journal=self.j, ouverture=False)
+        with mock.patch.object(taux, "telecharger", return_value=[(dt.date(2026, 9, 4), "ILS", D("4.000000"))]):
+            mv = self.rel.creer_ecriture(l, Compte.objects.get(numero="600100"), CodeAnalytique.objects.get(code="GEN.004"))
+        self.assertEqual([(x.compte_id, x.debit, x.credit, x.montant_devise) for x in mv.lignes.all()],
+                         [("512510", D(0), D("50.00"), D("200.00")), ("600100", D("50.00"), D(0), D("200.00"))])
+        self.assertTrue(TauxChange.objects.filter(jour=dt.date(2026, 9, 4), devise="ILS").exists())   # samedi 07 : cours du vendredi
+        self.assertEqual(self.rel.montant(mv.lignes.get(compte_id="512510")), D("-200.00"))         # comparé au relevé en ILS
+        with mock.patch.object(taux, "telecharger", side_effect=OSError("bloqué")):
+            self.assertIn("BCE injoignable", taux.actualiser())

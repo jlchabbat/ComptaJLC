@@ -83,9 +83,13 @@ def normaliser(rangees):
 
     Cherche la ligne d'en-tête ; accepte un montant signé ou deux colonnes crédit / débit ;
     remet le texte hébreu à l'endroit s'il a été lu à l'envers (PDF)."""
-    lignes, cols, inverse, carte = [], None, False, False
+    lignes, cols, inverse, carte, numero_carte = [], None, False, False, ""
     for r in rangees:
         cellules = [texte(c) for c in r]
+        n_carte = next((re.search(r"ארבע ספרות אחרונות\s*(\d{4})", c) for c in cellules if "ספרות" in c), None)
+        if n_carte:                                       # Isracard : une section par carte (… 5524, … 8240)
+            numero_carte = n_carte.group(1)
+            continue
         noms = [colonne(c) for c in cellules]
         if "date" in noms and ("montant" in noms or "credit" in noms or "debit" in noms):
             cols = noms
@@ -96,6 +100,13 @@ def normaliser(rangees):
             continue
         v = {n: r[i] for i, n in enumerate(cols) if n and i < len(r)}
         d = date(v.get("date"))
+        achat = None
+        origine = None
+        if carte:                                         # carte : date du prélèvement (1re date), date d'achat au libellé
+            dates = [r[i] for i, n in enumerate(cols) if n == "date" and i < len(r)]
+            d, achat = date(dates[0]), (date(dates[-1]) if len(dates) > 1 else None)
+            montants = [nombre(r[i]) for i, n in enumerate(cols) if n == "montant" and i < len(r)]
+            origine = montants[0] if len(montants) > 1 else None          # montant de l'achat (סכום העסקה)
         if v.get("montant") not in (None, ""):
             m = nombre(v.get("montant"))
             if m is not None and carte:                   # relevé de carte (Isracard) : le montant débité est une sortie
@@ -110,8 +121,13 @@ def normaliser(rangees):
         op = texte(v.get("operation"))
         if inverse and HEBREU.search(op):
             op = op[::-1]
+        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) », comme dans Ciel
+            sur = f" (SUR {origine:.2f})".replace(".", ",") if origine is not None and abs(origine) != abs(m) else ""
+            op = " ".join(x for x in (numero_carte, f"{achat:%d/%m/%Y}" if achat else "", op) if x) + sur
         lignes.append({"date": d, "reference": texte(v.get("reference"))[:40], "operation": op[:200], "montant": m,
                        "solde": nombre(v.get("solde"))})
+    if carte and lignes:                                  # relevé de carte : jamais de solde, on part de 0
+        lignes[0]["carte"] = True
     # ordre chronologique, ordre du relevé conservé dans la journée
     if len(lignes) > 1 and lignes[0]["date"] > lignes[-1]["date"]:
         lignes.reverse()
@@ -265,6 +281,9 @@ def importer(journal, lignes, source="", solde_ouverture=None):
     existant = set(LigneReleve.objects.filter(journal=journal).values_list("date", "reference", "montant", "rang"))
     premiere = not LigneReleve.objects.filter(journal=journal).exists()
     nouvelles, doublons = [], 0
+    carte = any(l.pop("carte", False) for l in lignes)
+    if carte and solde_ouverture is None:
+        solde_ouverture = ZERO                            # relevé de carte (Isracard…) : pas de solde, débité chaque mois
     for l in lignes:
         rangs[l["date"]] += 1
         cle = (l["date"], l["reference"], l["montant"], rangs[l["date"]])
@@ -334,10 +353,16 @@ def montant(ecriture, en_devise=None):
     return ecriture.debit - ecriture.credit
 
 
-def cours(journal):
-    """Unités de la devise du journal pour 1 unité de la devise de la compta : réglage cours_<DEVISE> (ex. cours_ILS = 3.95),
-    sinon le cours des dernières écritures du journal. None si inconnu."""
-    from .models import Reglage
+def cours(journal, jour=None):
+    """Unités de la devise du journal pour 1 unité de la devise de la compta : cours BCE du jour si la compta est en
+    euros (compta/taux.py), sinon réglage cours_<DEVISE> (ex. cours_ILS = 3.95), sinon le cours des dernières écritures
+    du journal. None si inconnu."""
+    from .reglages import devise
+    if jour and devise().upper() in ("€", "EUR"):
+        from .taux import taux
+        t = taux(journal.devise, jour)
+        if t:
+            return t
     v = Reglage.lire(f"cours_{journal.devise}", "").replace(",", ".").strip()
     try:
         if v:
@@ -572,7 +597,7 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
         raise ValueError("Une écriture de même montant existe déjà à une date proche : reliez-la, ou cochez « nouvelle ».")
     m, m_devise = abs(l.montant), None
     if l.journal.devise:                                  # relevé en devise : montant converti, montant d'origine gardé
-        c = cours(l.journal)
+        c = cours(l.journal, l.date)
         if not c:
             raise ValueError(f"Cours {l.journal.devise} inconnu : l'indiquer dans le réglage cours_{l.journal.devise} "
                              f"(unités de {l.journal.devise} pour 1 unité de la devise de la compta).")

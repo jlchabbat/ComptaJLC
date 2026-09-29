@@ -599,6 +599,23 @@ class LigneReleve(models.Model):
         return Traduction.traduire(self.operation) or ("À traduire" if oui("traductions_releve") else self.operation)
 
 
+class TauxChange(models.Model):
+    """Cours BCE : unités de la devise pour 1 euro, jours ouvrés (compta/taux.py)."""
+
+    jour = models.DateField()
+    devise = models.CharField(max_length=3)
+    taux = models.DecimalField(max_digits=14, decimal_places=6)
+
+    class Meta:
+        ordering = ["-jour", "devise"]
+        unique_together = [("jour", "devise")]
+        verbose_name = "cours de change"
+        verbose_name_plural = "cours de change (BCE)"
+
+    def __str__(self):
+        return f"{self.jour:%d/%m/%Y} 1 € = {self.taux} {self.devise}"
+
+
 # ---------------------------------------------------------------- budget (Lot 4)
 
 class Budget(models.Model):

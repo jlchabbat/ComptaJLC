@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers,
+    Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TauxChange, TiersProvisoire, Traduction, TypeTiers,
 )
 
 
@@ -36,6 +36,12 @@ class JournalAdmin(admin.ModelAdmin):
 @admin.register(Exercice)
 class ExerciceAdmin(admin.ModelAdmin):
     list_display = ("libelle", "debut", "fin", "clos")
+
+
+@admin.register(TauxChange)
+class TauxChangeAdmin(admin.ModelAdmin):
+    list_display = ("jour", "devise", "taux")
+    list_filter = ("devise",)
 
 
 @admin.register(Reglage)
