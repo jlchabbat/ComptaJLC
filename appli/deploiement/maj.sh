@@ -50,6 +50,21 @@ python3 -c "import sqlite3, sys; s = sqlite3.connect(sys.argv[1]); d = sqlite3.c
   "$DATA/comptabb.sqlite3" "$SAUVE"
 ls -t "$SAUVEGARDES"/*.sqlite3 | tail -n +4 | xargs -r -d '\n' rm --       # garde les 3 dernières
 echo "   $SAUVE"
+if [ -d "$DATA/Justificatifs" ]; then                             # documents scannés : copie ZIP, les 2 dernières gardées
+  SAUVE_J="$SAUVEGARDES/justificatifs_$(date +%Y-%m-%d_%H%M).zip"
+  python3 - "$DATA/Justificatifs" "$SAUVE_J" <<'PYJ'
+import os, sys, zipfile
+racine, cible = sys.argv[1], sys.argv[2]
+n = 0
+with zipfile.ZipFile(cible, "w", zipfile.ZIP_DEFLATED) as z:
+    for dossier, _, fichiers in os.walk(racine):
+        for f in fichiers:
+            z.write(os.path.join(dossier, f), os.path.relpath(os.path.join(dossier, f), racine))
+            n += 1
+print("   %d document(s) : %s (%d Mo)" % (n, cible, os.path.getsize(cible) // 1048576))
+PYJ
+  ls -t "$SAUVEGARDES"/justificatifs_*.zip | tail -n +3 | xargs -r -d '\n' rm --
+fi
 
 echo "2/5 Nouveau code : $(basename "$ZIP")"
 rm -rf ~/maj && mkdir ~/maj && unzip -q "$ZIP" -d ~/maj

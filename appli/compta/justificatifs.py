@@ -289,6 +289,26 @@ def desaffecter(j, auteur=""):
         fichier.unlink()
 
 
+def archive_tout():
+    """Fichier ZIP temporaire de tous les justificatifs du site (année/nom du fichier) ; les liens vont dans Liens.txt."""
+    import tempfile
+    import zipfile
+    tmp = tempfile.TemporaryFile()
+    liens = []
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+        for j in Justificatif.objects.select_related("mouvement").order_by("mouvement__numero", "id"):
+            if j.lien:
+                liens.append(f"Mvt {j.mouvement.numero} · {j.nom} : {j.lien}")
+                continue
+            f = chemin(j)
+            if f and f.exists():
+                z.write(f, j.chemin)
+        if liens:
+            z.writestr("Liens.txt", "\n".join(liens))
+    tmp.seek(0)
+    return tmp
+
+
 def archive_zip(justificatifs):
     """ZIP en mémoire des documents choisis (Mvt<n°>_<rang>_<nom>) ; les liens vont dans Liens.txt."""
     import io

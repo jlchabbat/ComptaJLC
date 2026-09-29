@@ -5,7 +5,7 @@
   function panneau() {
     if (boite) return boite;
     boite = document.createElement("div");
-    boite.style.cssText = "position:fixed;right:12px;top:70px;width:min(460px,45vw);height:calc(100vh - 90px);background:#fff;" +
+    boite.style.cssText = "position:fixed;right:12px;top:128px;width:min(460px,45vw);height:calc(100vh - 148px);background:#fff;" +
       "border:2px solid #5b7fb8;box-shadow:0 4px 18px rgba(0,0,0,.35);z-index:9999;pointer-events:none;display:none";
     document.body.appendChild(boite);
     return boite;

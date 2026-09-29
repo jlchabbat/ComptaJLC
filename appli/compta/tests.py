@@ -2546,11 +2546,24 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(list(m.justificatifs.values_list("pk", flat=True)), [j.pk])
         self.assertFalse(Justificatif.objects.filter(pk=lien.pk).exists())
 
+    def test_tout_telecharger_en_zip(self):
+        self.client.force_login(self.u)
+        m = Mouvement.objects.get(numero=5)
+        just.ajouter(m, __import__("django.core.files.uploadedfile", fromlist=["x"]).SimpleUploadedFile("facture.pdf", b"%PDF-1.4 test"), "", "test")
+        Justificatif.objects.create(mouvement=m, lien="https://documents.exemple.org/fichier/aaa/", nom="Document en ligne")
+        r = self.client.get("/justificatifs/tout.zip")
+        self.assertEqual(r.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(b"".join(r.streaming_content))) as z:
+            noms = z.namelist()
+        self.assertTrue(any(n.endswith("facture.pdf") for n in noms))
+        self.assertIn("Liens.txt", noms)
+
     def test_supprimer_les_lignes_cochees(self):
         self.client.force_login(self.u)
         just.deposer("a.pdf", b"%PDF-1.4 a")
         just.deposer("b.pdf", b"%PDF-1.4 b")
         noms = [l["nom"] for l in just.a_classer()]
+        self.assertNotContains(self.client.get("/justificatifs/a-classer/"), 'id="f-rattaches"')      # liste sur demande seulement
         self.client.post("/justificatifs/a-classer/", {"ecarter_coches": "1", "nom": noms, "garder_0": "1"})
         self.assertEqual([l["nom"] for l in just.a_classer()], [noms[1]])
 
