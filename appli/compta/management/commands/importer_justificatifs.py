@@ -3,7 +3,7 @@
     python manage.py importer_justificatifs Scans/            dépose et liste les propositions
     python manage.py importer_justificatifs Scans.zip --rattacher   rattache en plus les propositions sûres
 
-La vérification et le rattachement des autres se font sur la page Administration › Justificatifs existants.
+La vérification et le rattachement des autres se font sur la page Saisie › Justificatifs.
 """
 
 from pathlib import Path
@@ -47,4 +47,4 @@ class Command(BaseCommand):
                 cible = f"Mvt {m.numero}" if m else "?"
                 self.stdout.write(f"  à classer  {l['affiche']} → {cible} ({l['raison']})")
         self.stdout.write(self.style.SUCCESS(
-            f"{faits} rattaché(s) ; le reste se vérifie sur la page Administration › Justificatifs existants."))
+            f"{faits} rattaché(s) ; le reste se vérifie sur la page Saisie › Justificatifs."))

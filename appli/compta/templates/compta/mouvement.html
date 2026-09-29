@@ -23,7 +23,7 @@
 <h3 style="margin-top:0">Choisir un document déjà déposé ({{ a_classer|length }} à classer)</h3>
 <div class="barre"><button class="principal">Rattacher à ce mouvement</button>
 <a class="bouton" href="{% url 'justificatifs_a_classer' %}">Tous les documents à classer</a></div>
-<p class="aide">Documents déposés dans Administration › Justificatifs existants et pas encore rattachés. Choisir un ou plusieurs documents
+<p class="aide">Documents déposés dans Saisie › Justificatifs et pas encore rattachés. Choisir un ou plusieurs documents
 (Ctrl+clic), puis « Rattacher à ce mouvement ». « Voir » ouvre le document choisi.</p>
 <div class="formulaire"><label for="id_a_classer">Documents</label>
 <div><select id="id_a_classer" name="a_classer" multiple size="{% if a_classer|length > 8 %}8{% else %}{{ a_classer|length }}{% endif %}" style="width:100%" required>
@@ -44,7 +44,7 @@ Sur un téléphone, le bouton propose aussi de prendre une photo.</p>
 <h3 style="margin-top:0">Ou joindre un lien (document resté dans {{ hebergeur_liens }})</h3>
 <div class="barre"><button class="principal">Joindre le lien</button></div>
 <p class="aide">Coller l'adresse du document : ComptaBB garde le lien 🔗, le document reste dans {{ hebergeur_liens }}.
-Pour beaucoup de liens d'un coup : Administration › Justificatifs existants, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
+Pour beaucoup de liens d'un coup : Saisie › Justificatifs, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
 <div class="formulaire"><label for="id_lien">Lien</label>
 <div><input type="url" id="id_lien" name="lien" maxlength="500" required placeholder="https://…" style="width:100%"></div>
 <label for="id_description_lien">Description (facultatif)</label>

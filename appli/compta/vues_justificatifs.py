@@ -115,7 +115,17 @@ def supprimer(request, pk):
 
 # ---------------------------------------------------------------- documents existants (dépôt en masse)
 
-echanger = permission_required("compta.echanger_fichiers", raise_exception=True)
+
+def echanger(vue):
+    """Dépôt et classement des justificatifs : réservé à ceux qui peuvent joindre un document à un mouvement (trésorier, administrateur)."""
+    from functools import wraps
+
+    @wraps(vue)
+    def controle(request, *a, **k):
+        if not peut_ajouter(request.user):
+            raise PermissionDenied
+        return vue(request, *a, **k)
+    return controle
 
 
 @login_required
@@ -228,7 +238,7 @@ def _actions_rattaches(request, auteur):
 @login_required
 @xframe_options_sameorigin
 def voir_a_classer(request):
-    if not (request.user.has_perm("compta.echanger_fichiers") or peut_ajouter(request.user)):   # aperçu depuis le mouvement
+    if not peut_ajouter(request.user):                     # aperçu depuis le mouvement ou la page de classement
         raise PermissionDenied
     nom = request.GET.get("nom", "")
     if nom.startswith("lien:"):
