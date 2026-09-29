@@ -168,7 +168,8 @@ def a_classer(request):
                     erreurs.append(f"« {moteur.nom_affiche(nom)} » : n° de Mvt {inconnus} inconnu, non rattaché.")
                     continue
                 try:
-                    j = moteur.rattacher(nom, mvts[0], request.POST.get(f"desc_{i}", "").strip(), auteur)
+                    j = moteur.rattacher(nom, mvts[0], request.POST.get(f"desc_{i}", "").strip(), auteur,
+                                        remplacer=bool(request.POST.get("remplacer_liens")))
                     faits += 1
                     for autre in mvts[1:]:
                         moteur.copier(j, autre, auteur)
