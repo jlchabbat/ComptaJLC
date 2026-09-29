@@ -165,6 +165,7 @@ def a_classer(request):
             messages.success(request, f"{faits} document(s) copié(s) sur le site ; {restent} encore en ligne.")
             for e in erreurs[:20]:
                 messages.error(request, e)
+            return redirect(reverse("justificatifs_a_classer") + "?en_ligne=1")
         elif request.POST.get("action_rattaches"):
             return _actions_rattaches(request, auteur)
         elif "deposer" in request.POST:
