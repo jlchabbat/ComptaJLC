@@ -266,6 +266,21 @@ def supprimer(j, auteur=""):
         fichier.unlink()
 
 
+def apercu_png(fichier):
+    """Première page d'un PDF en image PNG (aperçu lisible dans tous les navigateurs) ; None si ce n'est pas un PDF lisible."""
+    if str(fichier).lower().endswith(".pdf"):
+        try:
+            import io
+            import pypdfium2
+            pdf = pypdfium2.PdfDocument(str(fichier))
+            tampon = io.BytesIO()
+            pdf[0].render(scale=1.4).to_pil().save(tampon, format="PNG")
+            return tampon.getvalue()
+        except Exception:
+            return None
+    return None
+
+
 def desaffecter(j, auteur=""):
     """Détache le document du mouvement et le remet dans « à classer » (rien n'est perdu). Lève ValueError si refusé."""
     refus = refus_suppression(j)

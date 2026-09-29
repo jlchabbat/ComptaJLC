@@ -2558,6 +2558,13 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertTrue(any(n.endswith("facture.pdf") for n in noms))
         self.assertIn("Liens.txt", noms)
 
+    def test_apercu_pdf_en_image(self):
+        self.client.force_login(self.u)
+        just.deposer("a.pdf", b"%PDF-1.4 pas un vrai pdf")
+        r = self.client.get("/justificatifs/a-classer/voir/", {"nom": just.a_classer()[0]["nom"], "apercu": "1"})
+        self.assertEqual(r.status_code, 200)                       # PDF illisible : repli sur le fichier lui-même
+        self.assertEqual(b"".join(r.streaming_content)[:4], b"%PDF")
+
     def test_supprimer_les_lignes_cochees(self):
         self.client.force_login(self.u)
         just.deposer("a.pdf", b"%PDF-1.4 a")
