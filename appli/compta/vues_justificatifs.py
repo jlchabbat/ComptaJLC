@@ -70,7 +70,7 @@ def voir(request, pk):
     if j.lien:                                            # document resté en ligne
         return redirect(j.lien)
     fichier = moteur.chemin(j)
-    if not fichier.exists():
+    if not fichier or not fichier.exists():
         raise Http404("Fichier introuvable sur le serveur.")
     if "apercu" in request.GET:
         png = moteur.apercu_png(fichier)
@@ -166,6 +166,19 @@ def a_classer(request):
                 messages.info(request, f"« {moteur.nom_affiche(request.POST['ecarter'])} » écarté (fichier supprimé).")
             except ValueError as e:
                 messages.error(request, str(e))
+        elif "sans_ecriture_coches" in request.POST:
+            faits = 0
+            for i, nom in enumerate(request.POST.getlist("nom")):
+                if request.POST.get(f"garder_{i}"):
+                    try:
+                        moteur.garder_sans_ecriture(nom, auteur)
+                        faits += 1
+                    except ValueError as e:
+                        messages.error(request, str(e))
+            if faits:
+                messages.success(request, f"{faits} document(s) gardé(s) sans écriture, rangés avec les documents rattachés.")
+            else:
+                messages.error(request, "Cochez d'abord au moins un document.")
         elif "ecarter_coches" in request.POST:
             faits = 0
             for i, nom in enumerate(request.POST.getlist("nom")):
@@ -229,6 +242,7 @@ def a_classer(request):
         rattaches = rattaches.filter(mouvement__numero__in=nums) if q.replace("+", "").replace(" ", "").isdigit() and nums \
             else rattaches.filter(nom__icontains=q)
     afficher = bool(q or request.GET.get("rattaches"))          # la liste ne s'affiche que sur demande
+    sans = moteur.sans_ecriture(q if afficher else "")
     nb_rattaches = rattaches.count()
     lignes = moteur.a_classer()
     for l in lignes:
@@ -240,8 +254,9 @@ def a_classer(request):
     from django.shortcuts import render
     return render(request, "compta/justificatifs_a_classer.html", {
         "en_ligne": Justificatif.objects.exclude(lien="").count(),
-        "rattaches": rattaches[:200] if afficher else [], "nb_rattaches": nb_rattaches, "q": q, "afficher": afficher,
-        "nb_total": nb_rattaches if not q else Justificatif.objects.count(),
+        "rattaches": rattaches[:200] if afficher else [], "nb_rattaches": nb_rattaches + len(sans), "q": q, "afficher": afficher,
+        "sans_ecriture": sans if afficher else [],
+        "nb_total": (nb_rattaches if not q else Justificatif.objects.count()) + len(moteur.sans_ecriture()),
         "peut_supprimer": request.user.has_perm("compta.change_mouvement"),
         "lignes": lignes, "proposes": sum(1 for l in lignes if l["mouvement"]), "surs": sum(1 for l in lignes if l["sur"])})
 
@@ -251,21 +266,32 @@ def _actions_rattaches(request, auteur):
     from django.http import HttpResponse
     from django.shortcuts import render
     action = request.POST["action_rattaches"]
-    choisis = list(Justificatif.objects.select_related("mouvement").filter(pk__in=request.POST.getlist("doc")))
-    if not choisis:
+    cochees = request.POST.getlist("doc")
+    sans = [c[2:] for c in cochees if c.startswith("s:")]                 # documents gardés sans écriture
+    choisis = list(Justificatif.objects.select_related("mouvement").filter(pk__in=[c for c in cochees if not c.startswith("s:")]))
+    if not choisis and not sans:
         messages.error(request, "Cochez d'abord au moins un document rattaché.")
         return redirect(reverse("justificatifs_a_classer") + "?rattaches=1#rattaches")
     if action == "exporter":
         import datetime
-        rep = HttpResponse(moteur.archive_zip(choisis), content_type="application/zip")
+        rep = HttpResponse(moteur.archive_zip(choisis, sans), content_type="application/zip")
         rep["Content-Disposition"] = f'attachment; filename="Justificatifs_{datetime.date.today():%Y-%m-%d}.zip"'
         return rep
     if action == "imprimer":
+        if not choisis:
+            messages.error(request, "L'impression ne concerne que les documents rattachés à un mouvement.")
+            return redirect(reverse("justificatifs_a_classer") + "?rattaches=1#rattaches")
         return render(request, "compta/justificatifs_imprimer.html", {"documents": choisis})
     if action in ("desaffecter", "supprimer"):
         if action == "supprimer" and not request.user.has_perm("compta.change_mouvement"):
             raise PermissionDenied
         faits = 0
+        for nom in sans:
+            try:
+                (moteur.remettre_a_classer if action == "desaffecter" else moteur.supprimer_sans_ecriture)(nom, auteur)
+                faits += 1
+            except ValueError as e:
+                messages.error(request, str(e))
         for j in choisis:
             try:
                 (moteur.desaffecter if action == "desaffecter" else moteur.supprimer)(j, auteur)
@@ -290,7 +316,7 @@ def voir_a_classer(request):
         except ValueError:
             raise Http404
     try:
-        f = moteur.fichier_a_classer(request.GET.get("nom", ""))
+        f = moteur.fichier_sans_ecriture(nom[2:]) if nom.startswith("s:") else moteur.fichier_a_classer(nom)
     except ValueError:
         raise Http404
     import mimetypes

@@ -9,10 +9,10 @@
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ m.total_debit|shekel }}</td><td class="n">{{ m.total_credit|shekel }}</td><td colspan="3"></td></tr></table>
 <h2>Justificatifs ({{ justificatifs|length }})</h2>
 {% if justificatifs %}<table><tr><th>Document</th><th>Description</th><th class="n">Taille</th><th>Ajouté</th><th></th></tr>
-{% for j in justificatifs %}<tr><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% else %}<a href="{% url 'justificatif' j.pk %}" data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
-<td>{{ j.description }}</td><td class="n">{% if j.lien %}lien{% elif j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
+{% for j in justificatifs %}<tr><td>{% if j.lien %}<a href="{{ j.lien }}" target="_blank" rel="noopener" title="{{ j.lien }}">🔗 {{ j.nom }}</a>{% elif not j.chemin %}📎 {{ j.nom }}{% else %}<a href="{% url 'justificatif' j.pk %}" data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}" target="_blank" rel="noopener">{% if j.est_image %}🖼{% else %}📄{% endif %} {{ j.nom }}</a>{% endif %}</td>
+<td>{{ j.description }}</td><td class="n">{% if j.lien %}lien{% elif not j.chemin %}sur le PC{% elif j.taille >= 1048576 %}{% widthratio j.taille 1048576 1 %} Mo{% else %}{% widthratio j.taille 1024 1 %} Ko{% endif %}</td>
 <td>{{ j.ajoute_le|date:"d/m/Y H:i" }}{% if j.ajoute_par %} · {{ j.ajoute_par }}{% endif %}</td>
-<td>{% if not j.lien %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
+<td>{% if j.chemin %}<a href="{% url 'justificatif' j.pk %}?telecharger=1">Télécharger</a>{% endif %}
 {% if perms.compta.change_mouvement and not refus_suppression %}<form method="post" action="{% url 'justificatif_supprimer' j.pk %}" style="display:inline">{% csrf_token %}
 <button onclick="return confirm('Supprimer ce justificatif ?')">Supprimer</button></form>{% endif %}
 {% if peut_joindre %}<form method="post" action="{% url 'justificatif_copier' j.pk %}" style="display:inline" title="Joindre aussi ce document à un autre mouvement (plusieurs : 412+430)">{% csrf_token %}
