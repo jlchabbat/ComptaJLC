@@ -70,7 +70,7 @@ def voir(request, pk):
     if j.lien:                                            # document resté en ligne
         return redirect(j.lien)
     fichier = moteur.chemin(j)
-    if not fichier.exists():
+    if not fichier or not fichier.exists():
         raise Http404("Fichier introuvable sur le serveur.")
     if "apercu" in request.GET:
         png = moteur.apercu_png(fichier)

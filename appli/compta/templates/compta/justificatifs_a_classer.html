@@ -77,7 +77,7 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 <table class="compact"><tr><th><input type="checkbox" class="tout" title="Tout cocher / tout décocher"></th><th>Mvt</th><th>Document</th><th>Description</th><th>Ajouté</th></tr>
 {% for j in rattaches %}<tr><td><input type="checkbox" name="doc" value="{{ j.pk }}"></td>
 <td><a href="{% url 'mouvement' j.mouvement.numero %}" target="_blank" rel="noopener">{{ j.mouvement.numero }}</a></td>
-<td><a href="{% url 'justificatif' j.pk %}" {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %} target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a></td>
+<td>{% if not j.lien and not j.chemin %}📎 {{ j.nom }} (sur le PC){% else %}<a href="{% url 'justificatif' j.pk %}" {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %} target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a>{% endif %}</td>
 <td>{{ j.description }}</td><td>{{ j.ajoute_le|date:"d/m/Y" }}</td></tr>{% endfor %}</table>
 </form>
 {% else %}<p class="aide">Aucun document rattaché{% if q %} pour cette recherche{% endif %}.</p>{% endif %}{% endif %}
