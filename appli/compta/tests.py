@@ -2564,6 +2564,25 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(self.client.get(f"/justificatif/{j.pk}/").status_code, 404)          # ni fichier ni lien : pas d'erreur 500
         self.assertContains(self.client.get("/mouvement/5/"), "sur le PC")
 
+    def test_document_garde_sans_ecriture(self):
+        import io
+        import zipfile
+        self.client.force_login(self.u)
+        just.deposer("photo assemblee.pdf", b"%PDF-1.4 test")
+        nom = just.a_classer()[0]["nom"]
+        r = self.client.post("/justificatifs/a-classer/", {"sans_ecriture_coches": "1", "nom": [nom], "garder_0": "1"})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(just.a_classer(), [])                                        # quitte « Vérifier et rattacher »
+        self.assertEqual([d["affiche"] for d in just.sans_ecriture()], ["photo assemblee.pdf"])
+        page = self.client.get("/justificatifs/a-classer/?rattaches=1").content.decode()
+        self.assertIn("photo assemblee.pdf", page)                                    # rangé avec les documents rattachés
+        self.assertEqual(self.client.get("/justificatifs/a-classer/voir/?nom=s:" + nom).status_code, 200)
+        z = zipfile.ZipFile(io.BytesIO(b"".join(self.client.get("/justificatifs/tout.zip").streaming_content)))
+        self.assertIn("Sans écriture/photo assemblee.pdf", z.namelist())
+        self.client.post("/justificatifs/a-classer/", {"action_rattaches": "desaffecter", "doc": ["s:" + nom]})
+        self.assertEqual(len(just.a_classer()), 1)                                    # remis à classer
+        self.assertEqual(just.sans_ecriture(), [])
+
     def test_tout_telecharger_en_zip(self):
         self.client.force_login(self.u)
         m = Mouvement.objects.get(numero=5)

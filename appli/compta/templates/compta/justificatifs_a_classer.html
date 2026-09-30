@@ -47,6 +47,7 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 <p class="mini">Corrigez le n° de Mvt si besoin (deux mouvements : 389+412), cochez, puis <b>Rattacher</b> ou <b>Supprimer</b>. <span class="ok">{{ surs }} sûre{{ surs|pluralize }} déjà cochée{{ surs|pluralize }}</span> sur {{ proposes }}.</p>
 <form method="post" id="f-classer">{% csrf_token %}
 <div class="barre"><button class="principal" name="rattacher" value="1" data-confirme="">Rattacher les lignes cochées</button>
+<button name="sans_ecriture_coches" value="1" formnovalidate title="Le document est conservé avec les documents rattachés, sans écriture ; il quitte cette liste">Garder sans écriture</button>
 <button name="ecarter_coches" value="1" formnovalidate data-confirme="Supprimer définitivement les documents cochés">Supprimer les lignes cochées</button>
 <label title="Le document déposé prend la place du lien du même mouvement (le lien avec l'écriture est conservé)"><input type="checkbox" name="remplacer_liens" value="1"> Le fichier remplace l'ancien lien du mouvement</label></div>
 <table class="triable"><tr><th><input type="checkbox" class="tout" title="Tout cocher / tout décocher"></th><th>Document</th><th>Mvt</th><th>Mouvement proposé</th><th class="n">Total du Mvt</th><th>Raison</th><th>Description</th></tr>
@@ -67,7 +68,7 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 {% if not afficher %}<div class="barre"><a class="bouton principal" href="?rattaches=1#rattaches">Afficher la liste</a></div>
 {% else %}<form method="get" class="barre"><input type="hidden" name="rattaches" value="1"><label>Mvt ou nom du fichier <input name="q" value="{{ q }}" size="14"></label>
 <button>Chercher</button>{% if q %}<a class="bouton" href="?rattaches=1#rattaches">Tout voir</a>{% endif %}<a class="bouton" href="{% url 'justificatifs_a_classer' %}">Masquer la liste</a></form>
-{% if rattaches %}
+{% if rattaches or sans_ecriture %}
 <p class="mini">Cochez, puis <b>Détacher</b> (retour au 2), <b>Supprimer</b>, <b>Exporter</b> (ZIP) ou <b>Imprimer</b>.{% if nb_rattaches > 200 %} 200 premiers affichés : affinez la recherche.{% endif %}</p>
 <form method="post" id="f-rattaches">{% csrf_token %}
 <div class="barre"><button name="action_rattaches" value="desaffecter" data-confirme="Détacher de leur mouvement les documents cochés">Détacher du mouvement</button>
@@ -75,6 +76,10 @@ Excel de liens : chaque ligne est proposée au mouvement de même date et même 
 <button name="action_rattaches" value="exporter">Exporter (ZIP)</button>
 <button name="action_rattaches" value="imprimer" formtarget="_blank">Imprimer</button></div>
 <table class="compact"><tr><th><input type="checkbox" class="tout" title="Tout cocher / tout décocher"></th><th>Mvt</th><th>Document</th><th>Description</th><th>Ajouté</th></tr>
+{% for d in sans_ecriture %}<tr><td><input type="checkbox" name="doc" value="s:{{ d.nom }}"></td>
+<td><em>sans écriture</em></td>
+<td><a href="{% url 'justificatif_a_classer_voir' %}?nom=s:{{ d.nom|urlencode }}" data-apercu="{% url 'justificatif_a_classer_voir' %}?nom=s:{{ d.nom|urlencode }}" data-nom="{{ d.affiche }}" target="_blank" rel="noopener">📄 {{ d.affiche }}</a></td>
+<td></td><td></td></tr>{% endfor %}
 {% for j in rattaches %}<tr><td><input type="checkbox" name="doc" value="{{ j.pk }}"></td>
 <td><a href="{% url 'mouvement' j.mouvement.numero %}" target="_blank" rel="noopener">{{ j.mouvement.numero }}</a></td>
 <td>{% if not j.lien and not j.chemin %}📎 {{ j.nom }} (sur le PC){% else %}<a href="{% url 'justificatif' j.pk %}" {% if not j.lien %}data-apercu="{% url 'justificatif' j.pk %}" data-nom="{{ j.nom }}"{% endif %} target="_blank" rel="noopener">{% if j.lien %}🔗 {% endif %}{{ j.nom }}</a>{% endif %}</td>

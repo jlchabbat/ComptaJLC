@@ -318,13 +318,15 @@ def archive_tout():
             f = chemin(j)
             if f and f.exists():
                 z.write(f, j.chemin)
+        for d in sans_ecriture():
+            z.write(sans_ecriture_dossier() / d["nom"], f"Sans écriture/{d['affiche']}")
         if liens:
             z.writestr("Liens.txt", "\n".join(liens))
     tmp.seek(0)
     return tmp
 
 
-def archive_zip(justificatifs):
+def archive_zip(justificatifs, sans_ecriture_noms=()):
     """ZIP en mémoire des documents choisis (Mvt<n°>_<rang>_<nom>) ; les liens vont dans Liens.txt."""
     import io
     import zipfile
@@ -337,6 +339,8 @@ def archive_zip(justificatifs):
             f = chemin(j)
             if f and f.exists():
                 z.write(f, f.name)
+        for nom in sans_ecriture_noms:
+            z.write(fichier_sans_ecriture(nom), "Sans écriture " + nom_affiche(nom))
         if liens:
             z.writestr("Liens.txt", "\n".join(liens))
     return tampon.getvalue()
@@ -683,6 +687,58 @@ def rattacher(nom, mouvement, description="", auteur="", remplacer=False):
     if remplacer:
         remplacer_liens(mouvement, j, auteur)
     return j
+
+
+def sans_ecriture_dossier():
+    d = dossier() / "_sans_ecriture"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def sans_ecriture(q=""):
+    """Documents gardés sans lien avec une écriture : [{nom, affiche, taille}]."""
+    q = q.strip().lower()
+    return [{"nom": f.name, "affiche": nom_affiche(f.name), "taille": f.stat().st_size}
+            for f in sorted(sans_ecriture_dossier().iterdir(), key=lambda p: p.name.lower())
+            if f.is_file() and (not q or q in nom_affiche(f.name).lower())]
+
+
+def fichier_sans_ecriture(nom):
+    f = sans_ecriture_dossier() / nom
+    if "/" in nom or "\\" in nom or nom.startswith(".") or not f.is_file():
+        raise ValueError("Fichier introuvable.")
+    return f
+
+
+def _deplacer(source, dossier_cible):
+    cible, lettres = dossier_cible / source.name, iter("bcdefghijklmnopqrstuvwxyz")
+    while cible.exists():
+        racine, point, ext = source.name.rpartition(".")
+        cible = dossier_cible / (f"{racine}__doublon_{next(lettres)}{point}{ext}" if point else f"{source.name}__doublon_{next(lettres)}")
+    source.rename(cible)
+    return cible
+
+
+def garder_sans_ecriture(nom, auteur=""):
+    """Le document reste conservé, rangé avec les documents rattachés, sans écriture : il quitte « Vérifier et rattacher »."""
+    if nom.startswith("lien:"):
+        raise ValueError("Un lien en attente ne se garde pas sans écriture : le rattacher ou l'écarter.")
+    _deplacer(fichier_a_classer(nom), sans_ecriture_dossier())
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Document gardé sans écriture",
+                                objet="sans écriture", avant=nom_affiche(nom)[:300])
+
+
+def remettre_a_classer(nom, auteur=""):
+    _deplacer(fichier_sans_ecriture(nom), a_classer_dossier())
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Document sans écriture remis à classer",
+                                objet="sans écriture", avant=nom_affiche(nom)[:300])
+
+
+def supprimer_sans_ecriture(nom, auteur=""):
+    f = fichier_sans_ecriture(nom)
+    Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Suppression d'un document sans écriture",
+                                objet="sans écriture", avant=nom_affiche(nom)[:300])
+    f.unlink()
 
 
 def ecarter(nom):
