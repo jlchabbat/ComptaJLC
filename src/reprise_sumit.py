@@ -102,7 +102,7 @@ def charger(d):
     from django.db import transaction
     from compta import releves
     from compta.export_complet import vider
-    from compta.models import (CodeAnalytique, Compte, Exercice, Journal, LigneReleve, Ligne, Modification, Mouvement,
+    from compta.models import (CodeAnalytique, Compte, Exercice, Journal, Ligne, Modification, Mouvement,
                                ParametreReleve, Prefixe, Reglage, Traduction)
     from compta.reglages import REGLAGES
     from compta.saisie import initialiser_parametres
