@@ -8,7 +8,7 @@ function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se 
   if (window.opener || history.length <= 1) { window.close(); setTimeout(function () { location.href = a.href; }, 300); return false; }
   return true; }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
-  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/tableau.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
 <body{% if not deux_axes %} class="un-seul-axe"{% endif %}>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}

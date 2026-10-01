@@ -1385,6 +1385,14 @@ class EcransCorrections(TestCase):
         self.assertContains(self.client.get("/mouvement/500/"), 'href="/grand-livre/?compte=600100">← Retour')
         self.assertContains(self.client.get("/mouvement/rappel/"), 'href="/ecritures/">Abandonner')
 
+    def test_outils_de_tableau(self):
+        """Choix des colonnes et sélection avec somme : script chargé sur toutes les pages, fichier servi."""
+        self.assertContains(self.client.get("/ecritures/"), "compta/tableau.js")
+        from pathlib import Path
+        js = (Path(__file__).parent / "static" / "compta" / "tableau.js").read_text(encoding="utf-8")
+        for mot in ("barre-selection", "choix-colonnes", "comptabb-masquees"):
+            self.assertIn(mot, js)
+
     def test_recherche_par_montant(self):
         """Montant exact au débit ou au crédit ; virgule, point et espaces acceptés ; montant illisible signalé."""
         tout = self.client.get("/ecritures/").context["page"].paginator.count
