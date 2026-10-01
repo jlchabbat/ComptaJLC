@@ -2430,12 +2430,13 @@ class ExcelDeToutesLesPages(TestCase):
         r = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&format=ciel")
         self.assertIn("Ecritures_Ciel_2026-01-01_2026-12-31.xlsx", r["Content-Disposition"])
         ws = openpyxl.load_workbook(io.BytesIO(r.content)).active
-        self.assertEqual([c.value for c in ws[1]], ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Debit", "Credit", "Npiece",
-                                                    "Anal", "LibelAnal", "Lettr"])
+        self.assertEqual([c.value for c in ws[1]], ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit",
+                                                    "Npiece", "Anal", "LibelAnal", "Lettr"])
         lignes = [[c.value for c in row] for row in ws.iter_rows(min_row=2)]
         charge = next(l for l in lignes if l[3] == "600000")
-        self.assertEqual((charge[0], charge[5], charge[6]), (600, 1234.5, 0))
-        self.assertEqual(ws.cell(2, 8).number_format, "@")                               # Npiece en texte
+        self.assertEqual((charge[0], charge[6], charge[7]), (600, 1234.5, 0))
+        self.assertTrue(all(l[5] for l in lignes))                                      # libellé de chaque écriture
+        self.assertEqual(ws.cell(2, 9).number_format, "@")                               # Npiece en texte
 
     def test_toutes_les_lignes_malgre_la_pagination(self):
         for n in range(1, 131):

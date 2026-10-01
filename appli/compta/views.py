@@ -81,12 +81,14 @@ TRIS_ECRITURES = {
 }
 
 
-COLONNES_CIEL = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Debit", "Credit", "Npiece", "Anal", "LibelAnal", "Lettr"]
+COLONNES_CIEL = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Npiece", "Anal", "LibelAnal",
+                 "Lettr"]
 
 
 def export_ciel(lignes, debut, fin):
     """Écritures (période et filtres de la page) au format de contrôle de Ciel Compta : une ligne par ligne d'écriture ;
-    Npiece = code axe 2 (texte), Anal / LibelAnal = code axe 1 du compte et son libellé, Lettr = lettrage."""
+    Libelle = libellé de la ligne d'écriture, Npiece = code axe 2 (texte), Anal / LibelAnal = code axe 1 du compte et son
+    libellé, Lettr = lettrage."""
     import io
 
     import openpyxl
@@ -100,15 +102,15 @@ def export_ciel(lignes, debut, fin):
         c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F3864")
     for l in lignes.order_by("mouvement__date", "mouvement__numero", "ordre"):
         a1 = l.compte.anal1
-        ws.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle,
+        ws.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle, l.libelle,
                    float(l.debit), float(l.credit), l.anal2_id or "", a1.code if a1 else "", a1.libelle if a1 else "",
                    l.lettrage or ""])
         r = ws.max_row
         ws.cell(r, 3).number_format = "DD/MM/YYYY"
-        ws.cell(r, 6).number_format = ws.cell(r, 7).number_format = "0.00"
-        for col in (4, 8, 9):                             # codes en texte (Npiece = code axe 2)
+        ws.cell(r, 7).number_format = ws.cell(r, 8).number_format = "0.00"
+        for col in (4, 9, 10):                             # codes en texte (Npiece = code axe 2)
             ws.cell(r, col).number_format = "@"
-    for col, largeur in zip("ABCDEFGHIJK", (8, 7, 11, 14, 34, 12, 12, 12, 10, 28, 7)):
+    for col, largeur in zip("ABCDEFGHIJKL", (8, 7, 11, 14, 30, 40, 12, 12, 12, 10, 28, 7)):
         ws.column_dimensions[col].width = largeur
     ws.freeze_panes = "A2"
     tampon = io.BytesIO()

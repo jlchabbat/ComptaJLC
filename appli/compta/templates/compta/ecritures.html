@@ -2,7 +2,7 @@
 <h1>Écritures</h1>
 <div class="barre">{% if perms.compta.add_mouvement %}<a class="bouton principal" href="{% url 'mouvement_nouveau' %}">Écriture libre</a>{% endif %}
 <a class="bouton principal" href="?{% for k, v in request.GET.items %}{% if k != 'page' and k != 'format' and k != 'du' and k != 'au' %}{{ k }}={{ v|urlencode }}&amp;{% endif %}{% endfor %}du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=ciel"
- title="Excel au format de contrôle de Ciel Compta : Mvt, Journ, Date, Compte, LibelCompte, Debit, Credit, Npiece (code axe 2), Anal, LibelAnal (axe 1), Lettr">Export Ciel (Excel)</a></div>
+ title="Excel au format de contrôle de Ciel Compta : Mvt, Journ, Date, Compte, LibelCompte, Libelle (de l'écriture), Debit, Credit, Npiece (code axe 2), Anal, LibelAnal (axe 1), Lettr">Export Ciel (Excel)</a></div>
 {% if perms.compta.add_mouvement %}<p class="aide">Pour modifier une écriture, ouvrir son mouvement (n° Mvt). L'export Ciel reprend la période et les filtres affichés.</p>{% endif %}
 <form class="filtres" method="get">
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
