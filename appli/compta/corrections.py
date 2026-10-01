@@ -119,3 +119,41 @@ def creer(date, journal, lignes, motif, utilisateur):
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",
                                 objet=f"Mvt {m.numero} – {motif.strip()}"[:200], apres=resume(m.lignes.all()))
     return m
+
+
+def refus_suppression(m):
+    """Raison pour laquelle le mouvement ne peut pas être supprimé, ou ''."""
+    if verrou(m):
+        return verrou(m)
+    if Exercice.objects.filter(mouvement_an=m).exists():
+        return "À-nouveaux d'un exercice : ne se suppriment pas."
+    return ""
+
+
+@transaction.atomic
+def supprimer(m, utilisateur):
+    """Supprime le mouvement (trésorier) : ses lignes sortent des pointages et lettrages, ses justificatifs sont effacés,
+    une ligne de fiche bénévole reportée redevient à reporter. L'avant reste dans l'historique."""
+    from . import justificatifs
+    from .models import Fiche, LigneFiche
+    refus = refus_suppression(m)
+    if refus:
+        raise ValueError(refus)
+    avant = f"{m.date:%d/%m/%Y} {m.journal_id} pièce {m.piece} · " + resume(m.lignes.select_related("compte", "anal2"))
+    for l in m.lignes.all():
+        _liberer(l)
+    fichiers = [justificatifs.chemin(j) for j in m.justificatifs.all()]
+    fiches = list(Fiche.objects.filter(lignes__mouvement=m, statut="reportee").distinct())
+    LigneFiche.objects.filter(mouvement=m).update(mouvement=None)
+    for f in fiches:                                      # la ligne est à reporter de nouveau
+        f.statut = "transmise"
+        f.save(update_fields=["statut"])
+    numero = m.numero
+    m.delete()
+    for f in fichiers:
+        if f and f.exists():
+            f.unlink()
+    Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Suppression",
+                                objet=f"Mvt {numero}", avant=avant[:300],
+                                apres=f"{len(fichiers)} justificatif(s) effacé(s)" if fichiers else "")
+    return numero

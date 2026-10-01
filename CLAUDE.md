@@ -53,8 +53,9 @@ python -m unittest discover tests
 
 ## Interdits (cahier §0, §8)
 
-- Ne jamais modifier ni supprimer une écriture existante sans accord
-  explicite.
+- Une écriture existante se corrige ou se supprime depuis l'application
+  (trésorier, jamais dans un exercice clos, historique conservé) ; pas de
+  modification en masse hors application sans accord explicite.
 - Pas de valeur métier en dur dans une formule : cellule nommée ou table.
 - Ne pas casser les tables T_* ni la requête « Requête1 » (T_Banque1).
 - **Ne jamais enregistrer le classeur avec openpyxl** ou une autre

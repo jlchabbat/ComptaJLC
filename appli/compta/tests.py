@@ -1322,6 +1322,15 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
 
+    def test_bouton_supprimer(self):
+        self.assertContains(self.client.get("/mouvement/500/"), "Supprimer")
+        self.assertContains(self.client.get("/mouvement/500/modifier/"), "Supprimer l'écriture")
+        self.assertEqual(self.client.get("/mouvement/500/supprimer/").status_code, 302)    # GET : rien n'est supprimé
+        self.assertTrue(Mouvement.objects.filter(numero=500).exists())
+        self.assertRedirects(self.client.post("/mouvement/500/supprimer/"), "/ecritures/", fetch_redirect_response=False)
+        self.assertFalse(Mouvement.objects.filter(numero=500).exists())
+        self.assertTrue(Modification.objects.filter(action="Suppression", objet="Mvt 500").exists())
+
     def test_tri_et_droits(self):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête
@@ -1331,6 +1340,7 @@ class EcransCorrections(TestCase):
         self.client.force_login(b)
         self.assertNotContains(self.client.get("/mouvement/500/"), "Modifier")
         self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 403)
+        self.assertEqual(self.client.post("/mouvement/500/supprimer/").status_code, 403)
 
 
 class ImportTiers(TestCase):
