@@ -93,7 +93,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 - **Justificatifs** (page d'un mouvement) : scans PDF ou photos joints au mouvement (plusieurs par
   mouvement, 10 Mo au plus chacun, photo directe sur téléphone) ; consultables par tous les rôles qui voient
   la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
-  filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
+  filtre « avec / sans justificatif » et recherche d'un montant exact (au débit ou au crédit) dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
 - **Corriger ou supprimer une écriture** (trésorier) : Saisie › Modifier une écriture (n° de Mvt), ou boutons Modifier /
   Supprimer de la fiche du mouvement ; motif facultatif ; l'avant et l'après restent dans l'historique. Refusé dans un
