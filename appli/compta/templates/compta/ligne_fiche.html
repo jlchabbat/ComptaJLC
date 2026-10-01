@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Ligne de fiche{% endblock %}{% block contenu %}
-<p><a href="{% url 'fiche' fiche.pk %}">← {{ fiche.titre }}</a></p>
 <h1>{{ ligne.get_sens_display }} du {{ ligne.date|date:"d/m/Y" }} · {{ ligne.montant|shekel }}</h1>
-<div class="barre"><button form="f-ligne" class="principal">Enregistrer</button>
+<div class="barre">{% url 'fiche' fiche.pk as u %}{% bouton_retour "ligne_fiche" u "← Retour à la fiche" %}
+<button form="f-ligne" class="principal">Enregistrer</button>
 {% if perms.compta.delete_lignefiche %}<button form="f-ligne" name="supprimer" value="1" onclick="return confirm('Supprimer cette ligne ?')">Supprimer la ligne</button>{% endif %}</div>
 <form method="post" class="carte" id="f-ligne">{% csrf_token %}
 <div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>

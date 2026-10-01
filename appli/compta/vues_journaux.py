@@ -38,11 +38,22 @@ def journal_tresorerie(journal, debut, fin):
     if o_fin and o_fin > debut:
         lignes = lignes.exclude(mouvement__origine="cloture")
     res, solde = [], ouverture
+    solde_devise = sum((devise_signee(l) for l in Ligne.objects.filter(compte=journal.compte, mouvement__date__lt=debut,
+                                                                       montant_devise__isnull=False)), ZERO)
     for l in lignes:
         solde += l.debit - l.credit
+        solde_devise += devise_signee(l)
         contre = sorted({x.compte.numero + " " + x.compte.libelle for x in l.mouvement.lignes.all() if x.compte_id != l.compte_id})
-        res.append({"l": l, "contrepartie": " · ".join(contre)[:120], "solde": solde})
+        res.append({"l": l, "contrepartie": " · ".join(contre)[:120], "solde": solde,
+                    "devise": devise_signee(l) if l.montant_devise is not None else None, "solde_devise": solde_devise})
     return ouverture, res
+
+
+def devise_signee(l):
+    """Montant d'origine d'une ligne de journal en devise : + au débit (entrée en banque), − au crédit."""
+    if l.montant_devise is None:
+        return ZERO
+    return l.montant_devise if l.debit else -l.montant_devise
 
 
 @login_required
@@ -55,7 +66,7 @@ def journaux(request):
     ctx = {"journaux": tous, "journal": journal, "debut": debut, "fin": fin}
     if journal and journal.compte_id:
         ouverture, lignes = journal_tresorerie(journal, debut, fin)
-        ctx.update(tresorerie=True, ouverture=ouverture, lignes=lignes,
+        ctx.update(tresorerie=True, ouverture=ouverture, lignes=lignes, en_devise=bool(journal.devise),
                    recettes=sum((x["l"].debit for x in lignes), ZERO), depenses=sum((x["l"].credit for x in lignes), ZERO),
                    cloture=lignes[-1]["solde"] if lignes else ouverture)
     elif journal:

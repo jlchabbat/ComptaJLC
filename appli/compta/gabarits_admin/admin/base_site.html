@@ -1,13 +1,14 @@
-{% extends "admin/base.html" %}
+{% extends "admin/base.html" %}{% load admin_urls %}
 {# Référentiels (administration Django) : bouton bien visible pour revenir aux menus de ComptaBB #}
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | ComptaBB{% endblock %}
 {% block extrastyle %}{{ block.super }}<style>
-#retour-comptabb { display: inline-block; margin-right: 18px; padding: 7px 14px; border-radius: 6px; background: #ffd98a;
+#retour-comptabb, .fermer-comptabb { display: inline-block; margin-right: 18px; padding: 7px 14px; border-radius: 6px; background: #ffd98a;
   color: #1f3864 !important; font-weight: 700; text-decoration: none; font-size: 14px; }
 #retour-comptabb:hover { background: #fff; }
 #branding { display: flex; align-items: center; }
 </style>{% endblock %}
 {% block branding %}<a id="retour-comptabb" href="/" title="Revenir au tableau de bord et aux menus de ComptaBB">← Retour aux menus ComptaBB</a>
+{% if opts and add or opts and change %}<a class="fermer-comptabb" href="{% url opts|admin_urlname:'changelist' %}" title="Fermer sans enregistrer et revenir à la liste">✕ Fermer</a>{% endif %}
 <div id="site-name"><a href="{% url 'admin:index' %}">Référentiels</a></div>
 {% if user.is_anonymous %}{% include "admin/color_theme_toggle.html" %}{% endif %}{% endblock %}
 {% block nav-global %}{% endblock %}

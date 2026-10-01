@@ -379,6 +379,11 @@ class PremierDemarrage(TestCase):
         self.assertContains(r, " €</div>")
         self.assertRedirects(self.client.get("/demarrage/"), "/", fetch_redirect_response=False)   # une seule fois
         self.assertEqual(controles.etat_general(controles.executer())[0], "OK")
+        from .membres import creer_tiers                                         # comptes de tiers : axe 1 du plan
+        for libelle, numero in (("Membre", "411COHEN001"), ("Fournisseur", "401COHEN001")):
+            c = creer_tiers(TypeTiers.objects.get(libelle=libelle), "Cohen", "David")
+            self.assertEqual((c.numero, c.anal1_id, c.lettrable), (numero, "BIL.4", True))
+        self.assertFalse(Membre.objects.filter(compte_id="411000").exists())     # compte collectif : pas de fiche
 
     def test_mes_propres_fichiers(self):
         self.administrateur()
@@ -387,6 +392,11 @@ class PremierDemarrage(TestCase):
         self.assertRedirects(r, "/echanges/", fetch_redirect_response=False)
         self.assertFalse(Journal.objects.exists() or Compte.objects.exists())
         self.assertEqual((reglages.lire("devise"), Reglage.lire("demarrage")), ("$", "fait"))
+        self.assertEqual(sorted(TypeTiers.objects.values_list("prefixe", flat=True)), ["401", "411"])
+        from .membres import importer_tableau
+        Compte.objects.create(numero="411000", libelle="MEMBRES", anal1=CodeAnalytique.objects.create(code="BIL.4", axe=1, libelle="TIERS"))
+        r = importer_tableau([["Type", "Nom", "Prénom"], ["Membre", "Levy", "Sarah"]])
+        self.assertEqual((r.erreurs, Compte.objects.get(numero="411LEVY001").anal1_id), ([], "BIL.4"))
         self.assertEqual(self.client.get("/").status_code, 200)
 
 
@@ -1269,8 +1279,8 @@ class Corrections(TestCase):
 
     def test_modifier(self):
         b1 = Journal.objects.get(code="B1")
-        with self.assertRaises(ValueError):                      # motif obligatoire
-            corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1), self.saisie(self.l2)], "", self.u)
+        corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1), self.saisie(self.l2)], "", self.u)   # motif facultatif
+        self.assertIn("correction", self.m.commentaire)
         with self.assertRaises(ValueError):                      # déséquilibré
             corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, d=12), self.saisie(self.l2)], "erreur", self.u)
         r = Rapprochement.objects.create(journal=b1, mode="manuel")
@@ -1285,6 +1295,22 @@ class Corrections(TestCase):
         corr.modifier(self.m, self.m.date, b1, [self.saisie(self.l1, compte="600000", d=10), self.saisie(self.l1, d=2, id=False),
                                                 self.saisie(self.l2, c=12)], "ventilation", self.u)
         self.assertEqual(self.m.lignes.count(), 3)
+
+    def test_supprimer(self):
+        b1 = Journal.objects.get(code="B1")
+        r = Rapprochement.objects.create(journal=b1, mode="manuel")
+        Ligne.objects.filter(pk=self.l2.pk).update(rapprochement=r)
+        self.assertEqual(corr.supprimer(self.m, self.u), 500)
+        self.assertFalse(Mouvement.objects.filter(numero=500).exists() or Rapprochement.objects.filter(pk=r.pk).exists())
+        h = Modification.objects.get(action="Suppression")
+        self.assertEqual(h.objet, "Mvt 500")
+        self.assertIn("600100 D 10", h.avant)                    # l'avant reste dans l'historique
+
+    def test_suppression_refusee_exercice_clos(self):
+        Exercice.objects.filter(libelle="2026").update(clos=True)
+        with self.assertRaises(ValueError):
+            corr.supprimer(self.m, self.u)
+        self.assertTrue(Mouvement.objects.filter(numero=500).exists())
 
     def test_verrou_exercice_clos(self):
         Exercice.objects.filter(libelle="2026").update(clos=True)
@@ -1322,14 +1348,42 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
 
+    def test_un_seul_axe(self):
+        """Réglage un_seul_axe : l'axe 2 disparaît des menus et des écrans ; une ligne sans axe 2 reçoit le code d'office."""
+        self.assertContains(self.client.get("/"), "Analytique – Objet (axe 2)")
+        Reglage.objects.create(cle="un_seul_axe", valeur="oui")
+        r = self.client.get("/")
+        self.assertNotContains(r, "Analytique – Objet (axe 2)")
+        self.assertContains(r, '<body class="un-seul-axe">')
+        data = {"date": "2026-03-01", "journal": "B1", "motif": "", "l-TOTAL_FORMS": "2", "l-INITIAL_FORMS": "2",
+                "l-MIN_NUM_FORMS": "0", "l-MAX_NUM_FORMS": "1000",
+                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15",
+                "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15"}
+        self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
+        self.assertEqual({l.anal2_id for l in Mouvement.objects.get(numero=500).lignes.all()}, {"GEN"})
+
     def test_bouton_supprimer(self):
+        self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertContains(self.client.get("/mouvement/500/"), "Supprimer")
         self.assertContains(self.client.get("/mouvement/500/modifier/"), "Supprimer l'écriture")
         self.assertEqual(self.client.get("/mouvement/500/supprimer/").status_code, 302)    # GET : rien n'est supprimé
         self.assertTrue(Mouvement.objects.filter(numero=500).exists())
-        self.assertRedirects(self.client.post("/mouvement/500/supprimer/"), "/ecritures/", fetch_redirect_response=False)
+        r = self.client.post("/mouvement/500/supprimer/")
+        self.assertRedirects(r, "/ecritures/?tri=debit&ordre=desc", fetch_redirect_response=False)
         self.assertFalse(Mouvement.objects.filter(numero=500).exists())
-        self.assertTrue(Modification.objects.filter(action="Suppression", objet="Mvt 500").exists())
+
+    def test_retour_a_la_liste(self):
+        """Fiche du mouvement, modification, abandon : retour à la dernière liste consultée, filtres compris, même après
+        un enregistrement ; à défaut, la liste des écritures."""
+        self.assertContains(self.client.get("/mouvement/500/"), 'href="/ecritures/">← Retour à la liste')
+        self.client.get("/grand-livre/?compte=512000")
+        self.client.get("/ecritures/?tri=debit&ordre=desc")
+        attendu = 'href="/ecritures/?tri=debit&amp;ordre=desc"'
+        self.assertContains(self.client.get("/mouvement/500/"), attendu)
+        self.assertContains(self.client.get("/mouvement/500/modifier/"), attendu + ' title="Quitter sans rien enregistrer')
+        self.client.get("/grand-livre/?compte=600100")                            # liste la plus récente
+        self.assertContains(self.client.get("/mouvement/500/"), 'href="/grand-livre/?compte=600100">← Retour')
+        self.assertContains(self.client.get("/mouvement/rappel/"), 'href="/ecritures/">Abandonner')
 
     def test_tri_et_droits(self):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
@@ -1943,8 +1997,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions"):
-                continue                        # écritures : Mvt déjà présents ; relevés et budget vides
+            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
+                continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
             r = self.importer(source.name)
@@ -1953,7 +2007,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
         self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 9)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
-        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"])
+        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2",
+                                                         "Let", "Montant devise"])
         self.assertEqual(wb.active["C2"].value, 421)
 
     def test_refus_tout_ou_rien(self):
@@ -1978,6 +2033,92 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s), 0 modifié(s), 0 inchangé(s)")
         m = Mouvement.objects.get(numero=900)
         self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
+
+    def test_devise_par_journal_et_un_seul_axe(self):
+        """Journal en devise (colonne Devise) ; écritures avec leur montant d'origine ; un seul axe : Anal2 facultatif ;
+        les fichiers sans ces colonnes (plus anciens) restent acceptés."""
+        Reglage.objects.update_or_create(cle="un_seul_axe", defaults={"valeur": "oui"})
+        self.fichier("Journaux.xlsx", [["M1", "MIZRAHI NIS", "BQ", "512000", "oui", "ils"]])
+        self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
+        self.assertEqual(Journal.objects.get(code="M1").devise, "ILS")
+        d = dt.datetime(2026, 3, 2)
+        self.fichier("Ecritures.xlsx", [[d, "M1", 950, 950, "600100", "FRAIS", 2.35, None, None, "", 11.16],
+                                        [d, "M1", 950, 950, "512000", "FRAIS", None, 2.35, None, "", 11.16]])
+        self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s)")
+        m = Mouvement.objects.get(numero=950)
+        self.assertEqual([(l.anal2_id, l.montant_devise) for l in m.lignes.all()], [("GEN", D("11.16")), ("GEN", D("11.16"))])
+        r = self.client.get("/journaux/?journal=M1&du=2026-01-01&au=2026-12-31")
+        self.assertContains(r, "Montant ILS")
+        self.assertContains(r, "−11,16")
+        self.assertContains(self.client.get("/mouvement/950/"), "11,16")
+        wb = ech.classeur(ech.PAR_NOM["Journaux"], [["B9", "ANCIEN FORMAT", "BQ", "", "oui"]])   # sans colonne Devise
+        wb.active.delete_cols(6)
+        wb.save(ech.imports() / "Journaux.xlsx")
+        self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
+
+    def test_axes_de_comptes(self):
+        """AxesComptes.xlsx : une colonne par axe ; analyse croisée avec filtres ; export complet et réinjection."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        for r in (["Compte", "RubDecl", "Groupe"], ["600100", "I-06-Frais", "Verl"], ["600000", "I-06-Frais", "Soco"], ["700000", "", "Verl"]):
+            ws.append(r)
+        wb.save(ech.imports() / "AxesComptes.xlsx")
+        self.assertContains(self.importer("AxesComptes.xlsx"), "AxesComptes.xlsx importé (")
+        from . import axes_comptes as ax
+        self.assertEqual(ax.axes()[3:], ["RubDecl", "Groupe"])
+        t = ax.analyser(dt.date(2026, 1, 1), dt.date(2026, 12, 31), "Groupe", "RubDecl", {"Classe": ["6"]})
+        self.assertTrue(all(l["valeur"] in ("Verl", "Soco", "(sans)") for l in t["lignes"]))
+        r = self.client.get("/axes/?lignes=Groupe&colonnes=RubDecl")
+        self.assertContains(r, "Analyse par axes de comptes")
+        chemin, n = ech.exporter(ech.PAR_NOM["AxesComptes"])
+        self.assertEqual((n, [c.value for c in openpyxl.load_workbook(chemin).active[1]]), (3, ["Compte", "RubDecl", "Groupe"]))
+
+    def test_ecritures_de_l_appli_banque(self):
+        """Ecrt.csv de l'appli Banque : écritures créées (montant d'origine gardé), relevé pointé, pas de doublon."""
+        from .models import LigneReleve
+        from . import releves
+        Compte.objects.create(numero="512510", libelle="BQUE REVOLUT NIS", anal1_id=Compte.objects.get(numero="512000").anal1_id)
+        j = Journal.objects.create(code="R2", intitule="REVOLUT NIS", compte_id="512510", devise="ILS")
+        releves.importer(j, [{"date": dt.date(2026, 9, 6), "reference": "", "operation": "Shufersal Deal", "montant": D("-603.32"),
+                              "solde": D("1000.00")}], "revolut.csv")
+        texte = ("Mvt;Journ;Date;Compte;LibelCompte;Libelle;Debit;Credit;Npiece;Anal;LibelAnal\r\n"
+                 "1;R2;06/09/2026;512510;BQUE REVOLUT NIS;SHUFERSAL DEAL;0;174.40;-603.32;0BILAN;BILAN\r\n"
+                 "1;R2;06/09/2026;600100;VIE GRDE SURFACES;SHUFERSAL DEAL;174.40;0;603.32;3VIE;DEP DE VIE\r\n")
+        (ech.imports() / "1Ecrt.csv").write_bytes(texte.encode("cp1252"))
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "1Ecrt.csv : 1 écriture(s) créée(s), 0 déjà en compta, 1 ligne(s) de relevé pointée(s)")
+        m = Mouvement.objects.get(commentaire__contains="Appli Banque")
+        self.assertEqual([(l.compte_id, l.debit, l.credit, l.montant_devise) for l in m.lignes.all()],
+                         [("512510", D(0), D("174.40"), D("603.32")), ("600100", D("174.40"), D(0), D("603.32"))])
+        self.assertTrue(LigneReleve.objects.get(journal=j, ouverture=False).rapprochement_id)
+        (ech.imports() / "Ecrt.csv").write_bytes(texte.encode("cp1252"))
+        self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "0 écriture(s) créée(s), 1 déjà en compta")
+
+    def test_tout_importer(self):
+        """Tous les fichiers déposés, dans l'ordre du lexique (le compte avant les écritures, les écritures avant leurs
+        liens) ; tout ou rien ; un second passage n'ajoute rien."""
+        d = dt.datetime(2026, 3, 1)
+        lien = "https://app.sumit.co.il/crm/downloadfile/abc/"
+        self.fichier("Liens_documents.xlsx", [[901, lien, "Traiteur"]])
+        self.fichier("Ecritures.xlsx", [[d, "B1", 901, 901, "600900", "TRAITEUR", 10, None, "GEN.004", ""],
+                                        [d, "B1", 901, 901, "512000", "TRAITEUR", None, 10, "GEN.004", ""]])
+        self.fichier("PlanComptable.xlsx", [["600900", "TRAITEUR", "", "non", "oui"]])
+        openpyxl.Workbook().save(ech.imports() / "Inconnu.xlsx")
+        self.fichier("Liens_faux.xlsx", [[999, lien, ""]])                        # Mvt inconnu : tout est refusé
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "Liens_faux.xlsx : Ligne 2 : Mvt 999 inconnu")
+        self.assertFalse(Compte.objects.filter(numero="600900").exists() or Mouvement.objects.filter(numero=901).exists())
+        (ech.imports() / "Liens_faux.xlsx").unlink()
+        r = self.client.post("/echanges/", {"tout_importer": "1"}, follow=True)
+        self.assertContains(r, "Tout importé (3 fichier(s))")
+        self.assertContains(r, "Liens_documents.xlsx : 1 joint(s)")
+        self.assertContains(r, "Non importé(s), nom non reconnu : Inconnu.xlsx")
+        from .models import Justificatif
+        j = Justificatif.objects.get(lien=lien)
+        self.assertEqual((j.mouvement.numero, j.description), (901, "Traiteur"))
+        self.fichier("Liens_documents.xlsx", [[901, lien, "Traiteur"]])
+        self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "1 déjà joint(s)")
+        self.assertEqual(Justificatif.objects.count(), 1)
 
     def test_ecritures_modifiees_a_la_main(self):
         """Exporter, corriger le fichier dans Excel, le réinjecter : seuls les Mvt changés sont mis à jour."""
@@ -2261,6 +2402,35 @@ class ReferentielsEtPages(TransactionTestCase):
     def tearDown(self):
         self.reglage.disable()
 
+    def test_toutes_les_pages_se_ferment(self):
+        """Chaque page (sauf le tableau de bord) a « ✕ Fermer » : fiche → sa liste, sous-page → sa page, sinon l'accueil."""
+        from django.urls import get_resolver
+        t = User.objects.create_user("admin3")
+        donner_role(t, "Administrateur")
+        self.client.force_login(t)
+        Reglage.objects.update_or_create(cle="demarrage", defaults={"valeur": "fait"})
+        m = Mouvement.objects.order_by("numero").first()
+        sans_param = [p.pattern._route for p in get_resolver().url_patterns
+                      if hasattr(p.pattern, "_route") and "<" not in p.pattern._route and getattr(p, "name", None)]
+        vues = 0
+        for route in sans_param + [f"mouvement/{m.numero}/", f"mouvement/{m.numero}/modifier/", "rapprochement/B1/"]:
+            r = self.client.get("/" + route)
+            if r.status_code != 200 or not r.get("Content-Type", "").startswith("text/html") or b"<header>" not in r.content:
+                continue
+            vues += 1
+            if route in ("connexion/",) or route.startswith("demarrage"):
+                continue
+            if route == "":
+                self.assertNotContains(r, "✕ Fermer")
+            else:
+                self.assertContains(r, "✕ Fermer", msg_prefix=route)
+        self.assertGreater(vues, 20)
+        self.client.get("/grand-livre/?compte=512000")
+        self.assertContains(self.client.get(f"/mouvement/{m.numero}/"), 'href="/grand-livre/?compte=512000" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/rapprochement/B1/"), 'href="/rapprochement/" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/balance/"), 'href="/" onclick="return fermer(this)"')
+        self.assertContains(self.client.get("/admin/compta/compte/600100/change/"), "✕ Fermer")      # référentiels
+
     def test_export_de_chaque_referentiel(self):
         from .vues_referentiels import referentiels
         t = User.objects.create_user("tresorier")
@@ -2430,12 +2600,13 @@ class ExcelDeToutesLesPages(TestCase):
         r = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&format=ciel")
         self.assertIn("Ecritures_Ciel_2026-01-01_2026-12-31.xlsx", r["Content-Disposition"])
         ws = openpyxl.load_workbook(io.BytesIO(r.content)).active
-        self.assertEqual([c.value for c in ws[1]], ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Debit", "Credit", "Npiece",
-                                                    "Anal", "LibelAnal", "Lettr"])
+        self.assertEqual([c.value for c in ws[1]], ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit",
+                                                    "Npiece", "Anal", "LibelAnal", "Lettr"])
         lignes = [[c.value for c in row] for row in ws.iter_rows(min_row=2)]
         charge = next(l for l in lignes if l[3] == "600000")
-        self.assertEqual((charge[0], charge[5], charge[6]), (600, 1234.5, 0))
-        self.assertEqual(ws.cell(2, 8).number_format, "@")                               # Npiece en texte
+        self.assertEqual((charge[0], charge[6], charge[7]), (600, 1234.5, 0))
+        self.assertTrue(all(l[5] for l in lignes))                                      # libellé de chaque écriture
+        self.assertEqual(ws.cell(2, 9).number_format, "@")                               # Npiece en texte
 
     def test_toutes_les_lignes_malgre_la_pagination(self):
         for n in range(1, 131):
@@ -2884,3 +3055,73 @@ class LiensEnLigne(TransactionTestCase):
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
                          {"https://documents.exemple.org/fichier/aaa/", "https://documents.exemple.org/fichier/bbb/"})
 
+
+class RelevesEnDevise(TestCase):
+    """Journal en devise : relevés Revolut (CSV), carte Isracard (deux cartes, signe inversé), pointage sur le montant
+    d'origine, écriture créée au cours BCE du jour."""
+
+    def setUp(self):
+        from . import releves
+        self.rel = releves
+        referentiels_saisie()
+        Reglage.objects.update_or_create(cle="devise", defaults={"valeur": "€"})
+        Compte.objects.create(numero="512510", libelle="REVOLUT NIS", anal1_id=Compte.objects.get(numero="512000").anal1_id)
+        self.j = Journal.objects.create(code="R2", intitule="REVOLUT NIS", compte_id="512510", devise="ILS")
+
+    def test_revolut_csv(self):
+        csv_ = ("Type,Produit,Date de début,Date de fin,Description,Montant,Frais,Devise,État,Solde\n"
+                "Paiement par carte,Valeur actuelle,2026-08-30 12:17:53,2026-09-01 18:11:34,Beit Adasa,-56.00,0.00,ILS,TERMINÉ,4794.57\n"
+                "DAB,Valeur actuelle,2026-09-03 14:45:53,2026-09-04 04:28:09,Retrait,-2013.90,40.28,ILS,TERMINÉ,2740.39\n"
+                "Paiement par carte,Valeur actuelle,2026-09-04 11:58:30,,Harel,-1.00,0.00,ILS,EN ATTENTE,\n").encode()
+        ls = self.rel.lire("releve.csv", csv_)
+        self.assertEqual([(l["date"], l["operation"], l["montant"]) for l in ls],
+                         [(dt.date(2026, 9, 1), "Beit Adasa", D("-56.00")), (dt.date(2026, 9, 4), "Retrait", D("-2054.18"))])
+        self.assertEqual(self.rel.importer(self.j, ls, "releve.csv"), (2, 0, 0))    # frais compris : soldes cohérents
+
+    def test_carte_deux_cartes_signe_inverse(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        for r in (["שם כרטיס: מאסטרקארד    ארבע ספרות אחרונות 5524 "], [], ["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"],
+                  ["02/10/2026", "26/08/2026", "הראל", 1623, 405], ["שם כרטיס: ויזה    ארבע ספרות אחרונות 8240 "],
+                  ["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"], ["02/10/2026", "19/09/2026", "זיכוי", -50, -50]):
+            ws.append(r)
+        tampon = __import__("io").BytesIO()
+        wb.save(tampon)
+        ls = self.rel.lire("Isracard.xlsx", tampon.getvalue())
+        self.assertEqual([(l["date"], l["operation"], l["montant"]) for l in ls],
+                         [(dt.date(2026, 10, 2), "5524 26/08/2026 הראל (SUR 1623,00)", D("-405")),
+                          (dt.date(2026, 10, 2), "8240 19/09/2026 זיכוי", D("50"))])
+        self.assertEqual(self.rel.importer(self.j, ls, "Isracard.xlsx")[0], 2)      # sans solde : ouverture à 0
+        self.assertEqual(LigneReleve.objects.get(journal=self.j, ouverture=True).montant, D(0))
+
+    def test_pointage_et_ecriture_au_cours_bce(self):
+        from unittest import mock
+        from . import taux
+        from .models import TauxChange
+        self.rel.importer(self.j, [{"date": dt.date(2026, 9, 7), "reference": "", "operation": "Shufersal", "montant": D("-200.00"),
+                                    "solde": D("800.00")}], "r.csv")
+        l = LigneReleve.objects.get(journal=self.j, ouverture=False)
+        with mock.patch.object(taux, "telecharger", return_value=[(dt.date(2026, 9, 4), "ILS", D("4.000000"))]):
+            mv = self.rel.creer_ecriture(l, Compte.objects.get(numero="600100"), CodeAnalytique.objects.get(code="GEN.004"))
+        self.assertEqual([(x.compte_id, x.debit, x.credit, x.montant_devise) for x in mv.lignes.all()],
+                         [("512510", D(0), D("50.00"), D("200.00")), ("600100", D("50.00"), D(0), D("200.00"))])
+        self.assertTrue(TauxChange.objects.filter(jour=dt.date(2026, 9, 4), devise="ILS").exists())   # samedi 07 : cours du vendredi
+        self.assertEqual(self.rel.montant(mv.lignes.get(compte_id="512510")), D("-200.00"))         # comparé au relevé en ILS
+        with mock.patch.object(taux, "telecharger", side_effect=OSError("bloqué")):
+            self.assertIn("BCE injoignable", taux.actualiser())
+
+    def test_memoire_des_affectations_et_traduction_partielle(self):
+        """Un libellé déjà passé en compta propose son compte (sans rien enregistrer) ; la traduction ne porte que sur la
+        partie hébraïque d'un libellé de carte."""
+        from .models import Traduction
+        Traduction.objects.create(cle=Traduction.cle_de("הראל ביטוח"), hebreu="הראל ביטוח", traduction="HAREL ASSURANC")
+        self.assertEqual(Traduction.traduire("5524 26/08/2026 הראל ביטוח"), "5524 26/08/2026 HAREL ASSURANC")
+        m = Mouvement.objects.create(numero=990, date=dt.date(2026, 9, 2), journal=self.j, piece=990)
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="512510", libelle="5524 27/08/2026 HAREL ASSURANC", credit=D(50),
+                             anal2_id="GEN.004", montant_devise=D(200))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600100", libelle="5524 27/08/2026 HAREL ASSURANC", debit=D(50),
+                             anal2_id="GEN.004", montant_devise=D(200))
+        self.rel.importer(self.j, [{"date": dt.date(2026, 10, 2), "reference": "", "operation": "5524 26/09/2026 הראל ביטוח",
+                                    "montant": D("-210.00"), "solde": D("0")}], "isracard.xlsx")
+        l = LigneReleve.objects.get(journal=self.j, ouverture=False)
+        self.assertEqual(self.rel.proposition(l, self.rel.memoire_affectations()).numero, "600100")

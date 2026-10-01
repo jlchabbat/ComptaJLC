@@ -71,8 +71,8 @@ def ajouter(mouvement, fichier, description="", auteur=""):
     return j
 
 
-def ajouter_lien(mouvement, lien, nom="", description="", auteur=""):
-    """Rattache un document resté en ligne : on garde son lien. Lève ValueError si refusé."""
+def ajouter_lien(mouvement, lien, nom="", description="", auteur="", rapatrier_aussitot=True):
+    """Rattache un document resté en ligne (SUMIT…) : on garde son lien. Lève ValueError si refusé."""
     lien = (lien or "").strip()
     if not re.match(r"^https://", lien):
         raise ValueError(f"Lien refusé (adresse https:// attendue) : {lien[:80]}")
@@ -82,7 +82,7 @@ def ajouter_lien(mouvement, lien, nom="", description="", auteur=""):
                                     description=description[:150], ajoute_par=auteur)
     Modification.objects.create(auteur=auteur, lot="Justificatifs", action="Ajout d'un lien de justificatif",
                                 objet=f"Mvt {mouvement.numero}", apres=f"{j.nom} {description} {lien}"[:300])
-    if getattr(settings, "RAPATRIER_LIENS", True):
+    if rapatrier_aussitot and getattr(settings, "RAPATRIER_LIENS", True):
         try:
             rapatrier(j, auteur)                          # le document est aussitôt copié sur le site si possible
         except ValueError:

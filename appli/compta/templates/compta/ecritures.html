@@ -2,14 +2,14 @@
 <h1>Écritures</h1>
 <div class="barre">{% if perms.compta.add_mouvement %}<a class="bouton principal" href="{% url 'mouvement_nouveau' %}">Écriture libre</a>{% endif %}
 <a class="bouton principal" href="?{% for k, v in request.GET.items %}{% if k != 'page' and k != 'format' and k != 'du' and k != 'au' %}{{ k }}={{ v|urlencode }}&amp;{% endif %}{% endfor %}du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=ciel"
- title="Excel au format de contrôle de Ciel Compta : Mvt, Journ, Date, Compte, LibelCompte, Debit, Credit, Npiece (code axe 2), Anal, LibelAnal (axe 1), Lettr">Export Ciel (Excel)</a></div>
+ title="Excel au format de contrôle de Ciel Compta : Mvt, Journ, Date, Compte, LibelCompte, Libelle (de l'écriture), Debit, Credit, Npiece (code axe 2), Anal, LibelAnal (axe 1), Lettr">Export Ciel (Excel)</a></div>
 {% if perms.compta.add_mouvement %}<p class="aide">Pour modifier une écriture, ouvrir son mouvement (n° Mvt). L'export Ciel reprend la période et les filtres affichés.</p>{% endif %}
 <form class="filtres" method="get">
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <label>Journal <select name="journal" data-cherchable="Code ou intitulé…"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
 <label>Compte (début ou choix) <input name="compte" value="{{ filtres.compte }}" size="14" list="liste-comptes" placeholder="n° ou libellé"></label>
 <datalist id="liste-comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
-<label>Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+<label class="axe2">Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Recherche <input name="q" value="{{ filtres.q }}"></label>
 <label>Justificatif <select name="just"><option value="">Tous</option><option value="avec" {% if filtres.just == "avec" %}selected{% endif %}>Avec</option><option value="sans" {% if filtres.just == "sans" %}selected{% endif %}>Sans</option></select></label><button class="principal">Filtrer</button></form>
 <p>{{ page.paginator.count }} lignes · débit {{ total_debit|shekel }} · crédit {{ total_credit|shekel }}</p>

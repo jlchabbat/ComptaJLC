@@ -21,7 +21,8 @@ INVISIBLES = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮"))
 ENTETES = [
     ("valeur", ["ערך", "date valeur"]),
     ("date", ["תאריך", "date"]),
-    ("operation", ["סוג", "opération", "operation", "תיאור"]),
+    ("operation", ["סוג", "opération", "operation", "תיאור", "description", "בית העסק", "libellé", "libelle"]),
+    ("frais", ["frais"]),
     ("credit", ["זכות", "crédit", "credit"]),
     ("debit", ["חובה", "débit", "debit"]),
     ("montant", ["montant", "סכום"]),
@@ -69,7 +70,7 @@ def date(v):
     if isinstance(v, dt.date):
         return v
     s = texte(v)
-    for f in ("%d/%m/%Y", "%d/%m/%y", "%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d"):
+    for f in ("%d/%m/%Y", "%d/%m/%y", "%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
         try:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
@@ -82,20 +83,36 @@ def normaliser(rangees):
 
     Cherche la ligne d'en-tête ; accepte un montant signé ou deux colonnes crédit / débit ;
     remet le texte hébreu à l'endroit s'il a été lu à l'envers (PDF)."""
-    lignes, cols, inverse = [], None, False
+    lignes, cols, inverse, carte, numero_carte = [], None, False, False, ""
     for r in rangees:
         cellules = [texte(c) for c in r]
+        n_carte = next((re.search(r"ארבע ספרות אחרונות\s*(\d{4})", c) for c in cellules if "ספרות" in c), None)
+        if n_carte:                                       # Isracard : une section par carte (… 5524, … 8240)
+            numero_carte = n_carte.group(1)
+            continue
         noms = [colonne(c) for c in cellules]
         if "date" in noms and ("montant" in noms or "credit" in noms or "debit" in noms):
             cols = noms
+            carte = any("סכום החיוב" in c for c in cellules)
             inverse = any(h[::-1] in c and h not in c for c in cellules for h in MOTS_HEBREU)
             continue
         if not cols:
             continue
         v = {n: r[i] for i, n in enumerate(cols) if n and i < len(r)}
         d = date(v.get("date"))
+        achat = None
+        origine = None
+        if carte:                                         # carte : date du prélèvement (1re date), date d'achat au libellé
+            dates = [r[i] for i, n in enumerate(cols) if n == "date" and i < len(r)]
+            d, achat = date(dates[0]), (date(dates[-1]) if len(dates) > 1 else None)
+            montants = [nombre(r[i]) for i, n in enumerate(cols) if n == "montant" and i < len(r)]
+            origine = montants[0] if len(montants) > 1 else None          # montant de l'achat (סכום העסקה)
         if v.get("montant") not in (None, ""):
             m = nombre(v.get("montant"))
+            if m is not None and carte:                   # relevé de carte (Isracard) : le montant débité est une sortie
+                m = -m
+            if m is not None and nombre(v.get("frais")):  # Revolut : les frais s'ajoutent à la sortie
+                m -= abs(nombre(v.get("frais")))
         else:
             c, db = nombre(v.get("credit")), nombre(v.get("debit"))
             m = None if c is None and db is None else (c or ZERO) - abs(db or ZERO)
@@ -104,8 +121,13 @@ def normaliser(rangees):
         op = texte(v.get("operation"))
         if inverse and HEBREU.search(op):
             op = op[::-1]
+        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) », comme dans Ciel
+            sur = f" (SUR {origine:.2f})".replace(".", ",") if origine is not None and abs(origine) != abs(m) else ""
+            op = " ".join(x for x in (numero_carte, f"{achat:%d/%m/%Y}" if achat else "", op) if x) + sur
         lignes.append({"date": d, "reference": texte(v.get("reference"))[:40], "operation": op[:200], "montant": m,
                        "solde": nombre(v.get("solde"))})
+    if carte and lignes:                                  # relevé de carte : jamais de solde, on part de 0
+        lignes[0]["carte"] = True
     # ordre chronologique, ordre du relevé conservé dans la journée
     if len(lignes) > 1 and lignes[0]["date"] > lignes[-1]["date"]:
         lignes.reverse()
@@ -186,6 +208,44 @@ def lire_pdf_mizrahi(contenu):
     return lignes
 
 
+def _simple(mot):
+    """« ההעעששבב » → « העשב » : texte en gras imprimé deux fois par certains PDF Mizrahi."""
+    return mot[::2] if len(mot) > 1 and len(mot) % 2 == 0 and mot[::2] == mot[1::2] else mot
+
+
+LIGNE_TNUOT = re.compile(r"^(\d+) (?:(-?[\d,]+\.\d\d) )?(-?[\d,]+\.\d\d) (.*) (\d\d/\d\d/\d\d)$")
+
+
+def lire_pdf_tnuot(contenu):
+    """Relevé PDF Mizrahi « תנועות בחשבון » (texte en double, une ligne par opération : référence, solde facultatif,
+    montant, description, date). Solde d'ouverture : « יתרה קודמת ». Renvoie [] si ce n'est pas cette mise en page."""
+    import pdfplumber
+    lignes, ouverture = [], None
+    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
+        texte = "\n".join(page.extract_text() or "" for page in pdf.pages)
+    for brute in texte.splitlines():
+        ligne = " ".join(_simple(m) for m in brute.split())
+        if "קודמת" in ligne[::-1] or "תמדוק" in ligne:
+            m = re.search(r"₪\s*(-?[\d,]+\.\d\d)", ligne)
+            ouverture = nombre(m.group(1)) if m else ouverture
+            continue
+        m = LIGNE_TNUOT.match(ligne)
+        if not m:
+            continue
+        ref, solde, montant_, op, d = m.groups()
+        op = " ".join(_logique(x) for x in reversed(op.split()))
+        lignes.append({"date": date(d), "reference": ref[:40], "operation": op[:200], "montant": nombre(montant_),
+                       "solde": nombre(solde)})
+    if lignes and ouverture is not None:
+        cumul = ouverture
+        for l in lignes:
+            cumul += l["montant"]
+            if l["solde"] is not None and l["solde"] != cumul:
+                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
+            l["solde"] = cumul                            # solde complété : il donne le solde d'ouverture à l'import
+    return lignes
+
+
 def lire(nom, contenu):
     """Lit un fichier de relevé (octets) selon son extension."""
     ext = nom.lower().rsplit(".", 1)[-1]
@@ -199,7 +259,7 @@ def lire(nom, contenu):
         return normaliser([list(r) for ws in wb.worksheets for r in ws.iter_rows(values_only=True)])
     if ext == "pdf":
         import pdfplumber
-        lignes = lire_pdf_mizrahi(contenu)
+        lignes = lire_pdf_mizrahi(contenu) or lire_pdf_tnuot(contenu)
         if lignes:
             return lignes
         rangees = []
@@ -221,6 +281,9 @@ def importer(journal, lignes, source="", solde_ouverture=None):
     existant = set(LigneReleve.objects.filter(journal=journal).values_list("date", "reference", "montant", "rang"))
     premiere = not LigneReleve.objects.filter(journal=journal).exists()
     nouvelles, doublons = [], 0
+    carte = any(l.pop("carte", False) for l in lignes)
+    if carte and solde_ouverture is None:
+        solde_ouverture = ZERO                            # relevé de carte (Isracard…) : pas de solde, débité chaque mois
     for l in lignes:
         rangs[l["date"]] += 1
         cle = (l["date"], l["reference"], l["montant"], rangs[l["date"]])
@@ -277,8 +340,41 @@ def sans_an(journal):
     return Ligne.objects.filter(compte=journal.compte).exclude(mouvement__origine="cloture")
 
 
-def montant(ecriture):
+def comptes_en_devise():
+    from .models import Journal
+    return set(Journal.objects.exclude(devise="").exclude(compte__isnull=True).values_list("compte_id", flat=True))
+
+
+def montant(ecriture, en_devise=None):
+    """Montant signé de l'écriture comparé au relevé : dans la devise du compte si c'est un compte en devise."""
+    en_devise = comptes_en_devise() if en_devise is None else en_devise
+    if ecriture.compte_id in en_devise and ecriture.montant_devise is not None:
+        return ecriture.montant_devise if ecriture.debit else -ecriture.montant_devise
     return ecriture.debit - ecriture.credit
+
+
+def cours(journal, jour=None):
+    """Unités de la devise du journal pour 1 unité de la devise de la compta : cours BCE du jour si la compta est en
+    euros (compta/taux.py), sinon réglage cours_<DEVISE> (ex. cours_ILS = 3.95), sinon le cours des dernières écritures
+    du journal. None si inconnu."""
+    from .reglages import devise
+    if jour and devise().upper() in ("€", "EUR"):
+        from .taux import taux
+        t = taux(journal.devise, jour)
+        if t:
+            return t
+    v = Reglage.lire(f"cours_{journal.devise}", "").replace(",", ".").strip()
+    try:
+        if v:
+            return Decimal(v)
+    except InvalidOperation:
+        pass
+    for l in (Ligne.objects.filter(compte=journal.compte, montant_devise__isnull=False).exclude(montant_devise=0)
+              .order_by("-mouvement__date", "-pk")[:20]):
+        eur = l.debit or l.credit
+        if eur:
+            return (l.montant_devise / eur).quantize(Decimal("0.000001"))
+    return None
 
 
 @transaction.atomic
@@ -499,16 +595,22 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
         raise ValueError("La contrepartie ne peut pas être le compte de la banque elle-même.")
     if not forcer and deja_en_compta(l):
         raise ValueError("Une écriture de même montant existe déjà à une date proche : reliez-la, ou cochez « nouvelle ».")
-    m = abs(l.montant)
+    m, m_devise = abs(l.montant), None
+    if l.journal.devise:                                  # relevé en devise : montant converti, montant d'origine gardé
+        c = cours(l.journal, l.date)
+        if not c:
+            raise ValueError(f"Cours {l.journal.devise} inconnu : l'indiquer dans le réglage cours_{l.journal.devise} "
+                             f"(unités de {l.journal.devise} pour 1 unité de la devise de la compta).")
+        m, m_devise = (m / c).quantize(Decimal("0.01")), m
     mv = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=l.date, journal=l.journal,
                                   piece=Mouvement.prochaine_piece(), origine="saisie", cree_par=utilisateur,
                                   commentaire=f"Relevé {l.journal.code} du {l.date:%d/%m/%Y} : {l.operation}")
     lib = libelle_releve(l)
     entree = l.montant > 0
     ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib, anal2=anal2,
-                                        debit=m if entree else ZERO, credit=ZERO if entree else m)
+                                        debit=m if entree else ZERO, credit=ZERO if entree else m, montant_devise=m_devise)
     Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib, anal2=anal2,
-                         debit=ZERO if entree else m, credit=m if entree else ZERO)
+                         debit=ZERO if entree else m, credit=m if entree else ZERO, montant_devise=m_devise)
     pointer(l.journal, [l], [ligne_banque], utilisateur, "saisie")
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Banque",
                                 action="Écriture depuis le relevé", objet=f"Mvt {mv.numero}",
@@ -519,3 +621,39 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
 def relier(l, ecriture, utilisateur=None):
     """La ligne du relevé est déjà en compta : on la relie à cette écriture (aucune écriture créée)."""
     return pointer(l.journal, [l], [ecriture], utilisateur, "manuel")
+
+
+# ---------------------------------------------------------------- mémoire des affectations (reprise de l'appli Banque)
+
+BRUIT = re.compile(r"\b[A-Z0-9]{8,}\b|\b\d{2}/\d{2}/\d{4}\b|\b\d{3,}\b")   # références, dates, n° de carte
+
+
+def cle_libelle(libelle):
+    """Libellé rapproché de ses voisins : capitales, sans références ni dates (même règle que l'appli Banque)."""
+    return " ".join(BRUIT.sub(" ", (libelle or "").upper()).split())
+
+
+def memoire_affectations():
+    """{libellé normalisé : compte de contrepartie} tiré des écritures de banque déjà passées (la plus récente l'emporte) :
+    l'historique repris (Ciel…) sert donc de mémoire dès le premier relevé."""
+    from .models import Journal
+    tresorerie = set(Journal.objects.exclude(compte__isnull=True).values_list("compte_id", flat=True))
+    memo = {}
+    lignes = (Ligne.objects.filter(compte_id__in=tresorerie).exclude(mouvement__origine="cloture")
+              .select_related("mouvement").prefetch_related("mouvement__lignes__compte").order_by("mouvement__date", "pk"))
+    for l in lignes:
+        autres = [x for x in l.mouvement.lignes.all() if x.compte_id not in tresorerie]
+        if len(autres) == 1:
+            for cle in {cle_libelle(l.libelle), cle_libelle(l.mouvement.lignes.all()[0].libelle)}:
+                if cle:
+                    memo[cle] = autres[0].compte
+    return memo
+
+
+def proposition(l, memo):
+    """Compte proposé pour une ligne de relevé, ou None."""
+    for texte in (l.traduction, l.operation):
+        c = memo.get(cle_libelle(texte))
+        if c:
+            return c
+    return None

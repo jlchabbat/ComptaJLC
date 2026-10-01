@@ -1,0 +1,24 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analyse par axes{% endblock %}{% block contenu %}
+<h1>Analyse par axes de comptes</h1>
+<form method="get" class="carte filtres ecran">
+<div class="barre-filtre" style="flex-wrap:wrap">
+<label>En lignes <select name="lignes">{% for a in axes %}<option {% if a == ligne %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
+<label>En colonnes <select name="colonnes"><option value="">(aucun)</option>{% for a in axes %}<option {% if a == colonne %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
+<label>Montant <select name="mesure"><option value="solde" {% if mesure == "solde" %}selected{% endif %}>Solde (débit − crédit)</option>
+<option value="debit" {% if mesure == "debit" %}selected{% endif %}>Débits</option><option value="credit" {% if mesure == "credit" %}selected{% endif %}>Crédits</option></select></label>
+<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
+<button class="principal">Afficher</button></div>
+<details {% for i, a, vals, choisis in filtres %}{% if choisis %}open{% endif %}{% endfor %}><summary>Filtres (combiner plusieurs axes)</summary>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">
+{% for i, a, vals, choisis in filtres %}<label style="display:flex;flex-direction:column">{{ a }}
+<select name="f_{{ i }}" multiple size="5" style="min-width:12em">{% for v in vals %}<option {% if v in choisis %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>{% endfor %}
+</div><p class="aide">Ctrl + clic pour choisir plusieurs valeurs ; un compte est retenu s'il a une valeur choisie sur chaque axe filtré.</p></details>
+</form>
+<p class="aide">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }} · {{ ligne }}{% if colonne and colonne != ligne %} × {{ colonne }}{% endif %} · cliquer sur une ligne pour voir ses comptes.</p>
+<table class="triable"><tr><th>{{ ligne }}</th>{% for c in t.colonnes %}<th class="n">{{ c }}</th>{% endfor %}{% if t.colonnes|length > 1 %}<th class="n">Total</th>{% endif %}</tr>
+{% for l in t.lignes %}<tr><td><details><summary>{{ l.valeur }}</summary>
+<table class="aide">{% for numero, nom, col, m in l.comptes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ numero }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ nom }}</a></td>{% if t.colonnes|length > 1 %}<td>{{ col }}</td>{% endif %}<td class="n">{{ m|shekel }}</td></tr>{% endfor %}</table></details></td>
+{% for m in l.cellules %}<td class="n {% if m < 0 %}neg{% endif %}">{{ m|zero_vide }}</td>{% endfor %}{% if t.colonnes|length > 1 %}<td class="n"><b>{{ l.total|shekel }}</b></td>{% endif %}</tr>
+{% empty %}<tr><td>Aucun montant pour ces choix.</td></tr>{% endfor %}
+<tr class="total"><td>Total</td>{% for m in t.totaux %}<td class="n">{{ m|shekel }}</td>{% endfor %}{% if t.colonnes|length > 1 %}<td class="n">{{ t.total|shekel }}</td>{% endif %}</tr></table>
+{% endblock %}

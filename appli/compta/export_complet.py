@@ -188,7 +188,7 @@ FEUILLES = {
     "Exercices": ["Libellé", "Début", "Fin", "Clos", "Mvt à-nouveaux", "Résultat affecté", "Clôturé le", "Clôturé par",
                   "Archive"],
     "Écritures": ["Mvt", "Date", "Journal", "Pièce", "Origine", "Commentaire", "Créé le", "Créé par", "Ordre", "Compte",
-                  "Libellé", "Débit", "Crédit", "Axe 2", "Lettrage", "Pointage"],
+                  "Libellé", "Débit", "Crédit", "Axe 2", "Lettrage", "Pointage", "Montant devise"],
     "Pointages": ["N°", "Journal", "Mode", "Créé le", "Créé par"],
     "Relevés": ["Journal", "Date", "Rang", "Référence", "Opération", "Montant", "Solde", "Ouverture", "Source",
                 "Importé le", "Pointage"],
@@ -203,6 +203,7 @@ FEUILLES = {
     "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte", "Lien"],
     # reçus des bénévoles ; Ligne = rang de la ligne dans « Lignes de fiches » (1 = la première), vide = toute la fiche
     "Documents fiches": ["Fiche", "Ligne", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte"],
+    "Axes de comptes": ["Compte", "Axe", "Ordre", "Valeur"],
 }
 
 
@@ -215,7 +216,8 @@ def _lignes_donnees():
                         for e in Exercice.objects.select_related("mouvement_an"))
     yield "Écritures", ([m.numero, m.date, m.journal_id, m.piece, m.origine, m.commentaire, _heure(m.cree_le),
                          _nom_utilisateur(m.cree_par), l.ordre, l.compte_id, l.libelle, _montant(l.debit) or None,
-                         _montant(l.credit) or None, l.anal2_id, l.lettrage, l.rapprochement_id]
+                         _montant(l.credit) or None, l.anal2_id, l.lettrage, l.rapprochement_id,
+                         _montant(l.montant_devise) if l.montant_devise is not None else None]
                         for m in Mouvement.objects.select_related("cree_par").prefetch_related("lignes").order_by("numero")
                         for l in m.lignes.all())
     yield "Pointages", ([r.pk, r.journal_id, r.mode, _heure(r.cree_le), _nom_utilisateur(r.cree_par)]
@@ -235,6 +237,9 @@ def _lignes_donnees():
                                 l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
+    from .models import ValeurCompte
+    yield "Axes de comptes", ([v.compte_id, v.axe.nom, v.axe.ordre, v.valeur]
+                              for v in ValeurCompte.objects.select_related("axe").order_by("axe__ordre", "axe__nom", "compte"))
     from .justificatifs import chemin as chemin_justificatif
     yield "Justificatifs", ([j.mouvement.numero, j.chemin or "", j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
                              "lien" if j.lien else _empreinte_fichier(chemin_justificatif(j)), j.lien]
@@ -350,14 +355,15 @@ def exporter(auteur=""):
 def vider():
     """Efface toute la comptabilité ; les comptes utilisateurs sont gardés."""
     Exercice.objects.update(mouvement_an=None)
-    for m in (Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, DocumentFiche, LigneFiche, Fiche, TiersProvisoire,
+    from .models import AxeCompte, ValeurCompte
+    for m in (ValeurCompte, AxeCompte, Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, DocumentFiche, LigneFiche, Fiche, TiersProvisoire,
               NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers,
               Journal, Compte, Prefixe, CodeAnalytique, Exercice, Reglage):
         m.objects.all().delete()
 
 
-FACULTATIVES = ("Justificatifs", "Documents fiches")       # absentes des exports faits avant leur création
-COLONNES_FACULTATIVES = {"Lien"}         # idem pour les colonnes
+FACULTATIVES = ("Justificatifs", "Documents fiches", "Axes de comptes")       # absentes des exports faits avant leur création
+COLONNES_FACULTATIVES = {"Lien", "Montant devise"}         # idem pour les colonnes
 
 
 def _rangees(wb, nom, fichier="Donnees.xlsx"):
@@ -410,7 +416,8 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
         lignes.append((n, Ligne(ordre=_entier(r["Ordre"]) or 0, compte_id=_texte(r["Compte"]), libelle=_texte(r["Libellé"]),
                                 debit=_lire_montant(r["Débit"]), credit=_lire_montant(r["Crédit"]),
                                 anal2_id=_texte(r["Axe 2"]) or None, lettrage=_texte(r["Lettrage"]),
-                                rapprochement=pointages.get(_entier(r["Pointage"])))))
+                                rapprochement=pointages.get(_entier(r["Pointage"])),
+                                montant_devise=None if r.get("Montant devise") in (None, "") else _lire_montant(r["Montant devise"]))))
     Mouvement.objects.bulk_create(mouvements.values())
     ids = dict(Mouvement.objects.values_list("numero", "pk"))
     for n, l in lignes:
@@ -467,6 +474,10 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
             anal2_id=_texte(r["Axe 2"]) or None, mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
         lignes_fiches.append(l)
+    from .models import AxeCompte, ValeurCompte
+    for r in _rangees(wb, "Axes de comptes"):
+        axe, _ = AxeCompte.objects.get_or_create(nom=_texte(r["Axe"]), defaults={"ordre": _entier(r["Ordre"]) or 0})
+        ValeurCompte.objects.create(compte_id=_texte(r["Compte"]), axe=axe, valeur=_texte(r["Valeur"]))
     from .justificatifs import dossier as dossier_justificatifs
     for r in _rangees(wb, "Justificatifs"):
         if _texte(r.get("Lien")):                           # document resté en ligne : seulement son lien

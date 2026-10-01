@@ -195,3 +195,21 @@ def analytique_detail(request):
         **ctx, "axe": axe, "titre_axe": AXES[axe], "code": code or "", "sections": sections, "sans_code": SANS_CODE,
         "codes": CodeAnalytique.objects.filter(axe=axe).order_by("libelle", "code"),
         "total": _total([{"a": s["total"]["a"], "b": s["total"]["b"]} for s in sections])})
+
+
+@login_required
+@consulter
+def axes_comptes(request):
+    """Analyse par axes de comptes : axe en lignes, axe en colonnes, filtres, période."""
+    from . import axes_comptes as moteur
+    debut, fin = periode(request)
+    tous = moteur.axes()
+    ligne = request.GET.get("lignes") or (tous[3] if len(tous) > 3 else "Axe 1")
+    colonne = request.GET.get("colonnes", "")
+    mesure = request.GET.get("mesure", "solde") if request.GET.get("mesure") in ("solde", "debit", "credit") else "solde"
+    choix = moteur.choix_filtres()
+    filtres = {a: request.GET.getlist(f"f_{i}") for i, a in enumerate(choix)}
+    t = moteur.analyser(debut, fin, ligne, colonne if colonne != ligne else "", filtres, mesure)
+    return render(request, "compta/axes_comptes.html", {
+        "debut": debut, "fin": fin, "axes": tous, "ligne": ligne, "colonne": colonne, "mesure": mesure, "t": t,
+        "filtres": [(i, a, vals, filtres.get(a, [])) for i, (a, vals) in enumerate(choix.items())]})

@@ -79,6 +79,8 @@ class Journal(models.Model):
     type = models.CharField(max_length=10, blank=True)
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True,
                                help_text="Compte de trésorerie des journaux de banque et de caisse.")
+    devise = models.CharField(max_length=3, blank=True, help_text="Devise du compte (ILS, USD…) si ce n'est pas celle "
+                              "de la comptabilité : les écritures gardent aussi leur montant d'origine. Vide = devise de la compta.")
     actif = models.BooleanField(default=True)
 
     class Meta:
@@ -183,6 +185,8 @@ class Ligne(models.Model):
     anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
                               verbose_name="axe 2")
     lettrage = models.CharField(max_length=10, blank=True)
+    montant_devise = models.DecimalField("montant d'origine", max_digits=14, decimal_places=2, null=True, blank=True,
+                                         help_text="Journal en devise : montant dans la devise du journal (même sens).")
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
     class Meta:
@@ -524,9 +528,20 @@ class Traduction(models.Model):
 
     @classmethod
     def traduire(cls, texte):
+        """Traduction du libellé entier ; sinon de sa partie hébraïque seule, l'en-tête latin gardé (carte Isracard :
+        « 5524 26/08/2026 הראל » → « 5524 26/08/2026 HAREL »), comme le lexique de l'appli Banque."""
         cle = cls.cle_de(texte)
         t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
-        return t.traduction if t else ""
+        if t:
+            return t.traduction
+        texte = texte or ""
+        debut = next((i for i, c in enumerate(texte) if "\u0590" <= c <= "\u05ff"), None)
+        if debut:
+            cle = cls.cle_de(texte[debut:])
+            t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
+            if t:
+                return f"{texte[:debut].strip()} {t.traduction}".strip()
+        return ""
 
 
 class ParametreReleve(models.Model):
@@ -593,6 +608,53 @@ class LigneReleve(models.Model):
             return "Solde d'ouverture"
         from .reglages import oui
         return Traduction.traduire(self.operation) or ("À traduire" if oui("traductions_releve") else self.operation)
+
+
+class AxeCompte(models.Model):
+    """Classement libre des comptes (rubrique de déclaration, type, catégorie, groupe…), repris du plan (Ciel)."""
+
+    nom = models.CharField(max_length=40, unique=True)
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordre", "nom"]
+        verbose_name = "axe de comptes"
+        verbose_name_plural = "axes de comptes"
+
+    def __str__(self):
+        return self.nom
+
+
+class ValeurCompte(models.Model):
+    compte = models.ForeignKey(Compte, on_delete=models.CASCADE, related_name="valeurs_axes")
+    axe = models.ForeignKey(AxeCompte, on_delete=models.CASCADE, related_name="valeurs")
+    valeur = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ["axe", "compte"]
+        unique_together = [("compte", "axe")]
+        verbose_name = "valeur d'axe de comptes"
+        verbose_name_plural = "valeurs d'axes de comptes"
+
+    def __str__(self):
+        return f"{self.compte_id} · {self.axe} = {self.valeur}"
+
+
+class TauxChange(models.Model):
+    """Cours BCE : unités de la devise pour 1 euro, jours ouvrés (compta/taux.py)."""
+
+    jour = models.DateField()
+    devise = models.CharField(max_length=3)
+    taux = models.DecimalField(max_digits=14, decimal_places=6)
+
+    class Meta:
+        ordering = ["-jour", "devise"]
+        unique_together = [("jour", "devise")]
+        verbose_name = "cours de change"
+        verbose_name_plural = "cours de change (BCE)"
+
+    def __str__(self):
+        return f"{self.jour:%d/%m/%Y} 1 € = {self.taux} {self.devise}"
 
 
 # ---------------------------------------------------------------- budget (Lot 4)
