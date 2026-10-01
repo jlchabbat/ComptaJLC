@@ -266,7 +266,7 @@ class AttribuerForm(forms.Form):
 class EnteteMouvementForm(forms.Form):
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     journal = forms.ModelChoiceField(Journal.objects.filter(actif=True))
-    motif = forms.CharField(max_length=150, label="Motif (obligatoire, gardé dans l'historique)")
+    motif = forms.CharField(max_length=150, required=False, label="Motif (facultatif)")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -280,9 +280,11 @@ class LigneMouvementForm(forms.Form):
     debit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Débit")
     credit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Crédit")
     anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Axe 2")
+    montant_devise = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Montant d'origine")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
+        self.fields["montant_devise"].widget.attrs.update({"class": "montant", "step": "0.01"})
         self.fields["compte"].queryset = Compte.objects.filter(actif=True)
         self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
         cherchable(self)
@@ -301,7 +303,12 @@ class LigneMouvementForm(forms.Form):
         if not c.get("compte"):
             self.add_error("compte", "Choisir le compte.")
         if not c.get("anal2"):
-            self.add_error("anal2", "Choisir le code axe 2.")
+            from .reglages import code_axe2_defaut
+            defaut = code_axe2_defaut()                   # un seul axe : code d'office
+            if defaut:
+                c["anal2"] = CodeAnalytique.objects.get(code=defaut)
+            else:
+                self.add_error("anal2", "Choisir le code axe 2.")
         return c
 
 

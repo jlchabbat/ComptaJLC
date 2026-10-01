@@ -126,7 +126,12 @@ def controler(op):
     elif op.vers:
         e["Virement"] = "La case « Vers » ne sert qu'aux virements internes : la vider."
     if not op.anal2:
-        e["Événement / projet"] = "Choisir l'événement ou le projet (axe 2)."
+        from .reglages import code_axe2_defaut
+        defaut = code_axe2_defaut()                       # un seul axe : code d'office
+        if defaut:
+            op.anal2 = CodeAnalytique.objects.get(code=defaut)
+        else:
+            e["Événement / projet"] = "Choisir l'événement ou le projet (axe 2)."
     utilise_contrepartie = LigneSchema.objects.filter(schema=m.schema, role="CONTREPARTIE").exists()
     contrepartie = op.compte or m.compte
     if not utilise_contrepartie:

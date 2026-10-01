@@ -70,6 +70,7 @@ MIDDLEWARE = [
     "compta.demarrage.DemarrageMiddleware",
     "compta.licence.LicenceMiddleware",
     "compta.export_pages.ExportExcelMiddleware",
+    "compta.retour.MemoireListesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -84,6 +85,7 @@ TEMPLATES = [{
         "django.contrib.messages.context_processors.messages",
         "compta.reglages.contexte",
         "compta.licence.contexte",
+        "compta.retour.contexte",
     ]},
 }]
 WSGI_APPLICATION = "comptabb.wsgi.application"

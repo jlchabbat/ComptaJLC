@@ -7,15 +7,17 @@
 set -e
 cd ~
 NOM=$(whoami)
+MIN=$(echo "$NOM" | tr '[:upper:]' '[:lower:]')          # adresse et fichier WSGI : en minuscules (ComptaJLC → comptajlc)
 DATA=~/comptabb-data
-ADRESSE="$NOM.pythonanywhere.com"
-WSGI="/var/www/${NOM}_pythonanywhere_com_wsgi.py"
+ADRESSE="$MIN.pythonanywhere.com"
+WSGI="/var/www/${MIN}_pythonanywhere_com_wsgi.py"
 trap 'echo; echo "ÉCHEC de l installation : copiez ce qui s affiche ci-dessus et envoyez-le à la personne qui vous aide."' ERR
 
-if [ -d ~/ComptaBB ]; then
+if [ -d ~/ComptaBB ] && [ -f ~/maj.sh ]; then
   echo "ComptaBB est déjà installé (dossier ~/ComptaBB). Pour une mise à jour : bash ~/maj.sh"
   exit 1
 fi
+rm -rf ~/ComptaBB                      # installation précédente interrompue avant la fin : on recommence
 ZIP=$(ls -t ~/ComptaBB-*.zip 2>/dev/null | head -1 || true)
 if [ -z "$ZIP" ]; then
   echo "Aucun fichier ComptaBB-….zip : envoyez-le d'abord (onglet Files > Upload a file)."
@@ -27,7 +29,8 @@ rm -rf ~/maj && mkdir ~/maj && unzip -q "$ZIP" -d ~/maj
 NOUVEAU=$(ls -d ~/maj/*/ | head -1)
 [ -f "$NOUVEAU/appli/manage.py" ] || { echo "Ce ZIP ne contient pas ComptaBB."; exit 1; }
 mv "$NOUVEAU" ~/ComptaBB
-rm -rf ~/maj ~/inst "$ZIP"
+rm -rf ~/maj "$ZIP"
+rm -rf ~/inst 2>/dev/null || true      # le script tourne depuis ~/inst : son propre fichier peut rester (disque réseau)
 
 echo "2/5 Python et bibliothèques (quelques minutes)"
 PY=""
@@ -46,14 +49,14 @@ rm -f ~/preparer.txt
 cd ~
 
 echo "4/5 Fichier WSGI du site"
-sed "s/VOTRE_NOM/$NOM/g" ~/ComptaBB/appli/deploiement/pythonanywhere_wsgi.py > ~/comptabb_wsgi.py
+sed "s/VOTRE_NOM.pythonanywhere.com/$ADRESSE/; s/VOTRE_NOM/$NOM/g" ~/ComptaBB/appli/deploiement/pythonanywhere_wsgi.py > ~/comptabb_wsgi.py
 if [ -f "$WSGI" ]; then
   cp ~/comptabb_wsgi.py "$WSGI"
   touch "$WSGI"
   echo "   $WSGI écrit, site rechargé."
 else
   echo "   Application web introuvable ($WSGI) : créez-la (onglet Web > Add a new web app > Manual configuration >"
-  echo "   Python 3.12), puis relancez seulement : cp ~/comptabb_wsgi.py $WSGI"
+  echo "   Python ${PY#python}), puis relancez seulement : cp ~/comptabb_wsgi.py $WSGI"
 fi
 
 echo "5/5 Script de mise à jour"
@@ -61,6 +64,7 @@ cp ~/ComptaBB/appli/deploiement/maj.sh ~/maj.sh
 
 echo
 echo "INSTALLATION TERMINÉE. Reste à faire dans l'onglet Web :"
+echo "  - Python version : ${PY#python} (la même que l'environnement créé)"
 echo "  - Virtualenv   : $HOME/venv"
 echo "  - Static files : URL /static/   dossier $HOME/comptabb-data/static"
 echo "  - Force HTTPS  : Enabled"

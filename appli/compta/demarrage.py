@@ -14,18 +14,20 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import redirect
 
-from .models import CodeAnalytique, Compte, Exercice, Journal, Modification, Mouvement, Prefixe, Reglage
+from .models import CodeAnalytique, Compte, Exercice, Journal, Modification, Mouvement, Prefixe, Reglage, TypeTiers
 
 FICHIER_CODE = "code_installation.txt"
 FORMATS_RELEVE = [("excel", "Excel ou CSV"), ("mizrahi", "PDF Mizrahi-Tefahot (hébreu)"), ("bit", "Bit")]
 
-# plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable)
+# plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable) ; 401000 et 411000 donnent
+# leur code axe 1 aux comptes de tiers créés ensuite (401…, 411…)
 AXE1 = [("BIL.1", "FONDS ASSOCIATIFS"), ("BIL.4", "TIERS"), ("BIL.5", "TRESORERIE"), ("FON.1", "FONCTIONNEMENT"),
         ("ACT.1", "ACTIVITES"), ("COT.1", "COTISATIONS"), ("DON.1", "DONS ET SUBVENTIONS")]
 AXE2 = [("GEN.001", "GENERAL")]
 PREFIXES = [("ACT.", 1, "Activités"), ("GEN.", 2, "Général"), ("MAN.", 2, "Manifestations"), ("PRO.", 2, "Projets")]
 COMPTES = [
     ("110000", "REPORT A NOUVEAU", "BIL.1", False), ("401000", "FOURNISSEURS DIVERS", "BIL.4", True),
+    ("411000", "MEMBRES DIVERS", "BIL.4", True),
     ("470000", "COMPTE D'ATTENTE", "BIL.4", False), ("580000", "VIREMENTS INTERNES", "BIL.5", False),
     ("600000", "ACHATS ET FRAIS DIVERS", "FON.1", False), ("600100", "FRAIS BANCAIRES", "FON.1", False),
     ("600200", "LOCATION DE SALLES", "ACT.1", False), ("610000", "MANIFESTATIONS", "ACT.1", False),
@@ -92,6 +94,9 @@ def demarrer(d, auteur=""):
     _reglage("hebergeur_liens", d.get("hebergeur", ""))
     _reglage("traductions_releve", "oui" if d.get("traductions") else "non")
     fait.append("réglages de l'association")
+    from .saisie import TYPES_TIERS                       # types de tiers (411 membres, 401 fournisseurs) : dans les deux cas
+    for lib, pref in TYPES_TIERS:
+        TypeTiers.objects.get_or_create(libelle=lib, defaults={"prefixe": pref})
     if d["plan"] == "base":
         debut, fin = d["debut"], d["fin"]
         libelle = str(debut.year) if debut.year == fin.year else f"{debut.year}-{fin.year}"

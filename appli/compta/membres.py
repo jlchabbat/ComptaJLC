@@ -258,6 +258,7 @@ def importer_tableau(rangees):
         t = None
         if texte("type"):
             t = next((x for x in TypeTiers.objects.all() if cle(x.libelle) == cle(texte("type"))), None)
+            t = t or (type_du_compte(numero) if numero else None)          # libellé différent : type d'après le compte
             if not t:
                 rapport.erreurs.append(f"Ligne {n} : type « {texte('type')} » inconnu (Référentiels › Types de tiers).")
                 continue
@@ -280,6 +281,9 @@ def importer_tableau(rangees):
             fiche = fiche or Membre(compte=compte, nom=(nom or compte.libelle).upper())
         else:
             t = t or defaut
+            if not t:
+                rapport.erreurs.append(f"Ligne {n} : type de tiers manquant (Référentiels › Types de tiers).")
+                continue
             fiche = Membre.objects.filter(type=t, nom__iexact=nom, prenom__iexact=texte("prenom")).first()
             nouveau = fiche is None
             if nouveau:

@@ -37,6 +37,14 @@ def echanges(request):
             elif "retirer" in request.POST:
                 moteur.retirer(request.POST["retirer"], auteur)
                 messages.success(request, f"« {request.POST['retirer']} » supprimé du dossier Imports.")
+            elif "tout_importer" in request.POST:
+                comptes_rendus, ignores = moteur.importer_tout(request.user)
+                messages.success(request, f"Tout importé ({len(comptes_rendus)} fichier(s)) ; les fichiers sont rangés dans "
+                                          f"Imports\\{moteur.IMPORTES}.")
+                for x in comptes_rendus:
+                    messages.info(request, x)
+                if ignores:
+                    messages.warning(request, "Non importé(s), nom non reconnu : " + ", ".join(ignores) + ".")
             elif "importer" in request.POST:
                 f, texte = moteur.importer(request.POST["importer"], request.user)
                 messages.success(request, f"{request.POST['importer']} importé ({f.contenu}) : {texte}. "
@@ -69,7 +77,7 @@ def echanges(request):
     return render(request, "compta/echanges.html", {
         "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
-        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() == ".xlsx"],
+        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in (".xlsx", ".csv")],
         "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
         "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],
     })

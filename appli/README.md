@@ -96,10 +96,11 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   filtre « avec / sans justificatif » dans Écritures ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
 - **Corriger ou supprimer une écriture** (trésorier) : Saisie › Modifier une écriture (n° de Mvt), ou boutons Modifier /
-  Supprimer de la fiche du mouvement ; l'avant et l'après restent dans l'historique. Refusé dans un exercice clos et
-  pour les à-nouveaux. Une suppression dépointe les lignes, efface les justificatifs du mouvement et remet à reporter
-  la ligne de fiche bénévole d'origine.
-- **Justificatifs existants** (menu Saisie › Justificatifs, administrateur et trésorier) : dépôt en masse (ZIP ou
+  Supprimer de la fiche du mouvement ; motif facultatif ; l'avant et l'après restent dans l'historique. Refusé dans un
+  exercice clos et pour les à-nouveaux. Une suppression dépointe les lignes, efface les justificatifs du mouvement et
+  remet à reporter la ligne de fiche bénévole d'origine. Chaque fiche a un bouton « ← Retour à la liste » (dernière
+  liste consultée, filtres compris).
+- **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
   fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
   seul cas coché d'office ; « Mvt 389 », « Pièce 739 », numéro seul,
   date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
@@ -124,7 +125,9 @@ PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2
 structure à l'import et à l'export, décrit dans `Lexique.xlsx` et dans [`Imports/README.md`](../Imports/README.md).
 Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiables dans la page (réglages
 `dossier_imports`, `dossier_exports`). Import tout ou rien, sauvegarde avant ; fichier rangé dans
-`Imports/Importés`. Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
+`Imports/Importés`. **Tout importer** importe en une fois tous les fichiers déposés (un ZIP convient), dans l'ordre
+du lexique, tout ou rien, sans rien supprimer ; `Liens.xlsx` (Mvt, Lien, Description) joint les documents en ligne à leur Mvt.
+Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
 remplace écritures, relevés et budget par les fichiers présents.
 
 ## Documentation intégrée

@@ -18,6 +18,7 @@ class LigneSaisie:
     debit: Decimal
     credit: Decimal
     anal2: CodeAnalytique
+    montant_devise: Decimal | None = None       # journal en devise : montant d'origine
 
 
 def verrou(m):
@@ -72,7 +73,8 @@ def _liberer(ligne):
 def modifier(m, date, journal, lignes, motif, utilisateur):
     if verrou(m):
         raise ValueError(verrou(m))
-    erreurs = controler(date, journal, lignes) + ([] if motif.strip() else ["Indiquer le motif de la correction."])
+    motif = motif.strip() or "correction"                 # facultatif : avant / après restent dans l'historique
+    erreurs = controler(date, journal, lignes)
     if erreurs:
         raise ValueError(" ".join(erreurs))
     avant = f"{m.date:%d/%m/%Y} {m.journal_id} · " + resume(m.lignes.all())
@@ -86,10 +88,11 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
                 _liberer(l)
                 l.refresh_from_db()
             l.ordre, l.compte, l.libelle, l.debit, l.credit, l.anal2 = ordre, s.compte, s.libelle.strip(), s.debit, s.credit, s.anal2
+            l.montant_devise = s.montant_devise
             l.save()
         else:
             Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit,
-                                 credit=s.credit, anal2=s.anal2)
+                                 credit=s.credit, anal2=s.anal2, montant_devise=s.montant_devise)
     for pk, l in existantes.items():
         if pk not in gardees:
             _liberer(l)
@@ -106,14 +109,15 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
 @transaction.atomic
 def creer(date, journal, lignes, motif, utilisateur):
     """Écriture libre (opération diverse, correction)."""
-    erreurs = controler(date, journal, lignes) + ([] if motif.strip() else ["Indiquer l'objet de l'écriture."])
+    motif = motif.strip() or "écriture libre"
+    erreurs = controler(date, journal, lignes)
     if erreurs:
         raise ValueError(" ".join(erreurs))
     m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal=journal, piece=Mouvement.prochaine_piece(),
                                  origine="correction", cree_par=utilisateur)
     for ordre, s in enumerate(lignes):
         Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit, credit=s.credit,
-                             anal2=s.anal2)
+                             anal2=s.anal2, montant_devise=s.montant_devise)
     trace(m, f"écriture libre – {motif.strip()}", utilisateur)
     m.save(update_fields=["commentaire"])
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",
@@ -135,7 +139,7 @@ def supprimer(m, utilisateur):
     """Supprime le mouvement (trésorier) : ses lignes sortent des pointages et lettrages, ses justificatifs sont effacés,
     une ligne de fiche bénévole reportée redevient à reporter. L'avant reste dans l'historique."""
     from . import justificatifs
-    from .models import Fiche, LigneFiche
+    from .models import LigneFiche
     refus = refus_suppression(m)
     if refus:
         raise ValueError(refus)
@@ -143,6 +147,7 @@ def supprimer(m, utilisateur):
     for l in m.lignes.all():
         _liberer(l)
     fichiers = [justificatifs.chemin(j) for j in m.justificatifs.all()]
+    from .models import Fiche
     fiches = list(Fiche.objects.filter(lignes__mouvement=m, statut="reportee").distinct())
     LigneFiche.objects.filter(mouvement=m).update(mouvement=None)
     for f in fiches:                                      # la ligne est à reporter de nouveau

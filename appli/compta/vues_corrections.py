@@ -6,12 +6,17 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from . import corrections as moteur
 from .forms import EnteteMouvementForm, LignesMouvementFormSet
 from .models import Mouvement
 
 corriger = permission_required("compta.change_mouvement", raise_exception=True)
+
+
+def vers_mouvement(numero):
+    return reverse("mouvement", args=[numero])
 
 
 def lire_lignes(formset):
@@ -21,11 +26,13 @@ def lire_lignes(formset):
         if not c or c.get("DELETE") or f.vide():
             continue
         res.append(moteur.LigneSaisie(c.get("id"), c["compte"], c.get("libelle") or "", c.get("debit") or Decimal("0"),
-                                      c.get("credit") or Decimal("0"), c["anal2"]))
+                                      c.get("credit") or Decimal("0"), c["anal2"], c.get("montant_devise")))
     return res
 
 
 def editer(request, m=None):
+    from .retour import adresse
+    retour = adresse(request, "mouvement")
     if request.method == "POST":
         entete = EnteteMouvementForm(request.POST)
         formset = LignesMouvementFormSet(request.POST, prefix="l")
@@ -38,7 +45,7 @@ def editer(request, m=None):
                 else:
                     m = moteur.creer(c["date"], c["journal"], lire_lignes(formset), c["motif"], request.user)
                     messages.success(request, f"Mouvement {m.numero} créé.")
-                return redirect("mouvement", m.numero)
+                return redirect(vers_mouvement(m.numero))
             except ValueError as e:
                 messages.error(request, str(e))
     else:
@@ -46,11 +53,13 @@ def editer(request, m=None):
             entete = EnteteMouvementForm(initial={"date": m.date, "journal": m.journal_id})
             formset = LignesMouvementFormSet(prefix="l", initial=[
                 {"id": l.pk, "compte": l.compte_id, "libelle": l.libelle, "debit": l.debit or None, "credit": l.credit or None,
-                 "anal2": l.anal2_id} for l in m.lignes.all()])
+                 "anal2": l.anal2_id, "montant_devise": l.montant_devise} for l in m.lignes.all()])
         else:
             entete = EnteteMouvementForm(initial={"date": dt.date.today()})
             formset = LignesMouvementFormSet(prefix="l")
-    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset})
+    from .models import Journal
+    return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset, "retour": retour,
+                                                             "avec_devises": Journal.objects.exclude(devise="").exists()})
 
 
 @login_required
@@ -88,10 +97,11 @@ def supprimer(request, numero):
     m = get_object_or_404(Mouvement, numero=numero)
     if request.method != "POST":
         return redirect("mouvement", numero)
+    from .retour import adresse
     try:
         moteur.supprimer(m, request.user)
     except ValueError as e:
         messages.error(request, str(e))
         return redirect("mouvement", numero)
     messages.success(request, f"Mouvement {numero} supprimé (gardé dans l'historique).")
-    return redirect("ecritures")
+    return redirect(adresse(request, "mouvement"))

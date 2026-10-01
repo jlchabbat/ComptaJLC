@@ -56,6 +56,10 @@ def _affecter(request, journal, lignes):
         saisies[l.pk] = (c, a)
         compte = _trouver(Compte, c, actif=True)
         anal2 = _trouver(CodeAnalytique, a, axe=2)
+        if not anal2 and not a:
+            from .reglages import code_axe2_defaut
+            defaut = code_axe2_defaut()                   # un seul axe : code d'office
+            anal2 = CodeAnalytique.objects.filter(code=defaut).first() if defaut else None
         if not compte or not anal2:
             erreurs[l.pk] = ("Compte introuvable. " if not compte else "") + ("Code axe 2 introuvable." if not anal2 else "")
             continue
@@ -109,10 +113,13 @@ def accueil(request, code=None):
         if not erreurs:
             return redirect("rapprochement_journal", journal.code)
     lignes = []
+    memo = moteur.memoire_affectations() if peut else {}
     for l in moteur.a_affecter(journal):
         c, a = saisies.get(l.pk, ("", ""))
+        propose = moteur.proposition(l, memo) if peut and not c else None
         deja = moteur.deja_en_compta(l) if peut else []
         lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""), "deja": deja,
+                       "propose": f"{propose.numero} – {propose.libelle}" if propose and not deja else "",
                        "groupes": moteur.groupes(l) if peut and not deja else [],
                        "lignes_groupees": moteur.lignes_groupees(l) if peut and not deja else [],
                        "nulles": moteur.lignes_nulles(l) if peut and not deja else None,

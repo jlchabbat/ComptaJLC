@@ -12,7 +12,7 @@
 {% with f=form.montant %}{% include "compta/_champ.html" %}{% endwith %}
 {% with f=form.paiement %}{% include "compta/_champ.html" %}{% endwith %}
 <div class="ligne-vers" style="display:contents">{% with f=form.vers %}{% include "compta/_champ.html" %}{% endwith %}</div>
-{% with f=form.anal2 %}{% include "compta/_champ.html" %}{% endwith %}
+{% if deux_axes %}{% with f=form.anal2 %}{% include "compta/_champ.html" %}{% endwith %}{% endif %}
 {% with f=form.compte %}{% include "compta/_champ.html" %}{% endwith %}
 {% with f=form.libelle %}{% include "compta/_champ.html" %}{% endwith %}
 <label for="{{ form.remboursement.id_for_label }}">{{ form.remboursement.label }}</label><div>{{ form.remboursement }}</div>

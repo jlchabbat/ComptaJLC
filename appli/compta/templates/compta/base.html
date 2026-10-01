@@ -4,9 +4,12 @@
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
 <script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se ferme ; sinon, retour à la page d'origine
+  if (window.opener || history.length <= 1) { window.close(); setTimeout(function () { location.href = a.href; }, 300); return false; }
+  return true; }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
   document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
-<body>
+<body{% if not deux_axes %} class="un-seul-axe"{% endif %}>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
 <nav class="menus">
@@ -29,8 +32,9 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'journaux' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Journaux (banque, caisse…)</a>
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
+{% url 'axes_comptes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analyse par axes de comptes</a>
 {% url 'analytique' as u %}<a href="{{ u }}?axe=1" {% if request.path == u and request.GET.axe != "2" %}class="actif"{% endif %}>Analytique – Nature (axe 1)</a>
-<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>
+{% if deux_axes %}<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>{% endif %}
 </div></div>
 <div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
@@ -42,7 +46,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 </div></div>{% endif %}
 <div class="menu m-editions"><button type="button">Éditions ▾</button><div class="sous">
 {% if perms.compta.view_mouvement %}{% url 'situation' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Situation financière</a>
-{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code (axe 1 / axe 2)</a>
+{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code{% if deux_axes %} (axe 1 / axe 2){% endif %}</a>
 {% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
@@ -63,6 +67,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 </div></div>{% endif %}
 </nav>
 <span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
+{% if adresse_fermer %}<a class="bouton fermer" href="{{ adresse_fermer }}" onclick="return fermer(this)" title="Fermer cette page et revenir d'où vous venez">✕ Fermer</a>{% endif %}
 <span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
 <button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>
 <a href="{% url 'mon_compte' %}" title="Changer d'identifiant ou de mot de passe">{{ user.get_full_name|default:user.username }}</a> ·
