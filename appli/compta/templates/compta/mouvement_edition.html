@@ -3,7 +3,9 @@
 <p class="aide">La modification est tracée (motif, avant, après) dans le mouvement et dans le Journal. Une ligne dont le compte ou le montant change
 est dépointée du relevé et délettrée.</p>
 {% else %}<h1>Écriture libre</h1><p class="aide">Pour une opération diverse ou une correction que la saisie guidée ne couvre pas. Mouvement équilibré obligatoire.</p>{% endif %}
-<div class="barre"><button form="edition" class="principal">Enregistrer</button></div>
+<div class="barre"><button form="edition" class="principal">Enregistrer</button>
+{% if m %}<button form="f-supprimer" onclick="return confirm('Supprimer le mouvement {{ m.numero }} ?')">Supprimer l'écriture</button>{% endif %}</div>
+{% if m %}<form method="post" action="{% url 'mouvement_supprimer' m.numero %}" id="f-supprimer">{% csrf_token %}</form>{% endif %}
 <form method="post" class="carte" id="edition">{% csrf_token %}
 <div class="formulaire">{% for f in entete %}{% include "compta/_champ.html" %}{% endfor %}</div>
 {{ formset.management_form }}{% if formset.non_form_errors %}<ul class="erreurs">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
