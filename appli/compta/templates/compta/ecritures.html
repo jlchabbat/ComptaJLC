@@ -11,6 +11,7 @@
 <datalist id="liste-comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
 <label class="axe2">Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Recherche <input name="q" value="{{ filtres.q }}"></label>
+<label>Montant (débit ou crédit) <input name="montant" value="{{ filtres.montant }}" size="10" inputmode="decimal" placeholder="ex. 1 500,00">{% if filtres.montant_erreur %}<span class="ko">{{ filtres.montant_erreur }}</span>{% endif %}</label>
 <label>Justificatif <select name="just"><option value="">Tous</option><option value="avec" {% if filtres.just == "avec" %}selected{% endif %}>Avec</option><option value="sans" {% if filtres.just == "sans" %}selected{% endif %}>Sans</option></select></label><button class="principal">Filtrer</button></form>
 <p>{{ page.paginator.count }} lignes · débit {{ total_debit|shekel }} · crédit {{ total_credit|shekel }}</p>
 <table><tr>{% for e in entetes %}<th class="tri {% if e.n %}n{% endif %}" {% if e.sens %}data-sens="{{ e.sens }}"{% endif %}><a class="tri-lien" href="{{ e.url }}" title="Trier sur toutes les pages">{{ e.titre }}</a></th>{% endfor %}<th title="Justificatifs joints">📎</th></tr>

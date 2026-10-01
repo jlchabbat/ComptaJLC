@@ -1385,6 +1385,20 @@ class EcransCorrections(TestCase):
         self.assertContains(self.client.get("/mouvement/500/"), 'href="/grand-livre/?compte=600100">← Retour')
         self.assertContains(self.client.get("/mouvement/rappel/"), 'href="/ecritures/">Abandonner')
 
+    def test_recherche_par_montant(self):
+        """Montant exact au débit ou au crédit ; virgule, point et espaces acceptés ; montant illisible signalé."""
+        tout = self.client.get("/ecritures/").context["page"].paginator.count
+        for saisie in ("400", "400,00", "400.00", " 4 00 "):
+            lignes = list(self.client.get("/ecritures/", {"montant": saisie}).context["page"])
+            with self.subTest(saisie):
+                self.assertTrue(lignes)
+                self.assertTrue(all(l.debit == D(400) or l.credit == D(400) for l in lignes))
+        self.assertEqual(self.client.get("/ecritures/", {"montant": "400"}).context["page"].paginator.count,
+                         Ligne.objects.filter(debit=D(400)).count() + Ligne.objects.filter(credit=D(400)).count())
+        self.assertEqual(self.client.get("/ecritures/", {"montant": "123456"}).context["page"].paginator.count, 0)
+        self.assertContains(self.client.get("/ecritures/", {"montant": "abc"}), "Montant non reconnu.")
+        self.assertEqual(self.client.get("/ecritures/", {"montant": "abc"}).context["page"].paginator.count, tout)
+
     def test_tri_et_droits(self):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête

@@ -1,6 +1,7 @@
 """Pages de consultation : tableau de bord, écritures, grand livre, balance, analytique, contrôles."""
 
 import datetime as dt
+from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator
@@ -126,7 +127,7 @@ def ecritures(request):
     debut, fin = periode(request)
     qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1", "anal2")
           .order_by("-mouvement__date", "-mouvement__numero", "ordre"))
-    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q", "just")}
+    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q", "montant", "just")}
     if f["journal"]:
         qs = qs.filter(mouvement__journal_id=f["journal"])
     if f["compte"]:
@@ -135,6 +136,13 @@ def ecritures(request):
         qs = qs.filter(anal2_id=f["anal2"])
     if f["q"]:
         qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
+    f["montant_erreur"] = ""
+    if f["montant"]:                                    # montant exact, au débit ou au crédit (virgule ou point, espaces ignorés)
+        try:
+            m = Decimal(f["montant"].replace("\u00a0", "").replace(" ", "").replace(",", "."))
+            qs = qs.filter(Q(debit=m) | Q(credit=m))
+        except InvalidOperation:
+            f["montant_erreur"] = "Montant non reconnu."
     if f["just"] in ("avec", "sans"):                   # mouvements avec / sans justificatif joint
         qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
     if request.GET.get("format") == "ciel":
