@@ -42,6 +42,8 @@ un site par association (étape 1 : application générique, réglages par site)
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
   AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour
   la saisie à distance.
+- Relevés bancaires : **une seule structure** `Banque.xlsx` (Jnl, Date, Libelle, Debit, Credit, Solde facultatif), préparée en amont ;
+  aucun lecteur par banque ni PDF (`docs/banques.md`). Axe 2 : comptes 6 et 7 seulement ; bilan = axe 1 `BIL`.
 - `Imports/` et `Exports/` : échanges de l'application web par fichiers .xlsx
   (`appli/compta/echanges.py`) ; `Imports/modeles/` : modèles vides et
   Lexique.xlsx, versionnés ; le reste est hors Git (données réelles).
@@ -83,7 +85,7 @@ python -m unittest discover tests
   3 chiffres axe 2 `MAN.008`) ; l'utilisateur ne saisit que le libellé.
   T_Prefixes[Axe] : 1 = axe 1, 2 = axe 2. Statut T_Axe2[Actif] : 0 Non
   affecté, 1 En cours, 2 Terminé.
-- Application web : ce qui est propre à l'association (nom, devise, relevés Mizrahi/Bit,
+- Application web : ce qui est propre à l'association (nom, devise, journaux Mizrahi/Bit,
   carte Isracard, traductions) passe par `appli/compta/reglages.py`
   (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
   Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).

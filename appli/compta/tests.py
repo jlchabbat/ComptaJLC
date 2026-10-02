@@ -308,8 +308,6 @@ class ReglagesAssociation(TestCase):
             self.assertIn("Virement bancaire", modes)
             self.assertFalse({"Bit", "Virement BIT", "Virement Mizrahi"} & modes or any("Carte" in m for m in modes))
             self.assertEqual(reglages.montant(D("1234.5")), "1 234,50 €")
-            with self.assertRaises(ech.Refus):
-                ech.imp_bit([], "Bit.xlsx")
             l = LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 1, 5), rang=1, operation="VIREMENT RECU",
                                            montant=D(10), solde=D(10))
             self.assertEqual(l.traduction, "VIREMENT RECU")                       # pas de traduction : libellé tel quel
@@ -2082,7 +2080,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque", "Bit", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
+            if f.nom in ("Ecritures", "Banque", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
                 continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
@@ -2233,12 +2231,15 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ImportReleve.objects.count(), 4)
 
     def test_dossier_habituel_du_pc(self):
-        """Rappel du dossier de travail du PC : enregistré, affiché près des boutons Exporter et Importer, tracé."""
-        r = self.client.post("/echanges/", {"dossier_pc": "C:\\Mes documents\\AppliBB"}, follow=True)
-        self.assertContains(r, "Dossier habituel enregistré")
-        self.assertContains(self.client.get("/echanges/"), "Mes documents")
-        self.assertEqual(Reglage.lire("dossier_pc"), "C:\\Mes documents\\AppliBB")
-        self.assertTrue(Modification.objects.filter(objet="dossier_pc").exists())
+        """Rappel des dossiers de travail du PC : enregistrés, affichés près des boutons Exporter et Importer, tracés."""
+        r = self.client.post("/echanges/", {"dossiers_pc": "1", "dossier_pc_imports": "D:\\Mes documents\\Imports",
+                                            "dossier_pc_telechgt": "D:\\Mes documents\\Telechgt", "dossier_pc_export": "D:\\Mes documents\\Export"}, follow=True)
+        self.assertContains(r, "Dossiers habituels enregistrés")
+        page = self.client.get("/echanges/")
+        self.assertContains(page, "D:\\Mes documents\\Imports")
+        self.assertContains(page, "D:\\Mes documents\\Export")
+        self.assertEqual(Reglage.lire("dossier_pc_telechgt"), "D:\\Mes documents\\Telechgt")
+        self.assertTrue(Modification.objects.filter(objet="dossier_pc_imports").exists())
 
     def test_importer_en_une_etape(self):
         """Un seul bouton : dépose et importe ; sur refus, rien n'est gardé dans le dossier Imports."""
@@ -2383,22 +2384,6 @@ class Echanges(TransactionTestCase):
         ws["F2"] = "ENCORE AUTRE"
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
         self.assertContains(self.importer("Libelles_2026-09-27.xlsx"), "1 dans un exercice clos, non modifié(s)")
-
-    def test_bit_remplace_le_releve(self):
-        d = dt.datetime(2026, 1, 11)
-        self.fichier("Bit.xlsx", [["B2", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None]])
-        self.assertContains(self.importer("Bit.xlsx"), "journal « B2 » : B3 attendu")
-        self.fichier("Bit.xlsx", [["B3", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None],
-                                  ["B3", d, "BANQUE - BANQUE - VIREMENT BIT VERS BANQUE", None, 6820]])
-        self.assertContains(self.importer("Bit.xlsx"), "2 ligne(s) importée(s), 0 ancienne(s) remplacée(s)")
-        self.assertEqual(sorted(LigneReleve.objects.filter(journal_id="B3", ouverture=False).values_list("montant", flat=True)),
-                         [D(-6820), D(440)])
-        self.fichier("Bit_2026-09-27.xlsx", [["B3", d, "TAIEB JEANNE - FETES - RACLETTE", 440, None]])
-        self.assertContains(self.importer("Bit_2026-09-27.xlsx"), "1 ligne(s) importée(s), 2 ancienne(s) remplacée(s)")
-        self.assertEqual(LigneReleve.objects.filter(journal_id="B3").count(), 2)          # ouverture + 1 ligne
-        chemin, n = ech.exporter(ech.PAR_NOM["Bit"])
-        ws = openpyxl.load_workbook(chemin).active
-        self.assertEqual([c.value for c in ws[2]][:3] + [ws["D2"].value], ["B3", dt.datetime(2026, 1, 11), "TAIEB JEANNE - FETES - RACLETTE", 440])
 
     def test_banque_sans_doublon(self):
         d = dt.datetime(2026, 1, 5)

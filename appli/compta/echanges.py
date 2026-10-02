@@ -814,7 +814,7 @@ def exp_banque_tout():
 
 def imp_banque_tout(lignes, fichier, utilisateur=None):
     """Chaque ligne porte son journal (Jnl) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
-    Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures et le relevé Bit). Une ligne déjà
+    Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures). Une ligne déjà
     importée (journal, date, libellé, montant, rang dans la journée) n'est jamais ajoutée deux fois ; chaque import est
     noté dans l'historique des imports."""
     L, par_journal = Lecteur(), defaultdict(list)
@@ -845,53 +845,6 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
     return " ; ".join(comptes_rendus)
 
 
-# ---- Bit : format imposé, journal du réglage releve_bit (B3 à la Loge), remplace le relevé existant
-
-def journal_bit():
-    from .reglages import journaux
-    codes = journaux("releve_bit")
-    return codes[0] if codes else ""
-
-
-def exp_bit():
-    code = journal_bit()
-    return [[code, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None]
-            for l in LigneReleve.objects.filter(journal_id=code, ouverture=False)] if code else []
-
-
-def imp_bit(lignes, fichier, utilisateur=None):
-    code = journal_bit()
-    if not code:
-        raise Refus(["Relevé Bit non utilisé par cette association (Paramètres : réglage releve_bit vide)."])
-    journal = journal_obligatoire(code)
-    L, a_faire = Lecteur(), []
-    for n, d in lignes:
-        jnl = L.texte(n, d, "Journ")
-        if jnl != code:
-            L.erreur(n, f"journal « {jnl} » : {code} attendu.")
-        debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
-        if (debit is None) == (credit is None) or (debit or credit or ZERO) <= 0:
-            L.erreur(n, "un seul montant, Debit OU Credit, positif.")
-        a_faire.append((L.date(n, d, "Date"), L.texte(n, d, "Libelle", True, 50), (debit or ZERO) - (credit or ZERO)))
-    L.verifier()
-    anciennes = LigneReleve.objects.filter(journal=journal, ouverture=False)
-    for r in {l.rapprochement for l in anciennes.select_related("rapprochement") if l.rapprochement_id}:
-        releves.depointer(r)
-    supprimees = anciennes.count()
-    anciennes.delete()
-    if a_faire and not LigneReleve.objects.filter(journal=journal, ouverture=True).exists():
-        LigneReleve.objects.create(journal=journal, date=min(x[0] for x in a_faire) - dt.timedelta(days=1), rang=0,
-                                   operation="Solde d'ouverture", montant=ZERO, solde=ZERO, ouverture=True, source=fichier)
-    rangs = defaultdict(int)
-    nouvelles = []
-    for date, libelle, montant in sorted(a_faire, key=lambda x: x[0]):
-        rangs[date] += 1
-        nouvelles.append(LigneReleve(journal=journal, date=date, rang=rangs[date], operation=libelle, montant=montant,
-                                     source=fichier[:120]))
-    LigneReleve.objects.bulk_create(nouvelles)
-    return f"{len(nouvelles)} ligne(s) importée(s), {supprimees} ancienne(s) remplacée(s)"
-
-
 # ---------------------------------------------------------------- catalogue, dans l'ordre d'import
 
 FORMATS = [
@@ -916,8 +869,6 @@ FORMATS = [
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
            ["Jnl", "Date", "Libelle", "Debit", "Credit", "Solde"], exp_banque_tout, imp_banque_tout, (4, 5, 6), (6,)),
-    Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
-           exp_bit, imp_bit, (4, 5)),
 ]
 
 PAR_NOM = {f.nom: f for f in FORMATS}
@@ -991,11 +942,7 @@ AIDE = {
         "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
         "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit"),
         "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
-        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit : non) ; sert à contrôler le relevé")}),
-    "Bit": ("Relevé Bit (journal du réglage releve_bit, B3 à la Loge). Remplace tout le relevé précédent de ce journal (pointages annulés).", {
-        "Journ": (O, "code", "Journal du réglage releve_bit (B3 à la Loge) ; toute autre valeur est refusée"), "Date": (O, DATE, ""),
-        "Libelle": (O, "texte, 50 car. au plus", "TIERS - RUBRIQUE - SOUS-RUBRIQUE"),
-        "Debit": (F, MONTANT, "Entrée d'argent sur Bit (Debit OU Credit)"), "Credit": (F, MONTANT, "Sortie d'argent (Debit OU Credit)")}),
+        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit n'en donne pas) ; sert à contrôler le relevé")}),
 }
 AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
 
@@ -1384,7 +1331,7 @@ def _retablir(memo):
 def reinjecter(utilisateur=None):
     """Remplace les données par les fichiers du dossier Imports, tout ou rien.
 
-    Un fichier d'écritures, de relevé (Banque, Bit) ou de budget remplace entièrement les données de sa
+    Un fichier d'écritures, de relevé (Banque) ou de budget remplace entièrement les données de sa
     nature ; les référentiels sont mis à jour (jamais supprimés : les écritures y renvoient). Pointages, à-nouveaux et
     fiches bénévoles reportées sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
     from .base_donnees import sauvegarder
@@ -1410,7 +1357,7 @@ def reinjecter(utilisateur=None):
             LigneFiche.objects.update(mouvement=None)
             Mouvement.objects.all().delete()
         for f, _, lignes in lus:
-            if f.nom == "Banque":                      # le relevé de chaque journal du fichier est remplacé (Bit : son import le remplace déjà)
+            if f.nom == "Banque":                      # le relevé de chaque journal du fichier est remplacé
                 LigneReleve.objects.filter(journal_id__in={str(d.get("Jnl") or "").strip() for _, d in lignes}).delete()
         if "Budget" in noms:
             Budget.objects.all().delete()

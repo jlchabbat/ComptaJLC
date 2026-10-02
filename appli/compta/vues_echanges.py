@@ -12,19 +12,28 @@ from .models import Reglage
 tresorier = permission_required("compta.parametrer", raise_exception=True)      # référentiels compris : administrateur
 
 
+# dossiers du PC de l'utilisateur : clé du réglage → (exemple, libellé) ; simples rappels, l'application n'y accède pas
+DOSSIERS_PC = {
+    "dossier_pc_imports": ("D:\\OneDrive\\0AppliBB\\Imports", "fichiers à envoyer à l'application (Banque.xlsx, Ecritures.xlsx…)"),
+    "dossier_pc_telechgt": ("D:\\OneDrive\\0AppliBB\\Telechgt", "fichiers téléchargés des banques et de l'autre comptabilité, avant adaptation"),
+    "dossier_pc_export": ("D:\\OneDrive\\0AppliBB\\Export", "exports de l'application (zip ; Ecritures.xlsx et Banque.xlsx non compressés)"),
+}
+
+
 @login_required
 @tresorier
 def echanges(request):
     auteur = request.user.get_username()
     if request.method == "POST":
         try:
-            if "dossier_pc" in request.POST:                      # dossier habituel sur l'ordinateur de l'utilisateur (simple rappel affiché)
-                nouveau = request.POST["dossier_pc"].strip()[:200]
-                avant = Reglage.lire("dossier_pc")
-                if nouveau != avant:
-                    Reglage.objects.update_or_create(cle="dossier_pc", defaults={"valeur": nouveau, "description": "Dossier habituel des fichiers sur le PC"})
-                    moteur.Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet="dossier_pc", avant=avant, apres=nouveau)
-                messages.success(request, "Dossier habituel enregistré.")
+            if "dossiers_pc" in request.POST:                     # dossiers habituels sur l'ordinateur de l'utilisateur (simples rappels affichés)
+                for cle, (_, lib) in DOSSIERS_PC.items():
+                    nouveau = request.POST.get(cle, "").strip()[:200]
+                    avant = Reglage.lire(cle)
+                    if nouveau != avant:
+                        Reglage.objects.update_or_create(cle=cle, defaults={"valeur": nouveau, "description": f"Dossier habituel sur le PC : {lib}"})
+                        moteur.Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet=cle, avant=avant, apres=nouveau)
+                messages.success(request, "Dossiers habituels enregistrés.")
             elif "dossiers" in request.POST:
                 moteur.changer_dossiers({c: request.POST.get(c, "") for c in moteur.REGLAGES_DOSSIERS}, auteur)
                 messages.success(request, f"Dossiers enregistrés : Imports = {moteur.imports()} ; Exports = {moteur.exports()}.")
@@ -98,7 +107,8 @@ def echanges(request):
     moteur.ecrire_lexiques()
     fichiers = moteur.a_importer()
     return render(request, "compta/echanges.html", {
-        "dossier_pc": Reglage.lire("dossier_pc"), "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
+        "dossiers_pc": [(cle, lib, Reglage.lire(cle), exemple) for cle, (exemple, lib) in DOSSIERS_PC.items()],
+        "pc_imports": Reglage.lire("dossier_pc_imports"), "pc_telechgt": Reglage.lire("dossier_pc_telechgt"), "pc_export": Reglage.lire("dossier_pc_export"), "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
         "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",)],
         "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],

@@ -63,17 +63,15 @@ fichier n'est pas versionné (règle `*.xlsx` du `.gitignore`).
 | 10 | `Budget.xlsx` | Exercice, Nature, Compte, Axe 1, Axe 2, Montant | une seule cible par ligne |
 | 11 | `Ecritures.xlsx` | Mvt, Jnl, Date, Compte, LibelCompte, Libelle, Debit, Credit, Anal1, LibelAnal1, Anal2, LibelAnal2, Lien, Let | Mvt nouveau ajouté, Mvt modifié mis à jour (tracé), identique ignoré ; Mvt nouveau identique à un Mvt du site sous un autre n° refusé (doublon) |
 | 11 bis | `Libelles.xlsx` | mêmes colonnes qu'Ecritures | Libellés seulement : chaque Mvt retrouvé sur le site par date, journal, comptes et montants (n° indifférent) ; introuvables, ambigus et exercices clos signalés, laissés tels quels |
-| 12 | `Banque.xlsx` | Jnl, Date, Libelle, Debit, Credit | relevés de toutes les banques et caisses dans un seul fichier, libellé dans la langue d'origine ; Debit = entrée, Credit = sortie ; lignes déjà présentes ignorées ; historique des imports |
-| 14 | `Bit.xlsx` | Journ, Date, Libelle, Debit, Credit | relevé Bit (B3), `Journ` = `B3` ; **remplace** le relevé B3 ([détail](../docs/import-banque3.md)) |
+| 12 | `Banque.xlsx` | Jnl, Date, Libelle, Debit, Credit, Solde (facultatif) | relevés de toutes les banques et caisses (Bit compris) dans un seul fichier, une seule structure, libellé dans la langue d'origine ; Debit = entrée, Credit = sortie ; lignes déjà présentes ignorées ; historique des imports ([détail](../docs/banques.md)) |
 
-Relevés Mizrahi : le PDF de la banque (`tnuot.pdf`, [détail](../docs/import-mizrahi.md))
-déposé dans `Imports` se convertit en `Banque_journal_date.xlsx`
-par un bouton de la page (journal au choix). Vérifier le fichier, puis l'importer.
+Relevés : la préparation du fichier de chaque banque (PDF, Excel…) se fait **en amont** (Power Query, dossier `Telechgt` du PC) ;
+l'application ne lit que la structure `Banque.xlsx`.
 
 ## Tout réinjecter
 
 Bouton de la page (confirmation `REMPLACER`) : pour chaque fichier présent dans
-`Imports` (un seul par nature), `Ecritures`, `Banque`, `Bit`
+`Imports` (un seul par nature), `Ecritures`, `Banque`
 et `Budget` **remplacent toutes** les données de leur nature ; les
 référentiels (1 à 9) sont mis à jour, jamais supprimés. Les pointages, les
 à-nouveaux de clôture et les fiches bénévoles reportées sont recollés quand

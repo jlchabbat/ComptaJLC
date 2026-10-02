@@ -46,7 +46,7 @@ def _utilisateurs():
 def referentiels(user):
     """[(nom de fichier, libellé, description, fabrique du classeur)]"""
     res = [(slug(f.nom), f.nom, f.aide, lambda f=f: prm.classeur([f.nom])) for f in prm.FEUILLES]
-    for nom in ("Exercices", "Tiers", "Budget", "Ecritures", "Banque", "Bit"):
+    for nom in ("Exercices", "Tiers", "Budget", "Ecritures", "Banque"):
         f = echanges.PAR_NOM[nom]
         res.append((nom, f.contenu, "Même format que la page Imports / Exports.", lambda f=f: echanges.classeur(f, f.exporter())))
     if user.is_superuser:
