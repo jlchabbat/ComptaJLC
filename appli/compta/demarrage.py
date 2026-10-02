@@ -64,7 +64,7 @@ def code_valide(saisi):
 def creer_administrateur(identifiant, mot_de_passe):
     from .vues_utilisateurs import donner_role
     u = User.objects.create_user(identifiant, identifiant if "@" in identifiant else "", mot_de_passe)
-    donner_role(u, "Administrateur")
+    donner_role(u, "Administration")
     chemin_code().unlink(missing_ok=True)
     Modification.objects.create(auteur=identifiant, lot="Démarrage", action="Premier administrateur", objet=identifiant)
     return u

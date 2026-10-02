@@ -1,8 +1,8 @@
 """Comptes de connexion : « Mon compte » pour chacun, page Utilisateurs pour l'administrateur.
 
 L'identifiant peut être un nom (sans espace) ou une adresse e-mail ; on se connecte aussi avec l'e-mail enregistré.
-Rôles, du plus large au plus restreint : Administrateur (paramétrage de base, utilisateurs, base de données),
-Trésorier (tout sauf le paramétrage de base), Bureau (consultation seule), Bénévole (la liaison : ses fiches seulement)."""
+Profils, du plus large au plus restreint : Administration (paramétrage de base, utilisateurs, base de données),
+Gestion (tout sauf le paramétrage de base), Consultation (consultation seule), Bénévole (la liaison : ses fiches seulement)."""
 
 from django import forms
 from django.contrib import messages
@@ -42,7 +42,7 @@ class ConnexionParEmail(ModelBackend):
 
 def role(u):
     if u.is_superuser:
-        return "Administrateur"
+        return "Administration"
     return next((g.name for g in u.groups.all() if g.name in ROLES), "—")
 
 
@@ -50,7 +50,7 @@ def donner_role(u, nom):
     """Un seul rôle par utilisateur ; l'administrateur a aussi les accès « superutilisateur » (Référentiels, base)."""
     u.groups.remove(*Group.objects.filter(name__in=ROLES))
     u.groups.add(Group.objects.get(name=nom))
-    u.is_superuser = u.is_staff = nom == "Administrateur"
+    u.is_superuser = u.is_staff = nom == "Administration"
     u.save()
 
 
@@ -113,7 +113,7 @@ class NouvelUtilisateurForm(forms.Form):
     prenom = forms.CharField(max_length=60, required=False, label="Prénom")
     nom = forms.CharField(max_length=60, required=False)
     email = forms.EmailField(required=False, label="E-mail")
-    role = forms.ChoiceField(choices=[(r, r) for r in ROLES_CREES_ICI], initial="Trésorier", label="Rôle")
+    role = forms.ChoiceField(choices=[(r, r) for r in ROLES_CREES_ICI], initial="Gestion", label="Rôle")
     mot_de_passe = forms.CharField(widget=forms.PasswordInput(render_value=True), label="Mot de passe",
                                    help_text="À transmettre à l'utilisateur, qui pourra le changer (Mon compte).")
 
@@ -151,7 +151,7 @@ class ModifierUtilisateurForm(forms.Form):
     def clean(self):
         c = super().clean()
         u = self.utilisateur
-        if u.is_superuser and (c.get("role") != "Administrateur" or not c.get("actif")):
+        if u.is_superuser and (c.get("role") != "Administration" or not c.get("actif")):
             if not User.objects.filter(is_superuser=True, is_active=True).exclude(pk=u.pk).exists():
                 raise forms.ValidationError("Il faut garder au moins un administrateur actif.")
         if c.get("mot_de_passe"):

@@ -96,10 +96,10 @@ def demonstration():
     membres.creer_manquants()
 
     admin = User.objects.create_user("admin", password=MOT_DE_PASSE, first_name="Jean", last_name="Administrateur")
-    donner_role(admin, "Administrateur")
+    donner_role(admin, "Administration")
     tresorier = User.objects.create_user("tresorier", password=MOT_DE_PASSE, first_name="Paul", last_name="Trésorier",
                                          email="tresorier@exemple.org")
-    donner_role(tresorier, "Trésorier")
+    donner_role(tresorier, "Gestion")
     donner_role(User.objects.create_user("bureau", password=MOT_DE_PASSE, first_name="Anne", last_name="Bureau"), "Bureau")
     benevole = User.objects.create_user("sarah", password=MOT_DE_PASSE, first_name="Sarah", last_name="LEVY")
     donner_role(benevole, "Bénévole")

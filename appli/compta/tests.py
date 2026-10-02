@@ -116,7 +116,7 @@ class Droits(TestCase):
 
     def test_pages_bureau(self):
         mouvement(1, dt.date(2026, 2, 1), [("512000", 100, 0), ("700000", 0, 100)])
-        self.client_pour("Bureau")
+        self.client_pour("Consultation")
         for url in ("/", "/ecritures/", "/mouvement/1/", "/grand-livre/?compte=512000", "/balance/", "/analytique/",
                     "/controles/", "/modifications/"):
             self.assertEqual(self.client.get(url).status_code, 200, url)
@@ -321,7 +321,7 @@ class ReglagesAssociation(TestCase):
         call_command("migrate", verbosity=0)
         Reglage.objects.update_or_create(cle="nom_association", defaults={"valeur": "Loge de Jérusalem"})
         u = User.objects.create_user("tresorier", password="x")
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
         r = self.client.get("/?du=2026-01-01&au=2026-12-31")
         self.assertContains(r, "Loge de Jérusalem")
@@ -351,7 +351,7 @@ class PremierDemarrage(TestCase):
                                                     "mot_de_passe": "une phrase longue 2026", "confirmation": "une phrase longue 2026"})
         self.assertRedirects(r, "/demarrage/", fetch_redirect_response=False)
         u = User.objects.get(username="tresorerie@asso.org")
-        self.assertTrue(u.is_superuser and u.groups.filter(name="Administrateur").exists())
+        self.assertTrue(u.is_superuser and u.groups.filter(name="Administration").exists())
         self.assertFalse(demarrage.chemin_code().exists())
         self.assertEqual(demarrage.code_installation(), "")         # plus de code une fois l'administrateur créé
         self.assertRedirects(self.client.get("/"), "/demarrage/")
@@ -421,7 +421,7 @@ class Licences(TestCase):
         call_command("migrate", verbosity=0)
         self.u = User.objects.create_user("admin", password="x")
         from .vues_utilisateurs import donner_role
-        donner_role(self.u, "Administrateur")
+        donner_role(self.u, "Administration")
         self.client.force_login(self.u)
 
     def site_neuf(self, il_y_a):
@@ -488,7 +488,7 @@ class Ecrans(TestCase):
         referentiels_saisie()
         call_command("migrate", verbosity=0)
         self.u = User.objects.create_user("tresorier", password="x")
-        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def formulaire(self, **k):
@@ -520,7 +520,7 @@ class Ecrans(TestCase):
 
     def test_saisie_refusee_au_bureau(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/saisie/").status_code, 403)
         self.assertEqual(self.client.get("/codes/").status_code, 403)
@@ -674,7 +674,7 @@ class EcransFiches(TestCase):
         referentiels_fiches()
         call_command("migrate", verbosity=0)
         self.tresorier = User.objects.create_user("tresorier")
-        self.tresorier.groups.add(Group.objects.get(name="Trésorier"))
+        self.tresorier.groups.add(Group.objects.get(name="Gestion"))
         self.benevole = User.objects.create_user("rachel")
         self.benevole.groups.add(Group.objects.get(name="Bénévole"))
         self.act = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
@@ -885,7 +885,7 @@ class EcransRapprochement(TestCase):
     def setUp(self):
         Rapprochements.setUp(self)
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def test_historique_libelle_modifiable_et_lexique(self):
@@ -1055,7 +1055,7 @@ class EcransRapprochement(TestCase):
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
         r = self.client.get("/rapprochement/B1/")
@@ -1150,7 +1150,7 @@ class EcransEtats(TestCase):
     def setUp(self):
         Cloture.setUp(self)
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     mvt = Cloture.mvt
@@ -1178,7 +1178,7 @@ class EcransEtats(TestCase):
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/etats/").status_code, 200)
         self.assertNotContains(self.client.get("/etats/"), "Ajouter une ligne de budget")
@@ -1249,7 +1249,7 @@ class EcransMembres(TestCase):
     def setUp(self):
         Membres.setUp(self)
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def test_pages_et_lettrage_manuel(self):
@@ -1268,7 +1268,7 @@ class EcransMembres(TestCase):
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/membres/411TAIEB001/").status_code, 200)
         self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "Lettrer la sélection")
@@ -1349,7 +1349,7 @@ class EcransCorrections(TestCase):
     def setUp(self):
         Corrections.setUp(self)
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Trésorier"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def test_formulaire(self):
@@ -1443,7 +1443,7 @@ class EcransCorrections(TestCase):
         self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête
         self.assertContains(r, 'data-sens="desc"')
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertNotContains(self.client.get("/mouvement/500/"), "Modifier")
         self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 403)
@@ -1491,13 +1491,13 @@ class ImportTiers(TestCase):
     def test_ecran_et_modele(self):
         call_command("migrate", verbosity=0)
         u = User.objects.create_user("t")
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
         r = self.client.get("/membres/modele-tiers.xlsx")
         self.assertEqual(r["Content-Disposition"], 'attachment; filename="Tiers.xlsx"')
         from django.core.files.uploadedfile import SimpleUploadedFile as Fichier
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # rôle Bureau : pas d'import
         self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
@@ -1505,7 +1505,7 @@ class ImportTiers(TestCase):
         self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # trésorier : pas d'import non plus
         self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
         a = User.objects.create_user("admin")
-        a.groups.add(Group.objects.get(name="Administrateur"))
+        a.groups.add(Group.objects.get(name="Administration"))
         self.client.force_login(a)                                                       # import : administrateur
         from django.core.files.uploadedfile import SimpleUploadedFile
         modele = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
@@ -1519,7 +1519,7 @@ class Journaux(TestCase):
     def setUp(self):
         Corrections.setUp(self)                   # Mvt 500 : frais 10 sur B1 (512000), + facture 421 en B1
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Bureau"))
+        self.u.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(self.u)
 
     def test_journal_banque(self):
@@ -1602,7 +1602,7 @@ class BaseDonnees(TransactionTestCase):
 
     def test_reserve_a_l_administrateur(self):
         u = User.objects.create_user("tresorier")
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
         self.assertEqual(self.client.get("/base/").status_code, 403)
 
@@ -1623,7 +1623,7 @@ class EffacerHistorique(TransactionTestCase):
         self.assertEqual(len(list((settings.EXPORTS_DIR / "Archives").glob("Historique_*.xlsx"))), 1)
         self.assertEqual(len(bd.liste()), 1)
         u = User.objects.create_user("tresorier")
-        u.groups.add(Group.objects.get(name="Trésorier"))
+        u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
         self.assertEqual(self.client.post("/modifications/effacer/", {"confirmation": "EFFACER"}).status_code, 403)
 
@@ -1733,8 +1733,8 @@ class EcranParametres(TransactionTestCase):
     def test_droits_et_dossier_imports(self):
         from django.conf import settings
         from django.core.files.uploadedfile import SimpleUploadedFile
-        self.assertEqual(set(Group.objects.values_list("name", flat=True)), {"Administrateur", "Trésorier", "Bureau", "Bénévole"})
-        for role in ("Bureau", "Trésorier", "Bénévole"):
+        self.assertEqual(set(Group.objects.values_list("name", flat=True)), {"Administration", "Gestion", "Consultation", "Bénévole"})
+        for role in ("Consultation", "Gestion", "Bénévole"):
             self.assertFalse(Group.objects.get(name=role).permissions.filter(codename="parametrer").exists())
             u = User.objects.create_user(role)
             u.groups.add(Group.objects.get(name=role))
@@ -1745,7 +1745,7 @@ class EcranParametres(TransactionTestCase):
         self.assertFalse((settings.IMPORTS_DIR / "Parametres.xlsx").exists())
         from .vues_utilisateurs import donner_role
         u = User.objects.create_user("admin")
-        donner_role(u, "Administrateur")
+        donner_role(u, "Administration")
         self.client.force_login(u)
         self.assertContains(self.client.get("/"), "Paramètres (Excel)")
         r = self.client.get("/parametres/Parametres.xlsx")
@@ -1935,7 +1935,7 @@ class ExportComplet(TransactionTestCase):
         self.client.post("/base/", {"remplacer": "1", "fichier": SimpleUploadedFile(nom, contenu), "confirmation": "REMPLACER"})
         self.assertFalse(Mouvement.objects.filter(numero=9).exists())
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get(f"/base/export/{nom}").status_code, 403)
 
@@ -1951,9 +1951,9 @@ class Utilisateurs(TestCase):
         Prefixe.objects.create(prefixe="MAN.", axe=2)
         Prefixe.objects.create(prefixe="COT.", axe=1)
         self.admin = User.objects.create_user("admin", password="ancien-mot-de-passe-1")
-        donner_role(self.admin, "Administrateur")
+        donner_role(self.admin, "Administration")
         self.tresorier = User.objects.create_user("tresorier", password="ancien-mot-de-passe-1")
-        donner_role(self.tresorier, "Trésorier")
+        donner_role(self.tresorier, "Gestion")
 
     def test_tresorier_sans_parametrage_de_base(self):
         self.client.force_login(self.tresorier)
@@ -1991,22 +1991,22 @@ class Utilisateurs(TestCase):
     def test_administrateur_gere_les_utilisateurs(self):
         self.client.force_login(self.admin)
         self.client.post("/utilisateurs/", {"n-identifiant": "bureau@exemple.org", "n-email": "bureau@exemple.org",
-                                            "n-role": "Bureau", "n-mot_de_passe": "Bureau-mdp-2026!", "creer": "1"})
+                                            "n-role": "Consultation", "n-mot_de_passe": "Bureau-mdp-2026!", "creer": "1"})
         b = User.objects.get(username="bureau@exemple.org")
-        self.assertEqual(list(b.groups.values_list("name", flat=True)), ["Bureau"])
+        self.assertEqual(list(b.groups.values_list("name", flat=True)), ["Consultation"])
         self.assertFalse(b.has_perm("compta.add_mouvement"))
         self.assertTrue(b.has_perm("compta.view_mouvement"))
-        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "email": "", "role": "Administrateur",
+        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "email": "", "role": "Administration",
                                                                  "actif": "on", "mot_de_passe": "", "prenom": "Jean-Luc",
                                                                  "nom": "CHABBAT"})
         self.tresorier.refresh_from_db()
         self.assertEqual(self.tresorier.get_full_name(), "Jean-Luc CHABBAT")                    # nom modifiable après création
         self.assertContains(self.client.get(f"/utilisateurs/{self.tresorier.pk}/"), 'value="CHABBAT"')
         self.assertTrue(self.tresorier.is_superuser)
-        self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administrateur"])
+        self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administration"])
         # toujours au moins un administrateur actif
-        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Trésorier", "actif": "on"})
-        r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Bureau", "actif": "on"})
+        self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Gestion", "actif": "on"})
+        r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Consultation", "actif": "on"})
         self.assertContains(r, "au moins un administrateur")
         self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)
 
@@ -2027,7 +2027,7 @@ class Echanges(TransactionTestCase):
         mbr.creer_manquants()
         Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
         u = User.objects.create_user("admin")
-        donner_role(u, "Administrateur")                    # page réservée : elle importe le paramétrage de base
+        donner_role(u, "Administration")                    # page réservée : elle importe le paramétrage de base
         self.client.force_login(u)
 
     def tearDown(self):
@@ -2202,6 +2202,14 @@ class Echanges(TransactionTestCase):
         self.assertEqual(LigneReleve.objects.filter(ouverture=False).count(), 3)
         self.assertEqual(ImportReleve.objects.count(), 4)
 
+    def test_dossier_habituel_du_pc(self):
+        """Rappel du dossier de travail du PC : enregistré, affiché près des boutons Exporter et Importer, tracé."""
+        r = self.client.post("/echanges/", {"dossier_pc": "C:\\Mes documents\\AppliBB"}, follow=True)
+        self.assertContains(r, "Dossier habituel enregistré")
+        self.assertContains(self.client.get("/echanges/"), "Mes documents")
+        self.assertEqual(Reglage.lire("dossier_pc"), "C:\\Mes documents\\AppliBB")
+        self.assertTrue(Modification.objects.filter(objet="dossier_pc").exists())
+
     def test_importer_en_une_etape(self):
         """Un seul bouton : dépose et importe ; sur refus, rien n'est gardé dans le dossier Imports."""
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2373,7 +2381,7 @@ class Echanges(TransactionTestCase):
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/echanges/").status_code, 403)
 
@@ -2483,7 +2491,7 @@ class DossiersEtExportComplet(TransactionTestCase):
         exp, sauv = self.racine / "Mes exports", self.racine / "Mes sauvegardes"
         ech.changer_dossiers({"dossier_exports": str(exp), "dossier_sauvegardes": str(sauv)}, auteur="t")
         u = User.objects.create_user("admin")
-        donner_role(u, "Administrateur")
+        donner_role(u, "Administration")
         self.client.force_login(u)
         page = self.client.get("/echanges/")
         self.assertContains(page, str(sauv))
@@ -2517,7 +2525,7 @@ class ReferentielsEtPages(TransactionTestCase):
         """Chaque page (sauf le tableau de bord) a « ✕ Fermer » : fiche → sa liste, sous-page → sa page, sinon l'accueil."""
         from django.urls import get_resolver
         t = User.objects.create_user("admin3")
-        donner_role(t, "Administrateur")
+        donner_role(t, "Administration")
         self.client.force_login(t)
         Reglage.objects.update_or_create(cle="demarrage", defaults={"valeur": "fait"})
         m = Mouvement.objects.order_by("numero").first()
@@ -2545,7 +2553,7 @@ class ReferentielsEtPages(TransactionTestCase):
     def test_export_de_chaque_referentiel(self):
         from .vues_referentiels import referentiels
         t = User.objects.create_user("tresorier")
-        donner_role(t, "Trésorier")
+        donner_role(t, "Gestion")
         self.client.force_login(t)
         self.assertEqual(self.client.get("/referentiels/").status_code, 403)          # exports : administrateur seulement
         self.assertEqual(self.client.get("/documentation/installation.pdf").status_code, 403)
@@ -2553,7 +2561,7 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertNotContains(page, "Administration ▾")                             # onglet réservé
         self.assertNotContains(page, "Installation et mises à jour")
         t = User.objects.create_user("admin2")
-        donner_role(t, "Administrateur")
+        donner_role(t, "Administration")
         self.client.force_login(t)
         noms = [r[0] for r in referentiels(t)]
         self.assertIn("PlanComptable", noms)
@@ -2578,14 +2586,14 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertTrue(list((self.racine / "Exports").glob("Exports_*.zip")))
         self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 200)             # administrateur
         b = User.objects.create_user("bureau")
-        donner_role(b, "Bureau")
+        donner_role(b, "Consultation")
         self.client.force_login(b)
         self.assertEqual(self.client.get("/referentiels/").status_code, 403)
 
     def test_toutes_les_pages_et_leur_barre(self):
         import re as _re
         a = User.objects.create_user("admin")
-        donner_role(a, "Administrateur")
+        donner_role(a, "Administration")
         self.client.force_login(a)
         pages = ["/", "/saisie/", "/mouvement/421/", "/mouvement/421/modifier/", "/mouvement/nouveau/", "/mouvement/rappel/",
                  "/codes/", "/fiches/", "/membres/", "/membres/411TAIEB001/", "/membres/cotisations/", "/tiers-provisoires/",
@@ -2619,7 +2627,7 @@ class RapportsAnalytiques(TestCase):
         Ligne.objects.create(mouvement=m, ordre=1, compte_id="630000", libelle="AIDE", debit=D(50), anal2_id="SOC.006")
         Ligne.objects.create(mouvement=m, ordre=2, compte_id="530000", libelle="LOCATION", credit=D(200), anal2_id="MAN.001")
         u = User.objects.create_user("bureau")
-        u.groups.add(Group.objects.get(name="Bureau"))                          # consultation seule suffit
+        u.groups.add(Group.objects.get(name="Consultation"))                          # consultation seule suffit
         self.client.force_login(u)
 
     def test_synthese_gestion_avec_totaux(self):
@@ -2786,7 +2794,7 @@ class Justificatifs(TransactionTestCase):
         # bureau (consultation) : consulte mais ne joint ni ne supprime
         j = just.ajouter(self.m, self.fichier(), auteur="tresorier")
         v = User.objects.create_user("verif")
-        v.groups.add(Group.objects.get(name="Bureau"))
+        v.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(v)
         self.assertEqual(self.client.get(f"/justificatif/{j.pk}/").status_code, 200)
         self.assertEqual(self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier()]}).status_code, 403)
@@ -2939,7 +2947,7 @@ class JustificatifsExistants(TransactionTestCase):
                          ["recu.jpg", "scan traiteur.pdf"])
         self.assertEqual(just.liste_a_classer(), [])
         b = User.objects.create_user("bureau")                 # consultation seulement : ni liste ni rattachement
-        donner_role(b, "Bureau")
+        donner_role(b, "Consultation")
         self.client.force_login(b)
         self.assertEqual(self.client.post("/mouvement/5/justificatifs/", {"a_classer": ["x"]}).status_code, 403)
 
@@ -3015,13 +3023,13 @@ class JustificatifsExistants(TransactionTestCase):
         self.client.post("/justificatifs/a-classer/", {"ecarter": just.a_classer()[0]["nom"]})
         self.assertEqual(just.a_classer(), [])
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
 
     def test_page_justificatifs_ouverte_au_tresorier(self):
         t = User.objects.create_user("tresorier_j")
-        t.groups.add(Group.objects.get(name="Trésorier"))
+        t.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(t)
         page = self.client.get("/justificatifs/a-classer/")
         self.assertEqual(page.status_code, 200)
@@ -3209,7 +3217,7 @@ class EcransParametrage(TestCase):
 
     def test_reserve_a_l_administrateur(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Bureau"))
+        b.groups.add(Group.objects.get(name="Consultation"))
         self.client.force_login(b)
         for adresse in ("/plan/", "/parametrage/journaux/", "/parametrage/axes/"):
             self.assertEqual(self.client.get(adresse).status_code, 403)

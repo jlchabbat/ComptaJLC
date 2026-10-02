@@ -3,11 +3,11 @@
 <div class="deux">
 <div class="carte"><h2 style="margin-top:0">Exporter</h2>
 <p><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Exporter toutes les données (.zip)</a></p>
-<p class="aide">Un fichier daté, à enregistrer sur votre ordinateur.</p></div>
+<p class="aide">Un fichier daté, à enregistrer sur votre ordinateur{% if dossier_pc %} : <b>{{ dossier_pc }}</b>{% endif %}.</p></div>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer</h2>
 <p><input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.zip"></p>
 <p><button class="principal" name="importer_fichiers" value="1">Importer</button></p>
-<p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant.</p></form>
+<p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant{% if dossier_pc %} (fichiers à prendre dans <b>{{ dossier_pc }}</b>){% endif %}.</p></form>
 </div>
 <details class="carte"><summary>Options avancées (un seul fichier, dossiers, réinjection, modèles)</summary>
 <div class="barre"><a class="bouton" href="{% url 'echanges_modeles' %}">Modèles vierges (ZIP)</a>
@@ -57,6 +57,8 @@ dans le fichier est supprimé).</li>
 {% empty %}<tr><td colspan="3">Aucun fichier exporté.</td></tr>{% endfor %}</table>
 
 <h2 id="dossiers">Dossiers</h2>
+<form method="post" class="carte"><label>Dossier habituel sur votre ordinateur (rappel affiché ci-dessus) <input name="dossier_pc" value="{{ dossier_pc }}" size="40" placeholder="ex. C:\Mes documents\AppliBB"></label>
+<button name="dossier_pc_ok" value="1">Enregistrer</button>{% csrf_token %}</form>
 <form method="post" class="carte" id="f-dossiers">{% csrf_token %}<div class="formulaire">
 {% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">

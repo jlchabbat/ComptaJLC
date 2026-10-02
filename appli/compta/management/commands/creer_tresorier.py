@@ -22,5 +22,5 @@ class Command(BaseCommand):
         if len(mdp) < 12 or mdp != getpass.getpass("Encore une fois : "):
             raise CommandError("Mot de passe trop court ou différent.")
         u = User.objects.create_user(nom, nom if "@" in nom else "", mdp)
-        donner_role(u, "Trésorier")
+        donner_role(u, "Gestion")
         self.stdout.write(self.style.SUCCESS(f"Trésorier « {nom} » créé."))

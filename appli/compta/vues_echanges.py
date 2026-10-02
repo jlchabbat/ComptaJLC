@@ -18,7 +18,14 @@ def echanges(request):
     auteur = request.user.get_username()
     if request.method == "POST":
         try:
-            if "dossiers" in request.POST:
+            if "dossier_pc" in request.POST:                      # dossier habituel sur l'ordinateur de l'utilisateur (simple rappel affiché)
+                nouveau = request.POST["dossier_pc"].strip()[:200]
+                avant = Reglage.lire("dossier_pc")
+                if nouveau != avant:
+                    Reglage.objects.update_or_create(cle="dossier_pc", defaults={"valeur": nouveau, "description": "Dossier habituel des fichiers sur le PC"})
+                    moteur.Modification.objects.create(auteur=auteur, lot="Échanges", action="Paramètre", objet="dossier_pc", avant=avant, apres=nouveau)
+                messages.success(request, "Dossier habituel enregistré.")
+            elif "dossiers" in request.POST:
                 moteur.changer_dossiers({c: request.POST.get(c, "") for c in moteur.REGLAGES_DOSSIERS}, auteur)
                 messages.success(request, f"Dossiers enregistrés : Imports = {moteur.imports()} ; Exports = {moteur.exports()}.")
             elif "deposer" in request.POST:
@@ -94,7 +101,7 @@ def echanges(request):
     moteur.ecrire_lexiques()
     fichiers = moteur.a_importer()
     return render(request, "compta/echanges.html", {
-        "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
+        "dossier_pc": Reglage.lire("dossier_pc"), "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
         "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",)],
         "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
