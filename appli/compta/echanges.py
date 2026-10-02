@@ -820,8 +820,11 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
         if jnl and jnl not in existants:
             L.erreur(n, f"journal {jnl} inconnu (Administration › Journaux).")
         debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
-        if (debit is None) == (credit is None) or (debit or credit or ZERO) <= 0:
-            L.erreur(n, "un seul montant, Debit OU Credit, positif.")
+        brut = (d.get("Debit"), d.get("Credit"))
+        debit, credit = (abs(debit) if debit else None), (abs(credit) if credit else None)     # 0 ou vide = pas de montant ; le sens vient de la colonne
+        if (debit is None) == (credit is None):
+            L.erreur(n, f"un seul montant, dans Debit OU dans Credit (trouvé : Debit « {'' if brut[0] is None else brut[0]} », "
+                        f"Credit « {'' if brut[1] is None else brut[1]} »).")
         par_journal[jnl].append({"date": L.date(n, d, "Date"), "reference": "", "operation": L.texte(n, d, "Libelle", True, 200),
                                  "montant": (debit or ZERO) - (credit or ZERO), "solde": L.montant(n, d, "Solde")})
     L.verifier()
@@ -936,7 +939,7 @@ AIDE = {
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
     "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare le classeur d'adaptation (Power Query) : une ligne par mouvement, libellé dans la langue d'origine. Debit = entrée d'argent sur le compte, Credit = sortie (comme les écritures). Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
         "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
-        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit"),
+        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit (l'autre colonne vide ou à 0)"),
         "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
         "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit n'en donne pas) ; sert à contrôler le relevé")}),
 }
