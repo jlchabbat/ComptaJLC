@@ -118,26 +118,38 @@ def export_csv(lignes):
 @consulter
 def ecritures(request):
     debut, fin = periode(request)
-    qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1", "anal2")
-          .order_by("-mouvement__date", "-mouvement__numero", "ordre"))
     f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q", "montant", "just")}
-    if f["journal"]:
-        qs = qs.filter(mouvement__journal_id=f["journal"])
-    if f["compte"]:
-        qs = qs.filter(compte__numero__startswith=f["compte"])
-    if f["anal2"]:
-        qs = qs.filter(anal2_id=f["anal2"])
-    if f["q"]:
-        qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
     f["montant_erreur"] = ""
+    m = None
     if f["montant"]:                                    # montant exact, au débit ou au crédit (virgule ou point, espaces ignorés)
         try:
             m = Decimal(f["montant"].replace("\u00a0", "").replace(" ", "").replace(",", "."))
-            qs = qs.filter(Q(debit=m) | Q(credit=m))
         except InvalidOperation:
             f["montant_erreur"] = "Montant non reconnu."
-    if f["just"] in ("avec", "sans"):                   # mouvements avec / sans justificatif joint
-        qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
+
+    def filtrer(debut, fin):
+        qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1", "anal2")
+              .order_by("-mouvement__date", "-mouvement__numero", "ordre"))
+        if f["journal"]:
+            qs = qs.filter(mouvement__journal_id=f["journal"])
+        if f["compte"]:
+            qs = qs.filter(compte__numero__startswith=f["compte"])
+        if f["anal2"]:
+            qs = qs.filter(anal2_id=f["anal2"])
+        if f["q"]:
+            qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
+        if m is not None:
+            qs = qs.filter(Q(debit=m) | Q(credit=m))
+        if f["just"] in ("avec", "sans"):               # mouvements avec / sans justificatif joint
+            qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
+        return qs
+
+    qs = filtrer(debut, fin)
+    if m is not None and not qs.exists():               # montant introuvable dans la période : on cherche dans toutes les dates
+        tout = filtrer(dt.date(2000, 1, 1), dt.date(2100, 12, 31))
+        if tout.exists():
+            qs, debut, fin = tout, tout.earliest("mouvement__date").mouvement.date, tout.latest("mouvement__date").mouvement.date
+            messages.info(request, "Montant absent de la période choisie : recherche étendue à toutes les dates.")
     if request.GET.get("format") == "csv":
         return export_csv(qs)
     d, c, _ = soldes(qs)

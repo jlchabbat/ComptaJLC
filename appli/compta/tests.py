@@ -1415,6 +1415,10 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/ecritures/", {"montant": "123456"}).context["page"].paginator.count, 0)
         self.assertContains(self.client.get("/ecritures/", {"montant": "abc"}), "Montant non reconnu.")
         self.assertEqual(self.client.get("/ecritures/", {"montant": "abc"}).context["page"].paginator.count, tout)
+        # montant d'une autre période : la recherche s'étend à toutes les dates
+        r = self.client.get("/ecritures/", {"montant": "400", "du": "1990-01-01", "au": "1990-12-31"})
+        self.assertTrue(list(r.context["page"]))
+        self.assertContains(r, "recherche étendue à toutes les dates")
 
     def test_tri_et_droits(self):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
