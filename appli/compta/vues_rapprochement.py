@@ -47,6 +47,16 @@ def _trouver(modele, texte, **filtre):
     return qs.filter(pk__iexact=code).first() or qs.filter(libelle__iexact=texte).first()
 
 
+def _garder_saisies(request):
+    """Compte, axe 2 et libellé déjà tapés sur les autres lignes : gardés pour le réaffichage après écarter / relier."""
+    s = {}
+    for cle, valeur in request.POST.items():
+        for prefixe in ("compte_", "anal2_", "libelle_"):
+            if cle.startswith(prefixe) and cle[len(prefixe):].isdigit() and valeur.strip():
+                s.setdefault(cle[len(prefixe):], {})[prefixe[:-1]] = valeur.strip()
+    request.session["rapprochement_saisies"] = s
+
+
 def _affecter(request, journal, lignes):
     """Crée les écritures des lignes affectées ; renvoie (créées, erreurs {pk: message}, saisies {pk: (compte, axe2)})."""
     crees, erreurs, saisies = [], {}, {}
@@ -61,14 +71,12 @@ def _affecter(request, journal, lignes):
             from .reglages import code_axe2_defaut
             defaut = code_axe2_defaut()                   # un seul axe : code d'office
             anal2 = CodeAnalytique.objects.filter(code=defaut).first() if defaut else None
-        if compte and not compte.porte_axe2:
-            anal2 = None                                  # axe 2 : comptes 6 et 7 seulement
-        elif a and not anal2:
+        if a and not anal2:
             erreurs[l.pk] = "Code axe 2 introuvable."
             continue
-        if not compte or (compte.porte_axe2 and not anal2):
-            erreurs[l.pk] = ("Compte introuvable. " if not compte else "Code axe 2 à choisir pour une dépense ou une recette.")
-            continue
+        if not compte:
+            erreurs[l.pk] = "Compte introuvable."
+            continue                                      # axe 2 facultatif ; seuls les comptes 6 et 7 le portent
         try:
             libelle = request.POST.get(f"libelle_{l.pk}", "").strip()
             crees.append(moteur.creer_ecriture(l, compte, anal2, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}")),
@@ -93,7 +101,7 @@ def accueil(request, code=None):
     journal = get_object_or_404(Journal, code=code) if code else next(
         (j for j in js if moteur.a_affecter(j).exists()), js[0])
     peut = request.user.has_perm("compta.pointer_releve")
-    erreurs, saisies = {}, {}
+    erreurs, saisies, libelles_saisis = {}, {}, {}
     if request.method == "POST" and peut:
         if "relier" in request.POST:
             try:
@@ -113,6 +121,7 @@ def accueil(request, code=None):
                 journaliser(request, "Liaison relevé", f"{journal.code} {l.date:%d/%m/%Y} " + " ; ".join(str(x.montant) for x in ls),
                             apres=mvts)
                 messages.success(request, f"{quoi} reliée(s) à {mvts} (aucune écriture créée).")
+            _garder_saisies(request)
             return redirect("rapprochement_journal", journal.code)
         if "ecarter_cochees" in request.POST or "ecarter_jusquau" in request.POST:
             qs = moteur.a_affecter(journal)
@@ -130,24 +139,33 @@ def accueil(request, code=None):
                 messages.success(request, f"{n} ligne(s) écartée(s) : aucune écriture ne sera créée (liste « Lignes écartées »).")
             elif "ecarter_cochees" in request.POST:
                 messages.warning(request, "Aucune ligne cochée.")
+            _garder_saisies(request)
             return redirect("rapprochement_journal", journal.code)
         if "relier_evidentes" in request.POST:
             n = moteur.relier_evidentes(journal, request.user)
             journaliser(request, "Liaison automatique relevé", journal.code, apres=f"{n} ligne(s) reliée(s)")
             messages.success(request, f"{n} ligne(s) déjà en compta reliée(s) à leur écriture (même montant, une seule écriture possible)."
                              if n else "Aucune ligne n'a une écriture évidente : décider ligne par ligne.")
+            _garder_saisies(request)
             return redirect("rapprochement_journal", journal.code)
         if "ecarter" in request.POST or "remettre" in request.POST:
             remettre = "remettre" in request.POST
-            qs = moteur.ecartees(journal) if remettre else moteur.a_affecter(journal)
-            l = qs.filter(pk=int(request.POST["remettre" if remettre else "ecarter"])).first()
-            if l:
-                l.ecartee = not remettre
-                l.save(update_fields=["ecartee"])
-                journaliser(request, "Ligne de relevé " + ("remise" if remettre else "écartée"),
-                            f"{journal.code} {l.date:%d/%m/%Y} {l.montant}", apres=l.operation[:200])
-                messages.success(request, f"Ligne du {l.date:%d/%m/%Y} ({l.montant}) " +
-                                 ("remise dans la liste à affecter." if remettre else "écartée : aucune écriture ne sera créée."))
+            pk = request.POST["remettre" if remettre else "ecarter"]
+            if remettre:
+                l = moteur.ecartees(journal).filter(pk=int(pk)).first()
+                if l:
+                    l.ecartee = False
+                    l.save(update_fields=["ecartee"])
+                    journaliser(request, "Ligne de relevé remise", f"{journal.code} {l.date:%d/%m/%Y} {l.montant}", apres=l.operation[:200])
+                    messages.success(request, f"Ligne du {l.date:%d/%m/%Y} ({l.montant}) remise dans la liste à affecter.")
+            else:                                         # la ligne et toutes les lignes cochées
+                ids = {int(pk)} | {int(x) for x in request.POST.getlist("coche") if x.isdigit()}
+                lignes_ecartees = list(moteur.a_affecter(journal).filter(pk__in=ids))
+                moteur.a_affecter(journal).filter(pk__in=ids).update(ecartee=True)
+                if lignes_ecartees:
+                    journaliser(request, "Lignes de relevé écartées", journal.code, apres=f"{len(lignes_ecartees)} ligne(s)")
+                    messages.success(request, f"{len(lignes_ecartees)} ligne(s) écartée(s) : aucune écriture ne sera créée (liste « Lignes écartées »).")
+            _garder_saisies(request)
             return redirect("rapprochement_journal", journal.code)
         crees, erreurs, saisies = _affecter(request, journal, list(moteur.a_affecter(journal)))
         if crees:
@@ -155,9 +173,13 @@ def accueil(request, code=None):
         if erreurs:
             messages.error(request, f"{len(erreurs)} ligne(s) non enregistrée(s) : voir le motif sur chaque ligne.")
         elif not crees:
-            messages.warning(request, "Aucune ligne affectée : choisir un compte et un code axe 2.")
+            messages.warning(request, "Aucune ligne affectée : choisir un compte (le code axe 2 est facultatif).")
         if not erreurs:
             return redirect("rapprochement_journal", journal.code)
+    for pk, d in request.session.pop("rapprochement_saisies", {}).items():        # saisies gardées après écarter / relier
+        saisies.setdefault(int(pk), (d.get("compte", ""), d.get("anal2", "")))
+        if d.get("libelle"):
+            libelles_saisis[int(pk)] = d["libelle"]
     lignes = []
     memo = moteur.memoire_affectations() if peut else {}
     ctx = moteur.Contexte(journal) if peut else None                  # lu une fois : page rapide même avec beaucoup de lignes
@@ -165,7 +187,7 @@ def accueil(request, code=None):
         c, a = saisies.get(l.pk, ("", ""))
         propose = moteur.proposition(l, memo) if peut and not c else None
         deja = moteur.deja_en_compta(l, ctx) if peut else []
-        lignes.append({"l": l, "compte": c, "anal2": a, "libelle": moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
+        lignes.append({"l": l, "compte": c, "anal2": a, "libelle": libelles_saisis.get(l.pk) or moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
                        "propose": f"{propose.numero} – {propose.libelle}" if propose and not deja else "",
                        "groupes": moteur.groupes(l, ctx=ctx) if peut and not deja else [],
                        "lignes_groupees": moteur.lignes_groupees(l, ctx=ctx) if peut and not deja else [],

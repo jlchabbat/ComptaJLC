@@ -555,11 +555,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
         compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2")
-        if compte[:1] in ("6", "7"):                      # axe 2 : dépenses et recettes seulement (classes 6 et 7)
-            anal2 = anal2 or defaut2
-            if not anal2:
-                L.erreur(n, f"Anal2 manquant : obligatoire pour le compte {compte} (dépense ou recette).")
-        anal2 = anal2 or None                             # comptes de bilan : vide (un code présent est conservé tel quel)
+        anal2 = anal2 or (defaut2 if compte[:1] in ("6", "7") else None)       # axe 2 facultatif ; un seul axe : code d'office
         debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
