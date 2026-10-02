@@ -789,7 +789,6 @@ def rapport_ecarts(ecarts, deja_pris=()):
 
 # ---- relevés Banque 1 et Banque 2 (Excel, CSV ou PDF converti) et caisse
 
-COLONNES_BANQUE = ["Date", "Référence", "Opération", "Montant", "Solde"]
 COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1", "Anal2",
                       "LibelAnal2", "Lien", "Let"]
 
@@ -799,35 +798,6 @@ def journal_obligatoire(code):
     if not j:
         raise Refus([f"Le journal {code} n'existe pas (importer d'abord Journaux.xlsx)."])
     return j
-
-
-def exp_banque(code):
-    def f():
-        return [[l.date, l.reference, l.operation, l.montant, l.solde]
-                for l in LigneReleve.objects.filter(journal_id=code, ouverture=False)]
-    return f
-
-
-def imp_banque(code):
-    def f(lignes, fichier, utilisateur=None):
-        journal = journal_obligatoire(code)
-        L, a_faire = Lecteur(), []
-        for n, d in lignes:
-            montant = L.montant(n, d, "Montant", True)
-            if montant == 0:
-                L.erreur(n, "montant nul.")
-            a_faire.append({"date": L.date(n, d, "Date"), "reference": L.texte(n, d, "Référence", longueur=40),
-                            "operation": L.texte(n, d, "Opération", longueur=200), "montant": montant,
-                            "solde": L.montant(n, d, "Solde")})
-        L.verifier()
-        try:
-            ajoutees, doublons, ecarts = releves.importer(journal, a_faire, source=fichier,
-                                                        auteur=utilisateur.get_username() if utilisateur else "")
-        except ValueError as e:
-            raise Refus([str(e)])
-        return (f"{ajoutees} ligne(s) ajoutée(s), {doublons} déjà présente(s)"
-                + (f" ; attention : {ecarts} solde(s) du relevé incohérent(s)" if ecarts else ""))
-    return f
 
 
 # ---- Banque : un seul fichier pour toutes les banques et caisses (structure interne, préparée en amont par Power Query)
@@ -937,11 +907,8 @@ FORMATS = [
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
            ["Jnl", "Date", "Libelle", "Debit", "Credit"], exp_banque_tout, imp_banque_tout, (4, 5)),
-    Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
-    Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
     Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
            exp_bit, imp_bit, (4, 5)),
-    Format("Caisse", "Caisse (journal CA)", COLONNES_BANQUE, exp_banque("CA"), imp_banque("CA"), (4, 5)),
 ]
 
 PAR_NOM = {f.nom: f for f in FORMATS}
@@ -953,7 +920,7 @@ LEXIQUE = "Lexique"
 O, F = "oui", ""
 DATE, MONTANT, TEXTE, CODE, OUI = "date jj/mm/aaaa", "montant (nombre, sans symbole)", "texte", "code (texte)", "oui / non"
 REGLES = [
-    ("Format", "Un fichier .xlsx (ou .xlsm, lu en valeurs : macros non exécutées) par nature de données ; si le classeur a plusieurs feuilles, celle qui porte le nom du format (Ecritures, Banque1…), sinon la première ; ligne 1 = exactement les en-têtes ; données dès la ligne 2. Le .csv est aussi accepté."),
+    ("Format", "Un fichier .xlsx (ou .xlsm, lu en valeurs : macros non exécutées) par nature de données ; si le classeur a plusieurs feuilles, celle qui porte le nom du format (Ecritures, Banque…), sinon la première ; ligne 1 = exactement les en-têtes ; données dès la ligne 2. Le .csv est aussi accepté."),
     ("Nom du fichier", "Commence par le nom du format : Tiers.xlsx, Tiers_2026-09-27.xlsx… Les exports portent la date du jour."),
     ("Aller-retour", "Un fichier exporté (dossier Exports) se réimporte tel quel : le copier dans le dossier Imports."),
     ("Tout ou rien", "À la moindre erreur, rien n'est enregistré ; la page Imports / Exports liste les lignes en erreur."),
@@ -961,7 +928,7 @@ REGLES = [
     ("Ordre", "Importer dans l'ordre du lexique : chaque fichier ne cite que des codes définis par les précédents."),
     ("Dates", "Dates Excel (affichées jj/mm/aaaa)."),
     ("Montants", "Nombres, sans symbole monétaire ; cellule vide quand il n'y a pas de montant."),
-    ("Relevés PDF", "Un relevé PDF déposé dans Imports se convertit en Banque1 ou Banque2 (bouton de la page), à vérifier puis importer."),
+    ("Relevés PDF", "Un relevé PDF déposé dans Imports se convertit en fichier Banque (bouton de la page, pour le journal choisi), à vérifier puis importer."),
 ]
 AIDE = {
     "Exercices": ("Mise à jour par libellé ; un exercice clos ne change plus. La clôture se fait par Fin d'exercice › Clôture.", {
@@ -1015,21 +982,12 @@ AIDE = {
         "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
         "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit"),
         "Credit": (F, MONTANT, "Sortie : Debit OU Credit")}),
-    "Banque1": ("Relevé du journal B1. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
-    "Banque2": ("Relevé du journal B2. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Bit": ("Relevé Bit (journal du réglage releve_bit, B3 à la Loge). Remplace tout le relevé précédent de ce journal (pointages annulés).", {
         "Journ": (O, "code", "Journal du réglage releve_bit (B3 à la Loge) ; toute autre valeur est refusée"), "Date": (O, DATE, ""),
         "Libelle": (O, "texte, 50 car. au plus", "TIERS - RUBRIQUE - SOUS-RUBRIQUE"),
         "Debit": (F, MONTANT, "Entrée d'argent sur Bit (Debit OU Credit)"), "Credit": (F, MONTANT, "Sortie d'argent (Debit OU Credit)")}),
-    "Caisse": ("Mouvements de caisse (journal CA). Lignes déjà importées ignorées.", {}),
 }
-COLONNES_RELEVE = {"Date": (O, DATE, "Date d'opération"), "Référence": (F, TEXTE, "Référence de la banque (אסמכתה)"),
-                   "Opération": (F, TEXTE, "Libellé de l'opération (hébreu accepté)"),
-                   "Montant": (O, MONTANT, "Positif = entrée, négatif = sortie"),
-                   "Solde": (F, MONTANT, "Solde après l'opération ; obligatoire sur la 1re ligne du tout premier import")}
 AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
-for _nom in ("Banque1", "Banque2", "Caisse"):
-    AIDE[_nom][1].update(COLONNES_RELEVE)
 
 
 def classeur_lexique():
@@ -1087,7 +1045,7 @@ TABLEURS = (".xlsx", ".xlsm")                              # classeurs Excel ; u
 
 
 def _feuille(wb):
-    """Feuille à lire d'un classeur : celle qui porte le nom d'un format (Ecritures, Banque1…), sinon la première."""
+    """Feuille à lire d'un classeur : celle qui porte le nom d'un format (Ecritures, Banque…), sinon la première."""
     noms = {_norme(f.nom) for f in FORMATS} | {_norme(a) for f in FORMATS for a in f.alias}
     return next((ws for ws in wb.worksheets if _norme(ws.title) in noms), wb.worksheets[0])
 
@@ -1331,16 +1289,17 @@ def importer(nom, utilisateur=None):
 
 
 def convertir_pdf(nom, code, auteur=""):
-    """Relevé PDF (Mizrahi ou tableau) du dossier Imports → Imports/Banque1_<date>.xlsx (ou Banque2), à vérifier puis importer."""
+    """Relevé PDF (Mizrahi ou tableau) du dossier Imports → Imports/Banque_<date>.xlsx (format Banque, journal choisi), à vérifier puis importer."""
     chemin = fichier_d_import(nom)
     if chemin.suffix.lower() != ".pdf":
         raise Refus([f"{chemin.name} n'est pas un PDF."])
     lignes = releves.lire(chemin.name, chemin.read_bytes())
     if not lignes:
         raise Refus([f"{chemin.name} : aucune opération reconnue dans le PDF."])
-    f = PAR_NOM["Banque1" if code == "B1" else "Banque2"]
-    dest = imports() / f"{f.nom}_{dt.date.today():%Y-%m-%d}.xlsx"
-    classeur(f, [[l["date"], l["reference"], l["operation"], l["montant"], l["solde"]] for l in lignes]).save(dest)
+    f = PAR_NOM["Banque"]
+    dest = imports() / f"{f.nom}_{code}_{dt.date.today():%Y-%m-%d}.xlsx"
+    classeur(f, [[code, l["date"], l["operation"], l["montant"] if l["montant"] > 0 else None,
+                  -l["montant"] if l["montant"] < 0 else None] for l in lignes]).save(dest)
     ranger(chemin)
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Conversion PDF", objet=chemin.name[:200],
                                 apres=f"{dest.name} : {len(lignes)} ligne(s)")
@@ -1348,9 +1307,6 @@ def convertir_pdf(nom, code, auteur=""):
 
 
 # ---------------------------------------------------------------- tout réinjecter
-
-RELEVES = {"Banque1": "B1", "Banque2": "B2", "Caisse": "CA"}      # Bit : son import remplace déjà le relevé B3
-
 
 def fichiers_a_reinjecter():
     """Un fichier par format présent dans Imports, dans l'ordre d'import ; refus si un format a plusieurs fichiers."""
@@ -1414,7 +1370,7 @@ def _retablir(memo):
 def reinjecter(utilisateur=None):
     """Remplace les données par les fichiers du dossier Imports, tout ou rien.
 
-    Un fichier d'écritures, de relevé (Banque1, Banque2, Bit, Caisse) ou de budget remplace entièrement les données de sa
+    Un fichier d'écritures, de relevé (Banque, Bit) ou de budget remplace entièrement les données de sa
     nature ; les référentiels sont mis à jour (jamais supprimés : les écritures y renvoient). Pointages, à-nouveaux et
     fiches bénévoles reportées sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
     from .base_donnees import sauvegarder
@@ -1439,9 +1395,9 @@ def reinjecter(utilisateur=None):
             Exercice.objects.update(mouvement_an=None)
             LigneFiche.objects.update(mouvement=None)
             Mouvement.objects.all().delete()
-        for nom, code in RELEVES.items():
-            if nom in noms:
-                LigneReleve.objects.filter(journal_id=code).delete()
+        for f, _, lignes in lus:
+            if f.nom == "Banque":                      # le relevé de chaque journal du fichier est remplacé (Bit : son import le remplace déjà)
+                LigneReleve.objects.filter(journal_id__in={str(d.get("Jnl") or "").strip() for _, d in lignes}).delete()
         if "Budget" in noms:
             Budget.objects.all().delete()
         for f, chemin, lignes in lus:

@@ -22,9 +22,9 @@
 <button class="principal" name="deposer" value="1">Déposer</button>
 </form>
 {% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
-<p class="aide">La conversion crée Banque1_date.xlsx ou Banque2_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
+<p class="aide">La conversion crée Banque_journal_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
 <table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
-<button name="journal" value="B1">Convertir en Banque1.xlsx</button> <button name="journal" value="B2">Convertir en Banque2.xlsx</button></form>
+<button name="journal" value="B1">Convertir pour B1</button> <button name="journal" value="B2">Convertir pour B2</button></form>
 <form method="post" style="display:inline">{% csrf_token %}<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ?')">Supprimer</button></form></td></tr>{% endfor %}</table></div>{% endif %}
 <form method="post">{% csrf_token %}
 {% if a_importer %}<p><button class="principal" name="tout_importer" value="1"
@@ -39,7 +39,7 @@
 
 <details class="carte"><summary><b>Tout réinjecter</b> : remplacer les données par les fichiers du dossier Imports</summary>
 
-<ul><li>Un fichier <b>Ecritures, Banque1, Banque2, Bit, Caisse ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
+<ul><li>Un fichier <b>Ecritures, Banque, Bit ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
 <li>Les <b>référentiels</b> sont mis à jour, jamais supprimés ; tout ou rien, sauvegarde avant.</li></ul>
 <form method="post" id="f-reinjecter">{% csrf_token %}<label>Taper REMPLACER pour confirmer <input name="confirmation" autocomplete="off"></label></form></details>

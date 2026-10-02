@@ -121,13 +121,13 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 
 Menu **Administration › Imports / Exports** (`compta/echanges.py`), en complément des imports des écrans Tiers
 et Rapprochement. Un fichier `.xlsx` par nature de données (Exercices, Reglages, Axe1, Axe2, Prefixes,
-PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque1, Banque2, Bit, Caisse), de même
+PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque, Bit), de même
 structure à l'import et à l'export, décrit dans `Lexique.xlsx` et dans [`Imports/README.md`](../Imports/README.md).
 Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiables dans la page (réglages
 `dossier_imports`, `dossier_exports`). Import tout ou rien, sauvegarde avant ; fichier rangé dans
 `Imports/Importés`. **Tout importer** importe en une fois tous les fichiers déposés (un ZIP convient), dans l'ordre
 du lexique, tout ou rien, sans rien supprimer ; `Liens.xlsx` (Mvt, Lien, Description) joint les documents en ligne à leur Mvt.
-Un relevé PDF Mizrahi se convertit en Banque1.xlsx ou Banque2.xlsx. **Tout réinjecter**
+Un relevé PDF Mizrahi se convertit en fichier Banque (journal au choix). **Tout réinjecter**
 remplace écritures, relevés et budget par les fichiers présents.
 
 ## Documentation intégrée

@@ -2052,7 +2052,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
+            if f.nom in ("Ecritures", "Banque", "Bit", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
                 continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
@@ -2095,11 +2095,13 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ech.format_de(csv_).nom, "Journaux")
         self.assertContains(self.importer("export du jour.csv"), "export du jour.csv importé (")
         self.assertEqual(Journal.objects.get(code="M7").compte_id, "512000")
-        # structure identique pour Banque1 et Banque2 : le nom départage ; sans nom reconnu, rien ne devine
-        classeur("Releve.xlsx", ["Date", "Référence", "Opération", "Montant", "Solde"])
-        self.assertIsNone(ech.format_de(ech.imports() / "Releve.xlsx"))
-        classeur("Banque2_octobre.xlsx", ["Date", "Référence", "Opération", "Montant", "Solde"])
-        self.assertEqual(ech.format_de(ech.imports() / "Banque2_octobre.xlsx").nom, "Banque2")
+        # structure identique pour Ecritures et Libelles : le nom départage ; sans nom reconnu, rien ne devine
+        classeur("Releve.xlsx", ech.COLONNES_ECRITURES)
+        self.assertEqual(ech.format_de(ech.imports() / "Releve.xlsx"), None)
+        classeur("Libelles_octobre.xlsx", ech.COLONNES_ECRITURES)
+        self.assertEqual(ech.format_de(ech.imports() / "Libelles_octobre.xlsx").nom, "Libelles")
+        classeur("Banque_octobre.xlsx", ["Jnl", "Date", "Libelle", "Debit", "Credit"])
+        self.assertEqual(ech.format_de(ech.imports() / "Banque_octobre.xlsx").nom, "Banque")
         classeur("Autre.xlsx", ["Un", "Deux"], [["a", "b"]])
         self.assertIsNone(ech.format_de(ech.imports() / "Autre.xlsx"))
         self.assertContains(self.client.get("/echanges/"), "structure non reconnue")
@@ -2362,11 +2364,12 @@ class Echanges(TransactionTestCase):
 
     def test_banque_sans_doublon(self):
         d = dt.datetime(2026, 1, 5)
-        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990], [d, "12", "הפקדת שיק", 1550, 2540]])
-        self.assertContains(self.importer("Banque1.xlsx"), "2 ligne(s) ajoutée(s), 0 déjà présente(s)")
-        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990], [d, "12", "הפקדת שיק", 1550, 2540]])
-        self.assertContains(self.importer("Banque1.xlsx"), "0 ligne(s) ajoutée(s), 2 déjà présente(s)")
-        self.assertEqual(LigneReleve.objects.get(journal_id="B1", ouverture=True).montant, D(1000))
+        rows = [["B1", d, "עמלת מסלול", None, 10], ["B1", d, "הפקדת שיק", 1550, None]]
+        self.fichier("Banque.xlsx", rows)
+        self.assertContains(self.importer("Banque.xlsx"), "B1 : 2 ajoutée(s), 0 déjà présente(s)")
+        self.fichier("Banque.xlsx", rows)
+        self.assertContains(self.importer("Banque.xlsx"), "B1 : 0 ajoutée(s), 2 déjà présente(s)")
+        self.assertEqual(LigneReleve.objects.get(journal_id="B1", ouverture=True).montant, D(0))
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
@@ -2412,15 +2415,15 @@ class Echanges(TransactionTestCase):
     def test_tout_reinjecter(self):
         """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""
         d = dt.datetime(2026, 1, 5)
-        self.fichier("Banque1.xlsx", [[d, "11", "עמלת מסלול", -10, 990]])
-        self.importer("Banque1.xlsx")
+        self.fichier("Banque.xlsx", [["B1", d, "עמלת מסלול", None, 10]])
+        self.importer("Banque.xlsx")
         b1 = Journal.objects.get(code="B1")
         m = mouvement(600, dt.date(2026, 1, 5), [("600100", 10, 0), ("512000", 0, 10)])
         rap.pointer(b1, LigneReleve.objects.filter(journal=b1, ouverture=False), m.lignes.filter(compte_id="512000"))
         Mouvement.objects.filter(numero=421).update(origine="saisie", commentaire="saisi à la main")
         self.client.post("/echanges/", {"exporter": "tout"})
         for p in ech.exports().glob("*_*.xlsx"):
-            if ech.format_de(p).nom in ("Ecritures", "Banque1", "PlanComptable"):
+            if ech.format_de(p).nom in ("Ecritures", "Banque", "PlanComptable"):
                 (ech.imports() / p.name).write_bytes(p.read_bytes())
         plan = next(ech.imports().glob("PlanComptable_*"))
         wb = openpyxl.load_workbook(plan)
@@ -2571,7 +2574,7 @@ class ReferentielsEtPages(TransactionTestCase):
         r = self.client.get("/referentiels/Tout.xlsx")                               # Tout exporter : .zip
         self.assertIn(".zip", r["Content-Disposition"])
         with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-            self.assertTrue({"Parametres.xlsx", "Ecritures.xlsx", "Tiers.xlsx", "Banque1.xlsx", "Lexique.xlsx"} <= set(z.namelist()))
+            self.assertTrue({"Parametres.xlsx", "Ecritures.xlsx", "Tiers.xlsx", "Banque.xlsx", "Lexique.xlsx"} <= set(z.namelist()))
         self.assertTrue(list((self.racine / "Exports").glob("Exports_*.zip")))
         self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 200)             # administrateur
         b = User.objects.create_user("bureau")

@@ -341,7 +341,7 @@ En haut : <b>Télécharger en Excel</b> (toutes les feuilles), <b>Imprimer / PDF
 <h2>Exports des référentiels et des écritures</h2>
 <p><span class="menu">Éditions › Exports (référentiels, écritures)</span> (administrateur et trésorier) : <b>un fichier Excel par référentiel</b> — réglages, axe 1,
 axe 2, préfixes, plan comptable, journaux, types de tiers, moyens de paiement, schémas et modèles d'opération, natures et modes des fiches,
-paramètres des relevés, traductions, exercices, tiers, budget, <b>écritures</b>, relevés Banque1, Banque2, Bit et Caisse et, pour l'administrateur,
+paramètres des relevés, traductions, exercices, tiers, budget, <b>écritures</b>, relevés (Banque, Bit) et, pour l'administrateur,
 utilisateurs (sans mot de passe). <b>Tout exporter (.zip, écritures comprises)</b> en haut réunit tous ces fichiers, avec Parametres.xlsx
 (classeur complet des paramètres) et Lexique.xlsx. Chaque fichier est téléchargé et copié dans le dossier Exports ;
 ceux des paramètres se réimportent tels quels (chapitre 13).</p>
@@ -395,12 +395,12 @@ Un fichier d'un seul référentiel s'importe de la même façon.</li>
 <li>Au moindre problème, <b>rien n'est enregistré</b> et la liste des lignes à corriger s'affiche. Une sauvegarde est faite avant chaque import.</li></ul>
 <h2>Imports / Exports</h2>
 <p><span class="menu">Administration › Imports / Exports</span> : toutes les données s'échangent par fichiers <b>.xlsx</b>, un par nature
-(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Libelles, Banque1, Banque2, Bit, Caisse),
+(Exercices, Reglages, Axe1, Axe2, Prefixes, PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Libelles, Banque, Bit),
 de <b>même structure à l'import et à l'export</b>, décrits dans <b>Lexique.xlsx</b>. Boutons en haut : <b>Tout exporter</b>,
 <b>Tout exporter et sauvegarder la base</b>, <b>Enregistrer les dossiers</b>, <b>Tout réinjecter</b>.</p>
 <figure><img src="images/22_echanges.png"><figcaption>Imports / Exports.</figcaption></figure>
 <ol><li><b>Importer</b> : déposer le fichier dans le dossier Imports (sur le site : bouton <b>Déposer</b>, qui accepte aussi un .zip) ; il apparaît dans la liste ; bouton <b>Importer</b> de sa ligne. Tout ou rien ;
-le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mizrahi se convertit d'abord en Banque1.xlsx ou Banque2.xlsx.</li>
+le fichier importé est rangé, daté, dans Imports\Importés. Un relevé PDF Mizrahi se convertit d'abord en fichier Banque (journal au choix).</li>
 <li><b>Tout exporter et sauvegarder la base</b> : le jeu complet (un fichier par format, plus Parametres.xlsx) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.
 Les fichiers du dossier Exports se téléchargent depuis la liste de la page.</li>
 <li><b>Libellés seulement</b> : un fichier d'écritures nommé <b>Libelles….xlsx</b> (mêmes colonnes qu'Ecritures.xlsx) ne change que
@@ -408,7 +408,7 @@ les libellés. Chaque Mvt est retrouvé sur le site par sa date, son journal, se
 venu d'une autre base). Les Mvt introuvables, ambigus ou d'un exercice clos sont listés et laissés tels quels ; pour les introuvables, un fichier
 <b>Ecarts_libelles_….xlsx</b> (liste des exports, Télécharger) donne le mouvement le plus proche du site et les différences (date,
 journal, montant, comptes).</li>
-<li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque1, Banque2, Bit, Caisse et Budget remplacent toutes les données de leur nature.</li></ol>
+<li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque, Bit et Budget remplacent toutes les données de leur nature.</li></ol>
 <h2>Les dossiers Imports, Exports et Sauvegardes</h2>
 <p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).
 Laissés vides, ce sont les dossiers de <code>comptabb-data</code> (conseillé) ; on télécharge les fichiers depuis l'application. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
