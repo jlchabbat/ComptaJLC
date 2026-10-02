@@ -27,6 +27,25 @@ def echanges(request):
                     raise moteur.Refus(["Choisir au moins un fichier à déposer."])
                 noms = [n for f in envoyes for n in moteur.deposer(f.name, f.read(), auteur)]
                 messages.success(request, f"Déposé(s) dans Imports : {', '.join(noms)}.")
+            elif "importer_fichiers" in request.POST:             # procédure simple : déposer puis tout importer en une fois
+                envoyes = request.FILES.getlist("fichiers")
+                if not envoyes:
+                    raise moteur.Refus(["Choisir au moins un fichier à importer."])
+                noms = [n for f in envoyes for n in moteur.deposer(f.name, f.read(), auteur)]
+                try:
+                    comptes_rendus, ignores = moteur.importer_tout(request.user)
+                except moteur.Refus:
+                    for n in noms:                                # refus : rien n'est gardé, le dossier reste propre
+                        try:
+                            moteur.retirer(n, auteur)
+                        except (KeyError, ValueError, OSError):
+                            pass
+                    raise
+                messages.success(request, f"Import terminé : {len(comptes_rendus)} fichier(s).")
+                for x in comptes_rendus:
+                    messages.info(request, x)
+                if ignores:
+                    messages.warning(request, "Non importé(s), structure non reconnue : " + ", ".join(ignores) + ".")
             elif "reinjecter" in request.POST:
                 if request.POST.get("confirmation", "").strip().upper() != "REMPLACER":
                     raise moteur.Refus(["Taper REMPLACER pour confirmer la réinjection."])

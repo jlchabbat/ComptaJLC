@@ -2149,6 +2149,16 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "1 déjà joint(s)")
         self.assertEqual(Justificatif.objects.count(), 1)
 
+    def test_importer_en_une_etape(self):
+        """Un seul bouton : dépose et importe ; sur refus, rien n'est gardé dans le dossier Imports."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.fichier("PlanComptable.xlsx", [["600911", "TEST", "", "non", "oui"]])
+        octets = (ech.imports() / "PlanComptable.xlsx").read_bytes()
+        (ech.imports() / "PlanComptable.xlsx").unlink()
+        r = self.client.post("/echanges/", {"importer_fichiers": "1", "fichiers": SimpleUploadedFile("PlanComptable.xlsx", octets)}, follow=True)
+        self.assertContains(r, "Import terminé : 1 fichier(s)")
+        self.assertTrue(Compte.objects.filter(numero="600911").exists())
+
     def test_ecritures_modifiees_a_la_main(self):
         """Exporter, corriger le fichier dans Excel, le réinjecter : seuls les Mvt changés sont mis à jour."""
         chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
@@ -3102,3 +3112,4 @@ class LiensEnLigne(TransactionTestCase):
         ec.reinjecter(chemin)
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
                          {"https://documents.exemple.org/fichier/aaa/", "https://documents.exemple.org/fichier/bbb/"})
+

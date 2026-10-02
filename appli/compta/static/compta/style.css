@@ -1,4 +1,4 @@
-:root { --bleu: #1f3864; --fond: #f6f7f9; --ligne: #dde1e7; --ok: #375623; --okf: #e2efda; --ko: #c00000; --kof: #fce4d6; --av: #7f6000; --avf: #fff2cc; }
+:root { --bleu: #1f3864; --fond: #f3f5f9; --ligne: #d9dfe9; --ok: #375623; --okf: #e2efda; --ko: #c00000; --kof: #fce4d6; --av: #7f6000; --avf: #fff2cc; }
 * { box-sizing: border-box; }
 body { margin: 0; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: #222; background: var(--fond); }
 header { background: var(--bleu); color: #fff; padding: 0 16px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
@@ -224,7 +224,7 @@ td .aide, li .aide, .carte td.aide { background: none; border: 0; padding: 0; ma
 .sit-parts .code { color: #7a869a; font-size: 12.5px; }
 .sit-parts td.part, .sit-parts th.part { width: 32%; }
 .sit-parts .jauge { display: inline-block; height: 10px; border-radius: 5px; vertical-align: middle; max-width: 75%; min-width: 2px; }
-.sit-parts .jauge.p { background: #5b9e5b; } .sit-parts .jauge.c { background: #c0504d; }
+.sit-parts .jauge.p { background: #5b9e5b; } .sit-parts .jauge.c { background: #b5473f; }
 .sit-parts .pc { font-size: 12px; color: #555; margin-left: 6px; }
 .sit-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .sit-pied { margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--ligne); font-size: 12px; color: #888; text-align: center; }
@@ -262,7 +262,7 @@ th.outils .choix-colonne { position: absolute; right: 6px; top: 50%; transform: 
   color: #7a869a; padding: 0 2px; border-radius: 3px; }
 th.outils .choix-colonne:hover { background: #dde5f2; color: var(--bleu); }
 .sit-table th.outils .choix-colonne { color: #c9d6ee; }
-th.filtre-actif .choix-colonne { color: #fff !important; background: #c0504d; }
+th.filtre-actif .choix-colonne { color: #fff !important; background: #b5473f; }
 .menu-colonne { position: absolute; z-index: 100; background: #fff; border: 1px solid #b8c4d8; border-radius: 6px; padding: 8px;
   box-shadow: 0 6px 18px rgba(0,0,0,.18); width: 260px; font-size: 13px; }
 .menu-colonne input[type=search] { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
@@ -282,8 +282,8 @@ header .marque { padding: 8px 12px 8px 0; }
 header nav.menus { order: 3; flex: 1 1 100%; margin: 0 -16px; padding: 0 12px; gap: 4px; background: #16294d;
   border-top: 1px solid rgba(255,255,255,.12); }
 .menu { --c: #8fb3ff; }
-.m-saisie { --c: #3fae6a; } .m-tiers { --c: #25a7b8; } .m-consulter { --c: #4f8fe6; } .m-banque { --c: #9b7be0; }
-.m-controle { --c: #f0a030; } .m-editions { --c: #e0607e; } .m-admin { --c: #d9b44a; }
+.m-saisie { --c: #2e8b6e; } .m-tiers { --c: #3b8ea5; } .m-consulter { --c: #4a78c2; } .m-banque { --c: #6a6fc4; }
+.m-controle { --c: #c58a2e; } .m-editions { --c: #8a6fb0; } .m-admin { --c: #b8913a; }
 .menu > button { font-size: 17px; font-weight: 700; padding: 18px 20px 14px; color: #fff; border-top: 5px solid var(--c);
   background: color-mix(in srgb, var(--c) 18%, transparent); border-radius: 6px 6px 0 0; margin-top: 6px; }
 .menu > button:hover, .menu:focus-within > button { background: var(--c); color: #fff; }
@@ -298,7 +298,7 @@ header nav.menus { order: 3; flex: 1 1 100%; margin: 0 -16px; padding: 0 12px; g
 @media (max-width: 1100px) { .ana-fenetres { grid-template-columns: 1fr; } }
 .ana-fenetre { background: #fff; border: 1px solid var(--ligne); border-radius: 10px; padding: 14px 16px 16px;
   box-shadow: 0 2px 8px rgba(31,56,100,.06); border-top: 6px solid var(--c-axe); }
-.ana-axe1 { --c-axe: #3fae6a; } .ana-axe2 { --c-axe: #9b7be0; }
+.ana-axe1 { --c-axe: #2e8b6e; } .ana-axe2 { --c-axe: #6a6fc4; }
 .ana-fenetre h2 { margin: 0 0 10px; color: var(--bleu); font-size: 19px; }
 .ana-choix { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .ana-choix select { flex: 1 1 260px; min-width: 220px; }
@@ -311,7 +311,7 @@ a.bouton.fermer { font-weight: 600; border-color: #8a93a3; }
 
 /* tableau.js : choix des colonnes, sélection de cellules, barre de somme */
 .choix-colonnes { font-size: 15px; padding: 2px 10px; cursor: pointer; }
-.choix-colonnes.filtre-actif { background: #c0504d; color: #fff; border-color: #c0504d; }
+.choix-colonnes.filtre-actif { background: #b5473f; color: #fff; border-color: #b5473f; }
 .menu-colonnes { position: absolute; z-index: 100; background: #fff; border: 1px solid #b8c4d8; border-radius: 6px; padding: 8px;
   box-shadow: 0 4px 14px rgba(0,0,0,.2); max-height: 60vh; overflow-y: auto; }
 .menu-colonnes label { display: block; padding: 2px 4px; white-space: nowrap; cursor: pointer; }
@@ -332,3 +332,17 @@ html:not(.avec-aides) main p.aide, html:not(.avec-aides) main div.aide { display
 .barre .sommaire { margin-left: auto; font-size: 14px; color: #34495e; }
 .barre .sommaire a { text-decoration: none; }
 @media print { .sommaire { display: none; } }
+
+/* Harmonisation : une palette bleu marine + nuances froides, un seul accent chaud (administration) */
+header { background: linear-gradient(#233f73, #1f3864); }
+header nav.menus { background: #172b50; }
+.menu > button { font-weight: 600; letter-spacing: .01em; }
+.menu .sous { border-radius: 0 0 10px 10px; border-color: #c9d3e3; }
+.menu .sous .groupe { background: #5f6f8c; }
+.carte, .chiffre, .ana-fenetre { border-color: var(--ligne); box-shadow: 0 1px 3px rgba(31,56,100,.06); }
+th { background: #e8edf5; color: #1f3864; }
+button, a.bouton { transition: background .15s, border-color .15s; }
+button:hover, a.bouton:hover { background: #e8edf5; border-color: #8fa3c4; }
+button.principal:hover, a.bouton.principal:hover { background: #2b4c86; border-color: #2b4c86; }
+tr:hover td { background: #f3f6fb; }
+p.aide, div.aide { background: #f0f4fa; border-left-color: #8fa3c4; }

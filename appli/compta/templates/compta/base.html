@@ -52,19 +52,19 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code{% if deux_axes %} (axe 1 / axe 2){% endif %}</a>
 {% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
+{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exporter des données (Excel)</a>{% endif %}
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
 <a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
 </div></div>
 {% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
-<div class="groupe">Utilisateurs et paramétrage</div>
+<div class="groupe">Réservé à l'administrateur · utilisateurs et paramétrage</div>
 {% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
 {% if perms.compta.parametrer %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
-<div class="groupe">Données : imports, exports, reprise</div>
-{% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports / Exports</a>{% endif %}
-{% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exports (référentiels, écritures)</a>{% endif %}
-{% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données (sauvegardes, rechargement)</a>{% endif %}
-<div class="groupe">Installation</div>
+<div class="groupe">Réservé à l'administrateur · données</div>
+{% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports et exports</a>{% endif %}
+{% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données</a>{% endif %}
+<div class="groupe">Réservé à l'administrateur · installation</div>
 <a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>
 {% if licence_etat and perms.compta.parametrer %}{% url 'licence' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Licence</a>{% endif %}
 </div></div>{% endif %}

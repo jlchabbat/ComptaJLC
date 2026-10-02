@@ -71,7 +71,6 @@ Contrôles OK. Photographies : `tests/reference/`.
 - [Livraison du Lot 0](docs/livraison-lot0.md)
 - [Livraison du Lot 1](docs/livraison-lot1.md)
 - [Fichier de liaison pour un bénévole](docs/fichier-liaison.md)
-- [Reprise de l'extrait SUMIT (remise à zéro)](docs/reprise-sumit.md)
 
 Le classeur est reproductible depuis `Fusion.xlsm` :
 

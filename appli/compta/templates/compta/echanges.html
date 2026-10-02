@@ -1,21 +1,26 @@
-{% extends "compta/base.html" %}{% block titre %}Imports / Exports{% endblock %}{% block contenu %}
-<h1>Imports / Exports</h1>
-<div class="barre"><button form="f-exports" class="principal" name="exporter" value="tout">Tout exporter</button>
-<button form="f-exports" class="principal" name="tout_sauvegarder" value="1">Tout exporter et sauvegarder la base</button>
-<a class="bouton" href="{% url 'echanges_modeles' %}" title="Un modèle vierge de chaque fichier, le lexique et un mode d'emploi (ZIP)">Modèles vierges (ZIP)</a>
+{% extends "compta/base.html" %}{% block titre %}Imports et exports{% endblock %}{% block contenu %}
+<h1>Imports et exports</h1>
+<div class="deux">
+<div class="carte"><h2 style="margin-top:0">Exporter</h2>
+<p><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Exporter toutes les données (.zip)</a></p>
+<p class="aide">Un fichier daté, à enregistrer sur votre ordinateur.</p></div>
+<form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer</h2>
+<p><input type="file" name="fichiers" multiple accept=".xlsx,.csv,.zip"></p>
+<p><button class="principal" name="importer_fichiers" value="1">Importer</button></p>
+<p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant.</p></form>
+</div>
+<details class="carte"><summary>Options avancées (un seul fichier, dossiers, réinjection, modèles)</summary>
+<div class="barre"><a class="bouton" href="{% url 'echanges_modeles' %}">Modèles vierges (ZIP)</a>
 <button form="f-dossiers" name="dossiers" value="1">Enregistrer les dossiers</button>
 <button form="f-reinjecter" name="reinjecter" value="1" onclick="return confirm('Remplacer les données par les fichiers du dossier Imports ?')">Tout réinjecter</button>
-<span class="sommaire">Aller à : <a href="#importer">1. Importer</a> · <a href="#exporter">2. Formats et exports</a> · <a href="#dossiers">3. Dossiers</a></span></div>
-<p class="aide">Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>,
-les sauvegardes de la base dans <b>{{ sauvegardes }}</b> (dossiers modifiables en bas de page).
-Un fichier exporté se réimporte tel quel (même structure). Chaque dossier contient un <b>Lexique.xlsx</b> qui décrit les fichiers et leurs colonnes.</p>
+<span class="sommaire">Aller à : <a href="#importer">Importer</a> · <a href="#exporter">Exporter</a> · <a href="#dossiers">Dossiers</a></span></div>
+<p class="aide">Imports : <b>{{ imports }}</b> · exports : <b>{{ exports }}</b> · sauvegardes : <b>{{ sauvegardes }}</b></p>
 
-<h2 id="importer">1. Fichiers à importer</h2>
+<h2 id="importer">Fichiers du dossier Imports</h2>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
 <label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.csv,.pdf,.zip"></label>
 <button class="principal" name="deposer" value="1">Déposer</button>
-<p class="aide">Depuis votre ordinateur (indispensable sur le site, dont les dossiers ne sont pas visibles) : fichiers .xlsx ou .csv, relevés .pdf,
-ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est remplacé.</p></form>
+</form>
 {% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
 <p class="aide">La conversion crée Banque1_date.xlsx ou Banque2_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
 <table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
@@ -24,49 +29,38 @@ ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est rem
 <form method="post">{% csrf_token %}
 {% if a_importer %}<p><button class="principal" name="tout_importer" value="1"
  onclick="return confirm('Importer tous les fichiers reconnus, dans l\'ordre du lexique ? Tout ou rien ; rien n\'est supprimé.')">Tout importer</button>
-<span class="aide">tous les fichiers reconnus, dans le bon ordre (exercices, axes, plan, journaux, tiers, écritures, liens des documents…) ;
-à la moindre erreur, rien n'est enregistré.</span></p>{% endif %}
+</p>{% endif %}
 <table><tr><th>Fichier dans Imports</th><th>Contenu</th><th></th></tr>
 {% for nom, f in a_importer %}<tr><td>{{ nom }}</td><td>{% if f %}{{ f.contenu }}{% else %}<span class="neg">structure non reconnue</span>{% endif %}</td>
 <td>{% if f %}<button class="principal" name="importer" value="{{ nom }}">Importer</button>{% endif %}
 <button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ? (rien n&#39;est importé ni modifié)')">Supprimer</button></td></tr>
 {% empty %}<tr><td colspan="3">Aucun fichier .xlsx dans le dossier Imports.</td></tr>{% endfor %}</table></form>
-<p class="aide">Tout ou rien : à la moindre erreur, rien n'est enregistré et les lignes en erreur s'affichent. Une sauvegarde de la base est faite
-avant chaque import ; le fichier importé est rangé, daté, dans Imports\Importés.</p>
+<p class="aide">Tout ou rien ; sauvegarde avant chaque import.</p>
 
 <details class="carte"><summary><b>Tout réinjecter</b> : remplacer les données par les fichiers du dossier Imports</summary>
-<p class="aide">Pour corriger en masse : <b>Tout exporter</b>, télécharger les fichiers (liste en bas de la partie 2), les modifier dans Excel,
-les déposer dans Imports (bouton <b>Déposer</b> ci-dessus), puis réinjecter.</p>
+
 <ul><li>Un fichier <b>Ecritures, Banque1, Banque2, Bit, Caisse ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
-<li>Les <b>référentiels</b> (exercices, paramètres, axes, préfixes, plan, journaux, tiers, traductions) sont mis à jour, jamais supprimés.</li>
-<li>Pointages, à-nouveaux et fiches bénévoles reportées sont recollés quand leurs écritures reviennent à l'identique.</li>
-<li>Tout ou rien, un seul fichier par nature ; sauvegarde de la base avant.</li>
-<li>Pour <b>tout</b> remettre à zéro (fiches bénévoles, pointages et historique compris) et recharger des fichiers modifiés :
-Base de données › Tout exporter, puis Remettre à zéro et recharger (case « Fichiers modifiés »).</li></ul>
+<li>Les <b>référentiels</b> sont mis à jour, jamais supprimés ; tout ou rien, sauvegarde avant.</li></ul>
 <form method="post" id="f-reinjecter">{% csrf_token %}<label>Taper REMPLACER pour confirmer <input name="confirmation" autocomplete="off"></label></form></details>
 
-<h2 id="exporter">2. Formats et exports</h2>
-<p class="aide">Importer dans cet ordre : chaque fichier ne cite que des codes définis par les précédents. Le fichier est reconnu d'après sa <b>structure</b> : sa ligne 1 contient exactement les colonnes du fichier voulu (le nom est libre,
-accents et majuscules sans importance) ; seuls les relevés de plusieurs banques ou caisses, de même structure, se distinguent par le nom
-(Banque1, Banque2, Caisse) ; la ligne 1 contient exactement les colonnes ci-dessous.</p>
+<h2 id="exporter">Un seul fichier</h2>
+<p class="aide">Ordre conseillé : de haut en bas. Le fichier est reconnu d'après sa ligne 1.</p>
 <form method="post" id="f-exports">{% csrf_token %}
 <table><tr><th>#</th><th>Fichier</th><th>Contenu</th><th>Colonnes (ligne 1)</th><th></th></tr>
 {% for f in formats %}<tr><td>{{ forloop.counter }}</td><td><b>{{ f.nom }}.xlsx</b></td><td>{{ f.contenu }}</td><td>{{ f.colonnes|join:" · " }}</td>
 <td><button name="exporter" value="{{ f.nom }}" title="Télécharge le fichier (une copie reste dans le dossier Exports)">Exporter (télécharger)</button></td></tr>{% endfor %}</table>
-<p class="aide">« Tout exporter et sauvegarder la base » écrit le jeu complet (un fichier par format, plus Parametres.xlsx, le classeur complet
-des paramètres) dans le dossier Exports, et une copie de la base dans le dossier Sauvegardes.</p></form>
+</form>
 <h3>Fichiers du dossier Exports ({{ exportes|length }})</h3>
 <table class="triable"><tr><th>Fichier</th><th class="n">Taille (Ko)</th><th></th></tr>
 {% for nom, ko in exportes %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'echanges_telecharger' nom %}">Télécharger</a></td></tr>
 {% empty %}<tr><td colspan="3">Aucun fichier exporté.</td></tr>{% endfor %}</table>
 
-<h2 id="dossiers">3. Paramètres des dossiers</h2>
+<h2 id="dossiers">Dossiers</h2>
 <form method="post" class="carte" id="f-dossiers">{% csrf_token %}<div class="formulaire">
 {% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">
 <div class="aide">Vide = {{ defaut }}.{% if valeur and utilise|stringformat:"s" != valeur %} <b>Ce chemin est ignoré : dossier utilisé {{ utilise }}.</b>{% endif %}</div></div>{% endfor %}</div>
-<p class="aide">Laisser vide pour les dossiers par défaut du site (conseillé). Sinon, chemin complet sur le site, par exemple
-/home/ComptaBB/comptabb-data/Exports ; le dossier est créé s'il n'existe pas. Les fichiers se récupèrent par « Télécharger ».
-Ces chemins figurent aussi dans Reglages.xlsx (clés dossier_imports, dossier_exports, dossier_sauvegardes).</p></form>
+<p class="aide">Vide = dossiers du site (conseillé).</p></form>
+</details>
 {% endblock %}
