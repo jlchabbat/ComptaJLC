@@ -108,6 +108,18 @@ def accueil(request, code=None):
                             apres=mvts)
                 messages.success(request, f"{quoi} reliée(s) à {mvts} (aucune écriture créée).")
             return redirect("rapprochement_journal", journal.code)
+        if "ecarter" in request.POST or "remettre" in request.POST:
+            remettre = "remettre" in request.POST
+            qs = moteur.ecartees(journal) if remettre else moteur.a_affecter(journal)
+            l = qs.filter(pk=int(request.POST["remettre" if remettre else "ecarter"])).first()
+            if l:
+                l.ecartee = not remettre
+                l.save(update_fields=["ecartee"])
+                journaliser(request, "Ligne de relevé " + ("remise" if remettre else "écartée"),
+                            f"{journal.code} {l.date:%d/%m/%Y} {l.montant}", apres=l.operation[:200])
+                messages.success(request, f"Ligne du {l.date:%d/%m/%Y} ({l.montant}) " +
+                                 ("remise dans la liste à affecter." if remettre else "écartée : aucune écriture ne sera créée."))
+            return redirect("rapprochement_journal", journal.code)
         crees, erreurs, saisies = _affecter(request, journal, list(moteur.a_affecter(journal)))
         if crees:
             messages.success(request, f"{len(crees)} écriture(s) créée(s) : Mvt " + ", ".join(str(m.numero) for m in crees) + ".")
@@ -131,7 +143,7 @@ def accueil(request, code=None):
                        "pistes": moteur.pistes(l) if peut and not deja else None})
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
-        "journaux": js, "journal": journal, "lignes": lignes, "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
+        "journaux": js, "journal": journal, "lignes": lignes, "ecartees": list(moteur.ecartees(journal)), "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
         "pdf_mizrahi": journal.code in reglages.journaux("releves_mizrahi"),
         "comptes": Compte.objects.filter(actif=True).exclude(pk=journal.compte_id).order_by("numero") if peut else [],
         "codes": CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code") if peut else [],

@@ -24,6 +24,7 @@ Les lignes laissées vides restent à faire.</p>{% endif %}
 <td><input name="libelle_{{ x.l.pk|stringformat:'d' }}" value="{{ x.libelle }}" maxlength="200" style="min-width:14em" title="Libellé enregistré dans l'écriture : modifiable"><label class="aide" title="Retient ce libellé comme traduction de l'opération de la banque"><input type="checkbox" name="lexique_{{ x.l.pk|stringformat:'d' }}"> lexique</label></td>
 <td>{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
+<button name="ecarter" value="{{ x.l.pk|stringformat:'d' }}" title="Laisser cette ligne sans écriture ni lien (écriture déjà passée autrement, doublon, lexique incomplet…) ; elle pourra être remise" onclick="return confirm('Écarter cette ligne du relevé ? Aucune écriture ne sera créée (elle pourra être remise).')">Écarter</button>
 {% if x.deja %}<label class="aide"><input type="checkbox" name="nouvelle_{{ x.l.pk|stringformat:'d' }}"> non, nouvelle écriture</label>{% endif %}
 {% for g in x.groupes %}<div>Plusieurs écritures : {% for e in g %}{% if not forloop.first %} + {% endif %}Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> ({{ e.debit|default:e.credit|shekel }}){% endfor %}
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{% for e in g %}{% if not forloop.first %},{% endif %}{{ e.pk|stringformat:'d' }}{% endfor %}" title="La ligne du relevé regroupe ces écritures : les relier toutes, sans créer d'écriture">Ce sont elles</button></div>{% endfor %}
@@ -43,6 +44,10 @@ Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}<
 {% if peut %}<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }} – {{ c.libelle }}">{% endfor %}</datalist>
 <datalist id="codes">{% for c in codes %}<option value="{{ c.code }} – {{ c.libelle }}">{% endfor %}</datalist>{% endif %}
 </form>
+{% if peut and ecartees %}<details class="carte"><summary>Lignes écartées ({{ ecartees|length }})</summary>
+<form method="post">{% csrf_token %}<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th><th></th></tr>
+{% for l in ecartees %}<tr><td>{{ l.date|date:"d/m/Y" }}</td><td><span dir="auto">{{ l.operation }}</span></td><td class="n">{{ l.montant|shekel }}</td>
+<td><button name="remettre" value="{{ l.pk|stringformat:'d' }}">Remettre dans la liste</button></td></tr>{% endfor %}</table></form></details>{% endif %}
 <script>document.getElementById("affectation").addEventListener("submit", function () {
   var b = document.getElementById("bouton-creer"); if (b) setTimeout(function () { b.disabled = true; }, 0);   // pas de double envoi
 });</script>

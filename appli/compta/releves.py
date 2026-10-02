@@ -444,9 +444,14 @@ def par_mois(journal):
 
 def a_affecter(journal):
     """Lignes téléchargées sans écriture (non reliées), à partir de la date de reprise."""
-    qs = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ouverture=False)
+    qs = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ouverture=False, ecartee=False)
     reprise = date_reprise(journal)
     return (qs.filter(date__gte=reprise) if reprise else qs).order_by("date", "rang", "pk")
+
+
+def ecartees(journal):
+    """Lignes écartées à la main : ni écriture ni lien, retirées de la liste à affecter."""
+    return LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ecartee=True).order_by("date", "rang", "pk")
 
 
 def deja_en_compta(l):

@@ -906,6 +906,24 @@ class EcransRapprochement(TestCase):
         from .models import Traduction
         self.assertEqual(Traduction.traduire(frais.operation), "Frais de tenue de compte")
 
+    def test_ecarter_et_remettre_une_ligne(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        l = LigneReleve.objects.filter(ouverture=False).order_by("date").first()
+        n = Mouvement.objects.count()
+        r = self.client.post("/rapprochement/B1/", {"ecarter": str(l.pk)})
+        self.assertRedirects(r, "/rapprochement/B1/")
+        l.refresh_from_db()
+        self.assertTrue(l.ecartee)
+        self.assertEqual(Mouvement.objects.count(), n)                           # aucune écriture créée
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Lignes écartées (1)")
+        self.assertNotContains(page, f'name="compte_{l.pk}"')
+        self.client.post("/rapprochement/B1/", {"remettre": str(l.pk)})
+        l.refresh_from_db()
+        self.assertFalse(l.ecartee)
+        self.assertContains(self.client.get("/rapprochement/B1/"), f'name="compte_{l.pk}"')
+
     def test_import_affectation_et_ecriture(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         r = self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})

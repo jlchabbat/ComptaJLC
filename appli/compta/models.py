@@ -581,6 +581,7 @@ class LigneReleve(models.Model):
     montant = models.DecimalField(max_digits=14, decimal_places=2, help_text="Positif = crédit en banque (entrée).")
     solde = models.DecimalField("solde relevé", max_digits=14, decimal_places=2, null=True, blank=True)
     ouverture = models.BooleanField("solde d'ouverture", default=False)
+    ecartee = models.BooleanField("écartée", default=False, help_text="Ligne volontairement laissée sans écriture ni lien.")
     rapprochement = models.ForeignKey(Rapprochement, on_delete=models.SET_NULL, null=True, blank=True, related_name="releves")
     source = models.CharField(max_length=120, blank=True)
     importe_le = models.DateTimeField(auto_now_add=True)
