@@ -36,9 +36,9 @@
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}">{{ s.total.s|shekel }}</td></tr></table></section>
 
 <section class="sit-bloc"><h2>Détail par compte</h2>
-<table class="sit-table"><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>{% if axe == 1 %}Libellé axe 2{% else %}Libellé axe 1{% endif %}</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
+<table class="sit-table"><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th>{% if axe == 1 %}Libellé axe 2{% else %}Libellé axe 1{% endif %}</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
 {% for x in s.comptes %}<tr class="sit-compte"><td colspan="7"><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a> – {{ x.libelle }}</td></tr>
-{% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.mouvement.piece }}</td><td>{{ e.ligne.libelle }}</td><td title="{{ e.autre_axe }}">{{ e.autre_libelle|default:e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
+{% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.libelle }}</td><td title="{{ e.autre_axe }}">{{ e.autre_libelle|default:e.autre_axe }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
 <tr class="sit-sous-total"><td colspan="5">Sous-total {{ x.numero }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="5">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} {{ devise }}</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
 </article>

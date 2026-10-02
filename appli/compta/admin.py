@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    AxeCompte, Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TauxChange, TiersProvisoire, Traduction, TypeTiers, ValeurCompte,
+    AxeCompte, Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers, ValeurCompte,
 )
 
 
@@ -49,12 +49,6 @@ class AxeCompteAdmin(admin.ModelAdmin):
     list_display = ("nom", "ordre")
 
 
-@admin.register(TauxChange)
-class TauxChangeAdmin(admin.ModelAdmin):
-    list_display = ("jour", "devise", "taux")
-    list_filter = ("devise",)
-
-
 @admin.register(Reglage)
 class ReglageAdmin(admin.ModelAdmin):
     list_display = ("cle", "valeur", "description")
@@ -68,7 +62,7 @@ class LigneInline(admin.TabularInline):
 
 @admin.register(Mouvement)
 class MouvementAdmin(admin.ModelAdmin):
-    list_display = ("numero", "date", "journal", "piece", "origine")
+    list_display = ("numero", "date", "journal", "origine")
     list_filter = ("journal", "origine")
     search_fields = ("numero", "lignes__libelle")
     inlines = [LigneInline]

@@ -79,8 +79,6 @@ class Journal(models.Model):
     type = models.CharField(max_length=10, blank=True)
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True,
                                help_text="Compte de trésorerie des journaux de banque et de caisse.")
-    devise = models.CharField(max_length=3, blank=True, help_text="Devise du compte (ILS, USD…) si ce n'est pas celle "
-                              "de la comptabilité : les écritures gardent aussi leur montant d'origine. Vide = devise de la compta.")
     actif = models.BooleanField(default=True)
 
     class Meta:
@@ -146,7 +144,6 @@ class Mouvement(models.Model):
     numero = models.PositiveIntegerField("Mvt", unique=True)
     date = models.DateField()
     journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
-    piece = models.PositiveIntegerField("pièce")
     origine = models.CharField(max_length=12, choices=ORIGINES, default="saisie")
     commentaire = models.TextField(blank=True, help_text="Origine et motif d'une écriture ajoutée ou corrigée (RG-05).")
     cree_le = models.DateTimeField(auto_now_add=True)
@@ -170,9 +167,6 @@ class Mouvement(models.Model):
     def prochain_numero(cls):
         return (cls.objects.aggregate(m=models.Max("numero"))["m"] or 0) + 1
 
-    @classmethod
-    def prochaine_piece(cls):
-        return (cls.objects.aggregate(m=models.Max("piece"))["m"] or 0) + 1
 
 
 class Ligne(models.Model):
@@ -185,8 +179,6 @@ class Ligne(models.Model):
     anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
                               verbose_name="axe 2")
     lettrage = models.CharField(max_length=10, blank=True)
-    montant_devise = models.DecimalField("montant d'origine", max_digits=14, decimal_places=2, null=True, blank=True,
-                                         help_text="Journal en devise : montant dans la devise du journal (même sens).")
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
     class Meta:
@@ -529,7 +521,7 @@ class Traduction(models.Model):
     @classmethod
     def traduire(cls, texte):
         """Traduction du libellé entier ; sinon de sa partie hébraïque seule, l'en-tête latin gardé (carte Isracard :
-        « 5524 26/08/2026 הראל » → « 5524 26/08/2026 HAREL »), comme le lexique de l'appli Banque."""
+        « 5524 26/08/2026 הראל » → « 5524 26/08/2026 HAREL »)"""
         cle = cls.cle_de(texte)
         t = cls.objects.filter(cle__in=[cle, cle[::-1]]).first()
         if t:
@@ -611,7 +603,7 @@ class LigneReleve(models.Model):
 
 
 class AxeCompte(models.Model):
-    """Classement libre des comptes (rubrique de déclaration, type, catégorie, groupe…), repris du plan (Ciel)."""
+    """Classement libre des comptes (rubrique de déclaration, type, catégorie, groupe…), repris du plan comptable."""
 
     nom = models.CharField(max_length=40, unique=True)
     ordre = models.PositiveSmallIntegerField(default=0)
@@ -638,23 +630,6 @@ class ValeurCompte(models.Model):
 
     def __str__(self):
         return f"{self.compte_id} · {self.axe} = {self.valeur}"
-
-
-class TauxChange(models.Model):
-    """Cours BCE : unités de la devise pour 1 euro, jours ouvrés (compta/taux.py)."""
-
-    jour = models.DateField()
-    devise = models.CharField(max_length=3)
-    taux = models.DecimalField(max_digits=14, decimal_places=6)
-
-    class Meta:
-        ordering = ["-jour", "devise"]
-        unique_together = [("jour", "devise")]
-        verbose_name = "cours de change"
-        verbose_name_plural = "cours de change (BCE)"
-
-    def __str__(self):
-        return f"{self.jour:%d/%m/%Y} 1 € = {self.taux} {self.devise}"
 
 
 # ---------------------------------------------------------------- budget (Lot 4)

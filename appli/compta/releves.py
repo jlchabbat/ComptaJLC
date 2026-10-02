@@ -121,7 +121,7 @@ def normaliser(rangees):
         op = texte(v.get("operation"))
         if inverse and HEBREU.search(op):
             op = op[::-1]
-        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) », comme dans Ciel
+        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) »
             sur = f" (SUR {origine:.2f})".replace(".", ",") if origine is not None and abs(origine) != abs(m) else ""
             op = " ".join(x for x in (numero_carte, f"{achat:%d/%m/%Y}" if achat else "", op) if x) + sur
         lignes.append({"date": d, "reference": texte(v.get("reference"))[:40], "operation": op[:200], "montant": m,
@@ -340,41 +340,9 @@ def sans_an(journal):
     return Ligne.objects.filter(compte=journal.compte).exclude(mouvement__origine="cloture")
 
 
-def comptes_en_devise():
-    from .models import Journal
-    return set(Journal.objects.exclude(devise="").exclude(compte__isnull=True).values_list("compte_id", flat=True))
-
-
-def montant(ecriture, en_devise=None):
-    """Montant signé de l'écriture comparé au relevé : dans la devise du compte si c'est un compte en devise."""
-    en_devise = comptes_en_devise() if en_devise is None else en_devise
-    if ecriture.compte_id in en_devise and ecriture.montant_devise is not None:
-        return ecriture.montant_devise if ecriture.debit else -ecriture.montant_devise
+def montant(ecriture):
+    """Montant signé de l'écriture, comparé à celui du relevé (débit positif)."""
     return ecriture.debit - ecriture.credit
-
-
-def cours(journal, jour=None):
-    """Unités de la devise du journal pour 1 unité de la devise de la compta : cours BCE du jour si la compta est en
-    euros (compta/taux.py), sinon réglage cours_<DEVISE> (ex. cours_ILS = 3.95), sinon le cours des dernières écritures
-    du journal. None si inconnu."""
-    from .reglages import devise
-    if jour and devise().upper() in ("€", "EUR"):
-        from .taux import taux
-        t = taux(journal.devise, jour)
-        if t:
-            return t
-    v = Reglage.lire(f"cours_{journal.devise}", "").replace(",", ".").strip()
-    try:
-        if v:
-            return Decimal(v)
-    except InvalidOperation:
-        pass
-    for l in (Ligne.objects.filter(compte=journal.compte, montant_devise__isnull=False).exclude(montant_devise=0)
-              .order_by("-mouvement__date", "-pk")[:20]):
-        eur = l.debit or l.credit
-        if eur:
-            return (l.montant_devise / eur).quantize(Decimal("0.000001"))
-    return None
 
 
 @transaction.atomic
@@ -595,22 +563,16 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
         raise ValueError("La contrepartie ne peut pas être le compte de la banque elle-même.")
     if not forcer and deja_en_compta(l):
         raise ValueError("Une écriture de même montant existe déjà à une date proche : reliez-la, ou cochez « nouvelle ».")
-    m, m_devise = abs(l.montant), None
-    if l.journal.devise:                                  # relevé en devise : montant converti, montant d'origine gardé
-        c = cours(l.journal, l.date)
-        if not c:
-            raise ValueError(f"Cours {l.journal.devise} inconnu : l'indiquer dans le réglage cours_{l.journal.devise} "
-                             f"(unités de {l.journal.devise} pour 1 unité de la devise de la compta).")
-        m, m_devise = (m / c).quantize(Decimal("0.01")), m
+    m = abs(l.montant)
     mv = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=l.date, journal=l.journal,
-                                  piece=Mouvement.prochaine_piece(), origine="saisie", cree_par=utilisateur,
+                                  origine="saisie", cree_par=utilisateur,
                                   commentaire=f"Relevé {l.journal.code} du {l.date:%d/%m/%Y} : {l.operation}")
     lib = libelle_releve(l)
     entree = l.montant > 0
     ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib, anal2=anal2,
-                                        debit=m if entree else ZERO, credit=ZERO if entree else m, montant_devise=m_devise)
+                                        debit=m if entree else ZERO, credit=ZERO if entree else m)
     Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib, anal2=anal2,
-                         debit=ZERO if entree else m, credit=m if entree else ZERO, montant_devise=m_devise)
+                         debit=ZERO if entree else m, credit=m if entree else ZERO)
     pointer(l.journal, [l], [ligne_banque], utilisateur, "saisie")
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Banque",
                                 action="Écriture depuis le relevé", objet=f"Mvt {mv.numero}",
@@ -623,19 +585,19 @@ def relier(l, ecriture, utilisateur=None):
     return pointer(l.journal, [l], [ecriture], utilisateur, "manuel")
 
 
-# ---------------------------------------------------------------- mémoire des affectations (reprise de l'appli Banque)
+# ---------------------------------------------------------------- mémoire des affectations
 
 BRUIT = re.compile(r"\b[A-Z0-9]{8,}\b|\b\d{2}/\d{2}/\d{4}\b|\b\d{3,}\b")   # références, dates, n° de carte
 
 
 def cle_libelle(libelle):
-    """Libellé rapproché de ses voisins : capitales, sans références ni dates (même règle que l'appli Banque)."""
+    """Libellé rapproché de ses voisins : capitales, sans références ni dates (même règle pour tous les relevés)."""
     return " ".join(BRUIT.sub(" ", (libelle or "").upper()).split())
 
 
 def memoire_affectations():
     """{libellé normalisé : compte de contrepartie} tiré des écritures de banque déjà passées (la plus récente l'emporte) :
-    l'historique repris (Ciel…) sert donc de mémoire dès le premier relevé."""
+    l'historique déjà en compta sert donc de mémoire dès le premier relevé."""
     from .models import Journal
     tresorerie = set(Journal.objects.exclude(compte__isnull=True).values_list("compte_id", flat=True))
     memo = {}

@@ -4,7 +4,7 @@
 
 Étapes : base de démonstration (données fictives) dans un dossier temporaire, site lancé en local, captures d'écran
 (docs/images), puis impression en PDF de docs/presentation.html et docs/mode-emploi.html. Les PDF sont écrits dans
-compta/documentation (servis par l'application : menu Éditions) et copiés dans docs/.
+compta/documentation (servis par l'application : menu Éditions), sans copie dans docs/ (une seule version dans Git).
 
 À relancer après chaque changement visible de l'application, avant de publier la mise à jour.
 Nécessite Playwright et Chromium (poste de développement) ; rien de tout cela n'est utile sur le site."""
@@ -288,7 +288,6 @@ def imprimer():
             pg.pdf(path=str(SORTIE / pdf), format="A4", print_background=True, prefer_css_page_size=True,
                    display_header_footer=True, header_template="<span></span>",
                    footer_template=pied.format(titre=titre, date=f"{dt.date.today():%d/%m/%Y}"))
-            shutil.copy(SORTIE / pdf, DOCS / pdf)
             print(f"  {SORTIE / pdf}")
         navigateur.close()
 

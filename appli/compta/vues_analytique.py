@@ -170,12 +170,12 @@ def classeur_detail(sections, axe, ctx):
         p.section("Détail par compte")
         for x in sec["comptes"]:
             p.ecrire([f"{x['numero']} – {x['libelle']}"], police=p.police["gras"])
-            p.tableau(["Date", "Mvt", "Pièce", "Libellé", "Libellé " + autre.lower(), a, b],
-                      [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].mouvement.piece, e["ligne"].libelle,
+            p.tableau(["Date", "Mvt", "Libellé", "Libellé " + autre.lower(), a, b],
+                      [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].libelle,
                         e["autre_libelle"] or e["autre_axe"], e["a"] or None, e["b"] or None] for e in x["ecritures"]],
-                      montants=(6, 7), formats={1: "DD/MM/YYYY"})
-            p.sous_total(["", "", "", f"Sous-total {x['numero']}", "", x["a"], x["b"]], montants=(6, 7))
-        p.ecrire(["Total " + sec["code"], "", "", "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(6, 7))
+                      montants=(5, 6), formats={1: "DD/MM/YYYY"})
+            p.sous_total(["", "", f"Sous-total {x['numero']}", "", x["a"], x["b"]], montants=(5, 6))
+        p.ecrire(["Total " + sec["code"], "", "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(5, 6))
     return p
 
 

@@ -39,8 +39,8 @@ un site par association (étape 1 : application générique, réglages par site)
   (Imports/adaptation_sumit/) et liens des documents SUMIT par Mvt ; le fichier Tiers existant et ses
   données sont respectés (seuls les nouveaux tiers sont exportés, au préfixe de leur type :
   411 membres, 401 fournisseurs, 412 amis).
-- `src/reprise_ciel.py` : reprise Ciel Compta (Plan.xlsx, RImport.txt) → ZIP d'import d'un site neuf
-  (un seul axe, journaux en devise, axes de comptes) ; guide `docs/reprise-ciel.md`.
+- Fichiers d'échange : structure définie dans `docs/specification-fichiers.md` ; les fichiers venus d'une autre
+  application de comptabilité sont adaptés à cette structure par l'administrateur (aucun format tiers n'est lu).
 - `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
   AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour

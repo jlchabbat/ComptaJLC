@@ -44,7 +44,7 @@ def echanges(request):
                 for x in comptes_rendus:
                     messages.info(request, x)
                 if ignores:
-                    messages.warning(request, "Non importé(s), nom non reconnu : " + ", ".join(ignores) + ".")
+                    messages.warning(request, "Non importé(s), structure non reconnue : " + ", ".join(ignores) + ".")
             elif "importer" in request.POST:
                 f, texte = moteur.importer(request.POST["importer"], request.user)
                 messages.success(request, f"{request.POST['importer']} importé ({f.contenu}) : {texte}. "

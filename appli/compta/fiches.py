@@ -127,10 +127,10 @@ def reporter(fiche, utilisateur):
     signalees = [(l, r) for l, r in resultats if not r.ok]
     if signalees:
         raise ValueError(f"{len(signalees)} ligne(s) à corriger avant le report.")
-    numero, piece = Mouvement.prochain_numero(), Mouvement.prochaine_piece()
+    numero = Mouvement.prochain_numero()
     crees = []
     for i, (l, r) in enumerate(resultats):
-        mv = Mouvement.objects.create(numero=numero + i, date=l.date, journal=r.journal, piece=piece + i, origine="liaison",
+        mv = Mouvement.objects.create(numero=numero + i, date=l.date, journal=r.journal, origine="liaison",
                                       cree_par=utilisateur, commentaire=f"Fiche bénévole « {fiche.titre} » (ligne {l.pk})")
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=k, compte=x.compte, libelle=r.libelle, debit=x.debit, credit=x.credit,
                                          anal2=anal2(l)) for k, x in enumerate(r.lignes)])

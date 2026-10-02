@@ -7,16 +7,16 @@
 </form>
 <p class="aide">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }}{% if tresorerie %} · compte {{ journal.compte }} · solde progressif{% endif %}</p>
 {% if tresorerie %}
-<table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Libellé</th><th>Contrepartie</th><th class="n">Recette</th><th class="n">Dépense</th><th class="n">Solde</th>{% if en_devise %}<th class="n">Montant {{ journal.devise }}</th><th class="n">Solde {{ journal.devise }}</th>{% endif %}</tr>
+<table><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th>Contrepartie</th><th class="n">Recette</th><th class="n">Dépense</th><th class="n">Solde</th></tr>
 <tr class="total"><td colspan="7">Solde au {{ debut|date:"d/m/Y" }}</td><td class="n">{{ ouverture|shekel }}</td></tr>
-{% for x in lignes %}<tr><td>{{ x.l.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' x.l.mouvement.numero %}">{{ x.l.mouvement.numero }}</a></td><td>{{ x.l.mouvement.piece }}</td>
+{% for x in lignes %}<tr><td>{{ x.l.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' x.l.mouvement.numero %}">{{ x.l.mouvement.numero }}</a></td>
 <td>{{ x.l.libelle }}</td><td class="aide">{{ x.contrepartie }}</td><td class="n">{{ x.l.debit|zero_vide }}</td><td class="n">{{ x.l.credit|zero_vide }}</td>
-<td class="n {% if x.solde < 0 %}neg{% endif %}">{{ x.solde|shekel }}</td>{% if en_devise %}<td class="n">{{ x.devise|shekel }}</td><td class="n">{{ x.solde_devise|shekel }}</td>{% endif %}</tr>{% empty %}<tr><td colspan="8">Aucune opération sur la période.</td></tr>{% endfor %}
+<td class="n {% if x.solde < 0 %}neg{% endif %}">{{ x.solde|shekel }}</td></tr>{% empty %}<tr><td colspan="8">Aucune opération sur la période.</td></tr>{% endfor %}
 <tr class="total"><td colspan="5">Totaux et solde au {{ fin|date:"d/m/Y" }}</td><td class="n">{{ recettes|shekel }}</td><td class="n">{{ depenses|shekel }}</td><td class="n {% if cloture < 0 %}neg{% endif %}">{{ cloture|shekel }}</td></tr></table>
 {% elif journal %}
-<table><tr><th>Date</th><th>Mvt</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="axe2">Axe 2</th></tr>
+<table><tr><th>Date</th><th>Mvt</th><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="axe2">Axe 2</th></tr>
 {% for m in mouvements %}{% for l in m.lignes.all %}<tr {% if forloop.first %}style="border-top:2px solid var(--ligne)"{% endif %}><td>{% if forloop.first %}{{ m.date|date:"d/m/Y" }}{% endif %}</td>
-<td>{% if forloop.first %}<a href="{% url 'mouvement' m.numero %}">{{ m.numero }}</a>{% endif %}</td><td>{% if forloop.first %}{{ m.piece }}{% endif %}</td>
+<td>{% if forloop.first %}<a href="{% url 'mouvement' m.numero %}">{{ m.numero }}</a>{% endif %}</td>
 <td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td><td class="axe2">{{ l.anal2_id }}</td></tr>{% endfor %}
 {% empty %}<tr><td colspan="8">Aucune opération sur la période.</td></tr>{% endfor %}
 <tr class="total"><td colspan="5">Totaux</td><td class="n">{{ total_debit|shekel }}</td><td class="n">{{ total_credit|shekel }}</td><td></td></tr></table>

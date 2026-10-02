@@ -18,7 +18,6 @@ class LigneSaisie:
     debit: Decimal
     credit: Decimal
     anal2: CodeAnalytique
-    montant_devise: Decimal | None = None       # journal en devise : montant d'origine
 
 
 def verrou(m):
@@ -88,11 +87,10 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
                 _liberer(l)
                 l.refresh_from_db()
             l.ordre, l.compte, l.libelle, l.debit, l.credit, l.anal2 = ordre, s.compte, s.libelle.strip(), s.debit, s.credit, s.anal2
-            l.montant_devise = s.montant_devise
             l.save()
         else:
             Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit,
-                                 credit=s.credit, anal2=s.anal2, montant_devise=s.montant_devise)
+                                 credit=s.credit, anal2=s.anal2)
     for pk, l in existantes.items():
         if pk not in gardees:
             _liberer(l)
@@ -113,11 +111,11 @@ def creer(date, journal, lignes, motif, utilisateur):
     erreurs = controler(date, journal, lignes)
     if erreurs:
         raise ValueError(" ".join(erreurs))
-    m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal=journal, piece=Mouvement.prochaine_piece(),
+    m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal=journal,
                                  origine="correction", cree_par=utilisateur)
     for ordre, s in enumerate(lignes):
         Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit, credit=s.credit,
-                             anal2=s.anal2, montant_devise=s.montant_devise)
+                             anal2=s.anal2)
     trace(m, f"écriture libre – {motif.strip()}", utilisateur)
     m.save(update_fields=["commentaire"])
     Modification.objects.create(auteur=utilisateur.get_username(), lot="Corrections", action="Écriture libre",
@@ -143,7 +141,7 @@ def supprimer(m, utilisateur):
     refus = refus_suppression(m)
     if refus:
         raise ValueError(refus)
-    avant = f"{m.date:%d/%m/%Y} {m.journal_id} pièce {m.piece} · " + resume(m.lignes.select_related("compte", "anal2"))
+    avant = f"{m.date:%d/%m/%Y} {m.journal_id} · " + resume(m.lignes.select_related("compte", "anal2"))
     for l in m.lignes.all():
         _liberer(l)
     fichiers = [justificatifs.chemin(j) for j in m.justificatifs.all()]

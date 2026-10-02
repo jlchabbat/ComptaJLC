@@ -76,48 +76,41 @@ def tableau_de_bord(request):
 
 TRIS_ECRITURES = {
     "date": ("Date", "mouvement__date"), "jnl": ("Jnl", "mouvement__journal_id"), "mvt": ("Mvt", "mouvement__numero"),
-    "piece": ("Pièce", "mouvement__piece"), "compte": ("Compte", "compte_id"), "libelle": ("Libellé", "libelle"),
+    "compte": ("Compte", "compte_id"), "libelle": ("Libellé", "libelle"),
     "debit": ("Débit", "debit"), "credit": ("Crédit", "credit"), "anal1": ("Axe 1", "compte__anal1_id"),
     "anal2": ("Axe 2", "anal2_id"),
 }
 
 
-COLONNES_CIEL = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Npiece", "Anal", "LibelAnal",
-                 "Lettr"]
+COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1",
+                      "Anal2", "LibelAnal2", "Lien", "Let"]
 
 
-def export_ciel(lignes, debut, fin):
-    """Écritures (période et filtres de la page) au format de contrôle de Ciel Compta : une ligne par ligne d'écriture ;
-    Libelle = libellé de la ligne d'écriture, Npiece = code axe 2 (texte), Anal / LibelAnal = code axe 1 du compte et son
-    libellé, Lettr = lettrage."""
+def export_csv(lignes):
+    """Écritures (période et filtres de la page) au format d'échange de ComptaBB : un fichier .csv (point-virgule, UTF-8 avec
+    BOM), une ligne par ligne d'écriture, nommé avec la date et l'heure de l'export. Anal1 / LibelAnal1 = axe 1 du compte,
+    Anal2 / LibelAnal2 = axe 2 de la ligne, Lien = adresse ou fichier du premier justificatif, Let = lettrage."""
+    import csv
     import io
 
-    import openpyxl
     from django.http import HttpResponse
-    from openpyxl.styles import Font, PatternFill
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Ecritures"
-    ws.append(COLONNES_CIEL)
-    for c in ws[1]:
-        c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F3864")
-    for l in lignes.order_by("mouvement__date", "mouvement__numero", "ordre"):
-        a1 = l.compte.anal1
-        ws.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle, l.libelle,
-                   float(l.debit), float(l.credit), l.anal2_id or "", a1.code if a1 else "", a1.libelle if a1 else "",
-                   l.lettrage or ""])
-        r = ws.max_row
-        ws.cell(r, 3).number_format = "DD/MM/YYYY"
-        ws.cell(r, 7).number_format = ws.cell(r, 8).number_format = "0.00"
-        for col in (4, 9, 10):                             # codes en texte (Npiece = code axe 2)
-            ws.cell(r, col).number_format = "@"
-    for col, largeur in zip("ABCDEFGHIJKL", (8, 7, 11, 14, 30, 40, 12, 12, 12, 10, 28, 7)):
-        ws.column_dimensions[col].width = largeur
-    ws.freeze_panes = "A2"
-    tampon = io.BytesIO()
-    wb.save(tampon)
-    r = HttpResponse(tampon.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    r["Content-Disposition"] = f'attachment; filename="Ecritures_Ciel_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"'
+    from django.utils import timezone
+
+    def montant(v):
+        return f"{v:.2f}".replace(".", ",") if v else ""
+
+    tampon = io.StringIO(newline="")
+    w = csv.writer(tampon, delimiter=";", lineterminator="\r\n")
+    w.writerow(COLONNES_ECRITURES)
+    for l in lignes.prefetch_related("mouvement__justificatifs").order_by("mouvement__date", "mouvement__numero", "ordre"):
+        a1, a2 = l.compte.anal1, l.anal2
+        piece = next(iter(l.mouvement.justificatifs.all()), None)
+        w.writerow([l.mouvement.numero, l.mouvement.journal_id, f"{l.mouvement.date:%d/%m/%Y}", l.compte_id, l.compte.libelle,
+                    l.libelle, montant(l.debit), montant(l.credit), a1.code if a1 else "", a1.libelle if a1 else "",
+                    a2.code if a2 else "", a2.libelle if a2 else "", (piece.lien or piece.chemin or "") if piece else "",
+                    l.lettrage or ""])
+    r = HttpResponse(("\ufeff" + tampon.getvalue()).encode("utf-8"), content_type="text/csv; charset=utf-8")
+    r["Content-Disposition"] = f'attachment; filename="Ecritures_{timezone.localtime():%Y-%m-%d_%H%M}.csv"'
     return r
 
 
@@ -145,8 +138,8 @@ def ecritures(request):
             f["montant_erreur"] = "Montant non reconnu."
     if f["just"] in ("avec", "sans"):                   # mouvements avec / sans justificatif joint
         qs = qs.filter(mouvement__justificatifs__isnull=(f["just"] == "sans")).distinct()
-    if request.GET.get("format") == "ciel":
-        return export_ciel(qs, debut, fin)
+    if request.GET.get("format") == "csv":
+        return export_csv(qs)
     d, c, _ = soldes(qs)
     # tri par colonne (sur toutes les pages) : ?tri=<colonne>&ordre=asc|desc
     tri, ordre = request.GET.get("tri", ""), request.GET.get("ordre", "asc")
@@ -288,10 +281,10 @@ def saisie(request):
                 else:
                     messages.warning(request, "Aucune écriture de banque de même montant : ligne du relevé non pointée.")
             return redirect("mouvement", crees[0].numero)
-    numero, piece = Mouvement.prochain_numero(), Mouvement.prochaine_piece()
+    numero = Mouvement.prochain_numero()
     modeles = {m.pk: {"aide": m.aide, "prefixe": m.tiers.prefixe if m.tiers else "", "vi": m.schema == "VI"}
                for m in ModeleOperation.objects.select_related("tiers")}
-    return render(request, "compta/saisie.html", {"form": form, "resultat": resultat, "numero": numero, "piece": piece,
+    return render(request, "compta/saisie.html", {"form": form, "resultat": resultat, "numero": numero,
                                                   "modeles": modeles, "releve": releve})
 
 

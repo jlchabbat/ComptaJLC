@@ -102,7 +102,7 @@ class Command(BaseCommand):
         for numero, ls in sorted(par_mvt.items()):
             premiere = ls[0]
             m = Mouvement.objects.create(numero=numero, date=jour(premiere["Date"]), journal_id=texte(premiere["Jnl"]),
-                                         piece=int(premiere["Pièce"]), origine="import")
+                                         origine="import")
             Ligne.objects.bulk_create([
                 Ligne(mouvement=m, ordre=i, compte_id=texte(r["Compte"]), libelle=texte(r["Libellé"]),
                       debit=montant(r["Débit"]), credit=montant(r["Crédit"]), anal2_id=texte(r["Anal2"]), lettrage=texte(r.get("Let")))

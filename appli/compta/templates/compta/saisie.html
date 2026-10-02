@@ -2,7 +2,7 @@
 <h1>Saisie d'une opération</h1>
 <div class="barre"><button form="f-saisie" name="apercu" value="1">Aperçu et contrôles</button><button form="f-saisie" class="principal" name="enregistrer" value="1">Enregistrer</button>
 <a class="bouton" href="{% url 'saisie' %}">Nouvelle saisie</a><a class="bouton" href="{% url 'mouvement_nouveau' %}">Écriture libre</a></div>
-<p class="aide">Prochain mouvement : Mvt {{ numero }} · pièce {{ piece }}. Dans les listes, tapez une partie du code ou du libellé.</p>
+<p class="aide">Prochain mouvement : Mvt {{ numero }}. Dans les listes, tapez une partie du code ou du libellé.</p>
 <form method="post" class="carte" id="f-saisie">{% csrf_token %}{% if releve %}<input type="hidden" name="releve" value="{{ releve }}"><p class="aide">Écriture créée depuis une ligne du relevé : elle sera pointée automatiquement.</p>{% endif %}
 <div class="formulaire">
 {% with f=form.date %}{% include "compta/_champ.html" %}{% endwith %}

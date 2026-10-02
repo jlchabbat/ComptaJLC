@@ -321,3 +321,14 @@ td.sel { background: #cfe3ff !important; outline: 1px solid #1f5fbf; outline-off
   font-size: 16px; box-shadow: 0 -2px 8px rgba(0,0,0,.25); }
 #barre-selection .aide { color: #c9d3e3; margin-left: 10px; }
 @media print { .choix-colonnes, .menu-colonnes, #barre-selection { display: none !important; } td.sel { background: none !important; outline: none; } }
+
+/* aides : masquées par défaut (la place est aux données) ; le bouton « ? » de l'en-tête les affiche, choix mémorisé */
+html:not(.avec-aides) main p.aide, html:not(.avec-aides) main div.aide { display: none; }
+.bascule-aides { width: 26px; height: 26px; border-radius: 50%; padding: 0; font-weight: 700; line-height: 1; background: transparent;
+  color: #fff; border: 1.5px solid #c9d3e3; cursor: pointer; }
+.bascule-aides[aria-pressed="true"] { background: #fff; color: var(--bleu, #1f3864); }
+@media print { .bascule-aides { display: none !important; } }
+
+.barre .sommaire { margin-left: auto; font-size: 14px; color: #34495e; }
+.barre .sommaire a { text-decoration: none; }
+@media print { .sommaire { display: none; } }

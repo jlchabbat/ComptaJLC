@@ -1,5 +1,5 @@
 """Analyse par axes de comptes : chaque compte porte des valeurs sur des axes libres (RubDecl, RubCh, RubType, Cat,
-Groupe… du plan Ciel), plus trois axes intégrés (Compte, Classe, Axe 1). On choisit un axe en lignes, un axe en colonnes
+Groupe…), plus trois axes intégrés (Compte, Classe, Axe 1). On choisit un axe en lignes, un axe en colonnes
 (facultatif), des filtres sur les autres axes et la période ; les montants sont les soldes débit − crédit des comptes."""
 
 from collections import OrderedDict, defaultdict

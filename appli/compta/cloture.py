@@ -102,7 +102,7 @@ def cloturer(ex, utilisateur, anal2):
     mv = None
     if p.lignes:
         mv = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=suivant.debut, journal=p.journal,
-                                      piece=Mouvement.prochaine_piece(), origine="cloture", cree_par=utilisateur,
+                                      origine="cloture", cree_par=utilisateur,
                                       commentaire=f"À-nouveaux de la clôture de « {ex.libelle} »")
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte_id=n, libelle=f"A NOUVEAU {ex.libelle}".upper()[:200],
                                          debit=d, credit=c, anal2=anal2) for i, (n, d, c) in enumerate(p.lignes)])

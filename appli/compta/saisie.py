@@ -162,11 +162,11 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
         r.erreurs.pop("Déjà enregistrée ?", None)
     if not r.ok:
         raise ValueError("; ".join(r.erreurs.values()))
-    numero, piece = Mouvement.prochain_numero(), Mouvement.prochaine_piece()
+    numero = Mouvement.prochain_numero()
     crees = []
     for rang in sorted({l.mvt for l in r.lignes}):
         ls = [l for l in r.lignes if l.mvt == rang]
-        mv = Mouvement.objects.create(numero=numero + rang - 1, date=op.date, journal=ls[0].journal, piece=piece + rang - 1,
+        mv = Mouvement.objects.create(numero=numero + rang - 1, date=op.date, journal=ls[0].journal,
                                       origine="saisie", cree_par=utilisateur)
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit,
                                          anal2=op.anal2) for i, l in enumerate(ls)])

@@ -187,8 +187,8 @@ FEUILLES = {
     "Comptes de tiers": ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"],
     "Exercices": ["Libellé", "Début", "Fin", "Clos", "Mvt à-nouveaux", "Résultat affecté", "Clôturé le", "Clôturé par",
                   "Archive"],
-    "Écritures": ["Mvt", "Date", "Journal", "Pièce", "Origine", "Commentaire", "Créé le", "Créé par", "Ordre", "Compte",
-                  "Libellé", "Débit", "Crédit", "Axe 2", "Lettrage", "Pointage", "Montant devise"],
+    "Écritures": ["Mvt", "Date", "Journal", "Origine", "Commentaire", "Créé le", "Créé par", "Ordre", "Compte",
+                  "Libellé", "Débit", "Crédit", "Axe 2", "Lettrage", "Pointage"],
     "Pointages": ["N°", "Journal", "Mode", "Créé le", "Créé par"],
     "Relevés": ["Journal", "Date", "Rang", "Référence", "Opération", "Montant", "Solde", "Ouverture", "Source",
                 "Importé le", "Pointage"],
@@ -214,10 +214,9 @@ def _lignes_donnees():
     yield "Exercices", ([e.libelle, e.debut, e.fin, _oui(e.clos), e.mouvement_an.numero if e.mouvement_an else None,
                          _montant(e.resultat), _heure(e.cloture_le), e.cloture_par, e.archive]
                         for e in Exercice.objects.select_related("mouvement_an"))
-    yield "Écritures", ([m.numero, m.date, m.journal_id, m.piece, m.origine, m.commentaire, _heure(m.cree_le),
+    yield "Écritures", ([m.numero, m.date, m.journal_id, m.origine, m.commentaire, _heure(m.cree_le),
                          _nom_utilisateur(m.cree_par), l.ordre, l.compte_id, l.libelle, _montant(l.debit) or None,
-                         _montant(l.credit) or None, l.anal2_id, l.lettrage, l.rapprochement_id,
-                         _montant(l.montant_devise) if l.montant_devise is not None else None]
+                         _montant(l.credit) or None, l.anal2_id, l.lettrage, l.rapprochement_id]
                         for m in Mouvement.objects.select_related("cree_par").prefetch_related("lignes").order_by("numero")
                         for l in m.lignes.all())
     yield "Pointages", ([r.pk, r.journal_id, r.mode, _heure(r.cree_le), _nom_utilisateur(r.cree_par)]
@@ -363,7 +362,7 @@ def vider():
 
 
 FACULTATIVES = ("Justificatifs", "Documents fiches", "Axes de comptes")       # absentes des exports faits avant leur création
-COLONNES_FACULTATIVES = {"Lien", "Montant devise"}         # idem pour les colonnes
+COLONNES_FACULTATIVES = {"Lien"}         # idem pour les colonnes
 
 
 def _rangees(wb, nom, fichier="Donnees.xlsx"):
@@ -409,15 +408,14 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
     for r in _rangees(ecritures or wb, ECRITURES, "Ecritures.xlsx" if ecritures else "Donnees.xlsx"):
         n = _entier(r["Mvt"])
         if n not in mouvements:
-            mouvements[n] = Mouvement(numero=n, date=_jour(r["Date"]), journal_id=_texte(r["Journal"]), piece=_entier(r["Pièce"]),
+            mouvements[n] = Mouvement(numero=n, date=_jour(r["Date"]), journal_id=_texte(r["Journal"]),
                                       origine=_texte(r["Origine"]), commentaire=_texte(r["Commentaire"]),
                                       cree_par=qui(r["Créé par"]))
             dates[n] = _lire_heure(r["Créé le"])
         lignes.append((n, Ligne(ordre=_entier(r["Ordre"]) or 0, compte_id=_texte(r["Compte"]), libelle=_texte(r["Libellé"]),
                                 debit=_lire_montant(r["Débit"]), credit=_lire_montant(r["Crédit"]),
                                 anal2_id=_texte(r["Axe 2"]) or None, lettrage=_texte(r["Lettrage"]),
-                                rapprochement=pointages.get(_entier(r["Pointage"])),
-                                montant_devise=None if r.get("Montant devise") in (None, "") else _lire_montant(r["Montant devise"]))))
+                                rapprochement=pointages.get(_entier(r["Pointage"])))))
     Mouvement.objects.bulk_create(mouvements.values())
     ids = dict(Mouvement.objects.values_list("numero", "pk"))
     for n, l in lignes:

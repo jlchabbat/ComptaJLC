@@ -60,9 +60,9 @@ def classeur_exercice(ex):
     feuille(wb, "Balance", ["Compte", "Libellé", "Solde"], [[k, lib, s] for k, (lib, s) in bal.items()], (3,))
     ecr = (Ligne.objects.filter(mouvement__date__range=(ex.debut, ex.fin))
            .select_related("mouvement", "compte").order_by("compte__numero", "mouvement__date", "mouvement__numero", "ordre"))
-    feuille(wb, "Grand livre", ["Compte", "Intitulé", "Date", "Jnl", "Mvt", "Pièce", "Libellé", "Débit", "Crédit", "Anal2", "Let"],
-            [[l.compte_id, l.compte.libelle, l.mouvement.date, l.mouvement.journal_id, l.mouvement.numero, l.mouvement.piece,
-              l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage] for l in ecr], (8, 9))
+    feuille(wb, "Grand livre", ["Compte", "Intitulé", "Date", "Jnl", "Mvt", "Libellé", "Débit", "Crédit", "Anal2", "Let"],
+            [[l.compte_id, l.compte.libelle, l.mouvement.date, l.mouvement.journal_id, l.mouvement.numero,
+              l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage] for l in ecr], (7, 8))
     bud = etats.budget(ex)
     if bud:
         feuille(wb, "Budget", ["Nature", "Cible", "Budget", "Réalisé", "Écart", "Écart %"],

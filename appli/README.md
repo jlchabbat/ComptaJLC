@@ -93,7 +93,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 - **Justificatifs** (page d'un mouvement) : scans PDF ou photos joints au mouvement (plusieurs par
   mouvement, 10 Mo au plus chacun, photo directe sur téléphone) ; consultables par tous les rôles qui voient
   la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
-  filtre « avec / sans justificatif » et recherche d'un montant exact (au débit ou au crédit) dans Écritures ; tableaux « comme Excel » (`tri.js`, `tableau.js`) : tri, filtres par colonne, largeur des colonnes, bouton « Colonnes » (afficher ou masquer, mémorisé sur l'ordinateur), sélection de cellules (clic, glisser, Maj+clic, Ctrl+clic) avec somme, moyenne, minimum et maximum en bas d'écran, Ctrl+C pour copier vers Excel ; fichiers dans `<données>/Justificatifs/<année>/`,
+  filtre « avec / sans justificatif » et recherche d'un montant exact (au débit ou au crédit) dans Écritures ; mise à jour économe en place (maj.sh ne garde sur l'hébergement que le dossier appli/ : la documentation, les tests et les outils du PC restent sur GitHub ; une seule version précédente, 3 sauvegardes de la base, une copie des justificatifs) ; aides masquées par défaut (bouton « ? » de l'en-tête, choix mémorisé sur l'ordinateur) pour laisser la place aux données ; tableaux « comme Excel » (`tri.js`, `tableau.js`) : tri, filtres par colonne, largeur des colonnes, bouton « Colonnes » (afficher ou masquer, mémorisé sur l'ordinateur), sélection de cellules (clic, glisser, Maj+clic, Ctrl+clic) avec somme, moyenne, minimum et maximum en bas d'écran, Ctrl+C pour copier vers Excel ; fichiers dans `<données>/Justificatifs/<année>/`,
   repris par l'export complet.
 - **Corriger ou supprimer une écriture** (trésorier) : Saisie › Modifier une écriture (n° de Mvt), ou boutons Modifier /
   Supprimer de la fiche du mouvement ; motif facultatif ; l'avant et l'après restent dans l'historique. Refusé dans un
@@ -102,13 +102,13 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   liste consultée, filtres compris).
 - **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
   fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
-  seul cas coché d'office ; « Mvt 389 », « Pièce 739 », numéro seul,
+  seul cas coché d'office ; « Mvt 389 », numéro seul,
   date + montant), vérification et correction dans un tableau, puis rattachement ; les documents non
   rattachés restent « à classer » ; la page d'un mouvement permet de les y rattacher (liste des documents déposés). En ligne de commande :
   `python manage.py importer_justificatifs <dossier|zip> [--rattacher]`.
   Un **extrait Excel** (un lien par ligne) déposé sur la même page fournit des **liens** (documents restés en ligne),
   proposés au mouvement de même date et même montant ; seuls les nouveaux liens sont repris. Un Excel fait à la main
-  (colonne Mvt ou Pièce + lien) convient aussi ; un lien peut être collé sur la page du mouvement. Les documents des liens
+  (colonne Mvt + lien) convient aussi ; un lien peut être collé sur la page du mouvement. Les documents des liens
   sont copiés sur le site (aussitôt, ou bouton « Les enregistrer sur le site », ou
   `python manage.py rapatrier_justificatifs`) .
 - Pas de suivi des impayés : le solde du compte tiers suffit ; **cotisations** de l'exercice attendues,

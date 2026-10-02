@@ -2,7 +2,7 @@
 <h1>Paramètres (Excel)</h1>
 <div class="barre"><button form="f-dossier" name="preparer" value="1" {% if modifie %}onclick="return confirm('Remplacer Imports/Parametres.xlsx par les paramètres actuels ? (L\'ancien est copié dans Exports.)')"{% endif %}>Préparer Imports/Parametres.xlsx</button>
 <button form="f-dossier" class="principal" name="importer_dossier" value="1" {% if not modifie %}disabled{% endif %}>Importer Imports/Parametres.xlsx</button><button form="f-envoi" class="principal">Importer le fichier envoyé</button></div>
-<p>Les paramètres de ComptaBB (plan comptable, journaux, codes analytiques, modèles de saisie, traductions…) tiennent dans
+<p class="aide">Les paramètres de ComptaBB (plan comptable, journaux, codes analytiques, modèles de saisie, traductions…) tiennent dans
 un classeur <b>Parametres.xlsx</b> qu'on modifie dans Excel puis qu'on réinjecte. Réservé à l'administrateur et au trésorier.</p>
 
 <div class="deux">

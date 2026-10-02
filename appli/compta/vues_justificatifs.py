@@ -249,7 +249,7 @@ def a_classer(request):
         m = l["mouvement"]
         if m:
             premiere = m.lignes.order_by("ordre").first()
-            l["detail"] = f"{m.date:%d/%m/%Y} · {m.journal_id} · pièce {m.piece} · {premiere.libelle if premiere else ''}"
+            l["detail"] = f"{m.date:%d/%m/%Y} · {m.journal_id} · {premiere.libelle if premiere else ''}"
             l["montant"] = m.total_debit
     from django.shortcuts import render
     return render(request, "compta/justificatifs_a_classer.html", {

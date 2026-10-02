@@ -280,11 +280,9 @@ class LigneMouvementForm(forms.Form):
     debit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Débit")
     credit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Crédit")
     anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Axe 2")
-    montant_devise = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Montant d'origine")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.fields["montant_devise"].widget.attrs.update({"class": "montant", "step": "0.01"})
         self.fields["compte"].queryset = Compte.objects.filter(actif=True)
         self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
         cherchable(self)

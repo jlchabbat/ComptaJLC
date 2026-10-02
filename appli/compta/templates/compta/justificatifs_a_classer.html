@@ -1,8 +1,8 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Justificatifs existants{% endblock %}{% block contenu %}
 <style>
-#f-deposer .choix { font-size: 19px; }
-#f-deposer .choix input[type=file] { font-size: 18px; padding: 8px; max-width: 100%; }
-#f-deposer .choix button { font-size: 18px; padding: 8px 22px; }
+#deposer .choix { font-size: 19px; }
+#deposer .choix input[type=file] { font-size: 18px; padding: 8px; max-width: 100%; }
+#deposer .choix button { font-size: 18px; padding: 8px 22px; }
 #f-classer { font-size: 12.5px; }
 #f-classer th, #f-classer td { padding: 1px 5px; line-height: 1.2; vertical-align: middle; }
 #f-classer .aide { font-size: 11.5px; }
@@ -22,7 +22,7 @@ h1 { margin: 4px 0; } h2 { margin: 8px 0 4px; font-size: 17px; } .carte { paddin
 <h1>Justificatifs existants</h1>
 <div class="barre"><a class="bouton" href="?rattaches=1#rattaches">Liste des documents déjà rattachés ({{ nb_total }})</a><a class="bouton" href="#a-verifier">Documents à vérifier ({{ lignes|length }})</a>
 <a class="bouton" href="{% url 'justificatifs_tout' %}" title="Copie de sécurité de tous les justificatifs du site">Tout télécharger (ZIP)</a></div>
-<form method="post" enctype="multipart/form-data" class="carte" id="f-deposer"
+<form method="post" enctype="multipart/form-data" class="carte" id="deposer"
       onsubmit="document.getElementById('envoi').hidden = false; this.querySelectorAll('button[name=deposer]').forEach(function (b) { b.disabled = true; })">{% csrf_token %}
 <input type="hidden" name="deposer" value="1">
 <h2 style="margin-top:0">1. Déposer les documents</h2>
@@ -31,7 +31,7 @@ h1 { margin: 4px 0; } h2 { margin: 8px 0 4px; font-size: 17px; } .carte { paddin
 <button class="principal" name="deposer" value="1">Déposer</button>
 <span id="envoi" class="message info" hidden>Envoi en cours… patientez, la page va se recharger.</span></div>
 <p class="mini">Choisissez les fichiers (PDF, images, ZIP, ou Excel de liens) puis <b>Déposer</b>. Un n° de Mvt en tête du nom (« 389 facture.pdf ») coche d'office le mouvement.
-<details><summary>Plus d'aide</summary>Autres noms reconnus : « Mvt 389 », « Pièce 739 » (pce, pc, pj), un numéro seul, ou date et montant (« 2026-03-15 facture 450,00.pdf »).
+<details><summary>Plus d'aide</summary>Autres noms reconnus : « Mvt 389 », un numéro seul, ou date et montant (« 2026-03-15 facture 450,00.pdf »).
 Excel de liens : chaque ligne est proposée au mouvement de même date et même montant. Erreur « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo, ou l'envoyer par PythonAnywhere › Files puis en console Bash :
 <code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; COMPTABB_DATA=~/comptabb-data python manage.py importer_justificatifs ~/Justificatifs.zip --rattacher</code></details></p>
 </form>

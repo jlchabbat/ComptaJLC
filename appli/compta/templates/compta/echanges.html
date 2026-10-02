@@ -4,16 +4,17 @@
 <button form="f-exports" class="principal" name="tout_sauvegarder" value="1">Tout exporter et sauvegarder la base</button>
 <a class="bouton" href="{% url 'echanges_modeles' %}" title="Un modèle vierge de chaque fichier, le lexique et un mode d'emploi (ZIP)">Modèles vierges (ZIP)</a>
 <button form="f-dossiers" name="dossiers" value="1">Enregistrer les dossiers</button>
-<button form="f-reinjecter" name="reinjecter" value="1" onclick="return confirm('Remplacer les données par les fichiers du dossier Imports ?')">Tout réinjecter</button></div>
-<p>Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>,
+<button form="f-reinjecter" name="reinjecter" value="1" onclick="return confirm('Remplacer les données par les fichiers du dossier Imports ?')">Tout réinjecter</button>
+<span class="sommaire">Aller à : <a href="#importer">1. Importer</a> · <a href="#exporter">2. Formats et exports</a> · <a href="#dossiers">3. Dossiers</a></span></div>
+<p class="aide">Déposez les fichiers à importer dans <b>{{ imports }}</b> ; les exports sont écrits dans <b>{{ exports }}</b>,
 les sauvegardes de la base dans <b>{{ sauvegardes }}</b> (dossiers modifiables en bas de page).
 Un fichier exporté se réimporte tel quel (même structure). Chaque dossier contient un <b>Lexique.xlsx</b> qui décrit les fichiers et leurs colonnes.</p>
 
-<h2>1. Fichiers à importer</h2>
+<h2 id="importer">1. Fichiers à importer</h2>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
-<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.pdf,.zip"></label>
+<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.csv,.pdf,.zip"></label>
 <button class="principal" name="deposer" value="1">Déposer</button>
-<p class="aide">Depuis votre ordinateur (indispensable sur le site, dont les dossiers ne sont pas visibles) : fichiers .xlsx, relevés .pdf,
+<p class="aide">Depuis votre ordinateur (indispensable sur le site, dont les dossiers ne sont pas visibles) : fichiers .xlsx ou .csv, relevés .pdf,
 ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est remplacé.</p></form>
 {% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
 <p class="aide">La conversion crée Banque1_date.xlsx ou Banque2_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
@@ -26,7 +27,7 @@ ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est rem
 <span class="aide">tous les fichiers reconnus, dans le bon ordre (exercices, axes, plan, journaux, tiers, écritures, liens des documents…) ;
 à la moindre erreur, rien n'est enregistré.</span></p>{% endif %}
 <table><tr><th>Fichier dans Imports</th><th>Contenu</th><th></th></tr>
-{% for nom, f in a_importer %}<tr><td>{{ nom }}</td><td>{% if f %}{{ f.contenu }}{% else %}<span class="neg">nom non reconnu</span>{% endif %}</td>
+{% for nom, f in a_importer %}<tr><td>{{ nom }}</td><td>{% if f %}{{ f.contenu }}{% else %}<span class="neg">structure non reconnue</span>{% endif %}</td>
 <td>{% if f %}<button class="principal" name="importer" value="{{ nom }}">Importer</button>{% endif %}
 <button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ? (rien n&#39;est importé ni modifié)')">Supprimer</button></td></tr>
 {% empty %}<tr><td colspan="3">Aucun fichier .xlsx dans le dossier Imports.</td></tr>{% endfor %}</table></form>
@@ -34,7 +35,7 @@ ou un .zip dont les .xlsx et .pdf sont extraits. Un fichier de même nom est rem
 avant chaque import ; le fichier importé est rangé, daté, dans Imports\Importés.</p>
 
 <details class="carte"><summary><b>Tout réinjecter</b> : remplacer les données par les fichiers du dossier Imports</summary>
-<p>Pour corriger en masse : <b>Tout exporter</b>, télécharger les fichiers (liste en bas de la partie 2), les modifier dans Excel,
+<p class="aide">Pour corriger en masse : <b>Tout exporter</b>, télécharger les fichiers (liste en bas de la partie 2), les modifier dans Excel,
 les déposer dans Imports (bouton <b>Déposer</b> ci-dessus), puis réinjecter.</p>
 <ul><li>Un fichier <b>Ecritures, Banque1, Banque2, Bit, Caisse ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
@@ -45,9 +46,10 @@ dans le fichier est supprimé).</li>
 Base de données › Tout exporter, puis Remettre à zéro et recharger (case « Fichiers modifiés »).</li></ul>
 <form method="post" id="f-reinjecter">{% csrf_token %}<label>Taper REMPLACER pour confirmer <input name="confirmation" autocomplete="off"></label></form></details>
 
-<h2>2. Formats et exports</h2>
-<p class="aide">Importer dans cet ordre : chaque fichier ne cite que des codes définis par les précédents. Le nom du fichier commence par le nom
-indiqué (Tiers.xlsx, Tiers_2026-09-27.xlsx…) ; la ligne 1 contient exactement les colonnes ci-dessous.</p>
+<h2 id="exporter">2. Formats et exports</h2>
+<p class="aide">Importer dans cet ordre : chaque fichier ne cite que des codes définis par les précédents. Le fichier est reconnu d'après sa <b>structure</b> : sa ligne 1 contient exactement les colonnes du fichier voulu (le nom est libre,
+accents et majuscules sans importance) ; seuls les relevés de plusieurs banques ou caisses, de même structure, se distinguent par le nom
+(Banque1, Banque2, Caisse) ; la ligne 1 contient exactement les colonnes ci-dessous.</p>
 <form method="post" id="f-exports">{% csrf_token %}
 <table><tr><th>#</th><th>Fichier</th><th>Contenu</th><th>Colonnes (ligne 1)</th><th></th></tr>
 {% for f in formats %}<tr><td>{{ forloop.counter }}</td><td><b>{{ f.nom }}.xlsx</b></td><td>{{ f.contenu }}</td><td>{{ f.colonnes|join:" · " }}</td>
@@ -59,7 +61,7 @@ des paramètres) dans le dossier Exports, et une copie de la base dans le dossie
 {% for nom, ko in exportes %}<tr><td>{{ nom }}</td><td class="n">{{ ko }}</td><td><a href="{% url 'echanges_telecharger' nom %}">Télécharger</a></td></tr>
 {% empty %}<tr><td colspan="3">Aucun fichier exporté.</td></tr>{% endfor %}</table>
 
-<h2>3. Paramètres des dossiers</h2>
+<h2 id="dossiers">3. Paramètres des dossiers</h2>
 <form method="post" class="carte" id="f-dossiers">{% csrf_token %}<div class="formulaire">
 {% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">

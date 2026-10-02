@@ -92,6 +92,10 @@ rm -rf ComptaBB-ancien
 mv "$NOUVEAU" ~/ComptaBB
 rm -rf ~/maj
 rm -f ~/ComptaBB-*.zip
+# place sur l'hébergement : seul le dossier appli/ fait tourner le site (documentation, tests et outils du PC restent sur GitHub)
+cd ~/ComptaBB && rm -rf docs tests src Imports .github *.md *.json 2>/dev/null || true
+find ~/ComptaBB -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+cd ~
 
 echo "3/5 Bibliothèques Python"
 source ~/venv/bin/activate

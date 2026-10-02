@@ -72,7 +72,7 @@ def ajouter(mouvement, fichier, description="", auteur=""):
 
 
 def ajouter_lien(mouvement, lien, nom="", description="", auteur="", rapatrier_aussitot=True):
-    """Rattache un document resté en ligne (SUMIT…) : on garde son lien. Lève ValueError si refusé."""
+    """Rattache un document resté en ligne : on garde son lien. Lève ValueError si refusé."""
     lien = (lien or "").strip()
     if not re.match(r"^https://", lien):
         raise ValueError(f"Lien refusé (adresse https:// attendue) : {lien[:80]}")
@@ -431,10 +431,6 @@ def proposer(nom):
     if m:
         mv = Mouvement.objects.filter(numero=int(m.group(1))).first()
         return (mv, f"« Mvt {m.group(1)} » dans le nom", True) if mv else (None, f"Mvt {m.group(1)} inconnu", False)
-    m = re.search(r"(?i)(?:^|[^a-z])(?:pi[eè]ce|pce|pc|pj)[\s_.\-n°o]*(\d{1,6})", base)
-    if m:
-        mv = Mouvement.objects.filter(piece=int(m.group(1))).first()
-        return (mv, f"« pièce {m.group(1)} » dans le nom", True) if mv else (None, f"pièce {m.group(1)} inconnue", False)
     reste = base
     date = None
     for motif, ordre in ((r"(20\d\d)[-_.](\d\d)[-_.](\d\d)", "amj"), (r"(\d\d)[-_.](\d\d)[-_.](20\d\d)", "jma"),
@@ -469,11 +465,7 @@ def proposer(nom):
                   + " : saisir le n° de Mvt") if n else f"aucun mouvement le {date:%d/%m/%Y}"
     for n in re.findall(r"(?<!\d)(\d{1,6})(?!\d)", reste):
         n = int(n)
-        piece, mvt = Mouvement.objects.filter(piece=n).first(), Mouvement.objects.filter(numero=n).first()
-        if piece and mvt and piece != mvt:
-            return piece, f"{n} = n° de pièce (c'est aussi le Mvt {n} : à vérifier)", False
-        if piece:
-            return piece, f"{n} = n° de pièce (à vérifier)", False
+        mvt = Mouvement.objects.filter(numero=n).first()
         if mvt:
             return mvt, f"{n} = n° de Mvt (à vérifier)", False
     return None, indice or "aucun numéro, date ou montant reconnu", False
@@ -505,11 +497,10 @@ def _entetes(rangee):
 MOTS_DATE = ("תאריך", "date", "date opération")
 MOTS_MONTANT = ("סכום", "montant", "amount", "somme")
 MOTS_MVT = ("mvt", "mouvement", "n° mvt", "numéro de mvt")
-MOTS_PIECE = ("pièce", "piece", "n° pièce", "n° de pièce", "pce", "pc", "pj")
 
 
 def _numero(v):
-    """N° de Mvt ou de pièce d'une cellule (389, « 389 », « Mvt 389 ») ; None sinon."""
+    """N° de Mvt d'une cellule (389, « 389 », « Mvt 389 ») ; None sinon."""
     if isinstance(v, (int, float)):
         return int(v) or None
     m = re.search(r"\d+", str(v or ""))
@@ -517,7 +508,7 @@ def _numero(v):
 
 
 def lire_extrait(contenu):
-    """Lignes à lien d'un extrait Excel (export d'un autre logiciel ou tableau fait à la main) : Mvt, pièce, date, montant, description, lien.
+    """Lignes à lien d'un extrait Excel (export d'un autre logiciel ou tableau fait à la main) : Mvt, date, montant, description, lien.
 
     Une feuille est retenue si une de ses premières lignes a une colonne « Mvt », une colonne « Pièce », ou à la fois
     une colonne date (« תאריך », « date ») et une colonne montant (« סכום », « montant », « amount ») ; le lien est
@@ -540,12 +531,12 @@ def lire_extrait(contenu):
         for i, r in enumerate(rangees[:6]):
             e = _entetes(c.value for c in r)
             col_date, col_somme = colonne(e, MOTS_DATE), colonne(e, MOTS_MONTANT)
-            col_mvt, col_piece = colonne(e, MOTS_MVT), colonne(e, MOTS_PIECE)
-            if (col_date is not None and col_somme is not None) or col_mvt is not None or col_piece is not None:
+            col_mvt = colonne(e, MOTS_MVT)
+            if (col_date is not None and col_somme is not None) or col_mvt is not None:
                 break
         else:
             continue
-        ignorees = {col_date, col_somme, col_mvt, col_piece} | {
+        ignorees = {col_date, col_somme, col_mvt} | {
             k for k, t in enumerate(e) if t in ("סטטוס", "status", "תאריך יצירה", "statut", "card name")}
         for r in rangees[i + 1:]:
             liens = [c.hyperlink.target for c in r if c.hyperlink and c.hyperlink.target]
@@ -560,14 +551,14 @@ def lire_extrait(contenu):
                 montant = abs(Decimal(str(valeur(r, col_somme))))
             except (InvalidOperation, TypeError):
                 montant = None
-            mvt, piece = _numero(valeur(r, col_mvt)), _numero(valeur(r, col_piece))
-            if not (mvt or piece or (isinstance(date, dt.date) and montant is not None)):
+            mvt = _numero(valeur(r, col_mvt))
+            if not (mvt or (isinstance(date, dt.date) and montant is not None)):
                 continue
             texte = [str(c.value).strip() for k, c in enumerate(r) if k not in ignorees and c.value not in (None, "")
                      and not c.hyperlink and not str(c.value).startswith("http")]
             for lien in liens:
                 lignes.append({"date": date.isoformat() if isinstance(date, dt.date) else "",
-                               "montant": str(montant) if montant is not None else "", "mvt": mvt, "piece": piece,
+                               "montant": str(montant) if montant is not None else "", "mvt": mvt,
                                "lien": lien, "feuille": ws.title, "description": " · ".join(texte)[:150]})
     return lignes
 
@@ -588,7 +579,7 @@ def deposer_extrait(contenu):
 
 
 def proposer_lien(l):
-    """Mouvement d'après le n° de Mvt, le n° de pièce, ou la date et le montant de la ligne : (mouvement, raison, sûr)."""
+    """Mouvement d'après le n° de Mvt, ou la date et le montant de la ligne : (mouvement, raison, sûr)."""
     import datetime as dt
     from decimal import Decimal
     from django.db.models import Q
@@ -596,13 +587,8 @@ def proposer_lien(l):
     if l.get("mvt"):
         mv = Mouvement.objects.filter(numero=l["mvt"]).first()
         return (mv, f"Mvt {l['mvt']}", True) if mv else (None, f"Mvt {l['mvt']} inexistant", False)
-    if l.get("piece"):
-        mvts = list(Mouvement.objects.filter(piece=l["piece"])[:2])
-        if len(mvts) == 1:
-            return mvts[0], f"pièce {l['piece']}", True
-        return None, f"pièce {l['piece']} " + ("sur plusieurs mouvements" if mvts else "inexistante"), False
     if not (l.get("date") and l.get("montant")):
-        return None, "ni Mvt, ni pièce, ni date et montant", False
+        return None, "ni Mvt, ni date et montant", False
     date, montant = dt.date.fromisoformat(l["date"]), Decimal(l["montant"])
     numeros = sorted(set(Ligne.objects.filter(mouvement__date=date).filter(Q(debit=montant) | Q(credit=montant))
                          .values_list("mouvement__numero", flat=True)))
