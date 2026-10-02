@@ -121,7 +121,7 @@ L'administrateur est lui aussi un **bénévole néophyte** : tout ce qui est ré
 
 ### Relevés bancaires et historique d'importation
 - Le relevé s'importe **dans la langue d'origine** (`Banque.csv` : `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`, `Solde` facultatif).
-- Chaque import est gardé dans un **historique** (fichier, date, journal, lignes ajoutées, doublons ignorés) ; une ligne déjà importée (même journal, date, libellé, montants et rang dans la journée) n'est jamais ajoutée deux fois, même si le même relevé est redéposé ou chevauche le précédent.
+- Chaque import est gardé dans un **historique** (fichier, date, journal, lignes ajoutées, doublons ignorés) ; une ligne déjà importée (même journal, date, libellé et montant ; deux lignes identiques le même jour comptent pour deux) n'est jamais ajoutée deux fois, même si le même relevé est redéposé ou chevauche le précédent.
 
 ### Lexique de traduction
 - Nouveau fichier **Lexique** (`Lexique.csv`) : `LibelBanque`, `LibelTrad`, `Compte` (compte habituellement affecté à ce libellé, facultatif).

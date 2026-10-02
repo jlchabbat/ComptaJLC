@@ -23,6 +23,7 @@ class ImportForm(forms.Form):
     fichier = forms.FileField(label="Relevé (structure Banque : Jnl, Date, Libelle, Debit, Credit, Solde)")
 
 
+
 class ParametresForm(forms.ModelForm):
     class Meta:
         model = ParametreReleve

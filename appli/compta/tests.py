@@ -831,14 +831,14 @@ class Rapprochements(TestCase):
                 Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
             n += 1
 
-    def importer(self, contenu=CSV_MODELE, nom="releve.csv"):
+    def importer(self, contenu=CSV_MODELE, nom="releve.csv", **options):
         """Import par la structure unique Banque ; renvoie (ajoutées, doublons, soldes incohérents)."""
         from .models import ImportReleve
         with tempfile.TemporaryDirectory() as dossier:
             chemin = Path(dossier) / nom
             chemin.write_bytes(contenu)
             f = ech_rap.PAR_NOM["Banque"]
-            ech_rap.imp_banque_tout(ech_rap.lire(chemin, f), nom)
+            ech_rap.imp_banque_tout(ech_rap.lire(chemin, f), nom, **options)
         i = ImportReleve.objects.latest("pk")
         return i.ajoutees, i.doublons, len(rap.ecarts_solde(self.b1))
 
@@ -856,6 +856,20 @@ class Rapprochements(TestCase):
         self.assertEqual([(l.date.day, l.montant) for l in LigneReleve.objects.filter(ouverture=False)],
                          [(10, D("1250.00")), (20, D("-400.00"))])                  # remis dans l'ordre chronologique
         self.assertEqual(LigneReleve.objects.get(ouverture=True).montant, D("0.00"))   # sans solde : ouverture à 0
+
+    def test_cle_date_libelle_montant(self):
+        rap.importer(self.b1, [{"date": dt.date(2026, 1, 5), "reference": "11", "operation": " עמלת  מסלול ", "montant": D("-10"),
+                                "solde": D("990")}])                                   # déjà en base, avec référence
+        self.assertEqual(self.importer(CSV_MODELE)[:2], (2, 1))                       # retrouvée sans référence : pas de doublon
+        self.assertEqual(self.importer(CSV_MODELE)[:2], (0, 3))
+        # même jour, même libellé, même montant, deux fois : deux lignes ; la 2e se retrouve au réimport
+        deux = ("Jnl;Date;Libelle;Debit;Credit;Solde\nB1;21/01/2026;פירעון שיק;;5,00;\nB1;21/01/2026;פירעון שיק;;5,00;\n").encode()
+        self.assertEqual(self.importer(deux)[:2], (2, 0))
+        self.assertEqual(self.importer(deux)[:2], (0, 2))
+        self.assertEqual(LigneReleve.objects.filter(date=dt.date(2026, 1, 21)).count(), 2)
+        # libellé différent = autre ligne, sans collision de clé en base
+        autre = ("Jnl;Date;Libelle;Debit;Credit;Solde\nB1;21/01/2026;פירעון אחר;;5,00;\n").encode()
+        self.assertEqual(self.importer(autre)[:2], (1, 0))
 
     def test_structure_non_conforme_refusee(self):
         ancien = "Date;Référence;Opération;Montant;Solde\n05/01/2026;11;x;-10,00;990,00\n".encode()

@@ -815,7 +815,7 @@ def exp_banque_tout():
 def imp_banque_tout(lignes, fichier, utilisateur=None):
     """Chaque ligne porte son journal (Jnl) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
     Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures). Une ligne déjà
-    importée (journal, date, libellé, montant, rang dans la journée) n'est jamais ajoutée deux fois ; chaque import est
+    importée (journal, date, libellé, montant) n'est jamais ajoutée deux fois ; chaque import est
     noté dans l'historique des imports."""
     L, par_journal = Lecteur(), defaultdict(list)
     existants = set(Journal.objects.values_list("code", flat=True))
@@ -1282,17 +1282,24 @@ def fichiers_a_reinjecter():
     return [(f, par_format[f.nom][0]) for f in FORMATS if f.nom in par_format]
 
 
-def _cle_releve(l):
-    return (l.journal_id, l.date, l.reference, l.montant, l.rang, l.ouverture)
+def _cles_releves():
+    """{pk: clé} des lignes de relevé : journal, date, libellé, montant (comme l'import) et n° d'occurrence identique le même jour."""
+    vus, cles = defaultdict(int), {}
+    for l in LigneReleve.objects.order_by("journal_id", "date", "rang", "pk"):
+        base = (l.journal_id, l.date, releves._libelle_cle(l.operation), l.montant, l.ouverture)
+        vus[base] += 1
+        cles[l.pk] = base + (vus[base],)
+    return cles
 
 
 def _memoriser():
     """Ce qui renvoie aux écritures et aux relevés, repéré par des clés qui survivent à la réinjection."""
+    cles = _cles_releves()
     return {
         "mvts": {m.numero: (m.origine, m.commentaire, m.cree_par_id) for m in Mouvement.objects.all()},
         "an": {e.pk: e.mouvement_an.numero for e in Exercice.objects.filter(mouvement_an__isnull=False).select_related("mouvement_an")},
         "fiches": {l.pk: l.mouvement.numero for l in LigneFiche.objects.filter(mouvement__isnull=False).select_related("mouvement")},
-        "pointages": [(r.journal_id, r.mode, r.cree_par_id, [_cle_releve(l) for l in r.releves.all()],
+        "pointages": [(r.journal_id, r.mode, r.cree_par_id, [cles[l.pk] for l in r.releves.all()],
                        [(l.mouvement.numero, l.ordre) for l in r.ecritures.select_related("mouvement")])
                       for r in Rapprochement.objects.prefetch_related("releves", "ecritures")],
     }
@@ -1314,11 +1321,11 @@ def _retablir(memo):
             LigneFiche.objects.filter(pk=pk).update(mouvement_id=mvts[numero])
         else:
             perdus += 1
-    releves = {_cle_releve(l): l.pk for l in LigneReleve.objects.filter(rapprochement__isnull=True)}
+    lignes_releve = {cle: pk for pk, cle in _cles_releves().items()}
     ecritures = {(n, o): pk for pk, n, o in Ligne.objects.filter(rapprochement__isnull=True)
                  .values_list("pk", "mouvement__numero", "ordre")}
     for journal, mode, cree_par, cles_r, cles_e in memo["pointages"]:
-        rs, es = [releves.get(k) for k in cles_r], [ecritures.get(k) for k in cles_e]
+        rs, es = [lignes_releve.get(k) for k in cles_r], [ecritures.get(k) for k in cles_e]
         if None in rs or None in es:
             perdus += 1
             continue

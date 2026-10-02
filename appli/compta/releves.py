@@ -52,25 +52,35 @@ def date(v):
     return None
 
 
+def _libelle_cle(texte):
+    return " ".join((texte or "").split())
+
+
 @transaction.atomic
 def importer(journal, lignes, source="", solde_ouverture=None, auteur=""):
-    """Ajoute les lignes absentes (clé : date, référence, montant, rang dans la journée).
+    """Ajoute les lignes absentes. Clé : date, libellé de la banque et montant (journal compris) ; deux lignes
+    identiques le même jour comptent pour deux (la 2e du fichier retrouve la 2e de la base).
 
     Renvoie (ajoutées, doublons, écarts de solde)."""
-    rangs = defaultdict(int)
-    existant = set(LigneReleve.objects.filter(journal=journal).values_list("date", "reference", "montant", "rang"))
+    en_base = defaultdict(int)
+    dernier_rang = defaultdict(int)
+    for date, operation, montant, rang in LigneReleve.objects.filter(journal=journal, ouverture=False).values_list(
+            "date", "operation", "montant", "rang"):
+        en_base[(date, _libelle_cle(operation), montant)] += 1
+        dernier_rang[date] = max(dernier_rang[date], rang)
     premiere = not LigneReleve.objects.filter(journal=journal).exists()
-    nouvelles, doublons = [], 0
+    vus, nouvelles, doublons = defaultdict(int), [], 0
     carte = any(l.pop("carte", False) for l in lignes)
     if carte and solde_ouverture is None:
         solde_ouverture = ZERO                            # relevé de carte (Isracard…) : pas de solde, débité chaque mois
     for l in lignes:
-        rangs[l["date"]] += 1
-        cle = (l["date"], l["reference"], l["montant"], rangs[l["date"]])
-        if cle in existant:
+        cle = (l["date"], _libelle_cle(l["operation"]), l["montant"])
+        vus[cle] += 1
+        if vus[cle] <= en_base[cle]:                      # n-ième ligne identique déjà en base
             doublons += 1
             continue
-        nouvelles.append(LigneReleve(journal=journal, rang=rangs[l["date"]], source=source[:120], **l))
+        dernier_rang[l["date"]] += 1                      # après les lignes déjà en base du même jour
+        nouvelles.append(LigneReleve(journal=journal, rang=dernier_rang[l["date"]], source=source[:120], **l))
     if premiere and nouvelles:
         if solde_ouverture is None and nouvelles[0].solde is not None:
             solde_ouverture = nouvelles[0].solde - nouvelles[0].montant
