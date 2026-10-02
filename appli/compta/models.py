@@ -9,6 +9,8 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from functools import cached_property
+
 from django.db import models
 from django.db.models import Q, Sum
 
@@ -600,7 +602,7 @@ class LigneReleve(models.Model):
     def __str__(self):
         return f"{self.journal_id} {self.date:%d/%m/%Y} {self.montant}"
 
-    @property
+    @cached_property
     def traduction(self):
         if self.ouverture:
             return "Solde d'ouverture"

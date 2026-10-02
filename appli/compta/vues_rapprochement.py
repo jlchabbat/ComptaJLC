@@ -1,6 +1,8 @@
 """Banque : import des relevés, puis pour chaque ligne sans écriture, compte de contrepartie et code axe 2 → écriture créée."""
 
 
+import datetime as dt
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
@@ -112,6 +114,29 @@ def accueil(request, code=None):
                             apres=mvts)
                 messages.success(request, f"{quoi} reliée(s) à {mvts} (aucune écriture créée).")
             return redirect("rapprochement_journal", journal.code)
+        if "ecarter_cochees" in request.POST or "ecarter_jusquau" in request.POST:
+            qs = moteur.a_affecter(journal)
+            if "ecarter_cochees" in request.POST:
+                qs = qs.filter(pk__in=[int(x) for x in request.POST.getlist("coche") if x.isdigit()])
+            else:
+                try:
+                    qs = qs.filter(date__lte=dt.date.fromisoformat(request.POST.get("jusquau", "")))
+                except ValueError:
+                    qs = qs.none()
+                    messages.error(request, "Choisir la date jusqu'à laquelle écarter les lignes.")
+            n = qs.update(ecartee=True)
+            if n:
+                journaliser(request, "Lignes de relevé écartées", journal.code, apres=f"{n} ligne(s)")
+                messages.success(request, f"{n} ligne(s) écartée(s) : aucune écriture ne sera créée (liste « Lignes écartées »).")
+            elif "ecarter_cochees" in request.POST:
+                messages.warning(request, "Aucune ligne cochée.")
+            return redirect("rapprochement_journal", journal.code)
+        if "relier_evidentes" in request.POST:
+            n = moteur.relier_evidentes(journal, request.user)
+            journaliser(request, "Liaison automatique relevé", journal.code, apres=f"{n} ligne(s) reliée(s)")
+            messages.success(request, f"{n} ligne(s) déjà en compta reliée(s) à leur écriture (même montant, une seule écriture possible)."
+                             if n else "Aucune ligne n'a une écriture évidente : décider ligne par ligne.")
+            return redirect("rapprochement_journal", journal.code)
         if "ecarter" in request.POST or "remettre" in request.POST:
             remettre = "remettre" in request.POST
             qs = moteur.ecartees(journal) if remettre else moteur.a_affecter(journal)
@@ -135,16 +160,17 @@ def accueil(request, code=None):
             return redirect("rapprochement_journal", journal.code)
     lignes = []
     memo = moteur.memoire_affectations() if peut else {}
-    for l in moteur.a_affecter(journal):
+    ctx = moteur.Contexte(journal) if peut else None                  # lu une fois : page rapide même avec beaucoup de lignes
+    for l in (ctx.a_affecter if ctx else moteur.a_affecter(journal)):
         c, a = saisies.get(l.pk, ("", ""))
         propose = moteur.proposition(l, memo) if peut and not c else None
-        deja = moteur.deja_en_compta(l) if peut else []
+        deja = moteur.deja_en_compta(l, ctx) if peut else []
         lignes.append({"l": l, "compte": c, "anal2": a, "libelle": moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
                        "propose": f"{propose.numero} – {propose.libelle}" if propose and not deja else "",
-                       "groupes": moteur.groupes(l) if peut and not deja else [],
-                       "lignes_groupees": moteur.lignes_groupees(l) if peut and not deja else [],
-                       "nulles": moteur.lignes_nulles(l) if peut and not deja else None,
-                       "pistes": moteur.pistes(l) if peut and not deja else None})
+                       "groupes": moteur.groupes(l, ctx=ctx) if peut and not deja else [],
+                       "lignes_groupees": moteur.lignes_groupees(l, ctx=ctx) if peut and not deja else [],
+                       "nulles": moteur.lignes_nulles(l, ctx=ctx) if peut and not deja else None,
+                       "pistes": moteur.pistes(l, ctx=ctx) if peut and not deja else None})
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
         "journaux": js, "journal": journal, "lignes": lignes, "ecartees": list(moteur.ecartees(journal)), "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),

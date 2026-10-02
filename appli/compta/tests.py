@@ -930,6 +930,33 @@ class EcransRapprochement(TestCase):
         from .models import Traduction
         self.assertEqual(Traduction.traduire(frais.operation), "Frais de tenue de compte")
 
+    def test_relier_les_lignes_deja_en_compta(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        avant = LigneReleve.objects.filter(rapprochement__isnull=True, ouverture=False).count()
+        r = self.client.post("/rapprochement/B1/", {"relier_evidentes": "1"})
+        self.assertRedirects(r, "/rapprochement/B1/")
+        apres = LigneReleve.objects.filter(rapprochement__isnull=True, ouverture=False).count()
+        self.assertLess(apres, avant)                                            # frais (10) et virement (400) déjà saisis
+        self.assertFalse(LigneReleve.objects.get(montant=D("-10")).rapprochement_id is None)
+        n = Mouvement.objects.count()
+        self.client.post("/rapprochement/B1/", {"relier_evidentes": "1"})
+        self.assertEqual(Mouvement.objects.count(), n)                           # rien n'est créé
+
+    def test_ecarter_en_masse(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        ls = list(LigneReleve.objects.filter(ouverture=False).order_by("date"))
+        self.client.post("/rapprochement/B1/", {"ecarter_cochees": "1", "coche": [str(ls[0].pk)]})
+        self.assertEqual(LigneReleve.objects.filter(ecartee=True).count(), 1)
+        self.client.post("/rapprochement/B1/", {"ecarter_jusquau": "1", "jusquau": "2026-01-12"})      # la remise du 10/01 aussi
+        self.assertEqual(LigneReleve.objects.filter(ecartee=True).count(), 2)
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, "Lignes écartées (2)")
+        self.assertContains(page, f'name="compte_{ls[2].pk}"')                                      # la dernière reste à traiter
+        self.client.post("/rapprochement/B1/", {"ecarter_jusquau": "1", "jusquau": ""})
+        self.assertEqual(LigneReleve.objects.filter(ecartee=True).count(), 2)
+
     def test_ecarter_et_remettre_une_ligne(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})

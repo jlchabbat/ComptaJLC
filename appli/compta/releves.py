@@ -244,23 +244,51 @@ def ecartees(journal):
     return LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ecartee=True).order_by("date", "rang", "pk")
 
 
-def deja_en_compta(l):
+class Contexte:
+    """Données du journal lues une fois pour toute la page Banque : les propositions de chaque ligne se calculent en mémoire
+    au lieu d'interroger la base ligne par ligne (page rapide même avec plusieurs centaines de lignes)."""
+
+    def __init__(self, journal):
+        self.ecart = dt.timedelta(days=tolerance())
+        self.toutes = list(ecritures(journal))                                   # avec mouvement
+        self.libres = [e for e in self.toutes if e.rapprochement_id is None]
+        self.a_affecter = list(a_affecter(journal))
+        self.releves_reliees = defaultdict(list)
+        for x in LigneReleve.objects.filter(journal=journal, rapprochement__isnull=False):
+            self.releves_reliees[x.rapprochement_id].append(x)
+        self.ailleurs = list(Ligne.objects.filter(compte__numero__startswith="5", rapprochement__isnull=True)
+                             .exclude(compte=journal.compte).exclude(mouvement__origine="cloture")
+                             .select_related("mouvement", "compte"))
+
+
+def _meme_sens_montant(e, l):
+    return (e.debit == l.montant and e.credit == ZERO) if l.montant > 0 else (e.credit == -l.montant and e.debit == ZERO)
+
+
+def deja_en_compta(l, ctx=None):
     """Écritures de banque non reliées, de même montant, à ± tolérance jours : la ligne est peut-être déjà saisie."""
+    if ctx:
+        return sorted((e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ctx.ecart and _meme_sens_montant(e, l)),
+                      key=lambda e: (e.mouvement.date, e.mouvement.numero))
     ecart = dt.timedelta(days=tolerance())
     qs = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart))
     qs = qs.filter(debit=l.montant, credit=ZERO) if l.montant > 0 else qs.filter(credit=-l.montant, debit=ZERO)
     return list(qs.order_by("mouvement__date", "mouvement__numero"))
 
 
-def groupes(l, maxi=4):
+def groupes(l, maxi=4, ctx=None):
     """Plusieurs écritures non reliées dont la somme fait la ligne du relevé (prélèvement de carte, remise de chèques…),
     à ± tolérance jours : [(écritures), …], les plus proches de la date d'abord (3 au plus)."""
     from itertools import combinations
-    ecart = dt.timedelta(days=tolerance())
-    sens = dict(debit__gt=0, credit=ZERO) if l.montant > 0 else dict(credit__gt=0, debit=ZERO)
-    cibles = sorted(ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart),
-                                                **sens),
-                    key=lambda e: (abs((e.mouvement.date - l.date).days), e.mouvement.numero))[:14]
+    ecart = ctx.ecart if ctx else dt.timedelta(days=tolerance())
+    if ctx:
+        proches = [e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ecart
+                   and ((e.debit > 0 and e.credit == ZERO) if l.montant > 0 else (e.credit > 0 and e.debit == ZERO))]
+    else:
+        sens = dict(debit__gt=0, credit=ZERO) if l.montant > 0 else dict(credit__gt=0, debit=ZERO)
+        proches = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart),
+                                              **sens)
+    cibles = sorted(proches, key=lambda e: (abs((e.mouvement.date - l.date).days), e.mouvement.numero))[:14]
     trouves = []
     for n in range(2, maxi + 1):
         for combi in combinations(cibles, n):
@@ -271,15 +299,20 @@ def groupes(l, maxi=4):
     return trouves
 
 
-def lignes_groupees(l, maxi=4):
+def lignes_groupees(l, maxi=4, ctx=None):
     """Plusieurs lignes du relevé (dont l) pour une seule écriture non reliée : frais du mois passés en une fois.
     [(lignes du relevé, écriture), …] (3 au plus), lignes et écriture à ± tolérance jours."""
     from itertools import combinations
-    ecart = dt.timedelta(days=tolerance())
-    autres = sorted(a_affecter(l.journal).filter(date__range=(l.date - ecart, l.date + ecart)).exclude(pk=l.pk),
-                    key=lambda x: (abs((x.date - l.date).days), x.rang))[:10]
+    ecart = ctx.ecart if ctx else dt.timedelta(days=tolerance())
+    if ctx:
+        voisines = [x for x in ctx.a_affecter if abs(x.date - l.date) <= ecart and x.pk != l.pk]
+        libres = [e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ecart]
+    else:
+        voisines = a_affecter(l.journal).filter(date__range=(l.date - ecart, l.date + ecart)).exclude(pk=l.pk)
+        libres = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart))
+    autres = sorted(voisines, key=lambda x: (abs((x.date - l.date).days), x.rang))[:10]
     cibles = {}
-    for e in ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart)):
+    for e in libres:
         cibles.setdefault(montant(e), []).append(e)
     trouves = []
     for n in range(1, maxi):
@@ -292,16 +325,38 @@ def lignes_groupees(l, maxi=4):
     return trouves
 
 
-def lignes_nulles(l, maxi=4):
+def lignes_nulles(l, maxi=4, ctx=None):
     """Lignes du relevé (dont l) dont la somme est nulle (dépôt renouvelé : sortie, retour et intérêts), le même jour :
     elles se relient entre elles, sans écriture. Premier groupe trouvé, ou None."""
     from itertools import combinations
-    autres = list(a_affecter(l.journal).filter(date=l.date).exclude(pk=l.pk).order_by("rang")[:10])
+    if ctx:
+        autres = sorted((x for x in ctx.a_affecter if x.date == l.date and x.pk != l.pk), key=lambda x: x.rang)[:10]
+    else:
+        autres = list(a_affecter(l.journal).filter(date=l.date).exclude(pk=l.pk).order_by("rang")[:10])
     for n in range(1, maxi):
         for combi in combinations(autres, n):
             if l.montant + sum(x.montant for x in combi) == 0:
                 return (l,) + combi
     return None
+
+
+def relier_evidentes(journal, utilisateur=None):
+    """Relie sans ambiguïté les lignes du relevé déjà en compta : une seule écriture de même montant à ± tolérance jours,
+    et cette écriture n'est candidate d'aucune autre ligne. Les cas douteux restent à décider ligne par ligne.
+    Renvoie le nombre de lignes reliées."""
+    ctx = Contexte(journal)
+    candidates = {l.pk: deja_en_compta(l, ctx) for l in ctx.a_affecter}
+    emploi = defaultdict(int)
+    for es in candidates.values():
+        for e in es:
+            emploi[e.pk] += 1
+    n = 0
+    for l in ctx.a_affecter:
+        es = candidates[l.pk]
+        if len(es) == 1 and emploi[es[0].pk] == 1:
+            pointer(journal, [l], [es[0]], utilisateur, "auto")
+            n += 1
+    return n
 
 
 @transaction.atomic
@@ -317,12 +372,14 @@ def relier_nulles(releves, utilisateur=None):
     return r
 
 
-def pistes(l, jours=60):
+def pistes(l, jours=60, ctx=None):
     """Quand rien n'est proposé : pourquoi ? Écritures de même montant hors du cadre habituel.
 
     loin : non reliées, sur le compte de la banque, à plus de « tolérance » jours (jusqu'à 60) : reliables ;
     reliees : déjà reliées à une autre ligne du relevé (relevé importé deux fois ?) ;
     ailleurs : sur un autre compte de trésorerie (5…) à tolérance près : saisies sur la mauvaise banque ?"""
+    if ctx:
+        return _pistes_memoire(l, jours, ctx)
     ecart, large = dt.timedelta(days=tolerance()), dt.timedelta(days=jours)
     montant = (dict(debit=l.montant, credit=ZERO) if l.montant > 0 else dict(credit=-l.montant, debit=ZERO))
     proches = ecritures(l.journal).filter(mouvement__date__range=(l.date - large, l.date + large), **montant)
@@ -337,6 +394,21 @@ def pistes(l, jours=60):
                                          rapprochement__isnull=True, **montant)
                     .exclude(compte=l.journal.compte).exclude(mouvement__origine="cloture")
                     .select_related("mouvement", "compte")[:3])
+    return {"loin": loin[:3], "reliees": reliees, "ailleurs": ailleurs}
+
+
+def _pistes_memoire(l, jours, ctx):
+    """Même résultat que pistes(), calculé sur les données déjà lues (Contexte)."""
+    ecart, large = ctx.ecart, dt.timedelta(days=jours)
+    proches = sorted((e for e in ctx.toutes if abs(e.mouvement.date - l.date) <= large and _meme_sens_montant(e, l)),
+                     key=lambda e: e.mouvement.date)
+    loin = [e for e in proches if e.rapprochement_id is None and abs((e.mouvement.date - l.date).days) > ecart.days]
+    reliees = []
+    for e in [e for e in proches if e.rapprochement_id is not None][:3]:
+        autre = next((x for x in ctx.releves_reliees.get(e.rapprochement_id, []) if x.pk != l.pk), None)
+        if autre and autre.date == l.date and autre.montant == l.montant:
+            reliees.append((e, autre))
+    ailleurs = [x for x in ctx.ailleurs if abs(x.mouvement.date - l.date) <= ecart and _meme_sens_montant(x, l)][:3]
     return {"loin": loin[:3], "reliees": reliees, "ailleurs": ailleurs}
 
 
