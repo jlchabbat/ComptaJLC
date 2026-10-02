@@ -40,7 +40,8 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if deux_axes %}<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>{% endif %}
 </div></div>
 <div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
-{% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
+{% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" and request.path != "/rapprochement/historique/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
+{% url 'releves_historique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Historique des imports</a>
 {% if perms.compta.pointer_releve and avec_traductions %}{% url 'traductions' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Traductions du relevé</a>{% endif %}
 </div></div>
 <div class="menu m-controle"><button type="button">Contrôle ▾</button><div class="sous">

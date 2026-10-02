@@ -787,7 +787,8 @@ def imp_banque(code):
                             "solde": L.montant(n, d, "Solde")})
         L.verifier()
         try:
-            ajoutees, doublons, ecarts = releves.importer(journal, a_faire, source=fichier)
+            ajoutees, doublons, ecarts = releves.importer(journal, a_faire, source=fichier,
+                                                        auteur=utilisateur.get_username() if utilisateur else "")
         except ValueError as e:
             raise Refus([str(e)])
         return (f"{ajoutees} ligne(s) ajoutée(s), {doublons} déjà présente(s)"

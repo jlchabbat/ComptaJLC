@@ -1,0 +1,6 @@
+{% extends "compta/base.html" %}{% block titre %}Historique des imports{% endblock %}{% block contenu %}
+<h1>Historique des imports de relevés</h1>
+<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a></div>
+<table class="triable"><tr><th>Date</th><th>Banque</th><th>Fichier</th><th class="n">Lignes ajoutées</th><th class="n">Doublons ignorés</th><th>Par</th></tr>
+{% for i in imports %}<tr><td>{{ i.importe_le|date:"d/m/Y H:i" }}</td><td>{{ i.journal_id }}</td><td>{{ i.fichier }}</td><td class="n">{{ i.ajoutees }}</td><td class="n">{{ i.doublons }}</td><td>{{ i.auteur }}</td></tr>
+{% empty %}<tr><td colspan="6">Aucun import enregistré.</td></tr>{% endfor %}</table>{% endblock %}

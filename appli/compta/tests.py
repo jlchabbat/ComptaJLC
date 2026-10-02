@@ -888,6 +888,24 @@ class EcransRapprochement(TestCase):
         self.u.groups.add(Group.objects.get(name="Trésorier"))
         self.client.force_login(self.u)
 
+    def test_historique_libelle_modifiable_et_lexique(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        for _ in range(2):
+            self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        page = self.client.get("/rapprochement/historique/")
+        self.assertContains(page, "releve.csv")
+        from .models import ImportReleve
+        self.assertEqual([(i.ajoutees, i.doublons) for i in ImportReleve.objects.order_by("pk")], [(3, 0), (0, 3)])
+        Mouvement.objects.all().delete()
+        frais = LigneReleve.objects.filter(ouverture=False).order_by("date").first()
+        self.assertContains(self.client.get("/rapprochement/B1/"), f'name="libelle_{frais.pk}"')
+        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", f"anal2_{frais.pk}": "GEN.004",
+                                                f"libelle_{frais.pk}": "Frais de tenue de compte", f"lexique_{frais.pk}": "on", "creer": "1"})
+        m = Mouvement.objects.get(lignes__compte_id="600100")
+        self.assertEqual({l.libelle for l in m.lignes.all()}, {"Frais de tenue de compte"})
+        from .models import Traduction
+        self.assertEqual(Traduction.traduire(frais.operation), "Frais de tenue de compte")
+
     def test_import_affectation_et_ecriture(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         r = self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})

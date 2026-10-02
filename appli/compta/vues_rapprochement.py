@@ -64,7 +64,12 @@ def _affecter(request, journal, lignes):
             erreurs[l.pk] = ("Compte introuvable. " if not compte else "") + ("Code axe 2 introuvable." if not anal2 else "")
             continue
         try:
-            crees.append(moteur.creer_ecriture(l, compte, anal2, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}"))))
+            libelle = request.POST.get(f"libelle_{l.pk}", "").strip()
+            crees.append(moteur.creer_ecriture(l, compte, anal2, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}")),
+                                               libelle=libelle))
+            if libelle and request.POST.get(f"lexique_{l.pk}") and Traduction.cle_de(l.operation):
+                Traduction.objects.update_or_create(cle=Traduction.cle_de(l.operation)[:120],      # lexique : libellé retenu
+                                                    defaults={"hebreu": l.operation[:120], "traduction": libelle[:120]})
         except ValueError as e:
             erreurs[l.pk] = str(e)
         else:
@@ -118,7 +123,7 @@ def accueil(request, code=None):
         c, a = saisies.get(l.pk, ("", ""))
         propose = moteur.proposition(l, memo) if peut and not c else None
         deja = moteur.deja_en_compta(l) if peut else []
-        lignes.append({"l": l, "compte": c, "anal2": a, "erreur": erreurs.get(l.pk, ""), "deja": deja,
+        lignes.append({"l": l, "compte": c, "anal2": a, "libelle": moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
                        "propose": f"{propose.numero} – {propose.libelle}" if propose and not deja else "",
                        "groupes": moteur.groupes(l) if peut and not deja else [],
                        "lignes_groupees": moteur.lignes_groupees(l) if peut and not deja else [],
@@ -149,7 +154,8 @@ def importer(request, code):
             if not lignes:
                 raise ValueError("Aucune ligne de mouvement reconnue (en-têtes Date, Montant ou Crédit / Débit attendus).")
             ajoutees, doublons, ecarts = moteur.importer(journal, lignes, source=f.name,
-                                                         solde_ouverture=form.cleaned_data["solde_ouverture"])
+                                                         solde_ouverture=form.cleaned_data["solde_ouverture"],
+                                                         auteur=request.user.get_username())
         except ValueError as e:
             messages.error(request, f"Import refusé : {e}")
         else:
@@ -206,3 +212,11 @@ def traductions(request):
             vus.add(cle)
             a_traduire.append(l)
     return render(request, "compta/traductions.html", {"a_traduire": a_traduire, "connues": Traduction.objects.all()})
+
+
+@login_required
+@consulter
+def historique(request):
+    """Historique des imports de relevés : fichier, banque, date, lignes ajoutées, doublons ignorés."""
+    from .models import ImportReleve
+    return render(request, "compta/releves_historique.html", {"imports": ImportReleve.objects.select_related("journal")})

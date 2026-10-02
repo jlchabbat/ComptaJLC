@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.db.models import Q
 
-from .models import ZERO, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
+from .models import ZERO, ImportReleve, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
 from .reglages import montant as en_devise
 
 HEBREU = re.compile(r"[֐-׿]")
@@ -273,7 +273,7 @@ def lire(nom, contenu):
 
 
 @transaction.atomic
-def importer(journal, lignes, source="", solde_ouverture=None):
+def importer(journal, lignes, source="", solde_ouverture=None, auteur=""):
     """Ajoute les lignes absentes (clé : date, référence, montant, rang dans la journée).
 
     Renvoie (ajoutées, doublons, écarts de solde)."""
@@ -300,6 +300,7 @@ def importer(journal, lignes, source="", solde_ouverture=None):
         LigneReleve.objects.create(journal=journal, date=veille, rang=0, operation="Solde d'ouverture", montant=solde_ouverture,
                                    solde=solde_ouverture, ouverture=True, source=source[:120])
     LigneReleve.objects.bulk_create(nouvelles)
+    ImportReleve.objects.create(journal=journal, fichier=source[:200], ajoutees=len(nouvelles), doublons=doublons, auteur=auteur[:100])
     return len(nouvelles), doublons, len(ecarts_solde(journal))
 
 
@@ -550,7 +551,7 @@ def libelle_releve(l):
 
 
 @transaction.atomic
-def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
+def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle=""):
     """Un Mvt à deux lignes (banque / contrepartie, même code axe 2), aussitôt relié à la ligne du relevé.
 
     Refus si la ligne est déjà reliée (pas de double écriture) ou si une écriture identique existe déjà en compta
@@ -567,7 +568,7 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False):
     mv = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=l.date, journal=l.journal,
                                   origine="saisie", cree_par=utilisateur,
                                   commentaire=f"Relevé {l.journal.code} du {l.date:%d/%m/%Y} : {l.operation}")
-    lib = libelle_releve(l)
+    lib = (libelle or "").strip()[:200] or libelle_releve(l)       # libellé modifié par l'utilisateur, sinon traduction
     entree = l.montant > 0
     ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib, anal2=anal2,
                                         debit=m if entree else ZERO, credit=ZERO if entree else m)

@@ -50,6 +50,7 @@ urlpatterns = [
     path("fiches/document/<int:pk>/", vues_fiches.document, name="document_fiche"),
     path("rapprochement/", rap.accueil, name="rapprochement"),
     path("rapprochement/traductions/", rap.traductions, name="traductions"),
+    path("rapprochement/historique/", rap.historique, name="releves_historique"),
     path("rapprochement/<str:code>/", rap.accueil, name="rapprochement_journal"),
     path("rapprochement/<str:code>/parametres/", rap.parametres, name="releve_parametres"),
     path("rapprochement/<str:code>/import/", rap.importer, name="releve_import"),

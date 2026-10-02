@@ -602,6 +602,24 @@ class LigneReleve(models.Model):
         return Traduction.traduire(self.operation) or ("À traduire" if oui("traductions_releve") else self.operation)
 
 
+class ImportReleve(models.Model):
+    """Historique des imports de relevés bancaires (un enregistrement par fichier importé)."""
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name="imports_releve")
+    fichier = models.CharField(max_length=200)
+    importe_le = models.DateTimeField("importé le", auto_now_add=True)
+    ajoutees = models.PositiveIntegerField("lignes ajoutées", default=0)
+    doublons = models.PositiveIntegerField("doublons ignorés", default=0)
+    auteur = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ["-importe_le", "-pk"]
+        verbose_name = "import de relevé"
+        verbose_name_plural = "imports de relevés"
+
+    def __str__(self):
+        return f"{self.journal_id} {self.fichier}"
+
+
 class AxeCompte(models.Model):
     """Classement libre des comptes (rubrique de déclaration, type, catégorie, groupe…), repris du plan comptable."""
 
