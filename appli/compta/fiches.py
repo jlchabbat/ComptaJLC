@@ -133,7 +133,7 @@ def reporter(fiche, utilisateur):
         mv = Mouvement.objects.create(numero=numero + i, date=l.date, journal=r.journal, origine="liaison",
                                       cree_par=utilisateur, commentaire=f"Fiche bénévole « {fiche.titre} » (ligne {l.pk})")
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=k, compte=x.compte, libelle=r.libelle, debit=x.debit, credit=x.credit,
-                                         anal2=anal2(l)) for k, x in enumerate(r.lignes)])
+                                         anal2=anal2(l) if x.compte.porte_axe2 else None) for k, x in enumerate(r.lignes)])
         l.mouvement = mv
         l.save(update_fields=["mouvement"])
         from .justificatifs import documents_vers_justificatifs

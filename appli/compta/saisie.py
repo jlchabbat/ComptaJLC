@@ -125,13 +125,13 @@ def controler(op):
             e["Virement"] = "Les deux comptes du virement doivent être différents."
     elif op.vers:
         e["Virement"] = "La case « Vers » ne sert qu'aux virements internes : la vider."
-    if not op.anal2:
+    if not op.anal2 and any(l.compte is not None and l.compte.porte_axe2 for l in r.lignes):    # axe 2 : comptes 6 et 7 seulement
         from .reglages import code_axe2_defaut
         defaut = code_axe2_defaut()                       # un seul axe : code d'office
         if defaut:
             op.anal2 = CodeAnalytique.objects.get(code=defaut)
         else:
-            e["Événement / projet"] = "Choisir l'événement ou le projet (axe 2)."
+            e["Événement / projet"] = "Choisir l'événement ou le projet (axe 2) : la dépense ou la recette est affectée à une activité."
     utilise_contrepartie = LigneSchema.objects.filter(schema=m.schema, role="CONTREPARTIE").exists()
     contrepartie = op.compte or m.compte
     if not utilise_contrepartie:
@@ -169,7 +169,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
         mv = Mouvement.objects.create(numero=numero + rang - 1, date=op.date, journal=ls[0].journal,
                                       origine="saisie", cree_par=utilisateur)
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit,
-                                         anal2=op.anal2) for i, l in enumerate(ls)])
+                                         anal2=op.anal2 if l.compte.porte_axe2 else None) for i, l in enumerate(ls)])
         crees.append(mv)
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", action="Saisie",
                                 objet=", ".join(f"Mvt {m.numero}" for m in crees),

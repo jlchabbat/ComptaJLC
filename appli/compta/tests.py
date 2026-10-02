@@ -382,7 +382,7 @@ class PremierDemarrage(TestCase):
         from .membres import creer_tiers                                         # comptes de tiers : axe 1 du plan
         for libelle, numero in (("Membre", "411COHEN001"), ("Fournisseur", "401COHEN001")):
             c = creer_tiers(TypeTiers.objects.get(libelle=libelle), "Cohen", "David")
-            self.assertEqual((c.numero, c.anal1_id, c.lettrable), (numero, "BIL.4", True))
+            self.assertEqual((c.numero, c.anal1_id, c.lettrable), (numero, "BIL", True))
         self.assertFalse(Membre.objects.filter(compte_id="411000").exists())     # compte collectif : pas de fiche
 
     def test_mes_propres_fichiers(self):
@@ -631,7 +631,9 @@ class Fiches(TestCase):
         crees = fiches_moteur.reporter(self.act, u)
         self.assertEqual([m.numero for m in crees], [422, 423, 424, 425, 426])
         self.assertEqual(Ligne.objects.filter(mouvement__origine="liaison").count(), 12)
-        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison").values_list("anal2_id", flat=True)), {"MAN.001"})
+        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison").values_list("anal2_id", flat=True)), {"MAN.001", None})
+        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison", compte__numero__regex=r"^[67]").values_list("anal2_id", flat=True)),
+                         {"MAN.001"})                                                  # axe 2 : comptes 6 et 7 seulement
         self.assertEqual(self.act.statut, "reportee")
         self.assertEqual(fiches_moteur.reporter(self.act, u), [])     # rien de nouveau
         ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")         # gestion : colonnes du trésorier vides
@@ -958,7 +960,7 @@ class EcransRapprochement(TestCase):
         self.assertRedirects(r, "/rapprochement/B1/")
         m = Mouvement.objects.get(lignes__compte_id="600100")
         self.assertEqual([(x.compte_id, x.debit, x.credit, x.anal2_id, x.libelle) for x in m.lignes.order_by("ordre")],
-                         [("512000", D(0), D(10), "GEN.004", "FRAIS DE FORFAIT"), ("600100", D(10), D(0), "GEN.004", "FRAIS DE FORFAIT")])
+                         [("512000", D(0), D(10), None, "FRAIS DE FORFAIT"), ("600100", D(10), D(0), "GEN.004", "FRAIS DE FORFAIT")])
         self.assertEqual((m.date, m.journal_id), (frais.date, "B1"))
         v = Mouvement.objects.get(lignes__compte_id="411TAIEB001", lignes__debit=400)
         self.assertEqual(v.lignes.get(compte_id="512000").credit, D(400))
@@ -1198,11 +1200,10 @@ class EcransEtats(TestCase):
         self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget",
                                          "Historique"])
         self.assertContains(self.client.get("/cloture/"), "À-nouveaux qui seront créés")
-        self.client.post("/cloture/", {"anal2": "GEN.001", "confirmation": "on"})
+        self.client.post("/cloture/", {"confirmation": "on"})
         self.e25.refresh_from_db()
         self.assertTrue(self.e25.clos)
         self.assertEqual(self.client.get(f"/cloture/archive/{self.e25.pk}/").status_code, 200)
-        self.assertEqual(Reglage.lire("code_axe2_a_nouveaux"), "GEN.001")
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
@@ -1406,7 +1407,8 @@ class EcransCorrections(TestCase):
                 "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15",
                 "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15"}
         self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
-        self.assertEqual({l.anal2_id for l in Mouvement.objects.get(numero=500).lignes.all()}, {"GEN"})
+        self.assertEqual({l.compte_id: l.anal2_id for l in Mouvement.objects.get(numero=500).lignes.all()},
+                         {"600100": "GEN", "512000": None})                         # axe 2 : comptes 6 et 7 seulement
 
     def test_bouton_supprimer(self):
         self.client.get("/ecritures/?tri=debit&ordre=desc")
@@ -2156,7 +2158,7 @@ class Echanges(TransactionTestCase):
                                         [d, "M1", 950, "512000", "FRAIS", None, 2.35, None, ""]])
         self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s)")
         m = Mouvement.objects.get(numero=950)
-        self.assertEqual([l.anal2_id for l in m.lignes.all()], ["GEN", "GEN"])
+        self.assertEqual([l.anal2_id for l in m.lignes.all()], ["GEN", None])             # code d'office : compte 6 seulement
         self.assertContains(self.client.get("/mouvement/950/"), "2,35")
 
     def test_axes_de_comptes(self):

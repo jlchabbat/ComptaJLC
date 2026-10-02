@@ -72,6 +72,11 @@ class Compte(models.Model):
     def classe(self):
         return self.numero[:1]
 
+    @property
+    def porte_axe2(self):
+        """L'axe 2 (activité, événement) n'affecte que les dépenses et recettes : comptes de classe 6 ou 7."""
+        return self.numero[:1] in ("6", "7")
+
 
 class Journal(models.Model):
     code = models.CharField(max_length=10, primary_key=True)
@@ -176,8 +181,8 @@ class Ligne(models.Model):
     libelle = models.CharField("libellé", max_length=200)
     debit = models.DecimalField("débit", max_digits=14, decimal_places=2, default=ZERO)
     credit = models.DecimalField("crédit", max_digits=14, decimal_places=2, default=ZERO)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
-                              verbose_name="axe 2")
+    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
+                              related_name="lignes", verbose_name="axe 2", help_text="Comptes de classe 6 et 7 seulement.")
     lettrage = models.CharField(max_length=10, blank=True)
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 

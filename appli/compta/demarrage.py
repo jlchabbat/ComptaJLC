@@ -21,14 +21,14 @@ FORMATS_RELEVE = [("excel", "Autre banque"), ("mizrahi", "Banque Mizrahi-Tefahot
 
 # plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable) ; 401000 et 411000 donnent
 # leur code axe 1 aux comptes de tiers créés ensuite (401…, 411…)
-AXE1 = [("BIL.1", "FONDS ASSOCIATIFS"), ("BIL.4", "TIERS"), ("BIL.5", "TRESORERIE"), ("FON.1", "FONCTIONNEMENT"),
+AXE1 = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
         ("ACT.1", "ACTIVITES"), ("COT.1", "COTISATIONS"), ("DON.1", "DONS ET SUBVENTIONS")]
 AXE2 = [("GEN.001", "GENERAL")]
 PREFIXES = [("ACT.", 1, "Activités"), ("GEN.", 2, "Général"), ("MAN.", 2, "Manifestations"), ("PRO.", 2, "Projets")]
 COMPTES = [
-    ("110000", "REPORT A NOUVEAU", "BIL.1", False), ("401000", "FOURNISSEURS DIVERS", "BIL.4", True),
-    ("411000", "MEMBRES DIVERS", "BIL.4", True),
-    ("470000", "COMPTE D'ATTENTE", "BIL.4", False), ("580000", "VIREMENTS INTERNES", "BIL.5", False),
+    ("110000", "REPORT A NOUVEAU", "BIL", False), ("401000", "FOURNISSEURS DIVERS", "BIL", True),
+    ("411000", "MEMBRES DIVERS", "BIL", True),
+    ("470000", "COMPTE D'ATTENTE", "BIL", False), ("580000", "VIREMENTS INTERNES", "BIL", False),
     ("600000", "ACHATS ET FRAIS DIVERS", "FON.1", False), ("600100", "FRAIS BANCAIRES", "FON.1", False),
     ("600200", "LOCATION DE SALLES", "ACT.1", False), ("610000", "MANIFESTATIONS", "ACT.1", False),
     ("625000", "DONS VERSES", "DON.1", False), ("630000", "AIDES VERSEES", "DON.1", False),
@@ -112,14 +112,14 @@ def demarrer(d, auteur=""):
         mizrahi, bit = [], ""
         for i, (nom, fmt) in enumerate(d["banques"][:3], 1):
             code, numero = f"B{i}", ("512000", "512100", "512200")[i - 1]
-            compte, _ = Compte.objects.get_or_create(numero=numero, defaults={"libelle": nom.upper()[:100], "anal1_id": "BIL.5"})
+            compte, _ = Compte.objects.get_or_create(numero=numero, defaults={"libelle": nom.upper()[:100], "anal1_id": "BIL"})
             Journal.objects.get_or_create(code=code, defaults={"intitule": nom[:60], "type": "BQ", "compte": compte})
             if fmt == "mizrahi":
                 mizrahi.append(code)
             elif fmt == "bit" and not bit:
                 bit = code
         if d.get("caisse"):
-            compte, _ = Compte.objects.get_or_create(numero="530000", defaults={"libelle": "CAISSE", "anal1_id": "BIL.5"})
+            compte, _ = Compte.objects.get_or_create(numero="530000", defaults={"libelle": "CAISSE", "anal1_id": "BIL"})
             Journal.objects.get_or_create(code="CA", defaults={"intitule": "Caisse", "type": "CA", "compte": compte})
         for code, lib, typ in JOURNAUX:
             Journal.objects.get_or_create(code=code, defaults={"intitule": lib, "type": typ})

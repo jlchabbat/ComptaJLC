@@ -554,7 +554,12 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     for n, d in lignes:
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
-        compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2", not defaut2) or defaut2
+        compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2")
+        if compte[:1] in ("6", "7"):                      # axe 2 : dépenses et recettes seulement (classes 6 et 7)
+            anal2 = anal2 or defaut2
+            if not anal2:
+                L.erreur(n, f"Anal2 manquant : obligatoire pour le compte {compte} (dépense ou recette).")
+        anal2 = anal2 or None                             # comptes de bilan : vide (un code présent est conservé tel quel)
         debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
@@ -613,7 +618,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             ids = list(m.lignes.values_list("pk", flat=True)) + [None] * len(ls)    # même rang = même ligne (pointage gardé)
             corrections.modifier(m, date, Journal.objects.get(code=jnl),
                                  [corrections.LigneSaisie(ids[i], Compte.objects.get(numero=x[3]), x[4], x[5], x[6],
-                                                          CodeAnalytique.objects.get(code=x[7])) for i, x in enumerate(ls)],
+                                                          CodeAnalytique.objects.filter(code=x[7]).first()) for i, x in enumerate(ls)],
                                  f"import {fichier}", utilisateur)
             for l, x in zip(m.lignes.all(), ls):
                 if l.lettrage != x[8]:
@@ -974,7 +979,7 @@ AIDE = {
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "LibelCompte": (F, TEXTE, "Rappel du plan, non lu"),
         "Libelle": (O, TEXTE, ""), "Debit": (F, MONTANT, "Débit OU crédit"), "Credit": (F, MONTANT, "Débit OU crédit"),
         "Anal1": (F, CODE, "Rappel du plan (axe 1 du compte) : le plan fait foi"), "LibelAnal1": (F, TEXTE, "Rappel, non lu"),
-        "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx) ; facultatif avec un seul axe (réglage un_seul_axe)"),
+        "Anal2": (F, CODE, "Code axe 2 (Axe2.xlsx), obligatoire pour les comptes 6 et 7 seulement (facultatif avec un seul axe : réglage un_seul_axe)"),
         "LibelAnal2": (F, TEXTE, "Rappel, non lu"), "Lien": (F, "adresse https://", "Document justificatif en ligne, joint au Mvt"),
         "Let": (F, "3 lettres majuscules", "Code de lettrage (AAA, AAB…), vide hors comptes de tiers")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "

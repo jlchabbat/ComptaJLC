@@ -86,7 +86,7 @@ def preparer(ex):
 
 
 @transaction.atomic
-def cloturer(ex, utilisateur, anal2):
+def cloturer(ex, utilisateur, anal2=None):
     p = preparer(ex)
     if not p.ok:
         raise ValueError(" ".join(p.bloquants))
@@ -105,7 +105,7 @@ def cloturer(ex, utilisateur, anal2):
                                       origine="cloture", cree_par=utilisateur,
                                       commentaire=f"À-nouveaux de la clôture de « {ex.libelle} »")
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte_id=n, libelle=f"A NOUVEAU {ex.libelle}".upper()[:200],
-                                         debit=d, credit=c, anal2=anal2) for i, (n, d, c) in enumerate(p.lignes)])
+                                         debit=d, credit=c, anal2=anal2 if n[0] in ("6", "7") else None) for i, (n, d, c) in enumerate(p.lignes)])
     ex.clos, ex.mouvement_an, ex.resultat = True, mv, p.resultat
     ex.cloture_le, ex.cloture_par = timezone.now(), utilisateur.get_username()
     ex.save()

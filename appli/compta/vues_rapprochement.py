@@ -58,8 +58,13 @@ def _affecter(request, journal, lignes):
             from .reglages import code_axe2_defaut
             defaut = code_axe2_defaut()                   # un seul axe : code d'office
             anal2 = CodeAnalytique.objects.filter(code=defaut).first() if defaut else None
-        if not compte or not anal2:
-            erreurs[l.pk] = ("Compte introuvable. " if not compte else "") + ("Code axe 2 introuvable." if not anal2 else "")
+        if compte and not compte.porte_axe2:
+            anal2 = None                                  # axe 2 : comptes 6 et 7 seulement
+        elif a and not anal2:
+            erreurs[l.pk] = "Code axe 2 introuvable."
+            continue
+        if not compte or (compte.porte_axe2 and not anal2):
+            erreurs[l.pk] = ("Compte introuvable. " if not compte else "Code axe 2 à choisir pour une dépense ou une recette.")
             continue
         try:
             libelle = request.POST.get(f"libelle_{l.pk}", "").strip()
