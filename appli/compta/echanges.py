@@ -7,6 +7,7 @@ après un import réussi, ils sont déplacés et datés dans Imports/Importés. 
 """
 
 import datetime as dt
+import re
 import io
 import shutil
 from collections import defaultdict
@@ -19,7 +20,7 @@ from django.db import transaction
 
 from . import dossiers, export, releves
 from .membres import ENTETES_MODELE, importer_tableau
-from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneFiche, LigneReleve, Membre,
+from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, Membre,
                      Modification, Mouvement, Prefixe, Rapprochement, Reglage, Traduction)
 
 IMPORTES = "Importés"
@@ -154,7 +155,9 @@ class Lecteur:
         except (TypeError, ValueError):
             r = None
         if r not in permis:
-            self.erreur(n, f"{col} : {' ou '.join(map(str, permis))} attendu.")
+            attendu = (f"entier de {permis[0]} à {permis[-1]}" if isinstance(permis, range) and len(permis) > 20
+                       else " ou ".join(map(str, permis)))      # (jamais énumérer un grand intervalle)
+            self.erreur(n, f"{col} : {attendu} attendu.")
         return r
 
     def oui(self, n, d, col, defaut=False):
@@ -429,9 +432,18 @@ def exp_liens():
     return [[j.mouvement.numero, j.lien, j.description] for j in Justificatif.objects.exclude(lien="").select_related("mouvement")]
 
 
-def imp_liens(lignes, fichier, utilisateur=None):
+def _joindre_lien(m, lien, auteur="", description=""):
+    """Joint le document en ligne au Mvt ; False s'il l'est déjà (encore en ligne, ou déjà copié sur le site)."""
     from . import justificatifs as just
-    from .models import Justificatif
+    deja = (Justificatif.objects.filter(lien=lien).exists()
+            or Modification.objects.filter(action="Document en ligne enregistré sur le site", avant=lien[:300]).exists())
+    if deja:
+        return False
+    just.ajouter_lien(m, lien, "Document en ligne", description, auteur, rapatrier_aussitot=False)
+    return True
+
+
+def imp_liens(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
     for n, d in lignes:
         numero, lien = L.entier(n, d, "Mvt", range(1, 10 ** 9)), L.texte(n, d, "Lien", True, 500)
@@ -445,13 +457,7 @@ def imp_liens(lignes, fichier, utilisateur=None):
     auteur = utilisateur.get_username() if utilisateur else ""
     c = defaultdict(int)
     for m, lien, description in a_faire:
-        deja = (Justificatif.objects.filter(lien=lien).exists()               # encore en ligne, ou déjà copié sur le site
-                or Modification.objects.filter(action="Document en ligne enregistré sur le site", avant=lien[:300]).exists())
-        if deja:
-            c["déjà joint(s)"] += 1
-            continue
-        just.ajouter_lien(m, lien, "Document en ligne", description, auteur, rapatrier_aussitot=False)
-        c["joint(s)"] += 1
+        c["joint(s)" if _joindre_lien(m, lien, auteur, description) else "déjà joint(s)"] += 1
     return resume(c)
 
 
@@ -510,9 +516,18 @@ def imp_budget(lignes, fichier, utilisateur=None):
 # ---- écritures
 
 def exp_ecritures():
-    return [[l.mouvement.date, l.mouvement.journal_id, l.mouvement.numero, l.compte_id, l.libelle,
-             l.debit or None, l.credit or None, l.anal2_id, l.lettrage]
-            for l in Ligne.objects.select_related("mouvement").order_by("mouvement__numero", "ordre")]
+    liens = {}
+    for j in Justificatif.objects.exclude(lien="").order_by("pk"):
+        liens.setdefault(j.mouvement_id, j.lien)              # un lien par Mvt, porté par sa première ligne
+    lignes, vus = [], set()
+    for l in Ligne.objects.select_related("mouvement", "compte", "compte__anal1", "anal2").order_by("mouvement__numero", "ordre"):
+        a1 = l.compte.anal1
+        lien = "" if l.mouvement_id in vus else liens.get(l.mouvement_id, "")
+        vus.add(l.mouvement_id)
+        lignes.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle, l.libelle,
+                       l.debit or None, l.credit or None, a1.code if a1 else "", a1.libelle if a1 else "",
+                       l.anal2_id, l.anal2.libelle if l.anal2_id else "", lien, l.lettrage])
+    return lignes
 
 
 def empreinte(date, journal, lignes):
@@ -530,6 +545,8 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     journaux = set(Journal.objects.values_list("code", flat=True))
     axe2 = set(CodeAnalytique.objects.filter(axe=2).values_list("code", flat=True))
     existants = set(Mouvement.objects.values_list("numero", flat=True))
+    plan_anal1 = dict(Compte.objects.exclude(anal1__isnull=True).values_list("numero", "anal1_id"))
+    differences = []
     from .reglages import code_axe2_defaut
     defaut2 = code_axe2_defaut()                          # un seul axe : Anal2 facultatif, code d'office
     if defaut2:
@@ -538,7 +555,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
         compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2", not defaut2) or defaut2
-        debit, credit = L.montant(n, d, "Débit") or ZERO, L.montant(n, d, "Crédit") or ZERO
+        debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
         if compte and compte not in comptes:
@@ -547,8 +564,15 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             L.erreur(n, f"code axe 2 « {anal2} » inconnu.")
         if (debit > 0) == (credit > 0) or debit < 0 or credit < 0:
             L.erreur(n, "un débit OU un crédit, positif (RG-03).")
-        mvts[numero].append((n, date, jnl, compte, L.texte(n, d, "Libellé", True, 200), debit, credit, anal2,
-                             L.texte(n, d, "Let", longueur=10)))
+        lettre = L.texte(n, d, "Let", longueur=3)
+        if lettre and not re.fullmatch(r"[A-Z]{3}", lettre):
+            L.erreur(n, f"Let « {lettre} » : 3 lettres majuscules attendues (AAA, AAB…).")
+        lien = L.texte(n, d, "Lien", longueur=500)
+        if lien and not lien.startswith("https://"):
+            L.erreur(n, "Lien : adresse https:// attendue.")
+        if compte in comptes and (L.texte(n, d, "Anal1") or "") not in ("", plan_anal1.get(compte, "")):
+            differences.append(n)                         # le plan fait foi : simple avertissement
+        mvts[numero].append((n, date, jnl, compte, L.texte(n, d, "Libelle", True, 200), debit, credit, anal2, lettre, lien))
     for numero, ls in mvts.items():
         if numero is None:
             continue
@@ -574,7 +598,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             continue
         actuel = [(m.date, m.journal_id, l.compte_id, l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage)
                   for l in m.lignes.all()]
-        if actuel != [tuple(x[1:]) for x in ls]:
+        if actuel != [tuple(x[1:9]) for x in ls]:
             if corrections.verrou(m):
                 L.erreur(ls[0][0], f"Mvt {numero} modifié dans le fichier, mais non modifiable : {corrections.verrou(m)}")
             modifies[numero] = m
@@ -606,6 +630,14 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     if ecartes:
         texte += (f" ; {len(ecartes)} doublon(s) écarté(s), déjà en compta sous un autre numéro (Mvt "
                   + ", ".join(f"{n} = {v}" for n, v in sorted(ecartes.items())[:20]) + (" …" if len(ecartes) > 20 else "") + ")")
+    auteur = utilisateur.get_username() if utilisateur else ""
+    joints = sum(_joindre_lien(Mouvement.objects.get(numero=numero), lien, auteur)
+                 for numero, ls in mvts.items() if numero not in ecartes for lien in {x[9] for x in ls if x[9]})
+    if joints:
+        texte += f" ; {joints} lien(s) de document joint(s)"
+    if differences:
+        texte += (f" ; attention : l'axe 1 du fichier diffère du plan à {len(differences)} ligne(s) "
+                  f"(ex. ligne {differences[0]}), le plan fait foi")
     return texte
 
 
@@ -618,8 +650,8 @@ def imp_libelles(lignes, fichier, utilisateur=None):
     for n, d in lignes:
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
         mvts[numero].append((n, L.date(n, d, "Date"), L.texte(n, d, "Jnl", True), L.texte(n, d, "Compte", True),
-                             L.texte(n, d, "Libellé", longueur=200) or "", L.montant(n, d, "Débit") or ZERO,
-                             L.montant(n, d, "Crédit") or ZERO))
+                             L.texte(n, d, "Libelle", longueur=200) or "", L.montant(n, d, "Debit") or ZERO,
+                             L.montant(n, d, "Credit") or ZERO))
     L.verifier()
     en_base = defaultdict(list)
     for m in Mouvement.objects.prefetch_related("lignes"):
@@ -758,6 +790,8 @@ def rapport_ecarts(ecarts, deja_pris=()):
 # ---- relevés Banque 1 et Banque 2 (Excel, CSV ou PDF converti) et caisse
 
 COLONNES_BANQUE = ["Date", "Référence", "Opération", "Montant", "Solde"]
+COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1", "Anal2",
+                      "LibelAnal2", "Lien", "Let"]
 
 
 def journal_obligatoire(code):
@@ -794,6 +828,42 @@ def imp_banque(code):
         return (f"{ajoutees} ligne(s) ajoutée(s), {doublons} déjà présente(s)"
                 + (f" ; attention : {ecarts} solde(s) du relevé incohérent(s)" if ecarts else ""))
     return f
+
+
+# ---- Banque : un seul fichier pour toutes les banques et caisses (structure interne, préparée en amont par Power Query)
+
+def exp_banque_tout():
+    return [[l.journal_id, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None]
+            for l in LigneReleve.objects.filter(ouverture=False).order_by("journal_id", "date", "rang")]
+
+
+def imp_banque_tout(lignes, fichier, utilisateur=None):
+    """Chaque ligne porte son journal (Jnl) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
+    Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures et le relevé Bit). Une ligne déjà
+    importée (journal, date, libellé, montant, rang dans la journée) n'est jamais ajoutée deux fois ; chaque import est
+    noté dans l'historique des imports."""
+    L, par_journal = Lecteur(), defaultdict(list)
+    existants = set(Journal.objects.values_list("code", flat=True))
+    for n, d in lignes:
+        jnl = L.texte(n, d, "Jnl", True)
+        if jnl and jnl not in existants:
+            L.erreur(n, f"journal {jnl} inconnu (Administration › Journaux).")
+        debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
+        if (debit is None) == (credit is None) or (debit or credit or ZERO) <= 0:
+            L.erreur(n, "un seul montant, Debit OU Credit, positif.")
+        par_journal[jnl].append({"date": L.date(n, d, "Date"), "reference": "", "operation": L.texte(n, d, "Libelle", True, 200),
+                                 "montant": (debit or ZERO) - (credit or ZERO), "solde": None})
+    L.verifier()
+    auteur = utilisateur.get_username() if utilisateur else ""
+    comptes_rendus = []
+    for jnl, a_faire in par_journal.items():
+        try:
+            ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier, solde_ouverture=ZERO,
+                                                     auteur=auteur)
+        except ValueError as e:
+            raise Refus([str(e)])
+        comptes_rendus.append(f"{jnl} : {ajoutees} ajoutée(s), {doublons} déjà présente(s)")
+    return " ; ".join(comptes_rendus)
 
 
 # ---- Bit : format imposé, journal du réglage releve_bit (B3 à la Loge), remplace le relevé existant
@@ -860,13 +930,13 @@ FORMATS = [
     Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions,
            synonymes=(("Libellé hébreu", "Traduction"),)),
     Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"], exp_budget, imp_budget, (6,)),
-    Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)",
-           ["Date", "Jnl", "Mvt", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures,
-           imp_ecritures, (6, 7)),
-    Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)",
-           ["Date", "Jnl", "Mvt", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"], exp_ecritures,
-           imp_libelles, (6, 7)),
+    Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)", COLONNES_ECRITURES, exp_ecritures, imp_ecritures, (7, 8),
+           (11, 12, 13, 14)),
+    Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)", COLONNES_ECRITURES, exp_ecritures,
+           imp_libelles, (7, 8), (11, 12, 13, 14)),
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
+    Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
+           ["Jnl", "Date", "Libelle", "Debit", "Credit"], exp_banque_tout, imp_banque_tout, (4, 5)),
     Format("Banque1", "Relevé Banque 1 (journal B1)", COLONNES_BANQUE, exp_banque("B1"), imp_banque("B1"), (4, 5)),
     Format("Banque2", "Relevé Banque 2 (journal B2)", COLONNES_BANQUE, exp_banque("B2"), imp_banque("B2"), (4, 5)),
     Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
@@ -927,17 +997,24 @@ AIDE = {
         "Exercice": (O, TEXTE, "Libellé de l'exercice (Exercices.xlsx)"), "Nature": (O, "Charges / Produits", ""),
         "Compte": (F, CODE, "Cible : un compte…"), "Axe 1": (F, CODE, "… ou un code axe 1…"), "Axe 2": (F, CODE, "… ou un code axe 2 (une seule cible)"),
         "Montant": (O, MONTANT, "Montant budgété")}),
-    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos.", {
-        "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
-        "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"),
-        "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "Libellé": (O, TEXTE, ""), "Débit": (F, MONTANT, "Débit OU crédit"),
-        "Crédit": (F, MONTANT, "Débit OU crédit"), "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx) ; facultatif avec un seul axe (réglage un_seul_axe)"),
-        "Let": (F, TEXTE, "Code de lettrage")}),
+    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos. LibelCompte, Anal1, LibelAnal1 et LibelAnal2 sont repris du plan et des axes : en cas de différence, le plan fait foi (avertissement).", {
+        "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
+        "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"),
+        "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "LibelCompte": (F, TEXTE, "Rappel du plan, non lu"),
+        "Libelle": (O, TEXTE, ""), "Debit": (F, MONTANT, "Débit OU crédit"), "Credit": (F, MONTANT, "Débit OU crédit"),
+        "Anal1": (F, CODE, "Rappel du plan (axe 1 du compte) : le plan fait foi"), "LibelAnal1": (F, TEXTE, "Rappel, non lu"),
+        "Anal2": (O, CODE, "Code axe 2 (Axe2.xlsx) ; facultatif avec un seul axe (réglage un_seul_axe)"),
+        "LibelAnal2": (F, TEXTE, "Rappel, non lu"), "Lien": (F, "adresse https://", "Document justificatif en ligne, joint au Mvt"),
+        "Let": (F, "3 lettres majuscules", "Code de lettrage (AAA, AAB…), vide hors comptes de tiers")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
               "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
         "Description": (F, TEXTE, "Tiers, catégorie…")}),
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
+    "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare le classeur d'adaptation (Power Query) : une ligne par mouvement, libellé dans la langue d'origine. Debit = entrée d'argent sur le compte, Credit = sortie (comme les écritures). Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
+        "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
+        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit"),
+        "Credit": (F, MONTANT, "Sortie : Debit OU Credit")}),
     "Banque1": ("Relevé du journal B1. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Banque2": ("Relevé du journal B2. Lignes déjà importées ignorées (date, référence, montant, rang).", {}),
     "Bit": ("Relevé Bit (journal du réglage releve_bit, B3 à la Loge). Remplace tout le relevé précédent de ce journal (pointages annulés).", {

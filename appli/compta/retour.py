@@ -54,6 +54,8 @@ SANS_FERMER = {"tableau_de_bord", "login", "demarrage", "demarrage_compte"}
 PARENTS = {                                   # page -> page d'où elle s'ouvre (mêmes paramètres d'adresse)
     "releve_parametres": "rapprochement_journal", "releve_import": "rapprochement_journal",
     "rapprochement_journal": "rapprochement", "traductions": "rapprochement", "provisoires": "fiches",
+    "compte": "plan", "compte_nouveau": "plan", "journal": "journaux_param", "journal_nouveau": "journaux_param",
+    "code_axe": "axes_param", "releves_historique": "rapprochement",
     "archive": "cloture", "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
 }
 

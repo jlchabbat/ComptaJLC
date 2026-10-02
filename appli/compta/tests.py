@@ -1221,15 +1221,15 @@ class Membres(TestCase):
 
     def test_lettrage(self):
         self.assertEqual(mbr.lettrage_automatique(self.c), 1)          # manifestation de mars : même mouvement
-        self.assertEqual(sorted(Ligne.objects.filter(compte=self.c, lettrage="A").values_list("debit", "credit")),
+        self.assertEqual(sorted(Ligne.objects.filter(compte=self.c, lettrage="AAA").values_list("debit", "credit")),
                          [(D(0), D(200)), (D(200), D(0))])
         cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
         with self.assertRaises(ValueError):
             mbr.lettrer(self.c, [cot, acompte])                       # 500 ≠ 300
         s = mbr.situation(self.c, dt.date(2026, 10, 1))
         self.assertEqual([(l.mouvement.numero, r) for l, r in s.impayes], [(600, D(200)), (421, D(400))])
-        self.assertEqual(mbr.delettrer(self.c, "A"), 2)
-        self.assertEqual(mbr.code_suivant(self.c), "A")
+        self.assertEqual(mbr.delettrer(self.c, "AAA"), 2)
+        self.assertEqual(mbr.code_suivant(self.c), "AAA")
 
     def test_cotisations_et_import(self):
         self.assertEqual(Reglage.lire("compte_cotisations"), "700000")      # créé par l'initialisation
@@ -1261,7 +1261,7 @@ class EcransMembres(TestCase):
         self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [cot.pk, acompte.pk]})
         self.assertEqual(Ligne.objects.filter(compte=self.c).exclude(lettrage="").count(), 0)   # refusé : déséquilibré
         self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [Ligne.objects.get(compte=self.c, debit=200).pk, cr.pk]})
-        self.assertEqual(Ligne.objects.get(pk=cr.pk).lettrage, "A")
+        self.assertEqual(Ligne.objects.get(pk=cr.pk).lettrage, "AAA")
         self.client.post("/membres/411TAIEB001/", {"enregistrer": "1", "nom": "TAIEB", "prenom": "Jeanne", "statut": "actif",
                                                     "email": "jeanne@example.org", "cotisation": "450"})
         self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").cotisation, D(450))
@@ -2035,6 +2035,8 @@ class Echanges(TransactionTestCase):
 
     def fichier(self, nom, lignes, colonnes=None):
         f = ech.format_de(nom)
+        if f.nom in ("Ecritures", "Libelles"):               # lignes écrites à l'ancienne mode (Date, Jnl, Mvt, Compte, Libellé, Débit, Crédit, Anal2, Let)
+            lignes = [[r[2], r[1], r[0], r[3], "", r[4], r[5], r[6], "", "", r[7], "", "", r[8]] if len(r) == 9 else r for r in lignes]
         wb = ech.classeur(f, lignes)
         if colonnes:
             for i, c in enumerate(colonnes, 1):
@@ -2050,7 +2052,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(len(exportes), len(ech.FORMATS))
         avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
         for f in ech.FORMATS:
-            if f.nom in ("Ecritures", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
+            if f.nom in ("Ecritures", "Banque", "Banque1", "Banque2", "Bit", "Caisse", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
                 continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
             source = next(p for p in ech.exports().iterdir() if f.reconnait(p))
             (ech.imports() / source.name).write_bytes(source.read_bytes())
@@ -2060,9 +2062,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
         self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 9)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
-        self.assertEqual([c.value for c in wb.active[1]], ["Date", "Jnl", "Mvt", "Compte", "Libellé", "Débit", "Crédit", "Anal2",
-                                                         "Let"])
-        self.assertEqual(wb.active["C2"].value, 421)
+        self.assertEqual([c.value for c in wb.active[1]], ech.COLONNES_ECRITURES)
+        self.assertEqual(wb.active["A2"].value, 421)
 
     def test_refus_tout_ou_rien(self):
         self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "", "non", "oui"]], colonnes=["Compte", "Intitule"])
@@ -2184,6 +2185,21 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Plan_adapte.xlsm"), "importé (")
         self.assertTrue(Compte.objects.filter(numero="600955").exists())
 
+    def test_banque_un_seul_fichier_pour_toutes_les_banques(self):
+        """Un classeur (préparé par Power Query) pour tous les journaux : relevés dans la langue d'origine, sans doublon, avec historique."""
+        from .models import ImportReleve
+        d = dt.datetime(2026, 3, 2)
+        rows = [["B1", d, "עמלת מסלול", None, 10], ["B1", d, "הפקדה", 1550, None], ["CA", d, "Espèces", 50, None]]
+        self.fichier("Banque.xlsx", rows)
+        r = self.importer("Banque.xlsx")
+        self.assertContains(r, "B1 : 2 ajoutée(s), 0 déjà présente(s)")
+        self.assertContains(r, "CA : 1 ajoutée(s)")
+        self.assertEqual(sorted(l.operation for l in LigneReleve.objects.filter(journal_id="B1", ouverture=False)), ["הפקדה", "עמלת מסלול"])
+        self.fichier("Banque_2.xlsx", rows)
+        self.assertContains(self.importer("Banque_2.xlsx"), "B1 : 0 ajoutée(s), 2 déjà présente(s)")
+        self.assertEqual(LigneReleve.objects.filter(ouverture=False).count(), 3)
+        self.assertEqual(ImportReleve.objects.count(), 4)
+
     def test_importer_en_une_etape(self):
         """Un seul bouton : dépose et importe ; sur refus, rien n'est gardé dans le dossier Imports."""
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2199,8 +2215,8 @@ class Echanges(TransactionTestCase):
         chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
         wb = openpyxl.load_workbook(chemin)
         ws = wb.active
-        ws["E2"], ws["E3"] = "FACTURE CORRIGEE", "FACTURE CORRIGEE"          # Mvt 421 : libellés
-        ws["F2"], ws["G3"] = 450, 450                                          # et montant
+        ws["F2"], ws["F3"] = "FACTURE CORRIGEE", "FACTURE CORRIGEE"          # Mvt 421 : libellés
+        ws["G2"], ws["H3"] = 450, 450                                          # et montant
         wb.save(ech.imports() / chemin.name)
         r = self.importer(chemin.name)
         self.assertContains(r, "0 mouvement(s) ajouté(s), 1 modifié(s), 0 inchangé(s)")
@@ -2213,11 +2229,11 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Ecritures.xlsx"), "0 mouvement(s) ajouté(s), 0 modifié(s), 1 inchangé(s)")
         # exercice clos : modification refusée
         Exercice.objects.filter(libelle="2026").update(clos=True)
-        ws["F2"], ws["G3"] = 460, 460
+        ws["G2"], ws["H3"] = 460, 460
         wb.save(ech.imports() / "Ecritures.xlsx")
         self.assertContains(self.importer("Ecritures.xlsx"), "non modifiable")
         self.assertEqual(Mouvement.objects.get(numero=421).total_debit, D(450))
-        ws["F2"], ws["G3"] = 450, 450                                          # inchangé : accepté malgré la clôture
+        ws["G2"], ws["H3"] = 450, 450                                          # inchangé : accepté malgré la clôture
         wb.save(ech.imports() / "Ecritures.xlsx")
         self.assertContains(self.importer("Ecritures.xlsx"), "1 inchangé(s)")
 
@@ -2240,8 +2256,8 @@ class Echanges(TransactionTestCase):
         chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
         wb = openpyxl.load_workbook(chemin)
         ws = wb.active
-        ws["C2"], ws["C3"] = 5000, 5000                                        # Mvt 421 renuméroté : même contenu
-        ws["E2"], ws["E3"] = "AUTRE LIBELLE", "AUTRE LIBELLE"
+        ws["A2"], ws["A3"] = 5000, 5000                                        # Mvt 421 renuméroté : même contenu
+        ws["F2"], ws["F3"] = "AUTRE LIBELLE", "AUTRE LIBELLE"
         wb.save(ech.imports() / chemin.name)
         n = Mouvement.objects.count()
         r = self.importer(chemin.name)
@@ -2249,7 +2265,7 @@ class Echanges(TransactionTestCase):
         self.assertContains(r, "1 doublon(s) écarté(s)")
         self.assertContains(r, "5000 = 421")
         self.assertEqual(Mouvement.objects.count(), n)
-        ws["F2"], ws["G3"] = 999, 999                                          # autre montant : Mvt vraiment nouveau
+        ws["G2"], ws["H3"] = 999, 999                                          # autre montant : Mvt vraiment nouveau
         wb.save(ech.imports() / chemin.name)
         self.assertContains(self.importer(chemin.name), "1 mouvement(s) ajouté(s), 0 modifié(s)")
         self.assertEqual(Mouvement.objects.count(), n + 1)
@@ -2285,20 +2301,20 @@ class Echanges(TransactionTestCase):
         chemin, _ = ech.exporter(ech.PAR_NOM["Ecritures"])
         wb = openpyxl.load_workbook(chemin)
         ws = wb.active
-        premier = ws["C2"].value
+        premier = ws["A2"].value
         m = Mouvement.objects.get(numero=premier)
         avant = {l.pk: (l.compte_id, l.debit, l.credit, l.rapprochement_id, l.lettrage) for l in m.lignes.all()}
         for r in range(2, ws.max_row + 1):
-            if ws.cell(r, 3).value == premier:
-                ws.cell(r, 3).value = premier + 7000                      # autre numérotation
-                ws.cell(r, 5).value = f"LIBELLE BANQUE {r}"
-        ws.append([dt.datetime(2020, 5, 5), "OD", 8888, "600100", "INCONNU", 1, None, ws["H2"].value, None])
-        ws.append([dt.datetime(2020, 5, 5), "OD", 8888, "512000", "INCONNU", None, 1, ws["H2"].value, None])
+            if ws.cell(r, 1).value == premier:
+                ws.cell(r, 1).value = premier + 7000                      # autre numérotation
+                ws.cell(r, 6).value = f"LIBELLE BANQUE {r}"
+        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "600100", "", "INCONNU", 1, None, "", "", ws["K2"].value, "", "", None])
+        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "512000", "", "INCONNU", None, 1, "", "", ws["K2"].value, "", "", None])
         # Mvt dont le montant diffère sur le site : le rapport propose le Mvt du site et la différence
         m2 = m                                                            # seul Mvt de la base d'essai
         for i, l in enumerate(m2.lignes.order_by("ordre")):
-            ws.append([m2.date, m2.journal_id, 9999, l.compte_id, "LIBELLE MODIFIE",
-                       (l.debit + 1) if l.debit else None, (l.credit + 1) if l.credit else None, l.anal2_id, None])
+            ws.append([9999, m2.journal_id, m2.date, l.compte_id, "", "LIBELLE MODIFIE",
+                       (l.debit + 1) if l.debit else None, (l.credit + 1) if l.credit else None, "", "", l.anal2_id, "", "", None])
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
         self.assertEqual(ech.format_de("Libellés_2026-09-27.xlsx").nom, "Libelles")          # accent et majuscule admis
         self.assertEqual(ech.format_de("LIBELLES.xlsx").nom, "Libelles")
@@ -2324,7 +2340,7 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Libelles_2026-09-27.xlsx"), "0 mouvement(s) : libellés mis à jour")
         # exercice clos : libellés non modifiés, signalés
         Exercice.objects.filter(debut__lte=m.date, fin__gte=m.date).update(clos=True)
-        ws["E2"] = "ENCORE AUTRE"
+        ws["F2"] = "ENCORE AUTRE"
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
         self.assertContains(self.importer("Libelles_2026-09-27.xlsx"), "1 dans un exercice clos, non modifié(s)")
 
@@ -2551,7 +2567,7 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertTrue(list((self.racine / "Exports").glob("PlanComptable_*.xlsx")))
         self.assertIn("Ecritures", noms)                                           # les écritures s'exportent aussi
         r = self.client.get("/referentiels/Ecritures.xlsx")
-        self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active["C2"].value, 421)
+        self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active["A2"].value, 421)
         r = self.client.get("/referentiels/Tout.xlsx")                               # Tout exporter : .zip
         self.assertIn(".zip", r["Content-Disposition"])
         with zipfile.ZipFile(io.BytesIO(r.content)) as z:
@@ -3178,6 +3194,15 @@ class EcransParametrage(TestCase):
         self.assertContains(self.client.get("/parametrage/axes/"), "GEN.002")
         self.client.post("/parametrage/axes/GEN.002/", {"libelle": "Divers", "statut": "1"})
         self.assertEqual(CodeAnalytique.objects.get(code="GEN.002").libelle, "Divers")
+
+    def test_fermer_ramene_a_la_liste(self):
+        """Fermer et Annuler d'un écran de paramétrage ramènent à sa liste ; une liste ramène au menu général."""
+        for adresse, retour in (("/plan/601000/", "/plan/"), ("/plan/nouveau/", "/plan/"), ("/parametrage/journaux/nouveau/", "/parametrage/journaux/"),
+                                ("/parametrage/axes/GEN.002/", "/parametrage/axes/"), ("/rapprochement/historique/", "/rapprochement/"),
+                                ("/plan/", "/")):
+            Compte.objects.get_or_create(numero="601000", defaults={"libelle": "ACHATS"})
+            r = self.client.get(adresse)
+            self.assertContains(r, f'href="{retour}" onclick="return fermer(this)"', msg_prefix=adresse)
 
     def test_reserve_a_l_administrateur(self):
         b = User.objects.create_user("bureau")

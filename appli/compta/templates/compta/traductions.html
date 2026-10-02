@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% block titre %}Traductions{% endblock %}{% block contenu %}
 <p><a href="{% url 'rapprochement' %}">← Rapprochement</a></p>
 <h1>Traductions des opérations du relevé</h1>
-<div class="barre">{% if a_traduire %}<button form="f-trad" class="principal">Enregistrer les traductions</button>{% endif %}</div>
+<div class="barre"><a class="bouton" href="{{ adresse_fermer }}">Annuler</a>{% if a_traduire %}<button form="f-trad" class="principal">Enregistrer les traductions</button>{% endif %}</div>
 <form method="post" class="carte" id="f-trad">{% csrf_token %}<h2 style="margin-top:0">À traduire ({{ a_traduire|length }})</h2>
 <table><tr><th>Opération (hébreu)</th><th>Exemple</th><th>Traduction</th></tr>
 {% for l in a_traduire %}<tr><td dir="rtl">{{ l.operation }}<input type="hidden" name="h_{{ forloop.counter }}" value="{{ l.operation }}"></td>

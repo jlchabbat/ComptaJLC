@@ -126,19 +126,13 @@ def montant(v):
 # ---------------------------------------------------------------- lettrage
 
 def code_suivant(compte):
-    """A, B, … Z, AA, AB… : premier code libre du compte."""
+    """AAA, AAB, … AAZ, ABA… : premier code de 3 lettres majuscules libre du compte."""
     pris = set(Ligne.objects.filter(compte=compte).exclude(lettrage="").values_list("lettrage", flat=True))
-    n = 0
-    while True:
-        code, k = "", n
-        while True:
-            code = chr(65 + k % 26) + code
-            k = k // 26 - 1
-            if k < 0:
-                break
+    for n in range(26 ** 3):
+        code = "".join(chr(65 + n // 26 ** i % 26) for i in (2, 1, 0))
         if code not in pris:
             return code
-        n += 1
+    raise ValueError("Plus de code de lettrage libre sur ce compte.")
 
 
 @transaction.atomic
