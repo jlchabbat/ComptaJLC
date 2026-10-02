@@ -36,7 +36,8 @@ un site par association (étape 1 : application générique, réglages par site)
   Export vers Transmission), formules simples testées par `tests/recette_liaison.py`.
 - `src/controles.py` : contrôles et photographie des totaux, lecture seule.
 - Fichiers d'échange : structure définie dans `docs/specification-fichiers.md` ; les fichiers venus d'une autre
-  application de comptabilité sont adaptés à cette structure par l'administrateur (aucun format tiers n'est lu).
+  application de comptabilité sont adaptés à cette structure par l'administrateur (aucun format tiers n'est lu), dans Excel
+  (Power Query, VBA) : l'appli importe .xlsx, .xlsm (valeurs seulement, feuille nommée comme le format) et .csv.
 - `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
   (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
   AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour

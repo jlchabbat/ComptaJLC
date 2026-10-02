@@ -2153,6 +2153,19 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.client.post("/echanges/", {"tout_importer": "1"}, follow=True), "1 déjà joint(s)")
         self.assertEqual(Justificatif.objects.count(), 1)
 
+    def test_classeur_xlsm_et_feuille_nommee(self):
+        """Un .xlsm est importé comme un .xlsx (valeurs seulement) ; avec plusieurs feuilles, celle qui porte le nom du format."""
+        wb = openpyxl.Workbook()
+        wb.active.title = "Notes"
+        wb.active.append(["rien", "d'utile"])
+        ws = wb.create_sheet("PlanComptable")
+        for r in (["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], ["600955", "VENU D'AILLEURS", "", "non", "oui"]):
+            ws.append(r)
+        wb.save(ech.imports() / "Plan_adapte.xlsm")
+        self.assertEqual(ech.format_de(ech.imports() / "Plan_adapte.xlsm").nom, "PlanComptable")
+        self.assertContains(self.importer("Plan_adapte.xlsm"), "importé (")
+        self.assertTrue(Compte.objects.filter(numero="600955").exists())
+
     def test_importer_en_une_etape(self):
         """Un seul bouton : dépose et importe ; sur refus, rien n'est gardé dans le dossier Imports."""
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2360,7 +2373,7 @@ class Echanges(TransactionTestCase):
         self.assertContains(r, "Déposé(s) dans Imports")
         self.assertEqual(sorted(p.name for p, _ in ech.a_importer()), ["Budget.xlsx", nom])
         r = self.client.post("/echanges/", {"deposer": "1", "fichiers": SimpleUploadedFile("virus.exe", b"x")}, follow=True)
-        self.assertContains(r, "fichier .xlsx, .pdf ou .zip attendu")
+        self.assertContains(r, "fichier .xlsx, .xlsm, .csv, .pdf ou .zip attendu")
 
     def test_tout_reinjecter(self):
         """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""

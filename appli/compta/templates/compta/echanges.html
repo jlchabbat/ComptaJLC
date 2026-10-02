@@ -5,7 +5,7 @@
 <p><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Exporter toutes les données (.zip)</a></p>
 <p class="aide">Un fichier daté, à enregistrer sur votre ordinateur.</p></div>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer</h2>
-<p><input type="file" name="fichiers" multiple accept=".xlsx,.csv,.zip"></p>
+<p><input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.zip"></p>
 <p><button class="principal" name="importer_fichiers" value="1">Importer</button></p>
 <p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant.</p></form>
 </div>
@@ -18,7 +18,7 @@
 
 <h2 id="importer">Fichiers du dossier Imports</h2>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
-<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.csv,.pdf,.zip"></label>
+<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.pdf,.zip"></label>
 <button class="principal" name="deposer" value="1">Déposer</button>
 </form>
 {% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>

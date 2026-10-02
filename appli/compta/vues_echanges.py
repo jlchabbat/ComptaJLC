@@ -96,7 +96,7 @@ def echanges(request):
     return render(request, "compta/echanges.html", {
         "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
-        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in (".xlsx", ".csv")],
+        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",)],
         "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
         "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],
     })

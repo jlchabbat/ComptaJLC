@@ -882,7 +882,7 @@ LEXIQUE = "Lexique"
 O, F = "oui", ""
 DATE, MONTANT, TEXTE, CODE, OUI = "date jj/mm/aaaa", "montant (nombre, sans symbole)", "texte", "code (texte)", "oui / non"
 REGLES = [
-    ("Format", "Un fichier .xlsx par nature de données ; une seule feuille ; ligne 1 = exactement les en-têtes ; données dès la ligne 2."),
+    ("Format", "Un fichier .xlsx (ou .xlsm, lu en valeurs : macros non exécutées) par nature de données ; si le classeur a plusieurs feuilles, celle qui porte le nom du format (Ecritures, Banque1…), sinon la première ; ligne 1 = exactement les en-têtes ; données dès la ligne 2. Le .csv est aussi accepté."),
     ("Nom du fichier", "Commence par le nom du format : Tiers.xlsx, Tiers_2026-09-27.xlsx… Les exports portent la date du jour."),
     ("Aller-retour", "Un fichier exporté (dossier Exports) se réimporte tel quel : le copier dans le dossier Imports."),
     ("Tout ou rien", "À la moindre erreur, rien n'est enregistré ; la page Imports / Exports liste les lignes en erreur."),
@@ -1005,6 +1005,15 @@ def _norme(texte):
     return "".join(c for c in _sans_accent(str(texte or "")) if c.isalnum())
 
 
+TABLEURS = (".xlsx", ".xlsm")                              # classeurs Excel ; un .xlsm est lu en valeurs (macros jamais exécutées)
+
+
+def _feuille(wb):
+    """Feuille à lire d'un classeur : celle qui porte le nom d'un format (Ecritures, Banque1…), sinon la première."""
+    noms = {_norme(f.nom) for f in FORMATS} | {_norme(a) for f in FORMATS for a in f.alias}
+    return next((ws for ws in wb.worksheets if _norme(ws.title) in noms), wb.worksheets[0])
+
+
 def entetes_du_fichier(chemin):
     """Première ligne d'un .xlsx (première feuille) ou d'un .csv (point-virgule, virgule ou tabulation) ; [] si illisible."""
     try:
@@ -1021,7 +1030,7 @@ def entetes_du_fichier(chemin):
         else:
             wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
             try:
-                ligne = next(wb.worksheets[0].iter_rows(values_only=True), [])
+                ligne = next(_feuille(wb).iter_rows(values_only=True), [])
             finally:
                 wb.close()
     except Exception:                                      # fichier abîmé, mot de passe, mauvais format…
@@ -1051,7 +1060,7 @@ def format_de(chemin):
     """Format d'un fichier : d'après sa **structure** (colonnes de la ligne 1) ; si plusieurs formats ont la même structure
     (relevés de plusieurs journaux, écritures et libellés), le nom du fichier départage ; à défaut de structure
     reconnue, le nom seul (comportement des fichiers plus anciens)."""
-    if Path(chemin).suffix.lower() in (".xlsx", ".csv"):
+    if Path(chemin).suffix.lower() in TABLEURS + (".csv",):
         par_structure = formats_de_structure(entetes_du_fichier(chemin))
         if len(par_structure) == 1:
             return par_structure[0]
@@ -1096,7 +1105,7 @@ def lire(chemin, f):
         rangees = iter(list(csv_.reader(io.StringIO(texte), delimiter=sep)))
     else:
         wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
-        rangees = wb.worksheets[0].iter_rows(values_only=True)
+        rangees = _feuille(wb).iter_rows(values_only=True)
     entetes = [("" if c is None else str(c).strip()) for c in next(rangees, [])]
     while entetes and not entetes[-1]:
         entetes.pop()
@@ -1124,7 +1133,7 @@ def lire(chemin, f):
 def a_importer():
     """Fichiers présents dans Imports : [(chemin, format ou None)] ; les PDF sont des relevés à convertir."""
     return [(p, format_de(p)) for p in sorted(imports().iterdir())
-            if p.is_file() and p.suffix.lower() in (".xlsx", ".pdf", ".csv") and not p.name.startswith("~$") and p.stem != LEXIQUE]
+            if p.is_file() and p.suffix.lower() in TABLEURS + (".pdf", ".csv") and not p.name.startswith("~$") and p.stem != LEXIQUE]
 
 
 def retirer(nom, auteur=""):
@@ -1136,7 +1145,7 @@ def retirer(nom, auteur=""):
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Fichier retiré du dossier Imports", objet=nom[:200])
 
 
-DEPOSABLES = (".xlsx", ".pdf", ".csv")
+DEPOSABLES = TABLEURS + (".pdf", ".csv")
 
 
 def deposer(nom, contenu, auteur=""):
@@ -1159,7 +1168,7 @@ def deposer(nom, contenu, auteur=""):
                 raise Refus([f"{nom} : aucun fichier .xlsx ou .pdf dans le ZIP."])
             return [n for b, n_ in fichiers for n in deposer(b, z.read(n_), auteur)]
     if Path(nom).suffix.lower() not in DEPOSABLES or not nom or nom.startswith("."):
-        raise Refus([f"{nom} : fichier .xlsx, .pdf ou .zip attendu."])
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv, .pdf ou .zip attendu."])
     (imports() / nom).write_bytes(contenu)
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Dépôt dans Imports", objet=nom[:200])
     return [nom]
@@ -1170,9 +1179,9 @@ def importer_tout(utilisateur=None):
     rien n'est enregistré. Rien n'est supprimé (contrairement à Tout réinjecter). Renvoie (comptes rendus, ignorés)."""
     from .base_donnees import sauvegarder
     ordre = {f.nom: i for i, f in enumerate(FORMATS)}
-    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in (".xlsx", ".csv")),
+    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in TABLEURS + (".csv",)),
                      key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
-    ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() == ".xlsx"]
+    ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() in TABLEURS]
     if not choisis:
         raise Refus(["Aucun fichier à importer dans le dossier Imports."])
     lus, erreurs = [], []
@@ -1227,7 +1236,7 @@ def importer(nom, utilisateur=None):
     from .base_donnees import sauvegarder
     chemin = fichier_d_import(nom)
     f = format_de(chemin)
-    if not f or chemin.suffix.lower() not in (".xlsx", ".csv"):
+    if not f or chemin.suffix.lower() not in TABLEURS + (".csv",):
         raise Refus([f"{chemin.name} : structure non reconnue. La ligne 1 doit contenir exactement les colonnes de l'un des "
                      "fichiers décrits dans le lexique (Tiers, Journaux, Ecritures…), dans le même ordre."])
     lignes = lire(chemin, f)
@@ -1269,7 +1278,7 @@ def fichiers_a_reinjecter():
     """Un fichier par format présent dans Imports, dans l'ordre d'import ; refus si un format a plusieurs fichiers."""
     par_format = defaultdict(list)
     for p, f in a_importer():
-        if f and p.suffix.lower() == ".xlsx":
+        if f and p.suffix.lower() in TABLEURS:
             par_format[f.nom].append(p)
     doubles = [f"{nom} : {len(ps)} fichiers ({', '.join(p.name for p in ps)}) ; n'en laisser qu'un." for nom, ps in par_format.items()
                if len(ps) > 1]

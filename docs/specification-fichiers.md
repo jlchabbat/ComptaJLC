@@ -1,14 +1,14 @@
 # ComptaBB : spécification des fichiers (version de travail du 02/10/2026)
 
 Objet : une gestion d'association **sans TVA**, **mono-devise**, confiée à des **bénévoles néophytes** en informatique et en
-comptabilité. Tous les échanges se font par fichiers **.csv**, avec **la même structure à l'import et à l'export**.
+comptabilité. Tous les échanges se font par fichiers **Excel (.xlsx, .xlsm en import) ou .csv**, avec **la même structure à l'import et à l'export**.
 Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 
 ## 1. Règles communes à tous les fichiers
 
 | Règle | Choix |
 |---|---|
-| Format | CSV, séparateur `;`, UTF-8 avec BOM (s'ouvre directement dans Excel, hébreu compris) |
+| Format | **Excel `.xlsx` ou `.xlsm`** (format principal ; les macros et requêtes Power Query de l'administrateur servent à adapter les fichiers d'autres horizons : l'application lit seulement les valeurs, jamais les macros) ; si le classeur a plusieurs feuilles, celle qui porte le nom du fichier voulu (Ecritures, Banque1…), sinon la première. `.csv` accepté aussi (séparateur `;`, UTF-8 avec BOM). Les exports sont des `.xlsx` |
 | Première ligne | exactement les noms de rubriques ci-dessous |
 | Noms de rubriques | abréviations sans espace ni accent : `Mvt`, `Jnl`, `Compte`, `LibelCompte`, `Libelle`… |
 | Dates | `jj/mm/aaaa` |
