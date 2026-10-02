@@ -871,6 +871,16 @@ class Rapprochements(TestCase):
         autre = ("Jnl;Date;Libelle;Debit;Credit;Solde\nB1;21/01/2026;פירעון אחר;;5,00;\n").encode()
         self.assertEqual(self.importer(autre)[:2], (1, 0))
 
+    def test_montants_a_zero_et_negatifs_acceptes(self):
+        fichier = ("Jnl;Date;Libelle;Debit;Credit;Solde\nB1;05/01/2026;עמלת מסלול;0;10,00;990,00\n"
+                   "B1;10/01/2026;הפקדת שיק;1550,00;0;2540,00\nB1;20/01/2026;העברה;;-400,00;2140,00\n").encode()
+        self.assertEqual(self.importer(fichier)[:2], (3, 0))
+        self.assertEqual([l.montant for l in LigneReleve.objects.filter(ouverture=False).order_by("date")], [D("-10"), D("1550"), D("-400")])
+        deux = "Jnl;Date;Libelle;Debit;Credit\nB1;05/01/2026;x;5,00;3,00\n".encode()
+        with self.assertRaises(ech_rap.Refus) as r:
+            self.importer(deux, nom="deux.csv")
+        self.assertIn("Debit « 5,00 », Credit « 3,00 »", " ".join(r.exception.erreurs))
+
     def test_structure_non_conforme_refusee(self):
         ancien = "Date;Référence;Opération;Montant;Solde\n05/01/2026;11;x;-10,00;990,00\n".encode()
         with self.assertRaises(ech_rap.Refus):
