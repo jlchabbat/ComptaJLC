@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from . import reglages
+from . import echanges
 from . import releves as moteur
 from .models import CodeAnalytique, Compte, Journal, Ligne, LigneReleve, Modification, ParametreReleve, Traduction
 
@@ -20,9 +20,7 @@ def journaliser(request, action, objet, apres=""):
 
 
 class ImportForm(forms.Form):
-    fichier = forms.FileField(label="Relevé (PDF, Excel ou CSV)")
-    solde_ouverture = forms.DecimalField(required=False, max_digits=14, decimal_places=2, label="Solde d'ouverture",
-                                         help_text="Seulement au premier import du compte, si le relevé n'indique pas les soldes.")
+    fichier = forms.FileField(label="Relevé (structure Banque : Jnl, Date, Libelle, Debit, Credit, Solde)")
 
 
 class ParametresForm(forms.ModelForm):
@@ -144,7 +142,6 @@ def accueil(request, code=None):
     parametres = ParametreReleve.objects.filter(journal=journal).first()
     return render(request, "compta/rapprochement.html", {
         "journaux": js, "journal": journal, "lignes": lignes, "ecartees": list(moteur.ecartees(journal)), "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
-        "pdf_mizrahi": journal.code in reglages.journaux("releves_mizrahi"),
         "comptes": Compte.objects.filter(actif=True).exclude(pk=journal.compte_id).order_by("numero") if peut else [],
         "codes": CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code") if peut else [],
         "a_traduire": sum(1 for x in lignes if x["l"].traduction == "À traduire"),
@@ -162,18 +159,14 @@ def importer(request, code):
     if form.is_valid():
         f = form.cleaned_data["fichier"]
         try:
-            lignes = moteur.lire(f.name, f.read())
-            if not lignes:
-                raise ValueError("Aucune ligne de mouvement reconnue (en-têtes Date, Montant ou Crédit / Débit attendus).")
-            ajoutees, doublons, ecarts = moteur.importer(journal, lignes, source=f.name,
-                                                         solde_ouverture=form.cleaned_data["solde_ouverture"],
-                                                         auteur=request.user.get_username())
-        except ValueError as e:
-            messages.error(request, f"Import refusé : {e}")
+            texte = echanges.importer_banque(f.name, f.read(), request.user)
+        except echanges.Refus as e:
+            messages.error(request, "Import refusé : rien n'a été enregistré.")
+            for x in e.erreurs[:30]:
+                messages.error(request, x)
         else:
-            journaliser(request, "Import relevé", f"{journal.code} {f.name}", apres=f"{ajoutees} lignes, {doublons} déjà présentes")
-            messages.success(request, f"{ajoutees} ligne(s) ajoutée(s), {doublons} déjà présente(s) ignorée(s)."
-                             + (f" Attention : {ecarts} solde(s) du relevé incohérent(s)." if ecarts else ""))
+            ecarts = len(moteur.ecarts_solde(journal))
+            messages.success(request, f"{texte}." + (f" Attention : {ecarts} solde(s) du relevé de {journal.code} incohérent(s)." if ecarts else ""))
     else:
         messages.error(request, "Choisir un fichier.")
     return redirect("rapprochement_journal", journal.code)

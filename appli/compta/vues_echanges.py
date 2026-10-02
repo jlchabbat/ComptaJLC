@@ -86,9 +86,6 @@ def echanges(request):
                 for nom in [f.nom for f in moteur.FORMATS]:
                     chemin, n = moteur.exporter(moteur.PAR_NOM[nom], auteur)
                     messages.success(request, f"Exporté : Exports\\{chemin.name} ({n} ligne(s)).")
-            elif "convertir" in request.POST:
-                dest, n = moteur.convertir_pdf(request.POST["convertir"], request.POST.get("journal", "B1"), auteur)
-                messages.success(request, f"PDF converti : Imports\\{dest.name} ({n} ligne(s)). Vérifiez-le, puis importez-le.")
         except moteur.Refus as e:
             messages.error(request, "Refusé : rien n'a été enregistré.")
             for x in e.erreurs[:30]:
@@ -104,7 +101,6 @@ def echanges(request):
         "dossier_pc": Reglage.lire("dossier_pc"), "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
         "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",)],
-        "pdfs": [p.name for p, _ in fichiers if p.suffix.lower() == ".pdf"],
         "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],
     })
 

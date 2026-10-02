@@ -1,9 +1,7 @@
-"""Relevés bancaires : lecture (CSV, Excel, PDF Mizrahi en hébreu), import sans doublon,
+"""Relevés bancaires : import sans doublon (structure unique, voir echanges.imp_banque_tout),
 rapprochement automatique et manuel, état de rapprochement (cahier des charges, Lot 3)."""
 
-import csv
 import datetime as dt
-import io
 import re
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
@@ -14,35 +12,11 @@ from django.db.models import Q
 from .models import ZERO, ImportReleve, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
 from .reglages import montant as en_devise
 
-HEBREU = re.compile(r"[֐-׿]")
 INVISIBLES = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮"))
-
-# en-têtes reconnus → colonne ; l'hébreu suit la requête Power Query du classeur
-ENTETES = [
-    ("valeur", ["ערך", "date valeur"]),
-    ("date", ["תאריך", "date"]),
-    ("operation", ["סוג", "opération", "operation", "תיאור", "description", "בית העסק", "libellé", "libelle"]),
-    ("frais", ["frais"]),
-    ("credit", ["זכות", "crédit", "credit"]),
-    ("debit", ["חובה", "débit", "debit"]),
-    ("montant", ["montant", "סכום"]),
-    ("solde", ["יתרה", "solde"]),
-    ("reference", ["אסמכתה", "référence", "reference"]),
-]
-MOTS_HEBREU = [m for _, ms in ENTETES for m in ms if HEBREU.search(m)]
 
 
 def texte(v):
     return "" if v is None else str(v).translate(INVISIBLES).strip()
-
-
-def colonne(entete):
-    e = texte(entete).lower()
-    for nom, mots in ENTETES:
-        for m in mots:
-            if m in e or m in e[::-1]:
-                return nom
-    return None
 
 
 def nombre(v):
@@ -76,200 +50,6 @@ def date(v):
         except ValueError:
             pass
     return None
-
-
-def normaliser(rangees):
-    """Rangées brutes (listes de cellules) → lignes {date, reference, operation, montant, solde}.
-
-    Cherche la ligne d'en-tête ; accepte un montant signé ou deux colonnes crédit / débit ;
-    remet le texte hébreu à l'endroit s'il a été lu à l'envers (PDF)."""
-    lignes, cols, inverse, carte, numero_carte = [], None, False, False, ""
-    for r in rangees:
-        cellules = [texte(c) for c in r]
-        n_carte = next((re.search(r"ארבע ספרות אחרונות\s*(\d{4})", c) for c in cellules if "ספרות" in c), None)
-        if n_carte:                                       # Isracard : une section par carte (… 5524, … 8240)
-            numero_carte = n_carte.group(1)
-            continue
-        noms = [colonne(c) for c in cellules]
-        if "date" in noms and ("montant" in noms or "credit" in noms or "debit" in noms):
-            cols = noms
-            carte = any("סכום החיוב" in c for c in cellules)
-            inverse = any(h[::-1] in c and h not in c for c in cellules for h in MOTS_HEBREU)
-            continue
-        if not cols:
-            continue
-        v = {n: r[i] for i, n in enumerate(cols) if n and i < len(r)}
-        d = date(v.get("date"))
-        achat = None
-        origine = None
-        if carte:                                         # carte : date du prélèvement (1re date), date d'achat au libellé
-            dates = [r[i] for i, n in enumerate(cols) if n == "date" and i < len(r)]
-            d, achat = date(dates[0]), (date(dates[-1]) if len(dates) > 1 else None)
-            montants = [nombre(r[i]) for i, n in enumerate(cols) if n == "montant" and i < len(r)]
-            origine = montants[0] if len(montants) > 1 else None          # montant de l'achat (סכום העסקה)
-        if v.get("montant") not in (None, ""):
-            m = nombre(v.get("montant"))
-            if m is not None and carte:                   # relevé de carte (Isracard) : le montant débité est une sortie
-                m = -m
-            if m is not None and nombre(v.get("frais")):  # Revolut : les frais s'ajoutent à la sortie
-                m -= abs(nombre(v.get("frais")))
-        else:
-            c, db = nombre(v.get("credit")), nombre(v.get("debit"))
-            m = None if c is None and db is None else (c or ZERO) - abs(db or ZERO)
-        if d is None or m is None or m == 0:
-            continue
-        op = texte(v.get("operation"))
-        if inverse and HEBREU.search(op):
-            op = op[::-1]
-        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) »
-            sur = f" (SUR {origine:.2f})".replace(".", ",") if origine is not None and abs(origine) != abs(m) else ""
-            op = " ".join(x for x in (numero_carte, f"{achat:%d/%m/%Y}" if achat else "", op) if x) + sur
-        lignes.append({"date": d, "reference": texte(v.get("reference"))[:40], "operation": op[:200], "montant": m,
-                       "solde": nombre(v.get("solde"))})
-    if carte and lignes:                                  # relevé de carte : jamais de solde, on part de 0
-        lignes[0]["carte"] = True
-    # ordre chronologique, ordre du relevé conservé dans la journée
-    if len(lignes) > 1 and lignes[0]["date"] > lignes[-1]["date"]:
-        lignes.reverse()
-    lignes.sort(key=lambda l: l["date"])
-    return lignes
-
-
-DATE_COURTE = re.compile(r"^\d\d/\d\d/\d\d(\d\d)?$")
-NOMBRE = re.compile(r"^₪?-?[\d,]+\.\d\d-?$")
-MIROIR = str.maketrans("()<>", ")(><")
-
-
-def _logique(mot):
-    """Mot hébreu lu dans l'ordre visuel (PDF) → ordre logique ; les chiffres restent dans leur sens."""
-    return mot[::-1].translate(MIROIR) if HEBREU.search(mot) else mot
-
-
-def lire_pdf_mizrahi(contenu):
-    """Relevé PDF du site Mizrahi-Tefahot (עובר ושב - יתרה ותנועות בחשבון), lu par la position des mots.
-
-    Colonnes repérées sur la ligne d'en-tête de chaque page. Le solde, imprimé seulement sur la dernière ligne
-    de chaque date, est complété depuis le solde d'ouverture (יתרה קודמת) et vérifié contre les soldes imprimés.
-    Renvoie [] si le document n'a pas cette mise en page."""
-    import pdfplumber
-    lignes, ouverture = [], None
-    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-        for page in pdf.pages:
-            mots = [dict(m, texte=_logique(m["text"])) for m in page.extract_words()]
-            rangs = defaultdict(list)
-            for m in mots:
-                rangs[round(m["top"] / 3)].append(m)
-            entete = next((r for r in rangs.values() if any(m["texte"] == "אסמכתה" for m in r)), None)
-            if not entete:
-                continue
-            x = lambda cond: max((m["x1"] for m in entete if cond(m["texte"])), default=None)  # noqa: E731
-            dates = sorted(m["x1"] for m in entete if m["texte"] == "תאריך")      # date, puis date de valeur
-            cols = {"date": dates[-1] if dates else None, "valeur": dates[0] if len(dates) > 1 else None, "montant": x(lambda t: "זכות" in t),
-                    "solde": x(lambda t: t in ("יתרה", 'בש"ח')), "reference": x(lambda t: t == "אסמכתה")}
-            if None in cols.values():
-                continue
-            haut = min(m["top"] for m in entete)
-            proche = lambda m, c: abs(m["x1"] - cols[c]) <= 15  # noqa: E731
-            for cle in sorted(rangs):
-                r = rangs[cle]
-                if any(m["texte"] == "קודמת" for m in r):                            # יתרה קודמת : solde d'ouverture
-                    v = next((m["texte"] for m in r if m["texte"].startswith("₪")), None)
-                    ouverture = nombre(v) if v else ouverture
-                    continue
-                if min(m["top"] for m in r) <= haut:
-                    continue
-                d = next((m for m in r if proche(m, "date") and DATE_COURTE.match(m["texte"])), None)
-                if not d:
-                    continue
-                l = {"date": date(d["texte"]), "reference": "", "montant": None, "solde": None}
-                texte = []
-                for m in r:
-                    t = m["texte"]
-                    if m is d or (proche(m, "valeur") and DATE_COURTE.match(t)) or t in ("<", ">"):
-                        continue
-                    if NOMBRE.match(t) and proche(m, "montant"):
-                        l["montant"] = nombre(t)
-                    elif NOMBRE.match(t) and proche(m, "solde"):
-                        l["solde"] = nombre(t)
-                    elif t.isdigit() and proche(m, "reference"):
-                        l["reference"] = t
-                    else:
-                        texte.append(m)
-                l["operation"] = " ".join(m["texte"] for m in sorted(texte, key=lambda m: -m["x1"]))[:200]
-                if l["montant"] is not None:
-                    lignes.append(l)
-    if lignes and ouverture is not None:
-        cumul = ouverture
-        for l in lignes:
-            cumul += l["montant"]
-            if l["solde"] is not None and l["solde"] != cumul:
-                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
-            l["solde"] = cumul
-    return lignes
-
-
-def _simple(mot):
-    """« ההעעששבב » → « העשב » : texte en gras imprimé deux fois par certains PDF Mizrahi."""
-    return mot[::2] if len(mot) > 1 and len(mot) % 2 == 0 and mot[::2] == mot[1::2] else mot
-
-
-LIGNE_TNUOT = re.compile(r"^(\d+) (?:(-?[\d,]+\.\d\d) )?(-?[\d,]+\.\d\d) (.*) (\d\d/\d\d/\d\d)$")
-
-
-def lire_pdf_tnuot(contenu):
-    """Relevé PDF Mizrahi « תנועות בחשבון » (texte en double, une ligne par opération : référence, solde facultatif,
-    montant, description, date). Solde d'ouverture : « יתרה קודמת ». Renvoie [] si ce n'est pas cette mise en page."""
-    import pdfplumber
-    lignes, ouverture = [], None
-    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-        texte = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    for brute in texte.splitlines():
-        ligne = " ".join(_simple(m) for m in brute.split())
-        if "קודמת" in ligne[::-1] or "תמדוק" in ligne:
-            m = re.search(r"₪\s*(-?[\d,]+\.\d\d)", ligne)
-            ouverture = nombre(m.group(1)) if m else ouverture
-            continue
-        m = LIGNE_TNUOT.match(ligne)
-        if not m:
-            continue
-        ref, solde, montant_, op, d = m.groups()
-        op = " ".join(_logique(x) for x in reversed(op.split()))
-        lignes.append({"date": date(d), "reference": ref[:40], "operation": op[:200], "montant": nombre(montant_),
-                       "solde": nombre(solde)})
-    if lignes and ouverture is not None:
-        cumul = ouverture
-        for l in lignes:
-            cumul += l["montant"]
-            if l["solde"] is not None and l["solde"] != cumul:
-                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
-            l["solde"] = cumul                            # solde complété : il donne le solde d'ouverture à l'import
-    return lignes
-
-
-def lire(nom, contenu):
-    """Lit un fichier de relevé (octets) selon son extension."""
-    ext = nom.lower().rsplit(".", 1)[-1]
-    if ext == "csv":
-        s = contenu.decode("utf-8-sig", errors="replace")
-        sep = ";" if s.count(";") >= s.count(",") else ","
-        return normaliser(list(csv.reader(io.StringIO(s), delimiter=sep)))
-    if ext in ("xlsx", "xlsm"):
-        import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(contenu), data_only=True, read_only=True)
-        return normaliser([list(r) for ws in wb.worksheets for r in ws.iter_rows(values_only=True)])
-    if ext == "pdf":
-        import pdfplumber
-        lignes = lire_pdf_mizrahi(contenu) or lire_pdf_tnuot(contenu)
-        if lignes:
-            return lignes
-        rangees = []
-        with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-            for page in pdf.pages:
-                tables = page.extract_tables() or page.extract_tables({"vertical_strategy": "text", "horizontal_strategy": "text"})
-                for t in tables:
-                    rangees += t
-        return normaliser(rangees)
-    raise ValueError("Format non reconnu : fichier .pdf, .xlsx ou .csv attendu.")
 
 
 @transaction.atomic

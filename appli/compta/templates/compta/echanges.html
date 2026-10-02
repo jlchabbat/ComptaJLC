@@ -18,14 +18,9 @@
 
 <h2 id="importer">Fichiers du dossier Imports</h2>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
-<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.pdf,.zip"></label>
+<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.zip"></label>
 <button class="principal" name="deposer" value="1">Déposer</button>
 </form>
-{% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
-<p class="aide">La conversion crée Banque_journal_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
-<table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
-<button name="journal" value="B1">Convertir pour B1</button> <button name="journal" value="B2">Convertir pour B2</button></form>
-<form method="post" style="display:inline">{% csrf_token %}<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ?')">Supprimer</button></form></td></tr>{% endfor %}</table></div>{% endif %}
 <form method="post">{% csrf_token %}
 {% if a_importer %}<p><button class="principal" name="tout_importer" value="1"
  onclick="return confirm('Importer tous les fichiers reconnus, dans l\'ordre du lexique ? Tout ou rien ; rien n\'est supprimé.')">Tout importer</button>

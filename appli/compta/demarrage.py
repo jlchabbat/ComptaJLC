@@ -17,7 +17,7 @@ from django.shortcuts import redirect
 from .models import CodeAnalytique, Compte, Exercice, Journal, Modification, Mouvement, Prefixe, Reglage, TypeTiers
 
 FICHIER_CODE = "code_installation.txt"
-FORMATS_RELEVE = [("excel", "Excel ou CSV"), ("mizrahi", "PDF Mizrahi-Tefahot (hébreu)"), ("bit", "Bit")]
+FORMATS_RELEVE = [("excel", "Autre banque"), ("mizrahi", "Banque Mizrahi-Tefahot"), ("bit", "Bit")]
 
 # plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable) ; 401000 et 411000 donnent
 # leur code axe 1 aux comptes de tiers créés ensuite (401…, 411…)

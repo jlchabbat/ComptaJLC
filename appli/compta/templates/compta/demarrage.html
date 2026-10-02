@@ -22,8 +22,7 @@ Avec vos propres fichiers : seuls les réglages ci-dessous sont enregistrés ; i
 <div class="formulaire">{% with f=form.debut %}{% include "compta/_champ.html" %}{% endwith %}{% with f=form.fin %}{% include "compta/_champ.html" %}{% endwith %}
 {% for b, fmt in form.banques %}{% with f=b %}{% include "compta/_champ.html" %}{% endwith %}{% with f=fmt %}{% include "compta/_champ.html" %}{% endwith %}{% endfor %}
 {% with f=form.caisse %}{% include "compta/_champ.html" %}{% endwith %}</div>
-<p class="aide">Chaque banque devient un journal (B1, B2, B3) et un compte 512…. Relevé « PDF Mizrahi » : le relevé PDF en hébreu de la banque Mizrahi-Tefahot est lu tel quel.
-Relevé « Bit » : fichier au format imposé, qui remplace le précédent. Sinon : Excel ou CSV de la banque.</p></div>
+<p class="aide">Chaque banque devient un journal (B1, B2, B3) et un compte 512…. Tous les relevés (Mizrahi, Bit, autre banque) arrivent dans un fichier unique : Jnl, Date, Libelle, Debit, Credit, Solde (facultatif), préparé en amont par Power Query.</p></div>
 
 <div class="carte"><h2 style="margin-top:0">4. Options</h2>
 <div class="formulaire">{% with f=form.carte %}{% include "compta/_champ.html" %}{% endwith %}{% with f=form.hebergeur %}{% include "compta/_champ.html" %}{% endwith %}

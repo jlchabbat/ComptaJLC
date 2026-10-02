@@ -48,7 +48,7 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 
 ### Relevés bancaires (`BQE`) : un fichier par banque ou par import
 `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`
-- `Jnl` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; plus de solde ni de référence.
+- `Jnl` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = entrée, `Credit` = sortie ; `Solde` **facultatif** (Bit n'en donne pas) : s'il est présent, il sert à déduire le solde d'ouverture du premier import et à contrôler le relevé. Plus de référence.
 - La traduction et le rapprochement (pointage, affectation, `Anal2`) se font dans l'écran Rapprochement, comme aujourd'hui.
 
 ### Utilisateurs (`USR`)
@@ -120,7 +120,7 @@ puis importés. Un message d'erreur en français indique la ligne et la rubrique
 L'administrateur est lui aussi un **bénévole néophyte** : tout ce qui est réservé à l'administration (imports, utilisateurs, plan, journaux, clôture) passe par des écrans guidés, avec un résumé de ce qui va changer avant d'enregistrer et une sauvegarde automatique.
 
 ### Relevés bancaires et historique d'importation
-- Le relevé s'importe **dans la langue d'origine** (`Banque.csv` : `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`).
+- Le relevé s'importe **dans la langue d'origine** (`Banque.csv` : `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`, `Solde` facultatif).
 - Chaque import est gardé dans un **historique** (fichier, date, journal, lignes ajoutées, doublons ignorés) ; une ligne déjà importée (même journal, date, libellé, montants et rang dans la journée) n'est jamais ajoutée deux fois, même si le même relevé est redéposé ou chevauche le précédent.
 
 ### Lexique de traduction

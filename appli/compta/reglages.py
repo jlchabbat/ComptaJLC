@@ -10,8 +10,8 @@ from .models import Reglage
 REGLAGES = [
     ("nom_association", "Nom de l'association (en-tête des pages, situation, éditions)", "", "Loge Bnei Brith"),
     ("devise", "Symbole de la devise des montants (₪, €, $…)", "€", "₪"),
-    ("releves_mizrahi", "Journaux dont le relevé PDF est au format Mizrahi-Tefahot (hébreu), séparés par des virgules ; "
-                        "vide : relevés en Excel ou CSV seulement", "", "B1,B2"),
+    ("releves_mizrahi", "Journaux de la banque Mizrahi-Tefahot (nom du moyen de paiement à la saisie), séparés par des virgules ; "
+                        "vide : le nom du journal est utilisé", "", "B1,B2"),
     ("releve_bit", "Journal du relevé Bit (format imposé, remplace le précédent) ; vide : pas de Bit", "", "B3"),
     ("carte_bancaire", "Nom de la carte de paiement réglée par la banque le mois suivant (passe par le compte de "
                        "virement interne) ; vide : pas de carte", "", "Isracard"),

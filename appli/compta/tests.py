@@ -801,13 +801,14 @@ class EcransFiches(TestCase):
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
 
+from . import echanges as ech_rap  # noqa: E402
 from . import releves as rap  # noqa: E402
 from .models import LigneReleve, ParametreReleve, Rapprochement, Traduction  # noqa: E402
 
-CSV_MODELE = ("﻿Date;Référence;Opération (relevé);Montant;Solde relevé\n"
-              "05/01/2026;11;עמלת מסלול;-10,00;990,00\n"
-              "10/01/2026;12;הפקדת שיק;1 550,00;2 540,00\n"
-              "20/01/2026;14;העברה באינטרנט;-400,00;2 140,00\n").encode("utf-8")
+CSV_MODELE = ("\ufeffJnl;Date;Libelle;Debit;Credit;Solde\n"
+              "B1;05/01/2026;עמלת מסלול;;10,00;990,00\n"
+              "B1;10/01/2026;הפקדת שיק;1 550,00;;2 540,00\n"
+              "B1;20/01/2026;העברה באינטרנט;;400,00;2 140,00\n").encode("utf-8")
 
 
 class Rapprochements(TestCase):
@@ -830,29 +831,37 @@ class Rapprochements(TestCase):
                 Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
             n += 1
 
-    def importer(self, contenu=CSV_MODELE, nom="releve.csv", **k):
-        return rap.importer(self.b1, rap.lire(nom, contenu), source=nom, **k)
+    def importer(self, contenu=CSV_MODELE, nom="releve.csv"):
+        """Import par la structure unique Banque ; renvoie (ajoutées, doublons, soldes incohérents)."""
+        from .models import ImportReleve
+        with tempfile.TemporaryDirectory() as dossier:
+            chemin = Path(dossier) / nom
+            chemin.write_bytes(contenu)
+            f = ech_rap.PAR_NOM["Banque"]
+            ech_rap.imp_banque_tout(ech_rap.lire(chemin, f), nom)
+        i = ImportReleve.objects.latest("pk")
+        return i.ajoutees, i.doublons, len(rap.ecarts_solde(self.b1))
 
     def test_lecture_et_import_sans_doublon(self):
-        lignes = rap.lire("r.csv", CSV_MODELE)
-        self.assertEqual([(l["date"].day, l["montant"]) for l in lignes], [(5, D("-10")), (10, D("1550")), (20, D("-400"))])
         self.assertEqual(self.importer(), (3, 0, 0))
         ouverture = LigneReleve.objects.get(ouverture=True)
         self.assertEqual((ouverture.montant, ouverture.date), (D("1000"), dt.date(2026, 1, 4)))   # déduit du premier solde
         self.assertEqual(self.importer(), (0, 3, 0))                                              # réimport : rien en double
-        self.assertEqual(LigneReleve.objects.get(reference="11").traduction, "Frais de forfait")
-        self.assertEqual(LigneReleve.objects.get(reference="14").traduction, "À traduire")
+        self.assertEqual(LigneReleve.objects.get(operation="עמלת מסלול").traduction, "Frais de forfait")
+        self.assertEqual(LigneReleve.objects.get(operation="העברה באינטרנט").traduction, "À traduire")
 
-    def test_colonnes_hebreu_credit_debit_et_ordre_inverse(self):
-        rangees = [["Relevé Mizrahi"], ["תאריך", "סוג תנועה", "זכות", "חובה", "יתרה", "אסמכתה"],
-                   ["20/01/26", "העברה באינטרנט", "", "400.00", "2,140.00", "14"],
-                   ["10/01/26", "הפקדת שיק", "1,250.00", "", "2,540.00", "12"]]
-        lignes = rap.normaliser(rangees)
-        self.assertEqual([(l["date"], l["montant"], l["solde"]) for l in lignes],
-                         [(dt.date(2026, 1, 10), D("1250.00"), D("2540.00")), (dt.date(2026, 1, 20), D("-400.00"), D("2140.00"))])
-        # PDF lu à l'envers (ordre visuel) : en-têtes et libellés retournés
-        inverses = [[c[::-1] if isinstance(c, str) and rap.HEBREU.search(c) else c for c in r] for r in rangees]
-        self.assertEqual(rap.normaliser(inverses)[1]["operation"], "העברה באינטרנט")
+    def test_solde_facultatif_et_ordre_du_plus_recent(self):
+        sans = ("Jnl;Date;Libelle;Debit;Credit\nB1;20/01/2026;העברה באינטרנט;;400,00\nB1;10/01/2026;הפקדת שיק;1250,00;\n").encode()
+        self.assertEqual(self.importer(sans), (2, 0, 0))
+        self.assertEqual([(l.date.day, l.montant) for l in LigneReleve.objects.filter(ouverture=False)],
+                         [(10, D("1250.00")), (20, D("-400.00"))])                  # remis dans l'ordre chronologique
+        self.assertEqual(LigneReleve.objects.get(ouverture=True).montant, D("0.00"))   # sans solde : ouverture à 0
+
+    def test_structure_non_conforme_refusee(self):
+        ancien = "Date;Référence;Opération;Montant;Solde\n05/01/2026;11;x;-10,00;990,00\n".encode()
+        with self.assertRaises(ech_rap.Refus):
+            self.importer(ancien)
+        self.assertEqual(LigneReleve.objects.count(), 0)
 
     def test_premier_import_sans_solde(self):
         with self.assertRaises(ValueError):
@@ -881,6 +890,7 @@ class Rapprochements(TestCase):
         self.assertEqual((mois[0]["compta"], mois[-1]["ecart"]), (None, D("0.00")))   # arrêté au dernier jour du relevé
 
 
+@override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
 class EcransRapprochement(TestCase):
     def setUp(self):
         Rapprochements.setUp(self)
@@ -2397,6 +2407,17 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Banque.xlsx"), "B1 : 0 ajoutée(s), 2 déjà présente(s)")
         self.assertEqual(LigneReleve.objects.get(journal_id="B1", ouverture=True).montant, D(0))
 
+    def test_banque_export_identique_a_l_import(self):
+        d = dt.datetime(2026, 1, 5)
+        self.fichier("Banque.xlsx", [["B1", d, "עמלת מסלול", None, 10, 990], ["B1", d, "הפקדת שיק", 1550, None, 2540]])
+        self.assertContains(self.importer("Banque.xlsx"), "B1 : 2 ajoutée(s), 0 déjà présente(s)")
+        chemin, n = ech.exporter(ech.PAR_NOM["Banque"])
+        ws = openpyxl.load_workbook(chemin).active
+        self.assertEqual([c.value for c in ws[1]], ech.PAR_NOM["Banque"].colonnes)            # mêmes colonnes en export et en import
+        self.assertEqual((n, ws["F2"].value), (2, 990))
+        (ech.imports() / chemin.name).write_bytes(chemin.read_bytes())                        # l'export se réimporte tel quel
+        self.assertContains(self.importer(chemin.name), "B1 : 0 ajoutée(s), 2 déjà présente(s)")
+
     def test_droits(self):
         b = User.objects.create_user("bureau")
         b.groups.add(Group.objects.get(name="Consultation"))
@@ -2436,7 +2457,7 @@ class Echanges(TransactionTestCase):
         self.assertContains(r, "Déposé(s) dans Imports")
         self.assertEqual(sorted(p.name for p, _ in ech.a_importer()), ["Budget.xlsx", nom])
         r = self.client.post("/echanges/", {"deposer": "1", "fichiers": SimpleUploadedFile("virus.exe", b"x")}, follow=True)
-        self.assertContains(r, "fichier .xlsx, .xlsm, .csv, .pdf ou .zip attendu")
+        self.assertContains(r, "fichier .xlsx, .xlsm, .csv ou .zip attendu")
 
     def test_tout_reinjecter(self):
         """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""

@@ -787,7 +787,7 @@ def rapport_ecarts(ecarts, deja_pris=()):
     return chemin
 
 
-# ---- relevés Banque 1 et Banque 2 (Excel, CSV ou PDF converti) et caisse
+# ---- relevés Banque 1 et Banque 2 et caisse
 
 COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1", "Anal2",
                       "LibelAnal2", "Lien", "Let"]
@@ -803,7 +803,7 @@ def journal_obligatoire(code):
 # ---- Banque : un seul fichier pour toutes les banques et caisses (structure interne, préparée en amont par Power Query)
 
 def exp_banque_tout():
-    return [[l.journal_id, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None]
+    return [[l.journal_id, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None, l.solde]
             for l in LigneReleve.objects.filter(ouverture=False).order_by("journal_id", "date", "rang")]
 
 
@@ -822,14 +822,18 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
         if (debit is None) == (credit is None) or (debit or credit or ZERO) <= 0:
             L.erreur(n, "un seul montant, Debit OU Credit, positif.")
         par_journal[jnl].append({"date": L.date(n, d, "Date"), "reference": "", "operation": L.texte(n, d, "Libelle", True, 200),
-                                 "montant": (debit or ZERO) - (credit or ZERO), "solde": None})
+                                 "montant": (debit or ZERO) - (credit or ZERO), "solde": L.montant(n, d, "Solde")})
     L.verifier()
     auteur = utilisateur.get_username() if utilisateur else ""
     comptes_rendus = []
     for jnl, a_faire in par_journal.items():
+        if len(a_faire) > 1 and a_faire[0]["date"] > a_faire[-1]["date"]:
+            a_faire.reverse()                             # fichier du plus récent au plus ancien : ordre chronologique
+        a_faire.sort(key=lambda l: l["date"])             # le rang dans la journée suit l'ordre du fichier
         try:
-            ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier, solde_ouverture=ZERO,
-                                                     auteur=auteur)
+            ouverture = None if a_faire[0]["solde"] is not None else ZERO       # sans solde (Bit…) : ouverture à 0
+            ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier,
+                                                     solde_ouverture=ouverture, auteur=auteur)
         except ValueError as e:
             raise Refus([str(e)])
         comptes_rendus.append(f"{jnl} : {ajoutees} ajoutée(s), {doublons} déjà présente(s)")
@@ -906,7 +910,7 @@ FORMATS = [
            imp_libelles, (7, 8), (11, 12, 13, 14)),
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
-           ["Jnl", "Date", "Libelle", "Debit", "Credit"], exp_banque_tout, imp_banque_tout, (4, 5)),
+           ["Jnl", "Date", "Libelle", "Debit", "Credit", "Solde"], exp_banque_tout, imp_banque_tout, (4, 5, 6), (6,)),
     Format("Bit", "Relevé Bit (journal du réglage releve_bit, remplace le précédent)", ["Journ", "Date", "Libelle", "Debit", "Credit"],
            exp_bit, imp_bit, (4, 5)),
 ]
@@ -928,7 +932,7 @@ REGLES = [
     ("Ordre", "Importer dans l'ordre du lexique : chaque fichier ne cite que des codes définis par les précédents."),
     ("Dates", "Dates Excel (affichées jj/mm/aaaa)."),
     ("Montants", "Nombres, sans symbole monétaire ; cellule vide quand il n'y a pas de montant."),
-    ("Relevés PDF", "Un relevé PDF déposé dans Imports se convertit en fichier Banque (bouton de la page, pour le journal choisi), à vérifier puis importer."),
+    ("Relevés bancaires", "Une seule structure, quelle que soit la banque : Jnl, Date, Libelle (langue d'origine), Debit, Credit, Solde (facultatif). La préparation à partir du fichier de la banque (PDF, Excel…) se fait en amont, par Power Query."),
 ]
 AIDE = {
     "Exercices": ("Mise à jour par libellé ; un exercice clos ne change plus. La clôture se fait par Fin d'exercice › Clôture.", {
@@ -981,7 +985,8 @@ AIDE = {
     "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare le classeur d'adaptation (Power Query) : une ligne par mouvement, libellé dans la langue d'origine. Debit = entrée d'argent sur le compte, Credit = sortie (comme les écritures). Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
         "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
         "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit"),
-        "Credit": (F, MONTANT, "Sortie : Debit OU Credit")}),
+        "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
+        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit : non) ; sert à contrôler le relevé")}),
     "Bit": ("Relevé Bit (journal du réglage releve_bit, B3 à la Loge). Remplace tout le relevé précédent de ce journal (pointages annulés).", {
         "Journ": (O, "code", "Journal du réglage releve_bit (B3 à la Loge) ; toute autre valeur est refusée"), "Date": (O, DATE, ""),
         "Libelle": (O, "texte, 50 car. au plus", "TIERS - RUBRIQUE - SOUS-RUBRIQUE"),
@@ -1167,9 +1172,9 @@ def lire(chemin, f):
 
 
 def a_importer():
-    """Fichiers présents dans Imports : [(chemin, format ou None)] ; les PDF sont des relevés à convertir."""
+    """Fichiers présents dans Imports : [(chemin, format ou None)]."""
     return [(p, format_de(p)) for p in sorted(imports().iterdir())
-            if p.is_file() and p.suffix.lower() in TABLEURS + (".pdf", ".csv") and not p.name.startswith("~$") and p.stem != LEXIQUE]
+            if p.is_file() and p.suffix.lower() in TABLEURS + (".csv",) and not p.name.startswith("~$") and p.stem != LEXIQUE]
 
 
 def retirer(nom, auteur=""):
@@ -1181,11 +1186,11 @@ def retirer(nom, auteur=""):
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Fichier retiré du dossier Imports", objet=nom[:200])
 
 
-DEPOSABLES = TABLEURS + (".pdf", ".csv")
+DEPOSABLES = TABLEURS + (".csv",)
 
 
 def deposer(nom, contenu, auteur=""):
-    """Dépose dans Imports un fichier envoyé par le navigateur (.xlsx, .pdf, ou .zip dont les .xlsx et .pdf sont extraits).
+    """Dépose dans Imports un fichier envoyé par le navigateur (.xlsx, .csv, ou .zip dont les .xlsx et .csv sont extraits).
 
     Renvoie les noms déposés ; un fichier de même nom est remplacé."""
     import io
@@ -1201,10 +1206,10 @@ def deposer(nom, contenu, auteur=""):
                         and not n.startswith("__MACOSX")]
             fichiers = [(b, n) for b, n in fichiers if Path(b).suffix.lower() in DEPOSABLES and not b.startswith("~$")]
             if not fichiers:
-                raise Refus([f"{nom} : aucun fichier .xlsx ou .pdf dans le ZIP."])
+                raise Refus([f"{nom} : aucun fichier .xlsx ou .csv dans le ZIP."])
             return [n for b, n_ in fichiers for n in deposer(b, z.read(n_), auteur)]
     if Path(nom).suffix.lower() not in DEPOSABLES or not nom or nom.startswith("."):
-        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv, .pdf ou .zip attendu."])
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv ou .zip attendu."])
     (imports() / nom).write_bytes(contenu)
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Dépôt dans Imports", objet=nom[:200])
     return [nom]
@@ -1288,22 +1293,26 @@ def importer(nom, utilisateur=None):
     return f, texte
 
 
-def convertir_pdf(nom, code, auteur=""):
-    """Relevé PDF (Mizrahi ou tableau) du dossier Imports → Imports/Banque_<date>.xlsx (format Banque, journal choisi), à vérifier puis importer."""
-    chemin = fichier_d_import(nom)
-    if chemin.suffix.lower() != ".pdf":
-        raise Refus([f"{chemin.name} n'est pas un PDF."])
-    lignes = releves.lire(chemin.name, chemin.read_bytes())
-    if not lignes:
-        raise Refus([f"{chemin.name} : aucune opération reconnue dans le PDF."])
+def importer_banque(nom, contenu, utilisateur=None):
+    """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl).
+
+    Tout ou rien, ajout seulement ; renvoie le résumé par journal. Ne passe pas par le dossier Imports."""
+    import tempfile
     f = PAR_NOM["Banque"]
-    dest = imports() / f"{f.nom}_{code}_{dt.date.today():%Y-%m-%d}.xlsx"
-    classeur(f, [[code, l["date"], l["operation"], l["montant"] if l["montant"] > 0 else None,
-                  -l["montant"] if l["montant"] < 0 else None] for l in lignes]).save(dest)
-    ranger(chemin)
-    Modification.objects.create(auteur=auteur, lot="Échanges", action="Conversion PDF", objet=chemin.name[:200],
-                                apres=f"{dest.name} : {len(lignes)} ligne(s)")
-    return dest, len(lignes)
+    suffixe = Path(nom).suffix.lower()
+    if suffixe not in TABLEURS + (".csv",):
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm ou .csv attendu (structure Banque : {' | '.join(f.colonnes)})."])
+    with tempfile.TemporaryDirectory() as dossier:
+        chemin = Path(dossier) / f"Banque{suffixe}"
+        chemin.write_bytes(contenu)
+        lignes = lire(chemin, f)
+    if not lignes:
+        raise Refus([f"{nom} : aucune ligne de données."])
+    with transaction.atomic():                            # ajout seul, sans doublon : pas de sauvegarde préalable
+        texte = f.importer(lignes, nom, utilisateur)
+        Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Échanges", action="Import Banque",
+                                    objet=nom[:200], apres=texte[:300])
+    return texte
 
 
 # ---------------------------------------------------------------- tout réinjecter
