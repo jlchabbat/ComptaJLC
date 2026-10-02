@@ -12,7 +12,7 @@ from . import cloture as moteur
 from . import etats
 from .export import classeur_exercice
 from .forms import cherchable
-from .models import Budget, CodeAnalytique, Compte, Exercice, Modification, Reglage
+from .models import Budget, CodeAnalytique, Compte, Exercice, Modification
 from .reglages import montant
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
@@ -96,15 +96,10 @@ def export_etats(request):
 
 
 class ClotureForm(forms.Form):
-    anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), label="Code axe 2 des à-nouveaux")
     confirmation = forms.BooleanField(label="J'ai vérifié les états et je clôture définitivement l'exercice")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
-        code = Reglage.lire("code_axe2_a_nouveaux")
-        if code:
-            self.fields["anal2"].initial = code
         cherchable(self)
 
 
@@ -116,12 +111,10 @@ def cloture(request):
     form = ClotureForm(request.POST or None)
     if request.method == "POST" and ex and form.is_valid():
         try:
-            moteur.cloturer(ex, request.user, form.cleaned_data["anal2"])
+            moteur.cloturer(ex, request.user)
         except ValueError as e:
             messages.error(request, f"Clôture refusée : {e}")
         else:
-            Reglage.objects.update_or_create(cle="code_axe2_a_nouveaux", defaults={
-                "valeur": form.cleaned_data["anal2"].code, "description": "Code axe 2 des à-nouveaux de clôture"})
             messages.success(request, f"Exercice « {ex.libelle} » clôturé. Résultat affecté : {etats.montant(ex.resultat)}.")
         return redirect("cloture")
     comptes = {c.numero: c.libelle for c in Compte.objects.filter(numero__in=[n for n, _, _ in prep.lignes])} if prep else {}

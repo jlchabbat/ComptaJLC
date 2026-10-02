@@ -2,7 +2,8 @@
 <h1>Banque : relevés à passer en comptabilité</h1>
 {% if not journaux %}<p class="carte">Aucun journal de trésorerie avec un compte (Référentiels › Journaux).</p>{% else %}
 {% if peut %}<div class="barre">{% if lignes %}<button form="affectation" class="principal" name="creer" value="1" id="bouton-creer">Créer les écritures</button>{% endif %}
-<button form="f-import">Télécharger le relevé choisi</button>{% if parametres_form %}<button form="f-param">Enregistrer les paramètres</button>{% endif %}</div>{% endif %}
+{% if lignes %}<button form="affectation" name="relier_evidentes" value="1" formnovalidate title="Relie les lignes dont une seule écriture de même montant existe déjà à quelques jours près (rien n'est créé) ; les cas douteux restent dans la liste">Relier les lignes déjà en compta</button>{% endif %}{% if lignes %}<button form="affectation" name="ecarter_cochees" value="1" formnovalidate onclick="return confirm('Écarter les lignes cochées ? Aucune écriture ne sera créée (elles pourront être remises).')" title="Écarte les lignes cochées : déjà comptabilisées autrement">Écarter les lignes cochées</button>
+<span class="aide">ou toutes jusqu'au <input type="date" name="jusquau" form="affectation"> <button form="affectation" name="ecarter_jusquau" value="1" formnovalidate onclick="return confirm('Écarter toutes les lignes jusqu\'à cette date ?')">Écarter</button></span>{% endif %}<button form="f-import">Télécharger le relevé choisi</button>{% if parametres_form %}<button form="f-param">Enregistrer les paramètres</button>{% endif %}</div>{% endif %}
 <div class="onglets">{% for j in journaux %}<a href="{% url 'rapprochement_journal' j.code %}" {% if j == journal %}class="actif"{% endif %}>{{ j.code }} – {{ j.intitule }}</a>{% endfor %}</div>
 <p>{% if parametres.libelle %}{{ parametres.libelle }} · {% endif %}compte {{ journal.compte }}{% if parametres.date_reprise %} · lignes à partir du {{ parametres.date_reprise|date:"d/m/Y" }}{% endif %}</p>
 {% if a_traduire and peut %}<p class="carte message warning">{{ a_traduire }} ligne(s) « À traduire » : <a href="{% url 'traductions' %}">Traductions</a>.</p>{% endif %}
@@ -15,7 +16,7 @@ Les lignes laissées vides restent à faire.</p>{% endif %}
 {% if peut %}<p><button type="button" onclick="document.querySelectorAll('#affectation [data-propose]').forEach(function (a) { var i = a.closest('td').querySelector('input'); if (!i.value) i.value = a.dataset.propose; })"
  title="Recopie dans chaque ligne vide le compte déjà utilisé pour ce libellé (mémoire des affectations) ; rien n'est enregistré avant « Enregistrer »">Reprendre toutes les propositions</button></p>{% endif %}
 <table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>{% if deux_axes %}Code axe 2{% endif %}</th><th>Libellé de l'écriture</th><th>Déjà en compta ?</th>{% endif %}</tr>
-{% for x in lignes %}<tr><td>{{ x.l.date|date:"d/m/Y" }}</td><td><span dir="auto" class="libelle-banque" {% if x.l.traduction != "À traduire" and x.l.traduction != x.l.operation %}title="{{ x.l.traduction }}"{% endif %}>{{ x.l.operation }}</span>{% if x.l.traduction == "À traduire" %} <span class="aide">(à traduire)</span>{% endif %}{% if x.l.reference %} <span class="aide">réf. {{ x.l.reference }}</span>{% endif %}</td>
+{% for x in lignes %}<tr><td>{% if peut %}<input type="checkbox" name="coche" value="{{ x.l.pk|stringformat:'d' }}" title="Cocher pour écarter cette ligne">{% endif %} {{ x.l.date|date:"d/m/Y" }}</td><td><span dir="auto" class="libelle-banque" {% if x.l.traduction != "À traduire" and x.l.traduction != x.l.operation %}title="{{ x.l.traduction }}"{% endif %}>{{ x.l.operation }}</span>{% if x.l.traduction == "À traduire" %} <span class="aide">(à traduire)</span>{% endif %}{% if x.l.reference %} <span class="aide">réf. {{ x.l.reference }}</span>{% endif %}</td>
 <td class="n {% if x.l.montant < 0 %}neg{% endif %}">{{ x.l.montant|shekel }}</td>
 {% if peut %}<td><input name="compte_{{ x.l.pk|stringformat:'d' }}" list="comptes" value="{{ x.compte }}" autocomplete="off" placeholder="Compte ou libellé…" style="min-width:16em">
 {% if x.propose %}<div class="aide proposition">Proposé : {{ x.propose }} <a href="#" data-propose="{{ x.propose }}" onclick="var i=this.closest('td').querySelector('input');i.value=this.dataset.propose;return false">reprendre</a></div>{% endif %}</td>
@@ -24,6 +25,7 @@ Les lignes laissées vides restent à faire.</p>{% endif %}
 <td><input name="libelle_{{ x.l.pk|stringformat:'d' }}" value="{{ x.libelle }}" maxlength="200" style="min-width:14em" title="Libellé enregistré dans l'écriture : modifiable"><label class="aide" title="Retient ce libellé comme traduction de l'opération de la banque"><input type="checkbox" name="lexique_{{ x.l.pk|stringformat:'d' }}"> lexique</label></td>
 <td>{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
+<button name="ecarter" value="{{ x.l.pk|stringformat:'d' }}" title="Laisser cette ligne sans écriture ni lien (écriture déjà passée autrement, doublon, lexique incomplet…) ; elle pourra être remise" onclick="return confirm('Écarter cette ligne du relevé ? Aucune écriture ne sera créée (elle pourra être remise).')">Écarter</button>
 {% if x.deja %}<label class="aide"><input type="checkbox" name="nouvelle_{{ x.l.pk|stringformat:'d' }}"> non, nouvelle écriture</label>{% endif %}
 {% for g in x.groupes %}<div>Plusieurs écritures : {% for e in g %}{% if not forloop.first %} + {% endif %}Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> ({{ e.debit|default:e.credit|shekel }}){% endfor %}
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{% for e in g %}{% if not forloop.first %},{% endif %}{{ e.pk|stringformat:'d' }}{% endfor %}" title="La ligne du relevé regroupe ces écritures : les relier toutes, sans créer d'écriture">Ce sont elles</button></div>{% endfor %}
@@ -43,13 +45,17 @@ Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}<
 {% if peut %}<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }} – {{ c.libelle }}">{% endfor %}</datalist>
 <datalist id="codes">{% for c in codes %}<option value="{{ c.code }} – {{ c.libelle }}">{% endfor %}</datalist>{% endif %}
 </form>
+{% if peut and ecartees %}<details class="carte"><summary>Lignes écartées ({{ ecartees|length }})</summary>
+<form method="post">{% csrf_token %}<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th><th></th></tr>
+{% for l in ecartees %}<tr><td>{{ l.date|date:"d/m/Y" }}</td><td><span dir="auto">{{ l.operation }}</span></td><td class="n">{{ l.montant|shekel }}</td>
+<td><button name="remettre" value="{{ l.pk|stringformat:'d' }}">Remettre dans la liste</button></td></tr>{% endfor %}</table></form></details>{% endif %}
 <script>document.getElementById("affectation").addEventListener("submit", function () {
   var b = document.getElementById("bouton-creer"); if (b) setTimeout(function () { b.disabled = true; }, 0);   // pas de double envoi
 });</script>
 
 {% if peut %}<div class="deux" style="margin-top:16px">
 <form method="post" enctype="multipart/form-data" action="{% url 'releve_import' journal.code %}" class="carte" id="f-import">{% csrf_token %}<h2 style="margin-top:0">Télécharger un relevé {{ journal.code }}</h2>
-<p class="aide">{% if pdf_mizrahi %}PDF Mizrahi (hébreu){% else %}PDF (tableau){% endif %}, Excel ou CSV. Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent,
+<p class="aide">Fichier unique pour toutes les banques (colonne Jnl = journal), Excel ou CSV. Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent,
 sans doublon.</p>
 <div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form>

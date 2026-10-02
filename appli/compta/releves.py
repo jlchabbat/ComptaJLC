@@ -1,9 +1,7 @@
-"""Relevés bancaires : lecture (CSV, Excel, PDF Mizrahi en hébreu), import sans doublon,
+"""Relevés bancaires : import sans doublon (structure unique, voir echanges.imp_banque_tout),
 rapprochement automatique et manuel, état de rapprochement (cahier des charges, Lot 3)."""
 
-import csv
 import datetime as dt
-import io
 import re
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
@@ -14,35 +12,11 @@ from django.db.models import Q
 from .models import ZERO, ImportReleve, Ligne, LigneReleve, Modification, Mouvement, ParametreReleve, Rapprochement, Reglage, soldes
 from .reglages import montant as en_devise
 
-HEBREU = re.compile(r"[֐-׿]")
 INVISIBLES = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮"))
-
-# en-têtes reconnus → colonne ; l'hébreu suit la requête Power Query du classeur
-ENTETES = [
-    ("valeur", ["ערך", "date valeur"]),
-    ("date", ["תאריך", "date"]),
-    ("operation", ["סוג", "opération", "operation", "תיאור", "description", "בית העסק", "libellé", "libelle"]),
-    ("frais", ["frais"]),
-    ("credit", ["זכות", "crédit", "credit"]),
-    ("debit", ["חובה", "débit", "debit"]),
-    ("montant", ["montant", "סכום"]),
-    ("solde", ["יתרה", "solde"]),
-    ("reference", ["אסמכתה", "référence", "reference"]),
-]
-MOTS_HEBREU = [m for _, ms in ENTETES for m in ms if HEBREU.search(m)]
 
 
 def texte(v):
     return "" if v is None else str(v).translate(INVISIBLES).strip()
-
-
-def colonne(entete):
-    e = texte(entete).lower()
-    for nom, mots in ENTETES:
-        for m in mots:
-            if m in e or m in e[::-1]:
-                return nom
-    return None
 
 
 def nombre(v):
@@ -78,219 +52,35 @@ def date(v):
     return None
 
 
-def normaliser(rangees):
-    """Rangées brutes (listes de cellules) → lignes {date, reference, operation, montant, solde}.
-
-    Cherche la ligne d'en-tête ; accepte un montant signé ou deux colonnes crédit / débit ;
-    remet le texte hébreu à l'endroit s'il a été lu à l'envers (PDF)."""
-    lignes, cols, inverse, carte, numero_carte = [], None, False, False, ""
-    for r in rangees:
-        cellules = [texte(c) for c in r]
-        n_carte = next((re.search(r"ארבע ספרות אחרונות\s*(\d{4})", c) for c in cellules if "ספרות" in c), None)
-        if n_carte:                                       # Isracard : une section par carte (… 5524, … 8240)
-            numero_carte = n_carte.group(1)
-            continue
-        noms = [colonne(c) for c in cellules]
-        if "date" in noms and ("montant" in noms or "credit" in noms or "debit" in noms):
-            cols = noms
-            carte = any("סכום החיוב" in c for c in cellules)
-            inverse = any(h[::-1] in c and h not in c for c in cellules for h in MOTS_HEBREU)
-            continue
-        if not cols:
-            continue
-        v = {n: r[i] for i, n in enumerate(cols) if n and i < len(r)}
-        d = date(v.get("date"))
-        achat = None
-        origine = None
-        if carte:                                         # carte : date du prélèvement (1re date), date d'achat au libellé
-            dates = [r[i] for i, n in enumerate(cols) if n == "date" and i < len(r)]
-            d, achat = date(dates[0]), (date(dates[-1]) if len(dates) > 1 else None)
-            montants = [nombre(r[i]) for i, n in enumerate(cols) if n == "montant" and i < len(r)]
-            origine = montants[0] if len(montants) > 1 else None          # montant de l'achat (סכום העסקה)
-        if v.get("montant") not in (None, ""):
-            m = nombre(v.get("montant"))
-            if m is not None and carte:                   # relevé de carte (Isracard) : le montant débité est une sortie
-                m = -m
-            if m is not None and nombre(v.get("frais")):  # Revolut : les frais s'ajoutent à la sortie
-                m -= abs(nombre(v.get("frais")))
-        else:
-            c, db = nombre(v.get("credit")), nombre(v.get("debit"))
-            m = None if c is None and db is None else (c or ZERO) - abs(db or ZERO)
-        if d is None or m is None or m == 0:
-            continue
-        op = texte(v.get("operation"))
-        if inverse and HEBREU.search(op):
-            op = op[::-1]
-        if carte:                                         # « 5524 26/08/2026 HAREL (SUR 1623,00) »
-            sur = f" (SUR {origine:.2f})".replace(".", ",") if origine is not None and abs(origine) != abs(m) else ""
-            op = " ".join(x for x in (numero_carte, f"{achat:%d/%m/%Y}" if achat else "", op) if x) + sur
-        lignes.append({"date": d, "reference": texte(v.get("reference"))[:40], "operation": op[:200], "montant": m,
-                       "solde": nombre(v.get("solde"))})
-    if carte and lignes:                                  # relevé de carte : jamais de solde, on part de 0
-        lignes[0]["carte"] = True
-    # ordre chronologique, ordre du relevé conservé dans la journée
-    if len(lignes) > 1 and lignes[0]["date"] > lignes[-1]["date"]:
-        lignes.reverse()
-    lignes.sort(key=lambda l: l["date"])
-    return lignes
-
-
-DATE_COURTE = re.compile(r"^\d\d/\d\d/\d\d(\d\d)?$")
-NOMBRE = re.compile(r"^₪?-?[\d,]+\.\d\d-?$")
-MIROIR = str.maketrans("()<>", ")(><")
-
-
-def _logique(mot):
-    """Mot hébreu lu dans l'ordre visuel (PDF) → ordre logique ; les chiffres restent dans leur sens."""
-    return mot[::-1].translate(MIROIR) if HEBREU.search(mot) else mot
-
-
-def lire_pdf_mizrahi(contenu):
-    """Relevé PDF du site Mizrahi-Tefahot (עובר ושב - יתרה ותנועות בחשבון), lu par la position des mots.
-
-    Colonnes repérées sur la ligne d'en-tête de chaque page. Le solde, imprimé seulement sur la dernière ligne
-    de chaque date, est complété depuis le solde d'ouverture (יתרה קודמת) et vérifié contre les soldes imprimés.
-    Renvoie [] si le document n'a pas cette mise en page."""
-    import pdfplumber
-    lignes, ouverture = [], None
-    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-        for page in pdf.pages:
-            mots = [dict(m, texte=_logique(m["text"])) for m in page.extract_words()]
-            rangs = defaultdict(list)
-            for m in mots:
-                rangs[round(m["top"] / 3)].append(m)
-            entete = next((r for r in rangs.values() if any(m["texte"] == "אסמכתה" for m in r)), None)
-            if not entete:
-                continue
-            x = lambda cond: max((m["x1"] for m in entete if cond(m["texte"])), default=None)  # noqa: E731
-            dates = sorted(m["x1"] for m in entete if m["texte"] == "תאריך")      # date, puis date de valeur
-            cols = {"date": dates[-1] if dates else None, "valeur": dates[0] if len(dates) > 1 else None, "montant": x(lambda t: "זכות" in t),
-                    "solde": x(lambda t: t in ("יתרה", 'בש"ח')), "reference": x(lambda t: t == "אסמכתה")}
-            if None in cols.values():
-                continue
-            haut = min(m["top"] for m in entete)
-            proche = lambda m, c: abs(m["x1"] - cols[c]) <= 15  # noqa: E731
-            for cle in sorted(rangs):
-                r = rangs[cle]
-                if any(m["texte"] == "קודמת" for m in r):                            # יתרה קודמת : solde d'ouverture
-                    v = next((m["texte"] for m in r if m["texte"].startswith("₪")), None)
-                    ouverture = nombre(v) if v else ouverture
-                    continue
-                if min(m["top"] for m in r) <= haut:
-                    continue
-                d = next((m for m in r if proche(m, "date") and DATE_COURTE.match(m["texte"])), None)
-                if not d:
-                    continue
-                l = {"date": date(d["texte"]), "reference": "", "montant": None, "solde": None}
-                texte = []
-                for m in r:
-                    t = m["texte"]
-                    if m is d or (proche(m, "valeur") and DATE_COURTE.match(t)) or t in ("<", ">"):
-                        continue
-                    if NOMBRE.match(t) and proche(m, "montant"):
-                        l["montant"] = nombre(t)
-                    elif NOMBRE.match(t) and proche(m, "solde"):
-                        l["solde"] = nombre(t)
-                    elif t.isdigit() and proche(m, "reference"):
-                        l["reference"] = t
-                    else:
-                        texte.append(m)
-                l["operation"] = " ".join(m["texte"] for m in sorted(texte, key=lambda m: -m["x1"]))[:200]
-                if l["montant"] is not None:
-                    lignes.append(l)
-    if lignes and ouverture is not None:
-        cumul = ouverture
-        for l in lignes:
-            cumul += l["montant"]
-            if l["solde"] is not None and l["solde"] != cumul:
-                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
-            l["solde"] = cumul
-    return lignes
-
-
-def _simple(mot):
-    """« ההעעששבב » → « העשב » : texte en gras imprimé deux fois par certains PDF Mizrahi."""
-    return mot[::2] if len(mot) > 1 and len(mot) % 2 == 0 and mot[::2] == mot[1::2] else mot
-
-
-LIGNE_TNUOT = re.compile(r"^(\d+) (?:(-?[\d,]+\.\d\d) )?(-?[\d,]+\.\d\d) (.*) (\d\d/\d\d/\d\d)$")
-
-
-def lire_pdf_tnuot(contenu):
-    """Relevé PDF Mizrahi « תנועות בחשבון » (texte en double, une ligne par opération : référence, solde facultatif,
-    montant, description, date). Solde d'ouverture : « יתרה קודמת ». Renvoie [] si ce n'est pas cette mise en page."""
-    import pdfplumber
-    lignes, ouverture = [], None
-    with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-        texte = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    for brute in texte.splitlines():
-        ligne = " ".join(_simple(m) for m in brute.split())
-        if "קודמת" in ligne[::-1] or "תמדוק" in ligne:
-            m = re.search(r"₪\s*(-?[\d,]+\.\d\d)", ligne)
-            ouverture = nombre(m.group(1)) if m else ouverture
-            continue
-        m = LIGNE_TNUOT.match(ligne)
-        if not m:
-            continue
-        ref, solde, montant_, op, d = m.groups()
-        op = " ".join(_logique(x) for x in reversed(op.split()))
-        lignes.append({"date": date(d), "reference": ref[:40], "operation": op[:200], "montant": nombre(montant_),
-                       "solde": nombre(solde)})
-    if lignes and ouverture is not None:
-        cumul = ouverture
-        for l in lignes:
-            cumul += l["montant"]
-            if l["solde"] is not None and l["solde"] != cumul:
-                raise ValueError(f"Relevé incohérent le {l['date']:%d/%m/%Y} : solde imprimé {l['solde']}, solde recalculé {cumul}.")
-            l["solde"] = cumul                            # solde complété : il donne le solde d'ouverture à l'import
-    return lignes
-
-
-def lire(nom, contenu):
-    """Lit un fichier de relevé (octets) selon son extension."""
-    ext = nom.lower().rsplit(".", 1)[-1]
-    if ext == "csv":
-        s = contenu.decode("utf-8-sig", errors="replace")
-        sep = ";" if s.count(";") >= s.count(",") else ","
-        return normaliser(list(csv.reader(io.StringIO(s), delimiter=sep)))
-    if ext in ("xlsx", "xlsm"):
-        import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(contenu), data_only=True, read_only=True)
-        return normaliser([list(r) for ws in wb.worksheets for r in ws.iter_rows(values_only=True)])
-    if ext == "pdf":
-        import pdfplumber
-        lignes = lire_pdf_mizrahi(contenu) or lire_pdf_tnuot(contenu)
-        if lignes:
-            return lignes
-        rangees = []
-        with pdfplumber.open(io.BytesIO(contenu)) as pdf:
-            for page in pdf.pages:
-                tables = page.extract_tables() or page.extract_tables({"vertical_strategy": "text", "horizontal_strategy": "text"})
-                for t in tables:
-                    rangees += t
-        return normaliser(rangees)
-    raise ValueError("Format non reconnu : fichier .pdf, .xlsx ou .csv attendu.")
+def _libelle_cle(texte):
+    return " ".join((texte or "").split())
 
 
 @transaction.atomic
 def importer(journal, lignes, source="", solde_ouverture=None, auteur=""):
-    """Ajoute les lignes absentes (clé : date, référence, montant, rang dans la journée).
+    """Ajoute les lignes absentes. Clé : date, libellé de la banque et montant (journal compris) ; deux lignes
+    identiques le même jour comptent pour deux (la 2e du fichier retrouve la 2e de la base).
 
     Renvoie (ajoutées, doublons, écarts de solde)."""
-    rangs = defaultdict(int)
-    existant = set(LigneReleve.objects.filter(journal=journal).values_list("date", "reference", "montant", "rang"))
+    en_base = defaultdict(int)
+    dernier_rang = defaultdict(int)
+    for date, operation, montant, rang in LigneReleve.objects.filter(journal=journal, ouverture=False).values_list(
+            "date", "operation", "montant", "rang"):
+        en_base[(date, _libelle_cle(operation), montant)] += 1
+        dernier_rang[date] = max(dernier_rang[date], rang)
     premiere = not LigneReleve.objects.filter(journal=journal).exists()
-    nouvelles, doublons = [], 0
+    vus, nouvelles, doublons = defaultdict(int), [], 0
     carte = any(l.pop("carte", False) for l in lignes)
     if carte and solde_ouverture is None:
         solde_ouverture = ZERO                            # relevé de carte (Isracard…) : pas de solde, débité chaque mois
     for l in lignes:
-        rangs[l["date"]] += 1
-        cle = (l["date"], l["reference"], l["montant"], rangs[l["date"]])
-        if cle in existant:
+        cle = (l["date"], _libelle_cle(l["operation"]), l["montant"])
+        vus[cle] += 1
+        if vus[cle] <= en_base[cle]:                      # n-ième ligne identique déjà en base
             doublons += 1
             continue
-        nouvelles.append(LigneReleve(journal=journal, rang=rangs[l["date"]], source=source[:120], **l))
+        dernier_rang[l["date"]] += 1                      # après les lignes déjà en base du même jour
+        nouvelles.append(LigneReleve(journal=journal, rang=dernier_rang[l["date"]], source=source[:120], **l))
     if premiere and nouvelles:
         if solde_ouverture is None and nouvelles[0].solde is not None:
             solde_ouverture = nouvelles[0].solde - nouvelles[0].montant
@@ -444,28 +234,61 @@ def par_mois(journal):
 
 def a_affecter(journal):
     """Lignes téléchargées sans écriture (non reliées), à partir de la date de reprise."""
-    qs = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ouverture=False)
+    qs = LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ouverture=False, ecartee=False)
     reprise = date_reprise(journal)
     return (qs.filter(date__gte=reprise) if reprise else qs).order_by("date", "rang", "pk")
 
 
-def deja_en_compta(l):
+def ecartees(journal):
+    """Lignes écartées à la main : ni écriture ni lien, retirées de la liste à affecter."""
+    return LigneReleve.objects.filter(journal=journal, rapprochement__isnull=True, ecartee=True).order_by("date", "rang", "pk")
+
+
+class Contexte:
+    """Données du journal lues une fois pour toute la page Banque : les propositions de chaque ligne se calculent en mémoire
+    au lieu d'interroger la base ligne par ligne (page rapide même avec plusieurs centaines de lignes)."""
+
+    def __init__(self, journal):
+        self.ecart = dt.timedelta(days=tolerance())
+        self.toutes = list(ecritures(journal))                                   # avec mouvement
+        self.libres = [e for e in self.toutes if e.rapprochement_id is None]
+        self.a_affecter = list(a_affecter(journal))
+        self.releves_reliees = defaultdict(list)
+        for x in LigneReleve.objects.filter(journal=journal, rapprochement__isnull=False):
+            self.releves_reliees[x.rapprochement_id].append(x)
+        self.ailleurs = list(Ligne.objects.filter(compte__numero__startswith="5", rapprochement__isnull=True)
+                             .exclude(compte=journal.compte).exclude(mouvement__origine="cloture")
+                             .select_related("mouvement", "compte"))
+
+
+def _meme_sens_montant(e, l):
+    return (e.debit == l.montant and e.credit == ZERO) if l.montant > 0 else (e.credit == -l.montant and e.debit == ZERO)
+
+
+def deja_en_compta(l, ctx=None):
     """Écritures de banque non reliées, de même montant, à ± tolérance jours : la ligne est peut-être déjà saisie."""
+    if ctx:
+        return sorted((e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ctx.ecart and _meme_sens_montant(e, l)),
+                      key=lambda e: (e.mouvement.date, e.mouvement.numero))
     ecart = dt.timedelta(days=tolerance())
     qs = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart))
     qs = qs.filter(debit=l.montant, credit=ZERO) if l.montant > 0 else qs.filter(credit=-l.montant, debit=ZERO)
     return list(qs.order_by("mouvement__date", "mouvement__numero"))
 
 
-def groupes(l, maxi=4):
+def groupes(l, maxi=4, ctx=None):
     """Plusieurs écritures non reliées dont la somme fait la ligne du relevé (prélèvement de carte, remise de chèques…),
     à ± tolérance jours : [(écritures), …], les plus proches de la date d'abord (3 au plus)."""
     from itertools import combinations
-    ecart = dt.timedelta(days=tolerance())
-    sens = dict(debit__gt=0, credit=ZERO) if l.montant > 0 else dict(credit__gt=0, debit=ZERO)
-    cibles = sorted(ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart),
-                                                **sens),
-                    key=lambda e: (abs((e.mouvement.date - l.date).days), e.mouvement.numero))[:14]
+    ecart = ctx.ecart if ctx else dt.timedelta(days=tolerance())
+    if ctx:
+        proches = [e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ecart
+                   and ((e.debit > 0 and e.credit == ZERO) if l.montant > 0 else (e.credit > 0 and e.debit == ZERO))]
+    else:
+        sens = dict(debit__gt=0, credit=ZERO) if l.montant > 0 else dict(credit__gt=0, debit=ZERO)
+        proches = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart),
+                                              **sens)
+    cibles = sorted(proches, key=lambda e: (abs((e.mouvement.date - l.date).days), e.mouvement.numero))[:14]
     trouves = []
     for n in range(2, maxi + 1):
         for combi in combinations(cibles, n):
@@ -476,15 +299,20 @@ def groupes(l, maxi=4):
     return trouves
 
 
-def lignes_groupees(l, maxi=4):
+def lignes_groupees(l, maxi=4, ctx=None):
     """Plusieurs lignes du relevé (dont l) pour une seule écriture non reliée : frais du mois passés en une fois.
     [(lignes du relevé, écriture), …] (3 au plus), lignes et écriture à ± tolérance jours."""
     from itertools import combinations
-    ecart = dt.timedelta(days=tolerance())
-    autres = sorted(a_affecter(l.journal).filter(date__range=(l.date - ecart, l.date + ecart)).exclude(pk=l.pk),
-                    key=lambda x: (abs((x.date - l.date).days), x.rang))[:10]
+    ecart = ctx.ecart if ctx else dt.timedelta(days=tolerance())
+    if ctx:
+        voisines = [x for x in ctx.a_affecter if abs(x.date - l.date) <= ecart and x.pk != l.pk]
+        libres = [e for e in ctx.libres if abs(e.mouvement.date - l.date) <= ecart]
+    else:
+        voisines = a_affecter(l.journal).filter(date__range=(l.date - ecart, l.date + ecart)).exclude(pk=l.pk)
+        libres = ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart))
+    autres = sorted(voisines, key=lambda x: (abs((x.date - l.date).days), x.rang))[:10]
     cibles = {}
-    for e in ecritures(l.journal).filter(rapprochement__isnull=True, mouvement__date__range=(l.date - ecart, l.date + ecart)):
+    for e in libres:
         cibles.setdefault(montant(e), []).append(e)
     trouves = []
     for n in range(1, maxi):
@@ -497,16 +325,38 @@ def lignes_groupees(l, maxi=4):
     return trouves
 
 
-def lignes_nulles(l, maxi=4):
+def lignes_nulles(l, maxi=4, ctx=None):
     """Lignes du relevé (dont l) dont la somme est nulle (dépôt renouvelé : sortie, retour et intérêts), le même jour :
     elles se relient entre elles, sans écriture. Premier groupe trouvé, ou None."""
     from itertools import combinations
-    autres = list(a_affecter(l.journal).filter(date=l.date).exclude(pk=l.pk).order_by("rang")[:10])
+    if ctx:
+        autres = sorted((x for x in ctx.a_affecter if x.date == l.date and x.pk != l.pk), key=lambda x: x.rang)[:10]
+    else:
+        autres = list(a_affecter(l.journal).filter(date=l.date).exclude(pk=l.pk).order_by("rang")[:10])
     for n in range(1, maxi):
         for combi in combinations(autres, n):
             if l.montant + sum(x.montant for x in combi) == 0:
                 return (l,) + combi
     return None
+
+
+def relier_evidentes(journal, utilisateur=None):
+    """Relie sans ambiguïté les lignes du relevé déjà en compta : une seule écriture de même montant à ± tolérance jours,
+    et cette écriture n'est candidate d'aucune autre ligne. Les cas douteux restent à décider ligne par ligne.
+    Renvoie le nombre de lignes reliées."""
+    ctx = Contexte(journal)
+    candidates = {l.pk: deja_en_compta(l, ctx) for l in ctx.a_affecter}
+    emploi = defaultdict(int)
+    for es in candidates.values():
+        for e in es:
+            emploi[e.pk] += 1
+    n = 0
+    for l in ctx.a_affecter:
+        es = candidates[l.pk]
+        if len(es) == 1 and emploi[es[0].pk] == 1:
+            pointer(journal, [l], [es[0]], utilisateur, "auto")
+            n += 1
+    return n
 
 
 @transaction.atomic
@@ -522,12 +372,14 @@ def relier_nulles(releves, utilisateur=None):
     return r
 
 
-def pistes(l, jours=60):
+def pistes(l, jours=60, ctx=None):
     """Quand rien n'est proposé : pourquoi ? Écritures de même montant hors du cadre habituel.
 
     loin : non reliées, sur le compte de la banque, à plus de « tolérance » jours (jusqu'à 60) : reliables ;
     reliees : déjà reliées à une autre ligne du relevé (relevé importé deux fois ?) ;
     ailleurs : sur un autre compte de trésorerie (5…) à tolérance près : saisies sur la mauvaise banque ?"""
+    if ctx:
+        return _pistes_memoire(l, jours, ctx)
     ecart, large = dt.timedelta(days=tolerance()), dt.timedelta(days=jours)
     montant = (dict(debit=l.montant, credit=ZERO) if l.montant > 0 else dict(credit=-l.montant, debit=ZERO))
     proches = ecritures(l.journal).filter(mouvement__date__range=(l.date - large, l.date + large), **montant)
@@ -545,6 +397,21 @@ def pistes(l, jours=60):
     return {"loin": loin[:3], "reliees": reliees, "ailleurs": ailleurs}
 
 
+def _pistes_memoire(l, jours, ctx):
+    """Même résultat que pistes(), calculé sur les données déjà lues (Contexte)."""
+    ecart, large = ctx.ecart, dt.timedelta(days=jours)
+    proches = sorted((e for e in ctx.toutes if abs(e.mouvement.date - l.date) <= large and _meme_sens_montant(e, l)),
+                     key=lambda e: e.mouvement.date)
+    loin = [e for e in proches if e.rapprochement_id is None and abs((e.mouvement.date - l.date).days) > ecart.days]
+    reliees = []
+    for e in [e for e in proches if e.rapprochement_id is not None][:3]:
+        autre = next((x for x in ctx.releves_reliees.get(e.rapprochement_id, []) if x.pk != l.pk), None)
+        if autre and autre.date == l.date and autre.montant == l.montant:
+            reliees.append((e, autre))
+    ailleurs = [x for x in ctx.ailleurs if abs(x.mouvement.date - l.date) <= ecart and _meme_sens_montant(x, l)][:3]
+    return {"loin": loin[:3], "reliees": reliees, "ailleurs": ailleurs}
+
+
 def libelle_releve(l):
     t = l.traduction
     return (t if t != "À traduire" else l.operation)[:60].upper()
@@ -552,7 +419,8 @@ def libelle_releve(l):
 
 @transaction.atomic
 def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle=""):
-    """Un Mvt à deux lignes (banque / contrepartie, même code axe 2), aussitôt relié à la ligne du relevé.
+    """Un Mvt à deux lignes (banque / contrepartie), aussitôt relié à la ligne du relevé.
+    Le code axe 2 n'est porté que par la contrepartie, et seulement si c'est un compte 6 ou 7.
 
     Refus si la ligne est déjà reliée (pas de double écriture) ou si une écriture identique existe déjà en compta
     (sauf forcer=True)."""
@@ -560,6 +428,7 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle="")
     if l.rapprochement_id or l.ouverture:
         raise ValueError("Cette ligne a déjà son écriture.")
     banque = l.journal.compte
+    anal2 = anal2 if compte.porte_axe2 else None
     if compte.pk == banque.pk:
         raise ValueError("La contrepartie ne peut pas être le compte de la banque elle-même.")
     if not forcer and deja_en_compta(l):
@@ -570,14 +439,14 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle="")
                                   commentaire=f"Relevé {l.journal.code} du {l.date:%d/%m/%Y} : {l.operation}")
     lib = (libelle or "").strip()[:200] or libelle_releve(l)       # libellé modifié par l'utilisateur, sinon traduction
     entree = l.montant > 0
-    ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib, anal2=anal2,
+    ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib,
                                         debit=m if entree else ZERO, credit=ZERO if entree else m)
     Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib, anal2=anal2,
                          debit=ZERO if entree else m, credit=m if entree else ZERO)
     pointer(l.journal, [l], [ligne_banque], utilisateur, "saisie")
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Banque",
                                 action="Écriture depuis le relevé", objet=f"Mvt {mv.numero}",
-                                apres=f"{l.journal.code} {l.date:%d/%m/%Y} {l.montant} ; {compte.pk} ; {anal2.pk}")
+                                apres=f"{l.journal.code} {l.date:%d/%m/%Y} {l.montant} ; {compte.pk} ; {anal2.pk if anal2 else '—'}")
     return mv
 
 

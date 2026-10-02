@@ -3,11 +3,11 @@
 <div class="deux">
 <div class="carte"><h2 style="margin-top:0">Exporter</h2>
 <p><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Exporter toutes les données (.zip)</a></p>
-<p class="aide">Un fichier daté, à enregistrer sur votre ordinateur{% if dossier_pc %} : <b>{{ dossier_pc }}</b>{% endif %}.</p></div>
+<p class="aide">Un fichier daté, à enregistrer sur votre ordinateur{% if pc_export %} : <b>{{ pc_export }}</b>{% endif %}.</p></div>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}<h2 style="margin-top:0">Importer</h2>
 <p><input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.zip"></p>
 <p><button class="principal" name="importer_fichiers" value="1">Importer</button></p>
-<p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant{% if dossier_pc %} (fichiers à prendre dans <b>{{ dossier_pc }}</b>){% endif %}.</p></form>
+<p class="aide">Les fichiers sont reconnus seuls ; tout ou rien, avec sauvegarde avant{% if pc_imports %} (fichiers à prendre dans <b>{{ pc_imports }}</b>){% endif %}.</p></form>
 </div>
 <details class="carte"><summary>Options avancées (un seul fichier, dossiers, réinjection, modèles)</summary>
 <div class="barre"><a class="bouton" href="{% url 'echanges_modeles' %}">Modèles vierges (ZIP)</a>
@@ -18,14 +18,9 @@
 
 <h2 id="importer">Fichiers du dossier Imports</h2>
 <form method="post" enctype="multipart/form-data" class="carte">{% csrf_token %}
-<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.pdf,.zip"></label>
+<label>Déposer des fichiers dans Imports <input type="file" name="fichiers" multiple accept=".xlsx,.xlsm,.csv,.zip"></label>
 <button class="principal" name="deposer" value="1">Déposer</button>
 </form>
-{% if pdfs %}<div class="carte"><h3 style="margin-top:0">Relevés PDF à convertir</h3>
-<p class="aide">La conversion crée Banque_journal_date.xlsx dans Imports : vérifiez-le dans Excel, puis importez-le ci-dessous.</p>
-<table>{% for nom in pdfs %}<tr><td>{{ nom }}</td><td><form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="convertir" value="{{ nom }}">
-<button name="journal" value="B1">Convertir pour B1</button> <button name="journal" value="B2">Convertir pour B2</button></form>
-<form method="post" style="display:inline">{% csrf_token %}<button name="retirer" value="{{ nom }}" onclick="return confirm('Supprimer « {{ nom|escapejs }} » du dossier Imports ?')">Supprimer</button></form></td></tr>{% endfor %}</table></div>{% endif %}
 <form method="post">{% csrf_token %}
 {% if a_importer %}<p><button class="principal" name="tout_importer" value="1"
  onclick="return confirm('Importer tous les fichiers reconnus, dans l\'ordre du lexique ? Tout ou rien ; rien n\'est supprimé.')">Tout importer</button>
@@ -39,7 +34,7 @@
 
 <details class="carte"><summary><b>Tout réinjecter</b> : remplacer les données par les fichiers du dossier Imports</summary>
 
-<ul><li>Un fichier <b>Ecritures, Banque, Bit ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
+<ul><li>Un fichier <b>Ecritures, Banque ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
 <li>Les <b>référentiels</b> sont mis à jour, jamais supprimés ; tout ou rien, sauvegarde avant.</li></ul>
 <form method="post" id="f-reinjecter">{% csrf_token %}<label>Taper REMPLACER pour confirmer <input name="confirmation" autocomplete="off"></label></form></details>
@@ -57,8 +52,11 @@ dans le fichier est supprimé).</li>
 {% empty %}<tr><td colspan="3">Aucun fichier exporté.</td></tr>{% endfor %}</table>
 
 <h2 id="dossiers">Dossiers</h2>
-<form method="post" class="carte"><label>Dossier habituel sur votre ordinateur (rappel affiché ci-dessus) <input name="dossier_pc" value="{{ dossier_pc }}" size="40" placeholder="ex. C:\Mes documents\AppliBB"></label>
-<button name="dossier_pc_ok" value="1">Enregistrer</button>{% csrf_token %}</form>
+<form method="post" class="carte"><h3 style="margin-top:0">Dossiers habituels sur votre ordinateur</h3>
+<div class="formulaire">{% for cle, lib, valeur, exemple in dossiers_pc %}<label for="{{ cle }}">{{ lib|capfirst }}</label>
+<div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="ex. {{ exemple }}" size="50" style="width:100%"></div>{% endfor %}</div>
+<p class="aide">Simples rappels affichés près des boutons : l'application en ligne ne lit pas votre disque. Vous choisissez les fichiers vous-même.</p>
+<button name="dossiers_pc" value="1">Enregistrer</button>{% csrf_token %}</form>
 <form method="post" class="carte" id="f-dossiers">{% csrf_token %}<div class="formulaire">
 {% for cle, lib, valeur, defaut, utilise in dossiers %}<label for="{{ cle }}">{{ lib }}</label>
 <div><input id="{{ cle }}" name="{{ cle }}" value="{{ valeur }}" placeholder="{{ defaut }}" style="width:100%">

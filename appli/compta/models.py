@@ -9,6 +9,8 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from functools import cached_property
+
 from django.db import models
 from django.db.models import Q, Sum
 
@@ -71,6 +73,11 @@ class Compte(models.Model):
     @property
     def classe(self):
         return self.numero[:1]
+
+    @property
+    def porte_axe2(self):
+        """L'axe 2 (activité, événement) n'affecte que les dépenses et recettes : comptes de classe 6 ou 7."""
+        return self.numero[:1] in ("6", "7")
 
 
 class Journal(models.Model):
@@ -176,8 +183,8 @@ class Ligne(models.Model):
     libelle = models.CharField("libellé", max_length=200)
     debit = models.DecimalField("débit", max_digits=14, decimal_places=2, default=ZERO)
     credit = models.DecimalField("crédit", max_digits=14, decimal_places=2, default=ZERO)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, limit_choices_to={"axe": 2}, related_name="lignes",
-                              verbose_name="axe 2")
+    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
+                              related_name="lignes", verbose_name="axe 2", help_text="Comptes de classe 6 et 7 seulement.")
     lettrage = models.CharField(max_length=10, blank=True)
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
@@ -581,6 +588,7 @@ class LigneReleve(models.Model):
     montant = models.DecimalField(max_digits=14, decimal_places=2, help_text="Positif = crédit en banque (entrée).")
     solde = models.DecimalField("solde relevé", max_digits=14, decimal_places=2, null=True, blank=True)
     ouverture = models.BooleanField("solde d'ouverture", default=False)
+    ecartee = models.BooleanField("écartée", default=False, help_text="Ligne volontairement laissée sans écriture ni lien.")
     rapprochement = models.ForeignKey(Rapprochement, on_delete=models.SET_NULL, null=True, blank=True, related_name="releves")
     source = models.CharField(max_length=120, blank=True)
     importe_le = models.DateTimeField(auto_now_add=True)
@@ -594,7 +602,7 @@ class LigneReleve(models.Model):
     def __str__(self):
         return f"{self.journal_id} {self.date:%d/%m/%Y} {self.montant}"
 
-    @property
+    @cached_property
     def traduction(self):
         if self.ouverture:
             return "Solde d'ouverture"

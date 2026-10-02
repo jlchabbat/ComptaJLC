@@ -64,14 +64,15 @@ Un bénévole se connecte au site avec son propre identifiant (rôle Bénévole)
 
 Par journal de trésorerie (B1, B2, B3, CA) :
 
-- **Import du relevé** : PDF Mizrahi en hébreu, Excel ou CSV (modèle
-  `Imports/modeles/10_releve_B1.csv`). Les lignes déjà importées sont
-  ignorées (clé : date, référence, montant, rang dans la journée). Au premier
-  import, un solde d'ouverture est déduit du premier solde du relevé.
+- **Import du relevé** : un seul fichier `Banque.xlsx` (Jnl, Date, Libelle, Debit, Credit,
+  Solde facultatif), préparé en amont pour toutes les banques ; format Excel ou CSV. Les lignes déjà importées sont
+  ignorées (clé : journal, date, libellé, montant). Au premier
+  import, un solde d'ouverture est déduit du premier solde du relevé (0 sans solde).
+- **Écarter** une ligne : elle sort de la liste sans écriture (liste « Lignes écartées », bouton « Remettre »).
   Les opérations sont traduites (Banque › Traductions du relevé).
 - **Relevés à passer en compta** (menu Banque) : seulement les lignes
   téléchargées sans écriture (à partir de la date de reprise). Pour chacune :
-  compte de contrepartie et code axe 2 (listes cherchables par code ou
+  compte de contrepartie et, pour les comptes 6 et 7 seulement, code axe 2 (listes cherchables par code ou
   libellé), puis **Créer les écritures** : un Mvt banque / contrepartie par
   ligne, aussitôt relié à la ligne (`releves.creer_ecriture`).
 - **Pas de doublon** : une ligne reliée sort de la liste et n'accepte plus
@@ -127,7 +128,7 @@ Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiable
 `dossier_imports`, `dossier_exports`). Import tout ou rien, sauvegarde avant ; fichier rangé dans
 `Imports/Importés`. **Tout importer** importe en une fois tous les fichiers déposés (un ZIP convient), dans l'ordre
 du lexique, tout ou rien, sans rien supprimer ; `Liens.xlsx` (Mvt, Lien, Description) joint les documents en ligne à leur Mvt.
-Un relevé PDF Mizrahi se convertit en fichier Banque (journal au choix). **Tout réinjecter**
+Dossiers habituels du PC (`Imports`, `Telechgt`, `Export`) : simples rappels, réglages `dossier_pc_*`. **Tout réinjecter**
 remplace écritures, relevés et budget par les fichiers présents.
 
 ## Documentation intégrée

@@ -53,7 +53,7 @@ def demonstration():
     from compta.vues_utilisateurs import donner_role
 
     call_command("migrate", verbosity=0)
-    for code, lib in (("BIL.5", "TRESORERIE"), ("BIL.4", "TIERS"), ("COT.2", "COTISATIONS"), ("FON.1", "FONCTIONNEMENT"),
+    for code, lib in (("BIL", "BILAN"), ("COT.2", "COTISATIONS"), ("FON.1", "FONCTIONNEMENT"),
                       ("MAN.1", "MANIFESTATIONS")):
         CodeAnalytique.objects.create(code=code, axe=1, libelle=lib)
     for code, lib in (("GEN.001", "GENERAL"), ("GEN.002", "COTISATIONS"), ("GEN.004", "BANQUE"), ("MAN.001", "RALLYE 2026"),
@@ -61,9 +61,9 @@ def demonstration():
         CodeAnalytique.objects.create(code=code, axe=2, libelle=lib)
     for p, axe, lib in (("GEN.", 2, "Général"), ("MAN.", 2, "Manifestations"), ("SOC.", 2, "Social"), ("COT.", 1, "Cotisations")):
         Prefixe.objects.create(prefixe=p, axe=axe, libelle=lib)
-    comptes = [("110000", "REPORT A NOUVEAU", "BIL.4"), ("401000", "FOURNISSEURS DIVERS", "BIL.4"),
-               ("512000", "MIZRAHI COMPTE COURANT", "BIL.5"), ("512100", "MIZRAHI EPARGNE", "BIL.5"), ("512200", "BIT", "BIL.5"),
-               ("530000", "CAISSE", "BIL.5"), ("580000", "VIREMENTS INTERNES", "BIL.5"), ("470000", "COMPTE D'ATTENTE", "BIL.4"),
+    comptes = [("110000", "REPORT A NOUVEAU", "BIL"), ("401000", "FOURNISSEURS DIVERS", "BIL"),
+               ("512000", "MIZRAHI COMPTE COURANT", "BIL"), ("512100", "MIZRAHI EPARGNE", "BIL"), ("512200", "BIT", "BIL"),
+               ("530000", "CAISSE", "BIL"), ("580000", "VIREMENTS INTERNES", "BIL"), ("470000", "COMPTE D'ATTENTE", "BIL"),
                ("600000", "ACHATS DIVERS", "FON.1"), ("600100", "FRAIS BANCAIRES", "FON.1"), ("600200", "LOCATION DE SALLE", "MAN.1"),
                ("610000", "TRAITEUR ET ARTISTES", "MAN.1"), ("625000", "DONS VERSES", "FON.1"), ("630000", "AIDES SOCIALES", "FON.1"),
                ("700000", "COTISATIONS", "COT.2"), ("710000", "PARTICIPATIONS AUX MANIFESTATIONS", "MAN.1"),
@@ -89,7 +89,7 @@ def demonstration():
              ("411ATTAL001", membre, "ATTAL", "Michel", "21 rue Bialik", "6100000", "Tel Aviv", "", 400),
              ("401TRAIT001", fournisseur, "TRAITEUR DU PARC", "", "5 rue Allenby", "6100000", "Tel Aviv", "contact@exemple.org", None)]
     for compte, t, nom, prenom, adresse, cp, ville, email, cotisation in tiers:
-        Compte.objects.create(numero=compte, libelle=f"{nom} {prenom}".strip().upper(), anal1_id="BIL.4", lettrable=True)
+        Compte.objects.create(numero=compte, libelle=f"{nom} {prenom}".strip().upper(), anal1_id="BIL", lettrable=True)
         Membre.objects.create(compte_id=compte, type=t, nom=nom, prenom=prenom, adresse=adresse, code_postal=cp, ville=ville,
                               email=email, telephone="+972 50 000 00 00", date_adhesion=dt.date(2015, 9, 1) if t == membre else None,
                               cotisation=cotisation)

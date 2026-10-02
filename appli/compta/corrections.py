@@ -17,7 +17,7 @@ class LigneSaisie:
     libelle: str
     debit: Decimal
     credit: Decimal
-    anal2: CodeAnalytique
+    anal2: CodeAnalytique | None = None
 
 
 def verrou(m):
@@ -44,6 +44,8 @@ def controler(date, journal, lignes):
             e.append(f"Ligne {i} : un débit OU un crédit (RG-03).")
         if not l.libelle.strip():
             e.append(f"Ligne {i} : libellé manquant.")
+        if l.compte.porte_axe2 and not l.anal2:
+            e.append(f"Ligne {i} : code axe 2 obligatoire pour un compte de dépense ou de recette (classe 6 ou 7).")
     d, c = sum((l.debit for l in lignes), ZERO), sum((l.credit for l in lignes), ZERO)
     if d != c:
         e.append(f"Mouvement déséquilibré : débit {d} ≠ crédit {c} (RG-01).")
@@ -51,7 +53,7 @@ def controler(date, journal, lignes):
 
 
 def resume(lignes):
-    return " | ".join(f"{l.compte.numero} {'D' if l.debit else 'C'} {l.debit or l.credit} {l.anal2.code}" for l in lignes)[:300]
+    return " | ".join(f"{l.compte.numero} {'D' if l.debit else 'C'} {l.debit or l.credit} {l.anal2_id or '—'}" for l in lignes)[:300]
 
 
 def trace(m, texte, utilisateur):
@@ -86,7 +88,8 @@ def modifier(m, date, journal, lignes, motif, utilisateur):
             if (l.compte_id, l.debit, l.credit) != (s.compte.numero, s.debit, s.credit):
                 _liberer(l)
                 l.refresh_from_db()
-            l.ordre, l.compte, l.libelle, l.debit, l.credit, l.anal2 = ordre, s.compte, s.libelle.strip(), s.debit, s.credit, s.anal2
+            l.ordre, l.compte, l.libelle, l.debit, l.credit = ordre, s.compte, s.libelle.strip(), s.debit, s.credit
+            l.anal2 = s.anal2
             l.save()
         else:
             Ligne.objects.create(mouvement=m, ordre=ordre, compte=s.compte, libelle=s.libelle.strip(), debit=s.debit,

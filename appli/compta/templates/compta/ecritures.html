@@ -17,6 +17,6 @@
 <table><tr>{% for e in entetes %}<th class="tri {% if e.n %}n{% endif %}" {% if e.sens %}data-sens="{{ e.sens }}"{% endif %}><a class="tri-lien" href="{{ e.url }}" title="Trier sur toutes les pages">{{ e.titre }}</a></th>{% endfor %}<th title="Justificatifs joints">📎</th></tr>
 {% for l in page %}<tr><td>{{ l.mouvement.date|date:"d/m/Y" }}</td><td>{{ l.mouvement.journal_id }}</td><td><a href="{% url 'mouvement' l.mouvement.numero %}">{{ l.mouvement.numero }}</a></td>
 <td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td>
-<td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td><td title="{{ l.anal2.libelle }}">{{ l.anal2_id }}</td>
+<td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td><td title="{{ l.anal2.libelle }}">{{ l.anal2_id|default:"" }}</td>
 <td>{% with n=pieces|get_item:l.mouvement_id %}{% if n %}<a href="{% url 'mouvement' l.mouvement.numero %}" title="{{ n }} justificatif(s)">📎{% if n > 1 %}{{ n }}{% endif %}</a>{% endif %}{% endwith %}</td></tr>{% endfor %}</table>
 {% include "compta/_pages.html" %}{% endblock %}
