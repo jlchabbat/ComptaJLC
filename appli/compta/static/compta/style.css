@@ -346,3 +346,9 @@ button:hover, a.bouton:hover { background: #e8edf5; border-color: #8fa3c4; }
 button.principal:hover, a.bouton.principal:hover { background: #2b4c86; border-color: #2b4c86; }
 tr:hover td { background: #f3f6fb; }
 p.aide, div.aide { background: #f0f4fa; border-left-color: #8fa3c4; }
+
+/* Banque : remarques de chaque ligne sur toute la largeur du tableau, côte à côte (lignes moins hautes) */
+tr.remarques > td { padding: 0 8px 6px; border-top: 0; }
+tr.remarques > td > div { display: inline-block; vertical-align: top; margin: 2px 14px 2px 0; }
+tr.remarques > td > label { margin-right: 14px; }
+tr.remarques .piste { display: inline-block; margin: 2px 14px 2px 0; }

@@ -44,8 +44,6 @@ def controler(date, journal, lignes):
             e.append(f"Ligne {i} : un débit OU un crédit (RG-03).")
         if not l.libelle.strip():
             e.append(f"Ligne {i} : libellé manquant.")
-        if l.compte.porte_axe2 and not l.anal2:
-            e.append(f"Ligne {i} : code axe 2 obligatoire pour un compte de dépense ou de recette (classe 6 ou 7).")
     d, c = sum((l.debit for l in lignes), ZERO), sum((l.credit for l in lignes), ZERO)
     if d != c:
         e.append(f"Mouvement déséquilibré : débit {d} ≠ crédit {c} (RG-01).")

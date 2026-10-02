@@ -943,6 +943,28 @@ class EcransRapprochement(TestCase):
         self.client.post("/rapprochement/B1/", {"relier_evidentes": "1"})
         self.assertEqual(Mouvement.objects.count(), n)                           # rien n'est créé
 
+    def test_ecarter_garde_les_saisies_des_autres_lignes(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        Mouvement.objects.all().delete()
+        a, b, c = LigneReleve.objects.filter(ouverture=False).order_by("date")
+        self.client.post("/rapprochement/B1/", {"ecarter": str(a.pk), "coche": [str(b.pk)],
+                                                f"compte_{c.pk}": "600100", f"libelle_{c.pk}": "MON LIBELLE"})
+        self.assertEqual(LigneReleve.objects.filter(ecartee=True).count(), 2)               # la ligne et la ligne cochée
+        page = self.client.get("/rapprochement/B1/")
+        self.assertContains(page, 'value="600100"')                                          # la saisie de la 3e ligne est gardée
+        self.assertContains(page, "MON LIBELLE")
+        self.assertNotContains(self.client.get("/rapprochement/B1/"), "MON LIBELLE")        # une seule fois
+
+    def test_axe_2_facultatif_au_rapprochement(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
+        Mouvement.objects.all().delete()
+        frais = LigneReleve.objects.filter(ouverture=False).order_by("date").first()
+        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", "creer": "1"})       # compte de charge, sans axe 2
+        m = Mouvement.objects.get(lignes__compte_id="600100")
+        self.assertEqual({l.anal2_id for l in m.lignes.all()}, {None})
+
     def test_ecarter_en_masse(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})

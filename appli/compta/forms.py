@@ -300,13 +300,11 @@ class LigneMouvementForm(forms.Form):
             return c
         if not c.get("compte"):
             self.add_error("compte", "Choisir le compte.")
-        if not c.get("anal2") and c.get("compte") and c["compte"].porte_axe2:      # axe 2 : comptes 6 et 7 seulement
+        if not c.get("anal2") and c.get("compte") and c["compte"].porte_axe2:       # axe 2 facultatif ; un seul axe : code d'office
             from .reglages import code_axe2_defaut
-            defaut = code_axe2_defaut()                   # un seul axe : code d'office
+            defaut = code_axe2_defaut()
             if defaut:
                 c["anal2"] = CodeAnalytique.objects.get(code=defaut)
-            else:
-                self.add_error("anal2", "Choisir le code axe 2 (dépense ou recette).")
         return c
 
 

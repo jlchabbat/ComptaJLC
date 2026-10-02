@@ -125,13 +125,11 @@ def controler(op):
             e["Virement"] = "Les deux comptes du virement doivent être différents."
     elif op.vers:
         e["Virement"] = "La case « Vers » ne sert qu'aux virements internes : la vider."
-    if not op.anal2 and any(l.compte is not None and l.compte.porte_axe2 for l in r.lignes):    # axe 2 : comptes 6 et 7 seulement
+    if not op.anal2:                                      # axe 2 facultatif (comptes 6 et 7 seulement quand il est donné)
         from .reglages import code_axe2_defaut
         defaut = code_axe2_defaut()                       # un seul axe : code d'office
         if defaut:
             op.anal2 = CodeAnalytique.objects.get(code=defaut)
-        else:
-            e["Événement / projet"] = "Choisir l'événement ou le projet (axe 2) : la dépense ou la recette est affectée à une activité."
     utilise_contrepartie = LigneSchema.objects.filter(schema=m.schema, role="CONTREPARTIE").exists()
     contrepartie = op.compte or m.compte
     if not utilise_contrepartie:
