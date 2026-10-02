@@ -1,0 +1,9 @@
+{% extends "compta/base.html" %}{% block titre %}{{ titre }}{% endblock %}{% block contenu %}
+<h1>{{ titre }}</h1>
+<div class="barre"><a class="bouton" href="{% url retour %}">← Retour à la liste</a>
+<button form="f-param" class="principal">Enregistrer</button>
+{% if suppression %}<button form="f-param" name="supprimer" value="1" onclick="return confirm('Supprimer définitivement ?')">Supprimer</button>{% endif %}</div>
+<form method="post" class="carte" id="f-param">{% csrf_token %}
+{% if form.non_field_errors %}<ul class="erreurs">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+</form>{% endblock %}

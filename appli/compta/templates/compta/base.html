@@ -59,7 +59,10 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
 <div class="groupe">Réservé à l'administrateur · utilisateurs et paramétrage</div>
 {% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
-{% if user.is_staff %}<a href="{% url 'admin:index' %}">Référentiels</a>{% endif %}
+{% if perms.compta.parametrer %}{% url 'plan' as u %}<a href="{{ u }}" {% if request.path|slice:":6" == "/plan/" %}class="actif"{% endif %}>Plan comptable</a>
+{% url 'journaux_param' as u %}<a href="{{ u }}" {% if request.path|slice:":20" == "/parametrage/journau" %}class="actif"{% endif %}>Journaux (banques, caisses)</a>
+{% url 'axes_param' as u %}<a href="{{ u }}" {% if request.path|slice:":18" == "/parametrage/axes/" %}class="actif"{% endif %}>Codes des axes 1 et 2</a>{% endif %}
+{% if user.is_staff %}<a href="{% url 'admin:index' %}">Autres référentiels (avancé)</a>{% endif %}
 {% if perms.compta.parametrer %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
 <div class="groupe">Réservé à l'administrateur · données</div>
 {% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports et exports</a>{% endif %}

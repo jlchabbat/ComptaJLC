@@ -3117,3 +3117,40 @@ class LiensEnLigne(TransactionTestCase):
         self.assertEqual(set(Justificatif.objects.values_list("lien", flat=True)),
                          {"https://documents.exemple.org/fichier/aaa/", "https://documents.exemple.org/fichier/bbb/"})
 
+
+class EcransParametrage(TestCase):
+    """Plan comptable, journaux et codes d'axe : écrans de l'administrateur."""
+
+    def setUp(self):
+        referentiels()
+        call_command("migrate", verbosity=0)
+        self.admin = User.objects.create_superuser("adm", password="x" * 12)
+        self.client.force_login(self.admin)
+
+    def test_plan_creation_modification_suppression(self):
+        r = self.client.post("/plan/nouveau/", {"numero": "601000", "libelle": "ACHATS", "anal1": "", "actif": "on"})
+        self.assertRedirects(r, "/plan/")
+        self.assertContains(self.client.get("/plan/?q=6010"), "ACHATS")
+        self.client.post("/plan/601000/", {"numero": "601000", "libelle": "ACHATS DIVERS", "actif": "on"})
+        self.assertEqual(Compte.objects.get(numero="601000").libelle, "ACHATS DIVERS")
+        self.client.post("/plan/601000/", {"supprimer": "1"})
+        self.assertFalse(Compte.objects.filter(numero="601000").exists())
+        self.assertTrue(Modification.objects.filter(lot="Paramétrage", action="Suppression").exists())
+
+    def test_journal_et_code(self):
+        r = self.client.post("/parametrage/journaux/nouveau/", {"code": "b4", "intitule": "BANQUE DEPOT GARANTIE", "type": "BQ",
+                                                                "compte": "512000", "actif": "on"})
+        self.assertRedirects(r, "/parametrage/journaux/")
+        self.assertEqual(Journal.objects.get(code="B4").intitule, "BANQUE DEPOT GARANTIE")
+        self.client.post("/parametrage/journaux/B4/", {"code": "B4", "intitule": "DEPOT GARANTIE", "type": "BQ", "compte": "512000", "actif": "on"})
+        self.assertEqual(Journal.objects.get(code="B4").intitule, "DEPOT GARANTIE")
+        self.assertContains(self.client.get("/parametrage/axes/"), "GEN.002")
+        self.client.post("/parametrage/axes/GEN.002/", {"libelle": "Divers", "statut": "1"})
+        self.assertEqual(CodeAnalytique.objects.get(code="GEN.002").libelle, "Divers")
+
+    def test_reserve_a_l_administrateur(self):
+        b = User.objects.create_user("bureau")
+        b.groups.add(Group.objects.get(name="Bureau"))
+        self.client.force_login(b)
+        for adresse in ("/plan/", "/parametrage/journaux/", "/parametrage/axes/"):
+            self.assertEqual(self.client.get(adresse).status_code, 403)

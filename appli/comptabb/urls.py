@@ -5,7 +5,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_utilisateurs, vues_rapprochement as rap
-from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_referentiels, vues_situation
+from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_plan, vues_referentiels, vues_situation
 
 admin.site.site_header = "ComptaBB – administration"
 admin.site.site_title = "ComptaBB"
@@ -80,6 +80,14 @@ urlpatterns = [
     path("base/telecharger/<str:nom>", vues_base.telecharger, name="base_telecharger_fichier"),
     path("base/archive/<str:nom>", vues_base.telecharger_archive, name="base_archive"),
     path("base/export/<str:nom>", vues_base.telecharger_export, name="base_export"),
+    path("plan/", vues_plan.plan, name="plan"),
+    path("plan/nouveau/", vues_plan.compte, name="compte_nouveau"),
+    path("plan/<str:numero>/", vues_plan.compte, name="compte"),
+    path("parametrage/journaux/", vues_plan.journaux_param, name="journaux_param"),
+    path("parametrage/journaux/nouveau/", vues_plan.journal, name="journal_nouveau"),
+    path("parametrage/journaux/<str:code>/", vues_plan.journal, name="journal"),
+    path("parametrage/axes/", vues_plan.axes_param, name="axes_param"),
+    path("parametrage/axes/<str:code>/", vues_plan.code_axe, name="code_axe"),
     path("admin/", admin.site.urls),
     path("favicon.ico", RedirectView.as_view(url=static("compta/favicon.ico"), permanent=True)),
 ]

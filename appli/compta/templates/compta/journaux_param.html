@@ -1,0 +1,6 @@
+{% extends "compta/base.html" %}{% block titre %}Journaux{% endblock %}{% block contenu %}
+<h1>Journaux : banques, caisses…</h1>
+<div class="barre"><a class="bouton principal" href="{% url 'journal_nouveau' %}">Nouveau journal</a></div>
+<table class="triable"><tr><th>Code</th><th>Intitulé</th><th>Type</th><th>Compte de trésorerie</th><th>Utilisé</th></tr>
+{% for j in journaux %}<tr><td><a href="{% url 'journal' j.code %}">{{ j.code }}</a></td><td>{{ j.intitule }}</td><td>{{ j.type }}</td>
+<td>{{ j.compte_id|default:"" }} {{ j.compte.libelle }}</td><td>{% if j.actif %}oui{% else %}<span class="neg">non</span>{% endif %}</td></tr>{% endfor %}</table>{% endblock %}
