@@ -1831,6 +1831,25 @@ class EcranParametres(TransactionTestCase):
 
     octets = ImportParametres.octets
 
+    def test_plan_et_codes_ouverts_a_la_gestion(self):
+        """Plan comptable et codes d'axe : administrateur et gestion (ajout, modification, suppression) ; pas bénévole ni consultation."""
+        for role, ok in (("Gestion", True), ("Bénévole", False), ("Consultation", False)):
+            u = User.objects.create_user(role)
+            u.groups.add(Group.objects.get(name=role))
+            self.client.force_login(u)
+            for url in ("/plan/", "/parametrage/axes/"):
+                self.assertEqual(self.client.get(url).status_code, 200 if ok else 403, (role, url))
+        self.client.force_login(User.objects.get(username="Gestion"))
+        r = self.client.post("/plan/nouveau/", {"numero": "999777", "libelle": "NOUVEAU", "actif": "on"})
+        self.assertRedirects(r, "/plan/")
+        self.assertTrue(Compte.objects.filter(numero="999777").exists())
+        self.client.post("/plan/999777/", {"supprimer": "1"})
+        self.assertFalse(Compte.objects.filter(numero="999777").exists())
+        CodeAnalytique.objects.create(code="TMP.1", axe=1, libelle="TEMP")
+        self.client.post("/parametrage/axes/TMP.1/", {"supprimer": "1"})
+        self.assertFalse(CodeAnalytique.objects.filter(code="TMP.1").exists())
+        self.assertEqual(self.client.get("/parametrage/journaux/").status_code, 403)          # journaux : administrateur seulement
+
     def test_droits_et_dossier_imports(self):
         from django.conf import settings
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2062,9 +2081,9 @@ class Utilisateurs(TestCase):
             self.assertIn(self.client.get(url).status_code, (302, 403), url)
         self.assertEqual(self.client.post("/rapprochement/B1/parametres/", {"date_reprise": "2026-01-01"}).status_code, 403)
         r = self.client.get("/codes/")
-        self.assertNotContains(r, '<option value="COT."')                     # axe 1 : administrateur
+        self.assertContains(r, '<option value="COT."')                        # axe 1 : trésorier aussi
         self.client.post("/codes/", {"code-prefixe": "COT.", "code-libelle": "X", "code-statut": 1, "creer_code": "1"})
-        self.assertFalse(CodeAnalytique.objects.filter(libelle="X").exists())
+        self.assertTrue(CodeAnalytique.objects.filter(libelle="X", axe=1).exists())
         self.client.post("/codes/", {"code-prefixe": "MAN.", "code-libelle": "Gala", "code-statut": 1, "creer_code": "1"})
         self.assertTrue(CodeAnalytique.objects.filter(code="MAN.002").exists())       # axe 2 : trésorier
         self.assertEqual(self.client.get("/saisie/").status_code, 200)
@@ -2171,8 +2190,8 @@ class Echanges(TransactionTestCase):
         r = self.importer("PlanComptable.xlsx")
         self.assertContains(r, "En-têtes de la ligne 1 non conformes")
         self.assertTrue((ech.imports() / "PlanComptable.xlsx").exists())            # reste dans Imports
-        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "", "non", "oui"], ["999001", "AUTRE", "XXX.9", "non", "oui"]])
-        self.assertContains(self.importer("PlanComptable.xlsx"), "Ligne 3 : code axe 1 « XXX.9 » inconnu")
+        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "", "non", "oui"], ["999001", "AUTRE", "GEN.004", "non", "oui"]])
+        self.assertContains(self.importer("PlanComptable.xlsx"), "Ligne 3 : le code GEN.004 existe déjà sur")
         self.assertFalse(Compte.objects.filter(numero="999000").exists())          # rien d'enregistré
         openpyxl.Workbook().save(ech.imports() / "Inconnu.xlsx")
         self.assertContains(self.client.get("/echanges/"), "structure non reconnue")
@@ -2218,6 +2237,25 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s), 0 modifié(s), 0 inchangé(s)")
         m = Mouvement.objects.get(numero=900)
         self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
+
+    def test_comptes_tiers_et_codes_inconnus_crees(self):
+        """Compte, tiers, code axe 1 ou axe 2 inconnus : créés à l'import (avec les libellés du fichier)."""
+        d = dt.datetime(2026, 3, 1)
+        ligne = lambda mvt, jnl, compte, lc, deb, cre, a1, la1, a2, la2: [mvt, jnl, d, compte, lc, "FRAIS", deb, cre, a1, la1, a2, la2, None, None]
+        f = ech.format_de("Ecritures.xlsx")
+        wb = ech.classeur(f, [ligne(901, "B1", "611000", "HONORAIRES", 10, None, "NEW.1", "Nouvelle nature", "NEW.007", "Nouvel événement"),
+                              ligne(901, "B1", "401DUPON001", "DUPONT FOURNISSEUR", None, 10, "", "", "", "")])
+        wb.save(ech.imports() / "Ecritures.xlsx")
+        r = self.importer("Ecritures.xlsx")
+        self.assertContains(r, "1 mouvement(s) ajouté(s)")
+        self.assertContains(r, "2 compte(s) créé(s)")
+        self.assertEqual(Compte.objects.get(numero="611000").libelle, "HONORAIRES")
+        self.assertEqual(Compte.objects.get(numero="611000").anal1_id, "NEW.1")
+        self.assertEqual(CodeAnalytique.objects.get(code="NEW.1").libelle, "Nouvelle nature")
+        a2 = CodeAnalytique.objects.get(code="NEW.007")
+        self.assertEqual((a2.axe, a2.statut, a2.libelle), (2, 1, "Nouvel événement"))
+        self.assertTrue(Compte.objects.get(numero="401DUPON001").lettrable)
+        self.assertTrue(Membre.objects.filter(compte_id="401DUPON001").exists())               # fiche tiers créée
 
     def test_un_seul_axe(self):
         """Un seul axe : Anal2 facultatif dans les écritures, code d'office."""
@@ -2550,10 +2588,11 @@ class Echanges(TransactionTestCase):
         self.assertEqual(Mouvement.objects.get(numero=600).origine, "saisie")                    # origine gardée
         self.assertEqual(ech.a_importer(), [])
         # un fichier en erreur : tout est annulé
-        ws.append([dt.datetime(2026, 2, 1), "B1", 700, "999999", "X", 5, None, "GEN.001", ""])
+        ws.append([700, "ZZ", dt.datetime(2026, 2, 1), "999999", "X", "X", 5, None, "", "", "GEN.001", "", "", ""])      # journal inconnu
         wb.save(ech.imports() / "Ecritures.xlsx")
         r = self.client.post("/echanges/", {"reinjecter": "1", "confirmation": "REMPLACER"}, follow=True)
-        self.assertContains(r, "compte 999999 inconnu")
+        self.assertContains(r, "journal ZZ inconnu")
+        self.assertFalse(Compte.objects.filter(numero="999999").exists())                      # refusé : rien n'est créé
         self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [600])
 
 

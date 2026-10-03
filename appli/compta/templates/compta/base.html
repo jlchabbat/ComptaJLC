@@ -21,6 +21,8 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'mouvement_nouveau' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écriture libre</a>
 {% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
 {% if perms.compta.add_mouvement or perms.compta.change_mouvement %}{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs (dépôt et classement)</a>{% endif %}
+{% if perms.compta.change_compte and perms.compta.delete_compte %}{% url 'plan' as u %}<a href="{{ u }}" {% if request.path|slice:":6" == "/plan/" %}class="actif"{% endif %}>Plan comptable</a>{% endif %}
+{% if perms.compta.change_codeanalytique and perms.compta.delete_codeanalytique %}{% url 'axes_param' as u %}<a href="{{ u }}" {% if request.path|slice:":18" == "/parametrage/axes/" %}class="actif"{% endif %}>Codes des axes 1 et 2</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes et nouveaux tiers</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
 </div></div>{% endif %}
@@ -60,9 +62,8 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
 <div class="groupe">Réservé à l'administrateur · utilisateurs et paramétrage</div>
 {% if user.is_superuser %}{% url 'utilisateurs' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}
-{% if perms.compta.parametrer %}{% url 'plan' as u %}<a href="{{ u }}" {% if request.path|slice:":6" == "/plan/" %}class="actif"{% endif %}>Plan comptable</a>
-{% url 'journaux_param' as u %}<a href="{{ u }}" {% if request.path|slice:":20" == "/parametrage/journau" %}class="actif"{% endif %}>Journaux (banques, caisses)</a>
-{% url 'axes_param' as u %}<a href="{{ u }}" {% if request.path|slice:":18" == "/parametrage/axes/" %}class="actif"{% endif %}>Codes des axes 1 et 2</a>{% endif %}
+{% if perms.compta.parametrer %}{% url 'journaux_param' as u %}<a href="{{ u }}" {% if request.path|slice:":20" == "/parametrage/journau" %}class="actif"{% endif %}>Journaux (banques, caisses)</a>
+{% endif %}
 {% if user.is_staff %}<a href="{% url 'admin:index' %}">Autres référentiels (avancé)</a>{% endif %}
 {% if perms.compta.parametrer %}{% url 'parametres' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Paramètres (Excel)</a>{% endif %}
 <div class="groupe">Réservé à l'administrateur · données</div>

@@ -9,6 +9,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .models import CodeAnalytique, Compte, Journal, Modification
 
 administrer = permission_required("compta.parametrer", raise_exception=True)
+# plan comptable et codes d'axe : administrateur et gestion (pas le bénévole ni la consultation) ; journaux : administrateur
+gerer_plan = permission_required(["compta.add_compte", "compta.change_compte", "compta.delete_compte"], raise_exception=True)
+gerer_codes = permission_required(["compta.add_codeanalytique", "compta.change_codeanalytique", "compta.delete_codeanalytique"],
+                                  raise_exception=True)
 TYPES_JOURNAL = [("AN", "AN – à-nouveaux"), ("BQ", "BQ – banque"), ("CA", "CA – caisse"), ("OD", "OD – opérations diverses"),
                  ("HA", "HA – achats"), ("VE", "VE – ventes")]
 
@@ -64,6 +68,7 @@ def _trace(request, action, objet, avant="", apres=""):
 
 
 def _fiche(request, modele, form_classe, cle, valeur, retour, titre, libelle, suppression=True):
+    suppression = suppression and request.user.has_perm(f"compta.delete_{modele._meta.model_name}")
     obj = get_object_or_404(modele, **{cle: valeur}) if valeur else None
     form = form_classe(request.POST or None, instance=obj)
     if request.method == "POST":
@@ -89,7 +94,7 @@ def _fiche(request, modele, form_classe, cle, valeur, retour, titre, libelle, su
 
 
 @login_required
-@administrer
+@gerer_plan
 def plan(request):
     q = request.GET.get("q", "").strip()
     comptes = Compte.objects.select_related("anal1").order_by("numero")
@@ -99,7 +104,7 @@ def plan(request):
 
 
 @login_required
-@administrer
+@gerer_plan
 def compte(request, numero=None):
     return _fiche(request, Compte, CompteForm, "numero", numero, "plan", f"Compte {numero}" if numero else "Nouveau compte", "compte")
 
@@ -117,12 +122,12 @@ def journal(request, code=None):
 
 
 @login_required
-@administrer
+@gerer_codes
 def axes_param(request):
     return render(request, "compta/axes_param.html", {"codes": CodeAnalytique.objects.order_by("axe", "code")})
 
 
 @login_required
-@administrer
+@gerer_codes
 def code_axe(request, code):
-    return _fiche(request, CodeAnalytique, CodeForm, "code", code, "axes_param", f"Code {code}", "code", suppression=False)
+    return _fiche(request, CodeAnalytique, CodeForm, "code", code, "axes_param", f"Code {code}", "code")

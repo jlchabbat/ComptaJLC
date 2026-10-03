@@ -307,8 +307,7 @@ def _journaliser(request, action, objet, avant="", apres=""):
 @login_required
 @permission_required("compta.add_codeanalytique", raise_exception=True)
 def codes(request):
-    code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code",
-                         axe1=request.user.has_perm("compta.parametrer"))
+    code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code", axe1=True)
     membre_form = MembreForm(request.POST if "creer_membre" in request.POST else None, prefix="membre")
     statut_form = StatutForm(request.POST if "changer_statut" in request.POST else None, prefix="statut")
     if request.method == "POST":
