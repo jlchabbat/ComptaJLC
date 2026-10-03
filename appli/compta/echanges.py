@@ -157,7 +157,7 @@ class Lecteur:
         if r not in permis:
             attendu = (f"entier de {permis[0]} à {permis[-1]}" if isinstance(permis, range) and len(permis) > 20
                        else " ou ".join(map(str, permis)))      # (jamais énumérer un grand intervalle)
-            self.erreur(n, f"{col} : {attendu} attendu.")
+            self.erreur(n, f"{col} : {attendu} attendu (trouvé : {v!r}).")
         return r
 
     def oui(self, n, d, col, defaut=False):
@@ -302,6 +302,9 @@ def imp_axe(axe):
         for n, d in lignes:
             code = L.texte(n, d, "Code", True, 20)
             lib = L.texte(n, d, "Libellé", longueur=100)
+            if axe == 2:
+                lu = _sans_accent(str(d.get("Statut") or "").strip().lower())      # « En cours » accepté comme 1, etc.
+                d = dict(d, Statut={"non affecte": 0, "en cours": 1, "termine": 2}.get(lu, d.get("Statut")))
             statut = L.entier(n, d, "Statut", (0, 1, 2), defaut=1) if axe == 2 else 1
             autre = CodeAnalytique.objects.filter(code=code).exclude(axe=axe).first()
             if autre:
