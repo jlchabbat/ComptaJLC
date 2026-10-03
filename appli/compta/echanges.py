@@ -157,7 +157,7 @@ class Lecteur:
         if r not in permis:
             attendu = (f"entier de {permis[0]} à {permis[-1]}" if isinstance(permis, range) and len(permis) > 20
                        else " ou ".join(map(str, permis)))      # (jamais énumérer un grand intervalle)
-            self.erreur(n, f"{col} : {attendu} attendu.")
+            self.erreur(n, f"{col} : {attendu} attendu (trouvé : {v!r}).")
         return r
 
     def oui(self, n, d, col, defaut=False):
@@ -302,6 +302,10 @@ def imp_axe(axe):
         for n, d in lignes:
             code = L.texte(n, d, "Code", True, 20)
             lib = L.texte(n, d, "Libellé", longueur=100)
+            if axe == 2:
+                lu = _sans_accent(str(d.get("Statut") or "").strip().lower())      # « En cours » accepté comme 1, etc.
+                d = dict(d, Statut=next((v for k, v in (("non affect", 0), ("en cours", 1), ("termin", 2)) if lu.startswith(k)),
+                                        d.get("Statut")))
             statut = L.entier(n, d, "Statut", (0, 1, 2), defaut=1) if axe == 2 else 1
             autre = CodeAnalytique.objects.filter(code=code).exclude(axe=axe).first()
             if autre:
@@ -1000,8 +1004,17 @@ def _norme(texte):
 TABLEURS = (".xlsx", ".xlsm")                              # classeurs Excel ; un .xlsm est lu en valeurs (macros jamais exécutées)
 
 
-def _feuille(wb):
-    """Feuille à lire d'un classeur : celle qui porte le nom d'un format (Ecritures, Banque…), sinon la première."""
+def _feuille(wb, chemin=None):
+    """Feuille à lire d'un classeur : celle qui porte le nom du format du fichier (Ecritures.xlsx → feuille Ecritures ;
+    les autres feuilles ne servent qu'à ses requêtes), sinon celle qui porte le nom d'un format, sinon la première."""
+    propre = next((f for f in FORMATS if chemin and f.reconnait(chemin)), None)
+    if propre:
+        voulus = {_norme(propre.nom)} | {_norme(a) for a in propre.alias}
+        trouvee = next((ws for ws in wb.worksheets if _norme(ws.title) in voulus), None)
+        if trouvee:
+            return trouvee
+        if len(wb.worksheets) > 1:
+            return wb.worksheets[0]
     noms = {_norme(f.nom) for f in FORMATS} | {_norme(a) for f in FORMATS for a in f.alias}
     return next((ws for ws in wb.worksheets if _norme(ws.title) in noms), wb.worksheets[0])
 
@@ -1022,7 +1035,7 @@ def entetes_du_fichier(chemin):
         else:
             wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
             try:
-                ligne = next(_feuille(wb).iter_rows(values_only=True), [])
+                ligne = next(_feuille(wb, chemin).iter_rows(values_only=True), [])
             finally:
                 wb.close()
     except Exception:                                      # fichier abîmé, mot de passe, mauvais format…
@@ -1097,7 +1110,7 @@ def lire(chemin, f):
         rangees = iter(list(csv_.reader(io.StringIO(texte), delimiter=sep)))
     else:
         wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
-        rangees = _feuille(wb).iter_rows(values_only=True)
+        rangees = _feuille(wb, chemin).iter_rows(values_only=True)
     entetes = [("" if c is None else str(c).strip()) for c in next(rangees, [])]
     while entetes and not entetes[-1]:
         entetes.pop()
