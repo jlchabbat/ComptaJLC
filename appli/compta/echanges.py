@@ -304,7 +304,8 @@ def imp_axe(axe):
             lib = L.texte(n, d, "Libellé", longueur=100)
             if axe == 2:
                 lu = _sans_accent(str(d.get("Statut") or "").strip().lower())      # « En cours » accepté comme 1, etc.
-                d = dict(d, Statut={"non affecte": 0, "en cours": 1, "termine": 2}.get(lu, d.get("Statut")))
+                d = dict(d, Statut=next((v for k, v in (("non affect", 0), ("en cours", 1), ("termin", 2)) if lu.startswith(k)),
+                                        d.get("Statut")))
             statut = L.entier(n, d, "Statut", (0, 1, 2), defaut=1) if axe == 2 else 1
             autre = CodeAnalytique.objects.filter(code=code).exclude(axe=axe).first()
             if autre:
