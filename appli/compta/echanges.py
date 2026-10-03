@@ -337,26 +337,59 @@ def imp_prefixes(lignes, fichier, utilisateur=None):
 
 # ---- plan comptable et journaux
 
+def axe_du_code(code):
+    """Axe (1 ou 2) du code analytique s'il existe, sinon None."""
+    return CodeAnalytique.objects.filter(code=code).values_list("axe", flat=True).first()
+
+
+def creer_codes(nouveaux):
+    """Crée les codes analytiques inconnus {(axe, code): libellé} (axe 2 : « En cours »). Renvoie le texte du compte rendu."""
+    if not nouveaux:
+        return ""
+    for (axe, code), lib in sorted(nouveaux.items()):
+        CodeAnalytique.objects.create(code=code, axe=axe, libelle=(lib or code)[:100], **({"statut": 1} if axe == 2 else {}))
+    liste = ", ".join(f"{c} (axe {a})" for a, c in sorted(nouveaux)[:20]) + (" …" if len(nouveaux) > 20 else "")
+    return f" ; {len(nouveaux)} code(s) analytique(s) créé(s) ({liste})"
+
+
+def creer_comptes(nouveaux):
+    """Crée les comptes inconnus {numéro: (libellé, code axe 1 ou None)} ; un compte de tiers (401…, 411…) devient lettrable
+    et reçoit sa fiche tiers. Renvoie le texte à ajouter au compte rendu (vide si rien n'a été créé)."""
+    from .membres import creer_manquants, type_du_compte
+    if not nouveaux:
+        return ""
+    axe1 = set(CodeAnalytique.objects.filter(axe=1).values_list("code", flat=True))
+    for numero, (lib, anal1) in sorted(nouveaux.items()):
+        Compte.objects.create(numero=numero, libelle=(lib or numero)[:100], anal1_id=anal1 if anal1 in axe1 else None,
+                              lettrable=bool(type_du_compte(numero)))
+    fiches = creer_manquants()
+    liste = ", ".join(sorted(nouveaux)[:20]) + (" …" if len(nouveaux) > 20 else "")
+    return f" ; {len(nouveaux)} compte(s) créé(s) ({liste})" + (f", dont {fiches} fiche(s) tiers" if fiches else "")
+
+
 def exp_plan():
     return [[x.numero, x.libelle, x.anal1_id or "", oui_non(x.lettrable), oui_non(x.actif)] for x in Compte.objects.all()]
 
 
 def imp_plan(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
-    axe1 = set(CodeAnalytique.objects.filter(axe=1).values_list("code", flat=True))
+    nouveaux_codes = {}
     for n, d in lignes:
         numero, lib, anal1 = L.texte(n, d, "Compte", True, 20), L.texte(n, d, "Libellé", True, 100), L.texte(n, d, "Axe 1")
-        if anal1 and anal1 not in axe1:
-            L.erreur(n, f"code axe 1 « {anal1} » inconnu (importer d'abord Axe1.xlsx).")
+        if anal1 and axe_du_code(anal1) not in (1, None):
+            L.erreur(n, f"le code {anal1} existe déjà sur l'axe {axe_du_code(anal1)}.")
+        elif anal1 and axe_du_code(anal1) is None:                  # code axe 1 inconnu : créé à l'import
+            nouveaux_codes[(1, anal1)] = anal1
         a_faire.append((numero, {"libelle": lib, "anal1_id": anal1 or None, "lettrable": L.oui(n, d, "Lettrable"),
                                  "actif": L.oui(n, d, "Actif", True)}))
     L.verifier()
+    codes_crees = creer_codes(nouveaux_codes)
     c = defaultdict(int)
     for numero, valeurs in a_faire:
         maj_ou_cree(Compte, {"numero": numero}, valeurs, c)
     from .membres import creer_manquants
     fiches = creer_manquants()                            # une fiche pour chaque nouveau compte de tiers (401…, 411…)
-    return resume(c) + (f" ; {fiches} fiche(s) tiers créée(s)" if fiches else "")
+    return resume(c) + codes_crees + (f" ; {fiches} fiche(s) tiers créée(s)" if fiches else "")
 
 
 def exp_journaux():
@@ -365,20 +398,21 @@ def exp_journaux():
 
 def imp_journaux(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
-    comptes = set(Compte.objects.values_list("numero", flat=True))
+    comptes, nouveaux = set(Compte.objects.values_list("numero", flat=True)), {}
     for n, d in lignes:
         code, intitule = L.texte(n, d, "Code", True, 10), L.texte(n, d, "Intitulé", True, 60)
         compte = L.texte(n, d, "Compte de trésorerie")
         if compte and compte not in comptes:
-            L.erreur(n, f"compte {compte} inconnu (importer d'abord PlanComptable.xlsx).")
+            nouveaux[compte] = (f"Trésorerie {intitule}", None)         # compte inconnu : créé (libellé à compléter dans le plan)
         valeurs = {"intitule": intitule, "type": L.texte(n, d, "Type", longueur=10), "compte_id": compte or None,
                    "actif": L.oui(n, d, "Actif", True)}
         a_faire.append((code, valeurs))
     L.verifier()
     c = defaultdict(int)
+    texte = creer_comptes(nouveaux)
     for code, valeurs in a_faire:
         maj_ou_cree(Journal, {"code": code}, valeurs, c)
-    return resume(c)
+    return resume(c) + texte
 
 
 # ---- tiers (même moteur que la fiche tiers)
@@ -490,7 +524,7 @@ def exp_budget():
 
 
 def imp_budget(lignes, fichier, utilisateur=None):
-    L, a_faire = Lecteur(), []
+    L, a_faire, nouveaux, nouveaux_codes = Lecteur(), [], {}, {}
     natures = {"charges": "C", "c": "C", "produits": "P", "p": "P"}
     for n, d in lignes:
         lib = L.texte(n, d, "Exercice", True)
@@ -504,17 +538,20 @@ def imp_budget(lignes, fichier, utilisateur=None):
         if len([x for x in (compte, anal1, anal2) if x]) != 1:
             L.erreur(n, "remplir un seul des trois : Compte, Axe 1 ou Axe 2.")
         if compte and not Compte.objects.filter(numero=compte).exists():
-            L.erreur(n, f"compte {compte} inconnu.")
+            nouveaux[compte] = (compte, None)                 # compte inconnu : créé (libellé à compléter dans le plan)
         for code, axe in ((anal1, 1), (anal2, 2)):
-            if code and not CodeAnalytique.objects.filter(code=code, axe=axe).exists():
-                L.erreur(n, f"code axe {axe} « {code} » inconnu.")
+            if code and axe_du_code(code) not in (axe, None):
+                L.erreur(n, f"le code {code} existe déjà sur l'axe {axe_du_code(code)}.")
+            elif code and axe_du_code(code) is None:             # code inconnu : créé à l'import
+                nouveaux_codes[(axe, code)] = code
         a_faire.append(({"exercice": ex, "nature": nature, "compte_id": compte or None, "anal1_id": anal1 or None,
                          "anal2_id": anal2 or None}, L.montant(n, d, "Montant", True)))
     L.verifier()
     c = defaultdict(int)
+    texte = creer_codes(nouveaux_codes) + creer_comptes(nouveaux)
     for cles, montant in a_faire:
         maj_ou_cree(Budget, cles, {"montant": montant}, c)
-    return resume(c)
+    return resume(c) + texte
 
 
 # ---- écritures
@@ -550,7 +587,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     axe2 = set(CodeAnalytique.objects.filter(axe=2).values_list("code", flat=True))
     existants = set(Mouvement.objects.values_list("numero", flat=True))
     plan_anal1 = dict(Compte.objects.exclude(anal1__isnull=True).values_list("numero", "anal1_id"))
-    differences = []
+    differences, nouveaux, nouveaux_codes = [], {}, {}
     from .reglages import code_axe2_defaut
     defaut2 = code_axe2_defaut()                          # un seul axe : Anal2 facultatif, code d'office
     if defaut2:
@@ -563,10 +600,18 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
         debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
-        if compte and compte not in comptes:
-            L.erreur(n, f"compte {compte} inconnu.")
+        if compte and compte not in comptes:                  # compte ou tiers inconnu : créé à l'import
+            a1 = L.texte(n, d, "Anal1")
+            nouveaux.setdefault(compte, (L.texte(n, d, "LibelCompte", longueur=100), a1))
+            if a1 and axe_du_code(a1) is None:                # code axe 1 du nouveau compte inconnu : créé aussi
+                nouveaux_codes.setdefault((1, a1), L.texte(n, d, "LibelAnal1", longueur=100))
+            elif a1 and axe_du_code(a1) != 1:
+                L.erreur(n, f"le code {a1} existe déjà sur l'axe {axe_du_code(a1)}.")
         if anal2 and anal2 not in axe2:
-            L.erreur(n, f"code axe 2 « {anal2} » inconnu.")
+            if axe_du_code(anal2) is not None:
+                L.erreur(n, f"le code {anal2} existe déjà sur l'axe {axe_du_code(anal2)}.")
+            else:                                             # code axe 2 inconnu : créé à l'import
+                nouveaux_codes.setdefault((2, anal2), L.texte(n, d, "LibelAnal2", longueur=100))
         if (debit > 0) == (credit > 0) or debit < 0 or credit < 0:
             L.erreur(n, "un débit OU un crédit, positif (RG-03).")
         lettre = L.texte(n, d, "Let", longueur=3)
@@ -608,6 +653,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
                 L.erreur(ls[0][0], f"Mvt {numero} modifié dans le fichier, mais non modifiable : {corrections.verrou(m)}")
             modifies[numero] = m
     L.verifier()
+    comptes_crees = creer_codes(nouveaux_codes) + creer_comptes(nouveaux)
     crees = 0
     for numero, ls in sorted(mvts.items()):
         _, date, jnl = ls[0][:3]
@@ -630,6 +676,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
                                              anal2_id=x[7], lettrage=x[8]) for i, x in enumerate(ls)])
             crees += 1
     texte = f"{crees} mouvement(s) ajouté(s), {len(modifies)} modifié(s), {len(mvts) - crees - len(modifies) - len(ecartes)} inchangé(s)"
+    texte += comptes_crees
     if modifies:
         texte += " (modifiés : Mvt " + ", ".join(map(str, sorted(modifies)[:20])) + (" …" if len(modifies) > 20 else "") + ")"
     if ecartes:
@@ -927,7 +974,7 @@ AIDE = {
         "Exercice": (O, TEXTE, "Libellé de l'exercice (Exercices.xlsx)"), "Nature": (O, "Charges / Produits", ""),
         "Compte": (F, CODE, "Cible : un compte…"), "Axe 1": (F, CODE, "… ou un code axe 1…"), "Axe 2": (F, CODE, "… ou un code axe 2 (une seule cible)"),
         "Montant": (O, MONTANT, "Montant budgété")}),
-    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos. LibelCompte, Anal1, LibelAnal1 et LibelAnal2 sont repris du plan et des axes : en cas de différence, le plan fait foi (avertissement).", {
+    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos. Compte, tiers (401…, 411…), code Anal1 ou Anal2 inconnu : créé à l'import avec LibelCompte, LibelAnal1 ou LibelAnal2 (un tiers reçoit sa fiche ; un code existant sur l'autre axe est refusé). LibelCompte, Anal1, LibelAnal1 et LibelAnal2 sont repris du plan et des axes : en cas de différence, le plan fait foi (avertissement).", {
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
         "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "LibelCompte": (F, TEXTE, "Rappel du plan, non lu"),

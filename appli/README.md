@@ -14,8 +14,8 @@ Données (hors Git) : dossier `comptabb-data` du site (`comptabb.sqlite3`,
 
 | Rôle | Droits |
 |---|---|
-| Administrateur | tous les droits, dont le paramétrage de base : Référentiels (plan comptable, journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), codes d'axe 1, paramètres des relevés, utilisateurs, base de données |
-| Trésorier | l'usage courant : saisie, tiers, consultation, banque, éditions, exports (ni paramétrage, ni imports, ni base de données) |
+| Administrateur | tous les droits, dont le paramétrage de base : Référentiels (journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), paramètres des relevés, utilisateurs, base de données |
+| Trésorier | l'usage courant : saisie, tiers, **plan comptable et codes d'axe 1 et 2 (ajout, modification, suppression)**, consultation, banque, éditions, exports (ni paramétrage, ni imports, ni base de données) |
 | Bureau | consultation seule : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
 | Bénévole | la liaison seulement : ses fiches bénévoles (saisie des lignes, nouveaux tiers provisoires, transmission) |
 
