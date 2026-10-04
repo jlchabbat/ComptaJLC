@@ -687,6 +687,20 @@ class EcransFiches(TestCase):
         data.update(k)
         return data
 
+    def test_suppression_par_cases_et_fiche_papier(self):
+        self.client.force_login(self.benevole)
+        for _ in range(3):
+            self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post())
+        a, b, c = self.act.lignes.order_by("pk")
+        r = self.client.get(f"/fiches/{self.act.pk}/")
+        self.assertContains(r, 'name="cochees"')
+        self.client.post(f"/fiches/{self.act.pk}/", {"supprimer_lignes": "1", "cochees": [a.pk, c.pk]})
+        self.assertEqual(list(self.act.lignes.all()), [b])
+        r = self.client.get(f"/fiches/{self.act.pk}/papier/")                       # PDF remplissable, pour tous les utilisateurs de la fiche
+        self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"))
+        self.assertTrue(r.content.startswith(b"%PDF") and b"AcroForm" in r.content)
+        self.assertEqual(self.client.get(f"/fiches/{self.autre.pk}/papier/").status_code, 403)
+
     def test_benevole(self):
         self.client.force_login(self.benevole)
         self.assertRedirects(self.client.get("/"), "/fiches/")
@@ -787,10 +801,15 @@ class EcransFiches(TestCase):
         Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
         self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Rallye 2", "fiche-anal2": "MAN.001",
                                       "creer_fiche": "1"})
-        self.assertEqual(Fiche.objects.get(titre="Rallye 2").anal2_id, "MAN.001")
+        self.assertEqual(Fiche.objects.filter(anal2_id="MAN.001").latest("pk").anal2_id, "MAN.001")
         r = self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Gala", "creer_fiche": "1"})
         self.assertContains(r, "code axe 2 actif")                    # sans code axe 2 : pas de fiche d'activité
         self.assertFalse(Fiche.objects.filter(titre="Gala").exists())
+        # activité : pas de titre saisi, il est repris du libellé du code axe 2
+        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-anal2": "MAN.001", "creer_fiche": "1"})
+        self.assertEqual(Fiche.objects.filter(type="activite").latest("pk").titre, CodeAnalytique.objects.get(code="MAN.001").libelle)
+        r = self.client.post("/fiches/", {"fiche-type": "gestion", "creer_fiche": "1"})
+        self.assertContains(r, "Titre obligatoire")
 
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
@@ -2118,6 +2137,12 @@ class Utilisateurs(TestCase):
         self.assertContains(self.client.get(f"/utilisateurs/{self.tresorier.pk}/"), 'value="CHABBAT"')
         self.assertTrue(self.tresorier.is_superuser)
         self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administration"])
+        # suppression par cases à cocher : jamais un administrateur
+        r = self.client.post("/utilisateurs/", {"supprimer_utilisateurs": "1", "cochees": [self.admin.pk]}, follow=True)
+        self.assertContains(r, "administrateur ne se supprime pas")
+        self.assertTrue(User.objects.filter(pk=self.admin.pk).exists())
+        self.client.post("/utilisateurs/", {"supprimer_utilisateurs": "1", "cochees": [b.pk]})
+        self.assertFalse(User.objects.filter(pk=b.pk).exists())
         # toujours au moins un administrateur actif
         self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Gestion", "actif": "on"})
         r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Consultation", "actif": "on"})
@@ -2741,7 +2766,7 @@ class ReferentielsEtPages(TransactionTestCase):
             for cible in _re.findall(r'<button[^>]* form="([^"]+)"', html):
                 self.assertIn(cible, ids, f"{url} : bouton relié au formulaire absent {cible}")
         self.assertContains(self.client.get("/"), "Mode d'emploi (PDF)")
-        for nom in ("presentation", "mode-emploi", "installation"):
+        for nom in ("presentation", "mode-emploi", "benevoles", "installation"):
             r = self.client.get(f"/documentation/{nom}.pdf")
             self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"), nom)
             self.assertTrue(b"".join(r.streaming_content).startswith(b"%PDF"))

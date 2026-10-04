@@ -125,15 +125,24 @@ class FicheForm(forms.ModelForm):
         self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
         self.fields["anal2"].help_text = "Code actif créé au préalable dans Codes (activité seulement)."
         self.fields["benevoles"].queryset = User.objects.filter(groups__name="Bénévole", is_active=True).order_by("username")
+        self.fields["titre"].required = False
+        self.fields["titre"].help_text = "Fiche de gestion seulement : une activité prend le libellé de son code axe 2."
         if self.instance.pk:
             del self.fields["type"]
+            if self.instance.type == "activite":
+                del self.fields["titre"]
         cherchable(self)
 
     def clean(self):
         c = super().clean()
         t = c.get("type") or self.instance.type
-        if t == "activite" and not c.get("anal2"):
-            self.add_error("anal2", "Une fiche d'activité demande un code axe 2 actif : le créer d'abord dans Codes.")
+        if t == "activite":
+            if not c.get("anal2"):
+                self.add_error("anal2", "Une fiche d'activité demande un code axe 2 actif : le créer d'abord dans Codes.")
+            else:
+                c["titre"] = self.instance.titre = c["anal2"].libelle      # le titre est le libellé déjà défini du code axe 2
+        elif not (c.get("titre") or "").strip():
+            self.add_error("titre", "Titre obligatoire pour une fiche de gestion.")
         return c
 
 

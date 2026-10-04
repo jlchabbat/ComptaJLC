@@ -6,7 +6,10 @@
 {% if a_reporter %}<button class="principal" name="reporter" value="1" {% if a_corriger %}disabled title="{{ a_corriger }} ligne(s) à corriger"{% endif %}
  onclick="return confirm('Créer {{ a_reporter }} mouvement(s) en comptabilité ?')">Reporter en comptabilité ({{ a_reporter }} ligne{{ a_reporter|pluralize }})</button>
 {% if a_corriger %}<span class="aide">{{ a_corriger }} ligne(s) à corriger avant le report.</span>{% endif %}{% endif %}{% endif %}
+{% if peut_supprimer %}<button form="f-suppr" name="supprimer_lignes" value="1" onclick="return confirm('Supprimer les lignes cochées ?')">Supprimer les lignes cochées</button>{% endif %}
+<a class="bouton" href="{% url 'fiche_papier' fiche.pk %}">Fiche papier (PDF)</a>
 {% if form %}<button form="f-ajout" class="principal" name="ajouter" value="1">Ajouter la ligne</button>{% endif %}{% if fiche_form %}<button form="f-modif">Enregistrer la fiche</button>{% endif %}</form>
+{% if peut_supprimer %}<form method="post" id="f-suppr">{% csrf_token %}</form>{% endif %}
 <p>{{ fiche.get_type_display }}{% if fiche.type == "activite" %} · code axe 2 : <b>{{ fiche.anal2|default:"à fixer par le trésorier" }}</b>{% endif %}
 · bénévoles : {% for u in fiche.benevoles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}aucun{% endfor %}</p>
 <div class="chiffres">{% if fiche.type == "activite" %}<div class="chiffre"><div class="lib">Participants</div><div class="val">{{ totaux.participants }}</div></div>{% endif %}

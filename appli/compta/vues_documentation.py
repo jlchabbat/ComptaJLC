@@ -10,7 +10,7 @@ from django.http import FileResponse, Http404
 
 DOSSIER = Path(__file__).resolve().parent / "documentation"
 DOCUMENTS = {"presentation": "ComptaBB_presentation.pdf", "mode-emploi": "ComptaBB_mode_emploi.pdf",
-             "installation": "ComptaBB_installation.pdf"}
+             "benevoles": "ComptaBB_guide_benevoles.pdf", "installation": "ComptaBB_installation.pdf"}
 
 
 @login_required

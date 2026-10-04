@@ -45,6 +45,7 @@ urlpatterns = [
     path("codes/", views.codes, name="codes"),
     path("fiches/", vues_fiches.liste, name="fiches"),
     path("fiches/<int:pk>/", vues_fiches.fiche, name="fiche"),
+    path("fiches/<int:pk>/papier/", vues_fiches.papier, name="fiche_papier"),
     path("fiches/<int:pk>/modifier/", vues_fiches.fiche_modifier, name="fiche_modifier"),
     path("fiches/ligne/<int:pk>/", vues_fiches.ligne, name="ligne_fiche"),
     path("fiches/document/<int:pk>/", vues_fiches.document, name="document_fiche"),

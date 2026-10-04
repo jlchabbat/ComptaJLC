@@ -180,6 +180,18 @@ def utilisateurs(request):
         journaliser(request, "Création", f"utilisateur {u.username}", apres=c["role"])
         messages.success(request, f"Utilisateur créé : {u.username} ({c['role']}).")
         return redirect("utilisateurs")
+    if "supprimer_utilisateurs" in request.POST:                 # utilisateurs cochés
+        cibles = User.objects.filter(pk__in=[int(x) for x in request.POST.getlist("cochees") if x.isdigit()], is_superuser=False)
+        if not cibles:
+            messages.error(request, "Aucun utilisateur coché (un administrateur ne se supprime pas).")
+        else:
+            with transaction.atomic():
+                noms = [(u.username, role(u)) for u in cibles]
+                for nom, r in noms:
+                    journaliser(request, "Suppression", f"utilisateur {nom}", avant=r)
+                cibles.delete()
+            messages.success(request, f"{len(noms)} utilisateur(s) supprimé(s) : " + ", ".join(n for n, _ in noms) + ".")
+        return redirect("utilisateurs")
     liste = User.objects.prefetch_related("groups").order_by("-is_superuser", "username")
     return render(request, "compta/utilisateurs.html", {"lignes": [(u, role(u)) for u in liste], "nouveau": nouveau})
 
