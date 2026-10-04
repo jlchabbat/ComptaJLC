@@ -10,7 +10,7 @@
 <a href="{{ url_for('compta.balance') }}">Balance</a>
 <a href="{{ url_for('compta.historique') }}">Historique</a>
 <a href="{{ url_for('compta.plan') }}">Plan comptable</a>
-<a href="{{ url_for('compta.axes') }}">Axes analytiques</a>
+<a href="{{ url_for('compta.axes') }}">Codes des axes</a>
 <a href="{{ url_for('compta.journaux') }}">Journaux</a>
 {% if g.utilisateur %}<span class="droite"><a href="{{ url_for('auth.utilisateurs') }}">{{ g.utilisateur.nom }}</a>
 <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Déconnexion</button></form></span>{% endif %}</nav>

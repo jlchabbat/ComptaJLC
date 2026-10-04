@@ -1,12 +1,26 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Plan comptable</h1>
-<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="numero" placeholder="Numéro" required>
-<input name="libelle" placeholder="Libellé" required size="40"><button>Ajouter</button></form>
+<p>Chaque compte porte une rubrique <strong>Axe 1</strong> (liste des codes : <a href="{{ url_for('compta.axes') }}">Codes des axes</a>).
+Décochez « Actif » pour retirer un compte de la saisie sans le supprimer.</p>
+<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="numero" placeholder="Numéro" required size="8">
+<input name="libelle" placeholder="Libellé" required size="35">
+<select name="axe1"><option value="">Axe 1 : aucun</option>{% for c in codes1 %}<option value="{{ c.code }}">{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select>
+<label><input type="checkbox" name="lettrable"> Lettrable</label><button>Ajouter</button></form>
 <form method="post" action="{{ url_for('compta.plan_importer') }}" enctype="multipart/form-data" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input type="file" name="fichier" accept=".csv,.txt" required><button>Importer un CSV (numéro;libellé)</button></form>
-<table><tr><th>Numéro</th><th>Libellé</th><th></th></tr>
-{% for c in comptes %}<tr><td><a href="{{ url_for('compta.grand_livre', numero=c.numero) }}">{{ c.numero }}</a></td>
-<td><form method="post" action="{{ url_for('compta.plan_modifier', numero=c.numero) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input name="libelle" value="{{ c.libelle }}" size="40"><button>Modifier</button></form></td>
+<input type="file" name="fichier" accept=".csv,.txt" required>
+<label><input type="checkbox" name="remplacer"> Supprimer les comptes inutilisés absents du fichier</label>
+<button>Importer un CSV</button></form>
+<p class="aide">Colonnes du CSV : <code>Compte;Libellé;Axe 1;Lettrable;Actif</code> (séparateur « ; », Oui/Non). Importez d'abord les codes Axe 1.
+Si une ligne est refusée, rien n'est importé.</p>
+{% if not comptes %}<p class="msg">Le plan est vide : importez un fichier CSV ou ajoutez des comptes.</p>{% endif %}
+<table><tr><th>Compte</th><th>Libellé</th><th>Axe 1</th><th>Lettrable</th><th>Actif</th><th></th><th></th></tr>
+{% for c in comptes %}{% set f = 'm' ~ c.numero %}<tr>
+<td><form id="{{ f }}" method="post" action="{{ url_for('compta.plan_modifier', numero=c.numero) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+<a href="{{ url_for('compta.grand_livre', numero=c.numero) }}">{{ c.numero }}</a></td>
+<td><input form="{{ f }}" name="libelle" value="{{ c.libelle }}" size="35"></td>
+<td><select form="{{ f }}" name="axe1"><option value="">—</option>{% for k in codes1 %}<option value="{{ k.code }}" {{ 'selected' if k.code == c.axe1_code }}>{{ k.code }} {{ k.libelle }}</option>{% endfor %}</select></td>
+<td><input form="{{ f }}" type="checkbox" name="lettrable" {{ 'checked' if c.lettrable }}></td>
+<td><input form="{{ f }}" type="checkbox" name="actif" {{ 'checked' if c.actif }}></td>
+<td><button form="{{ f }}">Enregistrer</button></td>
 <td><form method="post" action="{{ url_for('compta.plan_supprimer', numero=c.numero) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}
 </table>{% endblock %}

@@ -1,21 +1,38 @@
-"""Données de départ, modifiables ensuite depuis l'application."""
-from .models import Axe, Compte, Journal, db
+"""Données de départ et migration de la base existante."""
+from sqlalchemy import inspect, text
 
-COMPTES = [
-    ("101", "Capital / fonds associatifs"), ("512", "Banque"), ("530", "Caisse"),
-    ("401", "Fournisseurs"), ("411", "Clients / membres"),
-    ("470", "Compte d'attente"), ("580", "Virements internes"),
-    ("606", "Achats non stockés"), ("613", "Locations"), ("625", "Déplacements, réceptions"),
-    ("706", "Prestations de services"), ("707", "Ventes"), ("756", "Cotisations"),
-]
+from .models import Journal, db
+
 JOURNAUX = [("AC", "Achats"), ("VT", "Ventes"), ("BQ", "Banque"), ("CA", "Caisse"), ("OD", "Opérations diverses")]
+
+# Colonnes ajoutées après la première version (SQLite : ADD COLUMN).
+AJOUTS = {
+    "compte": [("axe1_code", "VARCHAR(20)"), ("lettrable", "BOOLEAN NOT NULL DEFAULT 0"),
+               ("actif", "BOOLEAN NOT NULL DEFAULT 1")],
+    "ligne": [("axe2_code", "VARCHAR(20)")],
+    "ecriture": [("lien", "VARCHAR(300) DEFAULT ''")],
+}
+ANCIENS_AXES = ["ligne_analytique", "code_analytique", "axe"]  # modèle d'axes libres, abandonné
+
+
+def migrer():
+    insp = inspect(db.engine)
+    tables = set(insp.get_table_names())
+    for table, colonnes in AJOUTS.items():
+        existantes = {c["name"] for c in insp.get_columns(table)}
+        for nom, ddl in colonnes:
+            if nom not in existantes:
+                db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {nom} {ddl}"))
+    # Ancien modèle d'axes : supprimé seulement s'il ne porte aucune ventilation.
+    if "ligne_analytique" in tables:
+        if db.session.execute(text("SELECT COUNT(*) FROM ligne_analytique")).scalar() == 0:
+            for t in ANCIENS_AXES:
+                db.session.execute(text(f"DROP TABLE IF EXISTS {t}"))
+    db.session.commit()
 
 
 def semer():
-    if Compte.query.first() is None:
-        db.session.add_all(Compte(numero=n, libelle=l) for n, l in COMPTES)
+    migrer()
     if Journal.query.first() is None:
         db.session.add_all(Journal(code=c, libelle=l) for c, l in JOURNAUX)
-    if Axe.query.first() is None:
-        db.session.add(Axe(nom="Axe 1"))
     db.session.commit()

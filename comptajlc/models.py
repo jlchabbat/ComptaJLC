@@ -7,9 +7,32 @@ db = SQLAlchemy()
 # Les montants sont stockés en centimes (entiers) : pas d'erreur d'arrondi.
 
 
+STATUTS = {0: "Non affecté", 1: "En cours", 2: "Terminé"}
+
+
+class CodeAxe1(db.Model):
+    """Axe 1 : rattaché aux comptes du plan comptable (rubrique du compte)."""
+    __tablename__ = "code_axe1"
+    code = db.Column(db.String(20), primary_key=True)
+    libelle = db.Column(db.String(200), nullable=False)
+    statut = db.Column(db.Integer, nullable=False, default=1)
+
+
+class CodeAxe2(db.Model):
+    """Axe 2 : activité / projet, indépendant du plan ; choisi à la saisie (comptes 6 et 7)."""
+    __tablename__ = "code_axe2"
+    code = db.Column(db.String(20), primary_key=True)
+    libelle = db.Column(db.String(200), nullable=False)
+    statut = db.Column(db.Integer, nullable=False, default=1)
+
+
 class Compte(db.Model):
     numero = db.Column(db.String(12), primary_key=True)
     libelle = db.Column(db.String(200), nullable=False)
+    axe1_code = db.Column(db.String(20), db.ForeignKey("code_axe1.code"))
+    lettrable = db.Column(db.Boolean, nullable=False, default=False)
+    actif = db.Column(db.Boolean, nullable=False, default=True)
+    axe1 = db.relationship("CodeAxe1")
 
     @property
     def classe(self):
@@ -21,27 +44,13 @@ class Journal(db.Model):
     libelle = db.Column(db.String(100), nullable=False)
 
 
-class Axe(db.Model):
-    """Axe analytique paramétrable (nombre et noms libres)."""
-    id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(60), unique=True, nullable=False)
-    codes = db.relationship("CodeAnalytique", backref="axe", order_by="CodeAnalytique.code")
-
-
-class CodeAnalytique(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    axe_id = db.Column(db.Integer, db.ForeignKey("axe.id"), nullable=False)
-    code = db.Column(db.String(20), nullable=False)
-    libelle = db.Column(db.String(200), nullable=False)
-    __table_args__ = (db.UniqueConstraint("axe_id", "code"),)
-
-
 class Ecriture(db.Model):
     """Un mouvement = une opération équilibrée (somme débits = somme crédits)."""
     mvt = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, default=date.today)
     journal_code = db.Column(db.String(8), db.ForeignKey("journal.code"), nullable=False)
     piece = db.Column(db.String(30), default="")
+    lien = db.Column(db.String(300), default="")  # lien vers le justificatif
     libelle = db.Column(db.String(200), nullable=False)
     journal = db.relationship("Journal")
     lignes = db.relationship("Ligne", backref="ecriture", cascade="all, delete-orphan")
@@ -53,15 +62,9 @@ class Ligne(db.Model):
     compte_numero = db.Column(db.String(12), db.ForeignKey("compte.numero"), nullable=False)
     debit = db.Column(db.Integer, nullable=False, default=0)
     credit = db.Column(db.Integer, nullable=False, default=0)
+    axe2_code = db.Column(db.String(20), db.ForeignKey("code_axe2.code"))
     compte = db.relationship("Compte")
-    analytiques = db.relationship("LigneAnalytique", backref="ligne", cascade="all, delete-orphan")
-
-
-class LigneAnalytique(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    ligne_id = db.Column(db.Integer, db.ForeignKey("ligne.id"), nullable=False)
-    code_id = db.Column(db.Integer, db.ForeignKey("code_analytique.id"), nullable=False)
-    code = db.relationship("CodeAnalytique")
+    axe2 = db.relationship("CodeAxe2")
 
 
 class Utilisateur(db.Model):

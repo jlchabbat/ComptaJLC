@@ -1,7 +1,7 @@
 import unittest
 
 from comptajlc import create_app
-from comptajlc.models import Axe, CodeAnalytique, Compte, db
+from comptajlc.models import CodeAxe1, CodeAxe2, Compte, Ecriture, Ligne, db
 from comptajlc.vues import en_centimes, fmt_montant
 
 
@@ -10,6 +10,10 @@ class Base(unittest.TestCase):
         self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
         self.c = self.app.test_client()
         self.connecter(self.c)
+        with self.app.app_context():
+            db.session.add_all([Compte(numero="606", libelle="Achats"), Compte(numero="512", libelle="Banque"),
+                                Compte(numero="706", libelle="Ventes")])
+            db.session.commit()
 
     def jeton(self, client):
         with client.session_transaction() as s:
@@ -55,31 +59,141 @@ class TestSaisie(Base):
     def test_compte_inconnu(self):
         self.assertEqual(self.ecriture(compte1="999").status_code, 400)
 
-    def test_analytique(self):
+    def test_axe2_comptes_6_et_7_seulement(self):
         with self.app.app_context():
-            a = Axe.query.first()
-            code = CodeAnalytique(axe_id=a.id, code="ACT.1", libelle="Activité")
-            db.session.add(code)
+            db.session.add_all([CodeAxe2(code="MAN.001", libelle="Conférence", statut=1),
+                                CodeAxe2(code="MAN.002", libelle="Terminée", statut=2)])
             db.session.commit()
-            aid, cid = a.id, code.id
-        self.assertEqual(self.ecriture(**{f"axe{aid}_0": str(cid)}).status_code, 302)
-        self.assertIn("ACT.1", self.c.get(f"/analytique/{aid}").get_data(as_text=True))
+        self.assertEqual(self.ecriture(axe2_0="MAN.001").status_code, 302)      # compte 606
+        r = self.ecriture(axe2_1="MAN.001")                                        # compte 512
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("classe 6 ou 7", r.get_data(as_text=True))
+        self.assertEqual(self.ecriture(axe2_0="MAN.002").status_code, 400)       # Terminé
+        self.assertEqual(self.ecriture(axe2_0="XXX").status_code, 400)           # inconnu
+        self.assertIn("MAN.001", self.c.get("/analytique/2").get_data(as_text=True))
+
+    def test_compte_inactif_refuse(self):
+        with self.app.app_context():
+            db.session.get(Compte, "606").actif = False
+            db.session.commit()
+        r = self.ecriture()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("inactif", r.get_data(as_text=True))
+
+    def test_lien_javascript_refuse(self):
+        self.assertEqual(self.ecriture(lien="javascript:alert(1)").status_code, 400)
+        self.assertEqual(self.ecriture(lien="https://exemple.org/p.pdf").status_code, 302)
+
+
+def csv_octets(texte, enc="cp1252"):
+    import io
+    return io.BytesIO(texte.encode(enc))
 
 
 class TestPlan(Base):
-    def test_ajout_import_suppression(self):
+    def test_ajout_et_suppression(self):
         self.post("/plan", data={"numero": "6061", "libelle": "Fournitures"})
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(Compte, "6061"))
-        import io
-        self.post("/plan/importer", data={"fichier": (io.BytesIO("7061;Dons\n".encode()), "p.csv")},
-                  content_type="multipart/form-data")
-        with self.app.app_context():
-            self.assertEqual(db.session.get(Compte, "7061").libelle, "Dons")
         self.ecriture(compte0="6061")
         self.post("/plan/6061/supprimer")  # utilisé : refusé
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(Compte, "6061"))
+
+    def importer(self, url, texte, enc="cp1252", **extra):
+        data = {"fichier": (csv_octets(texte, enc), "f.csv"), **extra}
+        return self.post(url, data=data, content_type="multipart/form-data", follow_redirects=True).get_data(as_text=True)
+
+    def test_import_axes_et_plan_cp1252(self):
+        self.importer("/axes/1/importer", "Code;Libellé;Statut\nACT.1;MANIFESTATIONS;En cours\nDON.1;DONS ÉMIS;Terminé\n")
+        self.importer("/axes/2/importer", "Code;Libellé;Statut\nMAN.006;Raclette;Terminé\nSOC.001;Bourses;En cours\n")
+        with self.app.app_context():
+            self.assertEqual(db.session.get(CodeAxe1, "DON.1").libelle, "DONS ÉMIS")
+            self.assertEqual(db.session.get(CodeAxe1, "DON.1").statut, 2)
+            self.assertEqual(db.session.get(CodeAxe2, "MAN.006").statut, 2)
+        self.importer("/plan/importer", "Compte;Libellé;Axe 1;Lettrable;Actif\n610000;MANIFESTATIONS DEPENSES;ACT.1;Non;Oui\n"
+                                        "411000;ADHERENTS;;Oui;Oui\n")
+        with self.app.app_context():
+            c = db.session.get(Compte, "610000")
+            self.assertEqual((c.axe1_code, c.lettrable, c.actif), ("ACT.1", False, True))
+            self.assertTrue(db.session.get(Compte, "411000").lettrable)
+
+    def test_import_plan_tout_ou_rien(self):
+        r = self.importer("/plan/importer", "Compte;Libellé;Axe 1\n610000;A;INCONNU\n620000;B;\n")
+        self.assertIn("Import refusé", r)
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(Compte, "620000"))
+        self.assertIn("Colonne", self.importer("/axes/1/importer", "Truc;Machin\nA;B\n"))
+
+    def test_import_remplacer_inutilises(self):
+        self.ecriture()                      # 606 et 512 utilisés
+        self.importer("/plan/importer", "Compte;Libellé\n610000;A\n", remplacer="on")
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(Compte, "706"))        # inutilisé : supprimé
+            self.assertIsNotNone(db.session.get(Compte, "606"))     # utilisé : conservé
+
+    def test_changer_axe1_dun_compte(self):
+        self.importer("/axes/1/importer", "Code;Libellé\nFRA.1;Frais\n")
+        self.post("/plan/606/modifier", data={"libelle": "Achats", "axe1": "FRA.1", "actif": "on"})
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Compte, "606").axe1_code, "FRA.1")
+        self.ecriture()
+        self.assertIn("FRA.1", self.c.get("/analytique/1").get_data(as_text=True))
+
+
+class TestImportEcritures(Base):
+    ENTETE = "Mvt;Jnl;Date;Compte;LibelCompte;Libelle;Debit;Credit;Anal1;LibelAnal1;Anal2;LibelAnal2;Lien;Let\n"
+
+    def importer(self, texte):
+        data = {"fichier": (csv_octets(self.ENTETE + texte), "e.csv")}
+        return self.post("/ecritures/importer", data=data, content_type="multipart/form-data",
+                         follow_redirects=True).get_data(as_text=True)
+
+    def prepare(self):
+        self.post("/axes/1/importer", data={"fichier": (csv_octets("Code;Libellé\nBIL.4;Tiers\nACT.1;Manif\n"), "a.csv")},
+                  content_type="multipart/form-data")
+        self.post("/axes/2/importer", data={"fichier": (csv_octets("Code;Libellé\nMAN.007;Rallye\n"), "b.csv")},
+                  content_type="multipart/form-data")
+
+    OK = ("7;B3;31/12/2025;512;BANQUE;Rallye Dupont;1 600.00;;;;MAN.007;Rallye;https://exemple.org/p;\n"
+          "7;B3;31/12/2025;706;VENTES;Rallye Dupont;;1 600.00;ACT.1;Manif;MAN.007;Rallye;;\n"
+          "9;CA;01/01/2026;411DUPON001;DUPONT;Autre;10,50;;BIL.4;Tiers;MAN.007;Rallye;;\n"
+          "9;CA;01/01/2026;706;VENTES;Autre;;10,50;ACT.1;Manif;;;;\n")
+
+    def test_import_complet(self):
+        self.prepare()
+        r = self.importer(self.OK)
+        self.assertIn("Import réussi : 2 écritures (4 lignes)", r)
+        self.assertIn("1 compte(s) créé(s)", r)
+        self.assertIn("2 code(s) Axe 2 ignoré(s)", r)    # sur 512 et 411 (hors 6/7) ; 706 le garde
+        with self.app.app_context():
+            e = db.session.get(Ecriture, 7)
+            self.assertEqual(e.journal_code, "B3")
+            self.assertEqual(e.lien, "https://exemple.org/p")
+            par = {l.compte_numero: (l.debit, l.credit, l.axe2_code) for l in e.lignes}
+            self.assertEqual(par["512"], (160000, 0, None))
+            self.assertEqual(par["706"], (0, 160000, "MAN.007"))
+            self.assertEqual(db.session.get(Compte, "411DUPON001").axe1_code, "BIL.4")
+        self.assertIn("Journal", self.c.get("/journaux").get_data(as_text=True) + "Journal")
+        self.ecriture()
+        with self.app.app_context():
+            self.assertEqual(db.session.query(Ecriture.mvt).order_by(Ecriture.mvt.desc()).first()[0], 10)
+
+    def test_rien_si_erreur(self):
+        self.prepare()
+        mauvais = self.OK + "11;OD;01/02/2026;512;B;Seul;5;;;;;;;\n"       # déséquilibré
+        self.assertIn("non équilibrée", self.importer(mauvais))
+        with self.app.app_context():
+            self.assertEqual(Ecriture.query.count(), 0)
+            self.assertIsNone(db.session.get(Compte, "411DUPON001"))
+
+    def test_numero_existant_et_lien_dangereux(self):
+        self.prepare()
+        self.importer(self.OK)
+        self.assertIn("existe déjà", self.importer(self.OK))
+        self.assertIn("http", self.importer(self.OK.replace("https://exemple.org/p", "javascript:alert(1)").replace("7;", "20;").replace("9;", "21;")))
+        with self.app.app_context():
+            self.assertEqual(Ecriture.query.count(), 2)
 
 
 class TestCorrection(Base):

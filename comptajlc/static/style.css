@@ -8,3 +8,4 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .ligne{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
 .msg{padding:.5rem .8rem;border-radius:4px}.msg.ok{background:#dfd}.msg.erreur{background:#fcd}
 .droite{margin-left:auto;color:#fff}
+.aide{color:#555;font-size:.9rem}

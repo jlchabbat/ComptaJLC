@@ -3,6 +3,6 @@
 <p>{{ nb }} écriture(s) enregistrée(s).</p>
 <ul>
 <li><a href="{{ url_for('compta.saisie') }}">Saisir une écriture</a></li>
-<li><a href="{{ url_for('compta.plan') }}">Adapter le plan comptable</a> (ajout, modification, import CSV)</li>
-<li><a href="{{ url_for('compta.axes') }}">Adapter les axes et codes analytiques</a></li>
+<li><a href="{{ url_for('compta.plan') }}">Adapter le plan comptable</a> (rubrique Axe 1 de chaque compte, import CSV)</li>
+<li><a href="{{ url_for('compta.axes') }}">Codes Axe 1 et Axe 2 (import CSV)</a></li>
 </ul>{% endblock %}

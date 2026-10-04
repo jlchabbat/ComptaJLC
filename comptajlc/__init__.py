@@ -11,6 +11,7 @@ def create_app(config=None):
     os.makedirs(app.instance_path, exist_ok=True)
     app.config.from_mapping(
         SECRET_KEY=auth.cle_secrete(app.instance_path),
+        AXE2_CLASSES="67",  # classes de comptes pouvant recevoir un code Axe 2
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=not app.debug and not os.environ.get("COMPTAJLC_HTTP"),
         SQLALCHEMY_DATABASE_URI="sqlite:///" + os.path.join(app.instance_path, "compta.db"),

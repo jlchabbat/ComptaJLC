@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block contenu %}
-<h1>Totaux par code – {{ axe.nom }}</h1>
+<h1>Totaux par code – {{ nom }}</h1>
 <table><tr><th>Code</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
 {% for c, lib, d, cr in rows %}<tr><td>{{ c }}</td><td>{{ lib }}</td><td class="n">{{ d|montant }}</td><td class="n">{{ cr|montant }}</td></tr>{% endfor %}
 </table>{% endblock %}

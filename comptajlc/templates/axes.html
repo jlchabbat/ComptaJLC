@@ -1,12 +1,22 @@
 {% extends "base.html" %}{% block contenu %}
-<h1>Axes analytiques</h1>
-<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="nom" placeholder="Nom du nouvel axe" required><button>Ajouter un axe</button></form>
-{% for a in axes %}<section><h2>{{ a.nom }}</h2>
-<form method="post" action="{{ url_for('compta.axe_renommer', axe_id=a.id) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input name="nom" value="{{ a.nom }}"><button>Renommer</button>
-<a href="{{ url_for('compta.analytique', axe_id=a.id) }}">Totaux par code</a></form>
-<form method="post" action="{{ url_for('compta.code_ajouter', axe_id=a.id) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input name="code" placeholder="Code (ex. ACT.1)" required><input name="libelle" placeholder="Libellé" required size="30"><button>Ajouter un code</button></form>
-<table>{% for c in a.codes %}<tr><td>{{ c.code }}</td><td>{{ c.libelle }}</td>
-<td><form method="post" action="{{ url_for('compta.code_supprimer', code_id=c.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}</table>
+<h1>Codes des axes</h1>
+<p><strong>Axe 1</strong> : rubrique rattachée à chaque compte du plan comptable (bilan, frais, activités…).
+<strong>Axe 2</strong> : activité ou projet, <em>indépendant</em> du plan et de l'axe 1, choisi à la saisie, facultatif, pour les comptes de classe 6 et 7.
+Seuls les codes « En cours » sont proposés à la saisie.</p>
+{% for n, nom, desc, codes in axes %}<section><h2>{{ nom }} <small>({{ desc }})</small></h2>
+<p><a href="{{ url_for('compta.analytique', n=n) }}">Totaux par code</a></p>
+<form method="post" action="{{ url_for('compta.code_ajouter', n=n) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="code" placeholder="Code" required size="10"><input name="libelle" placeholder="Libellé" required size="35">
+<select name="statut">{% for k, v in statuts.items() %}<option value="{{ k }}" {{ 'selected' if k == 1 }}>{{ v }}</option>{% endfor %}</select><button>Ajouter</button></form>
+<form method="post" action="{{ url_for('compta.codes_importer', n=n) }}" enctype="multipart/form-data" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="file" name="fichier" accept=".csv,.txt" required>
+<label><input type="checkbox" name="remplacer"> Supprimer les codes inutilisés absents du fichier</label>
+<button>Importer un CSV</button> <span class="aide">Colonnes : <code>Code;Libellé;Statut</code></span></form>
+<table><tr><th>Code</th><th>Libellé</th><th>Statut</th><th></th><th></th></tr>
+{% for c in codes %}{% set f = 'c' ~ n ~ '-' ~ c.code %}<tr>
+<td><form id="{{ f }}" method="post" action="{{ url_for('compta.code_modifier', n=n, code=c.code) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>{{ c.code }}</td>
+<td><input form="{{ f }}" name="libelle" value="{{ c.libelle }}" size="35"></td>
+<td><select form="{{ f }}" name="statut">{% for k, v in statuts.items() %}<option value="{{ k }}" {{ 'selected' if k == c.statut }}>{{ v }}</option>{% endfor %}</select></td>
+<td><button form="{{ f }}">Enregistrer</button></td>
+<td><form method="post" action="{{ url_for('compta.code_supprimer', n=n, code=c.code) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}</table>
 </section>{% endfor %}{% endblock %}

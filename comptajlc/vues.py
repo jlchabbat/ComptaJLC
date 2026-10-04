@@ -4,12 +4,13 @@ import json
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
-from flask import (Blueprint, Response, flash, g, redirect, render_template,
+from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, render_template,
                    request, url_for)
 from sqlalchemy import func
 
-from .models import (Axe, CodeAnalytique, Compte, Ecriture, Historique, Journal,
-                     Ligne, LigneAnalytique, db)
+from . import imports
+from .models import (STATUTS, CodeAxe1, CodeAxe2, Compte, Ecriture, Historique,
+                     Journal, Ligne, db)
 
 bp = Blueprint("compta", __name__)
 
@@ -37,31 +38,52 @@ def accueil():
 
 # ---------- Plan comptable ----------
 
+def axe1_valide(code):
+    """'' -> None ; code inconnu -> ValueError."""
+    code = (code or "").strip()
+    if code and not db.session.get(CodeAxe1, code):
+        raise ValueError(f"Code Axe 1 « {code} » inconnu.")
+    return code or None
+
+
 @bp.route("/plan", methods=["GET", "POST"])
 def plan():
     if request.method == "POST":
         numero = request.form["numero"].strip()
         libelle = request.form["libelle"].strip()
-        if not numero.isdigit() or not libelle:
-            flash("Numéro (chiffres) et libellé obligatoires.", "erreur")
-        elif db.session.get(Compte, numero):
-            flash("Ce compte existe déjà.", "erreur")
+        try:
+            axe1 = axe1_valide(request.form.get("axe1"))
+            if not numero.isdigit() or not libelle:
+                raise ValueError("Numéro (chiffres) et libellé obligatoires.")
+            if db.session.get(Compte, numero):
+                raise ValueError("Ce compte existe déjà.")
+        except ValueError as e:
+            flash(str(e), "erreur")
         else:
-            db.session.add(Compte(numero=numero, libelle=libelle))
+            db.session.add(Compte(numero=numero, libelle=libelle, axe1_code=axe1,
+                                  lettrable="lettrable" in request.form, actif=True))
             db.session.commit()
             flash("Compte ajouté.", "ok")
         return redirect(url_for("compta.plan"))
-    return render_template("plan.html", comptes=Compte.query.order_by(Compte.numero).all())
+    return render_template("plan.html", comptes=Compte.query.order_by(Compte.numero).all(),
+                           codes1=CodeAxe1.query.order_by(CodeAxe1.code).all())
 
 
 @bp.post("/plan/<numero>/modifier")
 def plan_modifier(numero):
     c = db.get_or_404(Compte, numero)
     libelle = request.form["libelle"].strip()
+    try:
+        c.axe1_code = axe1_valide(request.form.get("axe1"))
+    except ValueError as e:
+        flash(str(e), "erreur")
+        return redirect(url_for("compta.plan"))
     if libelle:
         c.libelle = libelle
-        db.session.commit()
-        flash("Libellé modifié.", "ok")
+    c.lettrable = "lettrable" in request.form
+    c.actif = "actif" in request.form
+    db.session.commit()
+    flash(f"Compte {numero} modifié.", "ok")
     return redirect(url_for("compta.plan"))
 
 
@@ -69,7 +91,7 @@ def plan_modifier(numero):
 def plan_supprimer(numero):
     c = db.get_or_404(Compte, numero)
     if Ligne.query.filter_by(compte_numero=numero).first():
-        flash("Compte utilisé par des écritures : suppression impossible.", "erreur")
+        flash("Compte utilisé par des écritures : suppression impossible (décochez « Actif » pour le retirer de la saisie).", "erreur")
     else:
         db.session.delete(c)
         db.session.commit()
@@ -77,77 +99,104 @@ def plan_supprimer(numero):
     return redirect(url_for("compta.plan"))
 
 
+def fichier_importe():
+    f = request.files.get("fichier")
+    if not f or not f.filename:
+        raise imports.ErreurImport(["Aucun fichier choisi."])
+    return f.read()
+
+
+def signaler(e):
+    flash(f"Import refusé, rien n'a été modifié ({len(e.erreurs)} problème(s)) : " + " | ".join(e.erreurs[:5])
+          + (" …" if len(e.erreurs) > 5 else ""), "erreur")
+
+
 @bp.post("/plan/importer")
 def plan_importer():
-    """Import CSV « numero;libelle » : ajoute les comptes absents, met à jour les libellés."""
-    f = request.files.get("fichier")
-    if not f:
-        flash("Aucun fichier.", "erreur")
+    """CSV « Compte;Libellé;Axe 1;Lettrable;Actif » : ajoute, met à jour ; tout ou rien."""
+    try:
+        lignes = imports.lire_plan(fichier_importe(), {c.code for c in CodeAxe1.query})
+    except imports.ErreurImport as e:
+        signaler(e)
         return redirect(url_for("compta.plan"))
-    texte = f.read().decode("utf-8-sig", errors="replace")
-    delim = ";" if texte.count(";") >= texte.count(",") else ","
     ajoutes = maj = 0
-    for row in csv.reader(io.StringIO(texte), delimiter=delim):
-        if len(row) < 2 or not row[0].strip().isdigit():
-            continue
-        c = db.session.get(Compte, row[0].strip())
+    for numero, libelle, axe1, lettrable, actif in lignes:
+        c = db.session.get(Compte, numero)
         if c:
-            c.libelle = row[1].strip()
             maj += 1
         else:
-            db.session.add(Compte(numero=row[0].strip(), libelle=row[1].strip()))
+            c = Compte(numero=numero)
+            db.session.add(c)
             ajoutes += 1
+        c.libelle, c.axe1_code, c.lettrable, c.actif = libelle, axe1, lettrable, actif
+    supprimes = 0
+    if "remplacer" in request.form:
+        dans_fichier = {l[0] for l in lignes}
+        for c in Compte.query.all():
+            if c.numero not in dans_fichier and not Ligne.query.filter_by(compte_numero=c.numero).first():
+                db.session.delete(c)
+                supprimes += 1
     db.session.commit()
-    flash(f"Import terminé : {ajoutes} ajouté(s), {maj} mis à jour.", "ok")
+    flash(f"Plan importé : {ajoutes} ajouté(s), {maj} mis à jour, {supprimes} supprimé(s).", "ok")
     return redirect(url_for("compta.plan"))
 
 
-# ---------- Axes et codes analytiques ----------
+# ---------- Codes Axe 1 et Axe 2 ----------
 
-@bp.route("/axes", methods=["GET", "POST"])
+AXES = {1: (CodeAxe1, "Axe 1", "rattaché aux comptes du plan comptable"),
+        2: (CodeAxe2, "Axe 2", "activité / projet, choisi à la saisie")}
+
+
+def modele_axe(n):
+    if n not in AXES:
+        abort(404)
+    return AXES[n][0]
+
+
+def code_utilise(n, code):
+    if n == 1:
+        return Compte.query.filter_by(axe1_code=code).first() is not None
+    return Ligne.query.filter_by(axe2_code=code).first() is not None
+
+
+@bp.route("/axes")
 def axes():
-    if request.method == "POST":
-        nom = request.form["nom"].strip()
-        if nom and not Axe.query.filter_by(nom=nom).first():
-            db.session.add(Axe(nom=nom))
-            db.session.commit()
-            flash("Axe ajouté.", "ok")
-        else:
-            flash("Nom vide ou déjà utilisé.", "erreur")
-        return redirect(url_for("compta.axes"))
-    return render_template("axes.html", axes=Axe.query.order_by(Axe.id).all())
+    return render_template("axes.html", axes=[(n, nom, desc, modele.query.order_by(modele.code).all())
+                                              for n, (modele, nom, desc) in AXES.items()], statuts=STATUTS)
 
 
-@bp.post("/axes/<int:axe_id>/renommer")
-def axe_renommer(axe_id):
-    a = db.get_or_404(Axe, axe_id)
-    nom = request.form["nom"].strip()
-    if nom:
-        a.nom = nom
-        db.session.commit()
-    return redirect(url_for("compta.axes"))
-
-
-@bp.post("/axes/<int:axe_id>/codes")
-def code_ajouter(axe_id):
-    a = db.get_or_404(Axe, axe_id)
-    code, libelle = request.form["code"].strip().upper(), request.form["libelle"].strip()
+@bp.post("/axes/<int:n>/ajouter")
+def code_ajouter(n):
+    M = modele_axe(n)
+    code, libelle = request.form["code"].strip(), request.form["libelle"].strip()
     if not code or not libelle:
         flash("Code et libellé obligatoires.", "erreur")
-    elif CodeAnalytique.query.filter_by(axe_id=a.id, code=code).first():
-        flash("Ce code existe déjà sur cet axe.", "erreur")
+    elif db.session.get(M, code):
+        flash("Ce code existe déjà.", "erreur")
     else:
-        db.session.add(CodeAnalytique(axe_id=a.id, code=code, libelle=libelle))
+        db.session.add(M(code=code, libelle=libelle, statut=int(request.form.get("statut", 1))))
         db.session.commit()
         flash("Code ajouté.", "ok")
     return redirect(url_for("compta.axes"))
 
 
-@bp.post("/codes/<int:code_id>/supprimer")
-def code_supprimer(code_id):
-    c = db.get_or_404(CodeAnalytique, code_id)
-    if LigneAnalytique.query.filter_by(code_id=c.id).first():
-        flash("Code utilisé par des écritures : suppression impossible.", "erreur")
+@bp.post("/axes/<int:n>/<code>/modifier")
+def code_modifier(n, code):
+    c = db.get_or_404(modele_axe(n), code)
+    if request.form["libelle"].strip():
+        c.libelle = request.form["libelle"].strip()
+    if int(request.form.get("statut", c.statut)) in STATUTS:
+        c.statut = int(request.form["statut"])
+    db.session.commit()
+    flash(f"Code {code} modifié.", "ok")
+    return redirect(url_for("compta.axes"))
+
+
+@bp.post("/axes/<int:n>/<code>/supprimer")
+def code_supprimer(n, code):
+    c = db.get_or_404(modele_axe(n), code)
+    if code_utilise(n, code):
+        flash("Code utilisé : suppression impossible (passez-le en « Terminé »).", "erreur")
     else:
         db.session.delete(c)
         db.session.commit()
@@ -155,7 +204,47 @@ def code_supprimer(code_id):
     return redirect(url_for("compta.axes"))
 
 
+@bp.post("/axes/<int:n>/importer")
+def codes_importer(n):
+    """CSV « Code;Libellé;Statut » : ajoute, met à jour ; tout ou rien."""
+    M = modele_axe(n)
+    try:
+        lignes = imports.lire_codes(fichier_importe())
+    except imports.ErreurImport as e:
+        signaler(e)
+        return redirect(url_for("compta.axes"))
+    ajoutes = maj = supprimes = 0
+    for code, libelle, st in lignes:
+        c = db.session.get(M, code)
+        if c:
+            maj += 1
+        else:
+            c = M(code=code)
+            db.session.add(c)
+            ajoutes += 1
+        c.libelle, c.statut = libelle, st
+    if "remplacer" in request.form:
+        dans_fichier = {l[0] for l in lignes}
+        for c in M.query.all():
+            if c.code not in dans_fichier and not code_utilise(n, c.code):
+                db.session.delete(c)
+                supprimes += 1
+    db.session.commit()
+    flash(f"{AXES[n][1]} importé : {ajoutes} ajouté(s), {maj} mis à jour, {supprimes} supprimé(s).", "ok")
+    return redirect(url_for("compta.axes"))
+
+
 # ---------- Journaux ----------
+
+@bp.post("/journaux/<code>/modifier")
+def journal_modifier(code):
+    j = db.get_or_404(Journal, code)
+    if request.form["libelle"].strip():
+        j.libelle = request.form["libelle"].strip()
+        db.session.commit()
+        flash("Journal modifié.", "ok")
+    return redirect(url_for("compta.journaux"))
+
 
 @bp.route("/journaux", methods=["GET", "POST"])
 def journaux():
@@ -176,10 +265,9 @@ def journaux():
 def instantane(e):
     """Copie lisible d'une écriture (stockée dans l'historique)."""
     return {"date": e.date.isoformat(), "journal": e.journal_code, "piece": e.piece or "",
-            "libelle": e.libelle,
+            "libelle": e.libelle, "lien": e.lien or "",
             "lignes": [{"compte": l.compte_numero, "debit": l.debit, "credit": l.credit,
-                        "analytique": [f"{x.code.axe.nom} : {x.code.code}" for x in l.analytiques]}
-                       for l in e.lignes]}
+                        "axe2": l.axe2_code or ""} for l in e.lignes]}
 
 
 def journaliser(action, mvt, motif, avant, apres):
@@ -202,18 +290,26 @@ def centimes_texte(c):
 def valeurs_ecriture(e):
     """Valeurs de départ du formulaire pour modifier une écriture."""
     v = {"date": e.date.isoformat(), "journal": e.journal_code, "piece": e.piece or "",
-         "libelle": e.libelle}
+         "libelle": e.libelle, "lien": e.lien or ""}
     for i, l in enumerate(e.lignes):
         v[f"compte{i}"] = l.compte_numero
         v[f"debit{i}"] = centimes_texte(l.debit) if l.debit else ""
         v[f"credit{i}"] = centimes_texte(l.credit) if l.credit else ""
-        for x in l.analytiques:
-            v[f"axe{x.code.axe_id}_{i}"] = str(x.code_id)
+        v[f"axe2_{i}"] = l.axe2_code or ""
     return v
 
 
-def lire_formulaire(f, axes_, nb_lignes):
-    """Valide le formulaire ; lève ValueError (message en français) sinon."""
+def classes_axe2():
+    return tuple(current_app.config["AXE2_CLASSES"])
+
+
+def lire_formulaire(f, nb_lignes, anciens=None):
+    """Valide le formulaire ; lève ValueError (message en français) sinon.
+
+    `anciens` : (comptes, codes axe 2) déjà présents sur l'écriture modifiée, qui restent
+    acceptés même si le compte est devenu inactif ou le code terminé.
+    """
+    comptes_ok, codes_ok = anciens or (set(), set())
     d = datetime.strptime(f["date"], "%Y-%m-%d").date()
     if not f["libelle"].strip():
         raise ValueError("Libellé obligatoire.")
@@ -223,40 +319,42 @@ def lire_formulaire(f, axes_, nb_lignes):
     for i in range(nb_lignes):
         num = f.get(f"compte{i}", "").strip()
         deb, cre = en_centimes(f.get(f"debit{i}")), en_centimes(f.get(f"credit{i}"))
+        axe2 = f.get(f"axe2_{i}", "").strip()
         if not num and not deb and not cre:
             continue
-        if not db.session.get(Compte, num):
+        compte = db.session.get(Compte, num)
+        if not compte:
             raise ValueError(f"Ligne {i + 1} : compte « {num} » introuvable.")
+        if not compte.actif and num not in comptes_ok:
+            raise ValueError(f"Ligne {i + 1} : le compte {num} est inactif.")
         if (deb and cre) or not (deb or cre) or deb < 0 or cre < 0:
             raise ValueError(f"Ligne {i + 1} : un montant positif au débit OU au crédit.")
-        codes = []
-        for a in axes_:
-            cid = f.get(f"axe{a.id}_{i}", "")
-            if cid:
-                c = db.session.get(CodeAnalytique, int(cid))
-                if not c or c.axe_id != a.id:
-                    raise ValueError(f"Ligne {i + 1} : code analytique invalide.")
-                codes.append(c)
-        lignes.append((num, deb, cre, codes))
+        if axe2:
+            if not num.startswith(classes_axe2()):
+                raise ValueError(f"Ligne {i + 1} : l'axe 2 n'est possible que pour les comptes de classe "
+                                 + " ou ".join(classes_axe2()) + ".")
+            code = db.session.get(CodeAxe2, axe2)
+            if not code:
+                raise ValueError(f"Ligne {i + 1} : code Axe 2 « {axe2} » inconnu.")
+            if code.statut != 1 and axe2 not in codes_ok:
+                raise ValueError(f"Ligne {i + 1} : le code Axe 2 {axe2} n'est pas « En cours ».")
+        lignes.append((num, deb, cre, axe2 or None))
     if len(lignes) < 2:
         raise ValueError("Au moins deux lignes.")
     if sum(l[1] for l in lignes) != sum(l[2] for l in lignes):
         raise ValueError("Écriture non équilibrée : total débit ≠ total crédit.")
-    return d, f["journal"].strip(), f.get("piece", "").strip(), f["libelle"].strip(), lignes
+    return d, f["journal"].strip(), f.get("piece", "").strip(), f["libelle"].strip(), lignes, imports.lien_valide(f.get("lien"))
 
 
 def construire_lignes(lignes):
-    out = []
-    for num, deb, cre, codes in lignes:
-        l = Ligne(compte_numero=num, debit=deb, credit=cre)
-        l.analytiques = [LigneAnalytique(code_id=c.id) for c in codes]
-        out.append(l)
-    return out
+    return [Ligne(compte_numero=num, debit=deb, credit=cre, axe2_code=axe2) for num, deb, cre, axe2 in lignes]
 
 
 def contexte_saisie(val, nb_lignes=6, ecriture=None):
-    return dict(journaux=Journal.query.all(), comptes=Compte.query.order_by(Compte.numero).all(),
-                axes=Axe.query.order_by(Axe.id).all(), aujourdhui=date.today().isoformat(),
+    return dict(journaux=Journal.query.all(),
+                comptes=Compte.query.filter_by(actif=True).order_by(Compte.numero).all(),
+                codes2=CodeAxe2.query.filter_by(statut=1).order_by(CodeAxe2.code).all(),
+                classes2=list(classes_axe2()), aujourdhui=date.today().isoformat(),
                 nb_lignes=nb_lignes, val=val, ecriture=ecriture)
 
 
@@ -266,11 +364,11 @@ def saisie():
     if request.method == "GET":
         return render_template("saisie.html", **ctx)
     try:
-        d, jnl, piece, libelle, lignes = lire_formulaire(request.form, ctx["axes"], ctx["nb_lignes"])
+        d, jnl, piece, libelle, lignes, lien = lire_formulaire(request.form, ctx["nb_lignes"])
     except ValueError as e:
         flash(str(e), "erreur")
         return render_template("saisie.html", **ctx), 400
-    e = Ecriture(mvt=prochain_mvt(), date=d, journal_code=jnl, piece=piece, libelle=libelle)
+    e = Ecriture(mvt=prochain_mvt(), date=d, journal_code=jnl, piece=piece, libelle=libelle, lien=lien)
     e.lignes = construire_lignes(lignes)
     db.session.add(e)
     db.session.flush()
@@ -286,18 +384,22 @@ def ecriture_modifier(mvt):
     nb = max(6, len(e.lignes) + 2)
     post = request.method == "POST"
     ctx = contexte_saisie(request.form if post else valeurs_ecriture(e), nb, ecriture=e)
+    ctx["comptes"] = Compte.query.filter((Compte.actif == True) | Compte.numero.in_(  # noqa: E712
+        {l.compte_numero for l in e.lignes})).order_by(Compte.numero).all()
+    anciens2 = {l.axe2_code for l in e.lignes if l.axe2_code}
+    ctx["codes2"] = CodeAxe2.query.filter((CodeAxe2.statut == 1) | CodeAxe2.code.in_(anciens2)).order_by(CodeAxe2.code).all()
     if not post:
         return render_template("saisie.html", **ctx)
     try:
         motif = request.form.get("motif", "").strip()
         if not motif:
             raise ValueError("Indiquez le motif de la modification.")
-        d, jnl, piece, libelle, lignes = lire_formulaire(request.form, ctx["axes"], nb)
+        d, jnl, piece, libelle, lignes, lien = lire_formulaire(request.form, nb, ({l.compte_numero for l in e.lignes}, {l.axe2_code for l in e.lignes if l.axe2_code}))
     except ValueError as err:
         flash(str(err), "erreur")
         return render_template("saisie.html", **ctx), 400
     avant = instantane(e)
-    e.date, e.journal_code, e.piece, e.libelle = d, jnl, piece, libelle
+    e.date, e.journal_code, e.piece, e.libelle, e.lien = d, jnl, piece, libelle, lien
     e.lignes = construire_lignes(lignes)
     db.session.flush()
     db.session.refresh(e)
@@ -321,6 +423,43 @@ def ecriture_supprimer(mvt):
     return redirect(url_for("compta.journal"))
 
 
+@bp.post("/ecritures/importer")
+def ecritures_importer():
+    """CSV d'écritures (voir docs/import-ecritures.md) : tout ou rien, numéros de mouvement conservés."""
+    try:
+        octets = fichier_importe()
+        res = imports.lire_ecritures(
+            octets, {c.numero: c.axe1_code for c in Compte.query},
+            {c.code for c in CodeAxe1.query}, {c.code for c in CodeAxe2.query}, classes_axe2(),
+            {m for (m,) in db.session.query(Ecriture.mvt)} | {m for (m,) in db.session.query(Historique.mvt)})
+    except imports.ErreurImport as e:
+        signaler(e)
+        return redirect(url_for("compta.journal"))
+    nom = request.files["fichier"].filename
+    for code in sorted(res["journaux"]):
+        if not db.session.get(Journal, code):
+            db.session.add(Journal(code=code, libelle=code))
+    for num, (lib, axe1) in res["comptes_a_creer"].items():
+        db.session.add(Compte(numero=num, libelle=lib, axe1_code=axe1))
+    db.session.flush()
+    nb_lignes = 0
+    for m in res["mouvements"]:
+        e = Ecriture(mvt=m["mvt"], date=m["date"], journal_code=m["journal"], libelle=m["libelle"],
+                     lien=m["lien"], piece="")
+        e.lignes = construire_lignes(m["lignes"])
+        nb_lignes += len(e.lignes)
+        db.session.add(e)
+        db.session.flush()
+        db.session.refresh(e)
+        journaliser("création", e.mvt, f"Import CSV : {nom}", None, instantane(e))
+    db.session.commit()
+    flash(f"Import réussi : {len(res['mouvements'])} écritures ({nb_lignes} lignes), "
+          f"{len(res['comptes_a_creer'])} compte(s) créé(s), "
+          f"{res['ignores_axe2']} code(s) Axe 2 ignoré(s) sur des comptes hors classes "
+          + " et ".join(classes_axe2()) + ".", "ok")
+    return redirect(url_for("compta.journal"))
+
+
 @bp.route("/historique")
 def historique():
     rows = Historique.query.order_by(Historique.id.desc()).all()
@@ -335,7 +474,8 @@ def resume_ecriture(snap):
     out = [f"{snap['date']} · {snap['journal']} · {snap['piece']} · {snap['libelle']}"]
     for l in snap["lignes"]:
         sens = f"D {fmt_montant(l['debit'])}" if l["debit"] else f"C {fmt_montant(l['credit'])}"
-        ana = " [" + " ; ".join(l["analytique"]) + "]" if l["analytique"] else ""
+        ext = l.get("axe2") or " ; ".join(l.get("analytique", []))
+        ana = f" [{ext}]" if ext else ""
         out.append(f"  {l['compte']}  {sens}{ana}")
     return "\n".join(out)
 
@@ -347,10 +487,15 @@ def journal():
     return render_template("journal.html", ecritures=Ecriture.query.order_by(Ecriture.date, Ecriture.mvt).all())
 
 
+def lignes_balance():
+    return (db.session.query(Ligne.compte_numero, Compte.libelle, func.sum(Ligne.debit),
+                             func.sum(Ligne.credit), Compte.axe1_code)
+            .join(Compte).group_by(Ligne.compte_numero).order_by(Ligne.compte_numero).all())
+
+
 @bp.route("/balance")
 def balance():
-    rows = (db.session.query(Ligne.compte_numero, Compte.libelle, func.sum(Ligne.debit), func.sum(Ligne.credit))
-            .join(Compte).group_by(Ligne.compte_numero).order_by(Ligne.compte_numero).all())
+    rows = lignes_balance()
     return render_template("balance.html", rows=rows,
                            td=sum(r[2] for r in rows), tc=sum(r[3] for r in rows))
 
@@ -363,16 +508,15 @@ def grand_livre(numero):
     return render_template("grand_livre.html", compte=c, lignes=lignes)
 
 
-@bp.route("/analytique/<int:axe_id>")
-def analytique(axe_id):
-    a = db.get_or_404(Axe, axe_id)
-    rows = (db.session.query(CodeAnalytique.code, CodeAnalytique.libelle,
-                             func.sum(Ligne.debit), func.sum(Ligne.credit))
-            .join(LigneAnalytique, LigneAnalytique.code_id == CodeAnalytique.id)
-            .join(Ligne, Ligne.id == LigneAnalytique.ligne_id)
-            .filter(CodeAnalytique.axe_id == a.id).group_by(CodeAnalytique.id)
-            .order_by(CodeAnalytique.code).all())
-    return render_template("analytique.html", axe=a, rows=rows)
+@bp.route("/analytique/<int:n>")
+def analytique(n):
+    M = modele_axe(n)
+    q = db.session.query(M.code, M.libelle, func.sum(Ligne.debit), func.sum(Ligne.credit))
+    if n == 1:
+        q = q.join(Compte, Compte.axe1_code == M.code).join(Ligne, Ligne.compte_numero == Compte.numero)
+    else:
+        q = q.join(Ligne, Ligne.axe2_code == M.code)
+    return render_template("analytique.html", nom=AXES[n][1], rows=q.group_by(M.code).order_by(M.code).all())
 
 
 # ---------- Exports Excel ----------
@@ -406,13 +550,11 @@ def _reponse(wb, nom):
 @bp.route("/export/journal.xlsx")
 def export_journal():
     from openpyxl import Workbook
-    axes_ = Axe.query.order_by(Axe.id).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Journal"
-    ent = ["Mvt", "Date", "Journal", "Pièce", "Libellé", "Compte", "Libellé du compte",
-           "Débit", "Crédit"] + [a.nom for a in axes_]
-    for k, h in enumerate(ent, 1):
+    for k, h in enumerate(["Mvt", "Date", "Journal", "Pièce", "Libellé", "Compte", "Libellé du compte",
+                           "Débit", "Crédit", "Axe 1", "Axe 2", "Lien"], 1):
         _texte(ws, 1, k, h)
     r = 2
     for e in Ecriture.query.order_by(Ecriture.date, Ecriture.mvt).all():
@@ -426,11 +568,11 @@ def export_journal():
             _texte(ws, r, 7, l.compte.libelle)
             ws.cell(row=r, column=8, value=l.debit / 100 if l.debit else None).number_format = "#,##0.00"
             ws.cell(row=r, column=9, value=l.credit / 100 if l.credit else None).number_format = "#,##0.00"
-            par_axe = {x.code.axe_id: x.code for x in l.analytiques}
-            for k, a in enumerate(axes_):
-                c = par_axe.get(a.id)
-                if c:
-                    _texte(ws, r, 10 + k, f"{c.code} {c.libelle}")
+            if l.compte.axe1:
+                _texte(ws, r, 10, f"{l.compte.axe1.code} {l.compte.axe1.libelle}")
+            if l.axe2:
+                _texte(ws, r, 11, f"{l.axe2.code} {l.axe2.libelle}")
+            _texte(ws, r, 12, e.lien or "")
             r += 1
     return _reponse(wb, "journal.xlsx")
 
@@ -438,19 +580,19 @@ def export_journal():
 @bp.route("/export/balance.xlsx")
 def export_balance():
     from openpyxl import Workbook
-    rows = (db.session.query(Ligne.compte_numero, Compte.libelle, func.sum(Ligne.debit), func.sum(Ligne.credit))
-            .join(Compte).group_by(Ligne.compte_numero).order_by(Ligne.compte_numero).all())
+    rows = lignes_balance()
     wb = Workbook()
     ws = wb.active
     ws.title = "Balance"
-    for k, h in enumerate(["Compte", "Libellé", "Débit", "Crédit", "Solde"], 1):
+    for k, h in enumerate(["Compte", "Libellé", "Débit", "Crédit", "Solde", "Axe 1"], 1):
         _texte(ws, 1, k, h)
-    for r, (n, lib, d, c) in enumerate(rows, 2):
+    for r, (n, lib, d, c, axe1) in enumerate(rows, 2):
         _texte(ws, r, 1, n)
         _texte(ws, r, 2, lib)
         ws.cell(row=r, column=3, value=d / 100).number_format = "#,##0.00"
         ws.cell(row=r, column=4, value=c / 100).number_format = "#,##0.00"
         ws.cell(row=r, column=5, value=f"=C{r}-D{r}").number_format = "#,##0.00"
+        _texte(ws, r, 6, axe1 or "")
     t = len(rows) + 2
     _texte(ws, t, 2, "Total")
     for col, L in ((3, "C"), (4, "D"), (5, "E")):

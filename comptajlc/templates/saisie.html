@@ -3,17 +3,27 @@
 <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <p class="ligne"><label>Date <input type="date" name="date" value="{{ val.get('date') or aujourdhui }}" required></label>
 <label>Journal <select name="journal">{% for j in journaux %}<option value="{{ j.code }}" {{ 'selected' if val.get('journal') == j.code }}>{{ j.code }} – {{ j.libelle }}</option>{% endfor %}</select></label>
-<label>Pièce <input name="piece" size="10" value="{{ val.get('piece', '') }}"></label></p>
+<label>Pièce <input name="piece" size="10" value="{{ val.get('piece', '') }}"></label>
+<label>Lien du justificatif <input name="lien" size="40" value="{{ val.get('lien', '') }}"></label></p>
 <p><label>Libellé <input name="libelle" size="60" value="{{ val.get('libelle', '') }}" required></label></p>
-<table><tr><th>Compte</th><th>Débit</th><th>Crédit</th>{% for a in axes %}<th>{{ a.nom }}</th>{% endfor %}</tr>
+<table><tr><th>Compte</th><th>Débit</th><th>Crédit</th><th>Axe 2 (facultatif)</th></tr>
 {% for i in range(nb_lignes) %}<tr>
 <td><input name="compte{{ i }}" list="comptes" size="10" value="{{ val.get('compte' ~ i, '') }}"></td>
 <td><input name="debit{{ i }}" size="10" value="{{ val.get('debit' ~ i, '') }}"></td>
 <td><input name="credit{{ i }}" size="10" value="{{ val.get('credit' ~ i, '') }}"></td>
-{% for a in axes %}<td><select name="axe{{ a.id }}_{{ i }}"><option value=""></option>
-{% for c in a.codes %}<option value="{{ c.id }}" {{ 'selected' if val.get('axe' ~ a.id ~ '_' ~ i) == c.id|string }}>{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select></td>{% endfor %}
+<td><select name="axe2_{{ i }}"><option value=""></option>
+{% for c in codes2 %}<option value="{{ c.code }}" {{ 'selected' if val.get('axe2_' ~ i) == c.code }}>{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select></td>
 </tr>{% endfor %}</table>
-<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
+<script>
+const classes2 = {{ classes2|tojson }};
+document.querySelectorAll('input[name^=compte]').forEach(function (inp) {
+  const sel = document.querySelector('[name=axe2_' + inp.name.slice(6) + ']');
+  function maj() { const ok = classes2.some(function (c) { return inp.value.startsWith(c); });
+    sel.disabled = !ok; if (!ok) sel.value = ''; }
+  inp.addEventListener('input', maj); maj();
+});
+</script>
+<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}{% if c.axe1_code %} — {{ c.axe1_code }}{% endif %}</option>{% endfor %}</datalist>
 {% if ecriture %}<p><label>Motif de la modification <input name="motif" size="50" value="{{ val.get('motif', '') }}" required></label></p>{% endif %}
 <p><button>Enregistrer</button></p></form>
 {% if ecriture %}<h2>Supprimer cette écriture</h2>
