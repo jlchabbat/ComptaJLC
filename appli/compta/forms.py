@@ -179,18 +179,19 @@ class LigneFicheForm(forms.ModelForm):
     """Ligne saisie par le bénévole ; le trésorier voit en plus ses colonnes (mode en gestion, compte, axe 2)."""
 
     sens = forms.ChoiceField(choices=[("R", "Recette"), ("D", "Dépense")], widget=forms.RadioSelect(attrs={"class": "radios"}))
-    qui = forms.ChoiceField(required=False, label="Membre ou tiers",
-                            help_text="Tapez le nom ; s'il n'existe pas, remplissez « Nouveau tiers » ou « Autre ».")
-    nouveau_nom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : nom")
-    nouveau_prenom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : prénom")
+    qui = forms.ChoiceField(required=False, label="Tiers connu",
+                            help_text="Membre ou tiers répertorié : tapez le nom.")
+    nouveau_nom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : nom",
+                                  help_text="Absent de la liste ? Le trésorier lui attribuera un compte.")
+    nouveau_prenom = forms.CharField(max_length=60, required=False, label="Prénom")
 
     class Meta:
         model = LigneFiche
-        fields = ["sens", "date", "autre", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "compte", "anal2"]
+        fields = ["sens", "date", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "anal2"]
         widgets = {"date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
-    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "autre", "personnes", "nature", "montant", "mode",
-                   "justificatif", "remarque", "compte", "anal2"]
+    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "personnes", "nature", "montant", "mode",
+                   "justificatif", "remarque", "anal2"]
 
     def __init__(self, *a, fiche, tresorier, **k):
         super().__init__(*a, **k)
@@ -213,12 +214,11 @@ class LigneFicheForm(forms.ModelForm):
             if not tresorier:
                 del f["mode"]
         if tresorier:
-            f["compte"].queryset = Compte.objects.filter(Q(numero__startswith="6") | Q(numero__startswith="7"), actif=True)
             f["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
             if t == "activite":
                 del f["anal2"]
         else:
-            del f["compte"], f["anal2"]
+            del f["anal2"]
         if fiche.type == "gestion":
             f["sens"].choices = [("R", "Reçu"), ("D", "Versé")]
         cherchable(self)
@@ -228,7 +228,7 @@ class LigneFicheForm(forms.ModelForm):
         c = super().clean()
         qui, nom = c.get("qui"), (c.get("nouveau_nom") or "").strip()
         if qui and nom:
-            self.add_error("nouveau_nom", "Choisir un membre OU créer un nouveau tiers, pas les deux.")
+            self.add_error("nouveau_nom", "Tiers connu OU nouveau tiers, pas les deux.")
         return c
 
     def save(self, utilisateur):
