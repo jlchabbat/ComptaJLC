@@ -1,6 +1,9 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Grand livre – {{ compte.numero }} {{ compte.libelle }}</h1>
-<table><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
-{% for l in lignes %}<tr><td>{{ l.ecriture.date.strftime('%d/%m/%Y') }}</td><td>{{ l.mvt }}</td><td>{{ l.ecriture.libelle }}</td>
-<td class="n">{{ l.debit|montant if l.debit }}</td><td class="n">{{ l.credit|montant if l.credit }}</td></tr>{% endfor %}
-</table>{% endblock %}
+<p class="aide">Compte rattaché à l'Axe 1 : {{ compte.axe1_code or '—' }} · le solde cumulé suit l'ordre chronologique.</p>
+<table class="grille" id="tg"><thead><tr><th>Date</th><th>Mvt</th><th>Jnl</th><th>Libellé</th><th>Axe 2</th>
+<th class="n" data-total="cents">Débit</th><th class="n" data-total="cents">Crédit</th><th class="n">Solde cumulé</th></tr></thead><tbody>
+{% for l, solde in rows %}<tr><td data-v="{{ l.ecriture.date.isoformat() }}">{{ l.ecriture.date.strftime('%d/%m/%Y') }}</td><td>{{ l.mvt }}</td><td>{{ l.ecriture.journal_code }}</td><td>{{ l.ecriture.libelle }}</td><td>{{ l.axe2_code or '' }}</td>
+<td class="n" data-v="{{ l.debit if l.debit else '' }}">{{ l.debit|montant if l.debit }}</td><td class="n" data-v="{{ l.credit if l.credit else '' }}">{{ l.credit|montant if l.credit }}</td><td class="n" data-v="{{ solde }}">{{ solde|montant }}</td></tr>{% endfor %}
+</tbody><tfoot class="serveur"><tr><th colspan="5">Total</th><th class="n">{{ debit|montant }}</th><th class="n">{{ credit|montant }}</th><th class="n">{{ (debit - credit)|montant }}</th></tr></tfoot></table>
+{% endblock %}

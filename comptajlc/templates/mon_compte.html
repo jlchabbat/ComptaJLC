@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Mon compte</h1>
+<p>Utilisateur : <strong>{{ g.utilisateur.nom }}</strong> — niveau : <strong>{{ roles[g.utilisateur.role] }}</strong></p>
+<h2>Changer mon mot de passe</h2>
+<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="password" name="ancien" placeholder="Ancien" required><input type="password" name="mdp" placeholder="Nouveau (10 caractères min.)" required>
+<input type="password" name="mdp2" placeholder="Confirmation" required><button>Modifier</button></form>
+{% endblock %}

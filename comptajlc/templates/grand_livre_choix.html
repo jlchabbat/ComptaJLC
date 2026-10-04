@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Grand livre</h1>
+<form method="get" class="ligne"><input name="compte" list="comptes" placeholder="Numéro de compte" required autofocus>
+<button>Afficher</button></form>
+<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
+<p class="aide">Seuls les comptes ayant des écritures sont proposés.</p>
+{% endblock %}

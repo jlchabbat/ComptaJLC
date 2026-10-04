@@ -1,23 +1,67 @@
 :root{font-size:13px}
 body{font-family:system-ui,sans-serif;margin:0;background:#f6f6f4;color:#222;line-height:1.3}
-nav{background:#234;padding:.35rem .8rem;display:flex;gap:.8rem;flex-wrap:wrap;align-items:center}
-nav a,nav strong{color:#fff;text-decoration:none}
-nav button{padding:.1rem .5rem}
-main{max-width:1600px;margin:.6rem auto;padding:0 .8rem}
-h1{font-size:1.35rem;margin:.4rem 0}
+main{max-width:1700px;margin:.5rem auto;padding:0 .8rem}
+h1{font-size:1.3rem;margin:.4rem 0}
 h2{font-size:1.1rem;margin:.8rem 0 .3rem}
 p{margin:.35rem 0}
-table{border-collapse:collapse;background:#fff;width:100%;margin:.5rem 0;font-size:.92rem}
-th,td{border:1px solid #ddd;padding:.1rem .35rem;text-align:left;vertical-align:top}
-th{background:#eceae4;font-weight:600;white-space:nowrap}
-tbody tr:nth-child(even) td,table tr:nth-child(even)>td{background:#fafaf8}
-td table{margin:.1rem 0;font-size:.9rem}
-td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 input,select,button{font-size:.92rem;padding:.1rem .3rem}
 input[type=checkbox]{padding:0}
-details summary{cursor:pointer}
 .ligne{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin:.3rem 0}
 .msg{padding:.3rem .6rem;border-radius:4px}.msg.ok{background:#dfd}.msg.erreur{background:#fcd}
-.droite{margin-left:auto;color:#fff;display:flex;gap:.5rem;align-items:center}
 .aide{color:#555;font-size:.85rem}
 section{margin-bottom:.8rem}
+small{font-weight:normal}
+
+/* ---- menu ---- */
+nav.menu{background:#234;padding:0 .8rem;display:flex;gap:.2rem;flex-wrap:wrap;align-items:stretch}
+nav.menu a,nav.menu summary{color:#fff;text-decoration:none;padding:.5rem .7rem;display:block;cursor:pointer;list-style:none}
+nav.menu summary::-webkit-details-marker{display:none}
+nav.menu summary::after{content:" ▾";font-size:.8em}
+nav.menu a:hover,nav.menu summary:hover,nav.menu details[open]>summary{background:#35517a}
+nav.menu .logo{font-weight:700;letter-spacing:.02em;background:#162636}
+nav.menu details{position:relative}
+nav.menu details>div{position:absolute;left:0;top:100%;min-width:15rem;background:#fff;border:1px solid #bbb;box-shadow:0 4px 10px #0003;z-index:30;display:flex;flex-direction:column}
+nav.menu details>div a,nav.menu details>div button{color:#222;padding:.4rem .8rem;border:0;background:none;text-align:left;font-size:1rem;cursor:pointer}
+nav.menu details>div a:hover,nav.menu details>div button:hover{background:#e6eefb}
+nav.menu .droite{margin-left:auto}
+nav.menu .droite details>div{left:auto;right:0}
+nav.menu .droite form{margin:0}
+.fil{display:flex;gap:.5rem;padding:.25rem .8rem;background:#e9e7e0;border-bottom:1px solid #d3d0c6}
+.fil button,.fil a{padding:.15rem .6rem;border:1px solid #aaa;border-radius:3px;background:#fff;color:#222;text-decoration:none;cursor:pointer;font-size:.92rem}
+.fil .fermer{margin-left:auto}
+.cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.6rem;margin-top:.8rem}
+.carte{display:flex;flex-direction:column;gap:.2rem;padding:.7rem .9rem;background:#fff;border:1px solid #d3d0c6;border-radius:6px;color:#222;text-decoration:none}
+.carte:hover{border-color:#35517a;background:#f1f6ff}
+.carte span{color:#666;font-size:.9rem}
+
+/* ---- tableaux façon Excel ---- */
+table{border-collapse:collapse;background:#fff;margin:.5rem 0;font-size:.92rem}
+th,td{border:1px solid #ddd;padding:.1rem .35rem;text-align:left;vertical-align:top}
+th{background:#eceae4;font-weight:600;white-space:nowrap;position:relative}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.grille{font-size:.85rem;margin:0}
+table.grille th,table.grille td{box-sizing:border-box}
+table.grille td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40rem}
+table.grille tbody tr:nth-child(even) td{background:#fafaf8}
+table.grille tbody tr:hover td{background:#eef4ff}
+table.grille tr[hidden]{display:none}
+table.grille tbody tr.sel td{background:#cfe3ff}
+table.grille th.tri{cursor:pointer;user-select:none}
+table.grille th.asc::after{content:" ▲";font-size:.7em}
+table.grille th.desc::after{content:" ▼";font-size:.7em}
+table.grille th{overflow:hidden;text-overflow:ellipsis;padding-right:.6rem}
+table.grille input[type=text],table.grille input:not([type]),table.grille select{width:100%;box-sizing:border-box}
+table.grille pre{margin:0;font:inherit;white-space:pre}
+.gres{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize}
+.gres:hover{background:#35517a66}
+.gwrap{margin:.4rem 0}
+.gwrap:focus{outline:none}
+.gbarre{display:flex;gap:.4rem;align-items:center;padding:.25rem;background:#eceae4;border:1px solid #ddd;border-bottom:0}
+.gbarre .gsearch{width:16rem}
+.gbarre .gcount{margin-left:auto;color:#555}
+.gscroll{max-height:68vh;overflow:auto;border:1px solid #ddd;background:#fff}
+.gscroll thead th{position:sticky;top:0;z-index:3}
+.gscroll thead tr.gfiltre td{position:sticky;z-index:2;background:#f6f5f0;padding:.05rem .15rem}
+.gscroll thead tr.gfiltre input{font-size:.8rem;padding:0 .2rem}
+.gscroll tfoot td{position:sticky;bottom:0;background:#e3e9f5;font-weight:600;z-index:2}
+tfoot.serveur td,tfoot.serveur th{background:#e3e9f5;font-weight:600}

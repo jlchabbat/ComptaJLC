@@ -1,19 +1,40 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ComptaJLC</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
-<body>
-<nav><strong>ComptaJLC</strong>
-<a href="{{ url_for('compta.accueil') }}">Accueil</a>
-<a href="{{ url_for('compta.saisie') }}">Saisie</a>
-<a href="{{ url_for('compta.journal') }}">Journal</a>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='grille.js') }}" defer></script></head>
+<body data-accueil="{{ url_for('compta.accueil') }}">
+<header>
+<nav class="menu"><a class="logo" href="{{ url_for('compta.accueil') }}">ComptaJLC</a>
+{% if g.utilisateur %}
+{% if peut('ecritures') or peut('consulter') %}<details><summary>Écritures</summary><div>
+{% if peut('ecritures') %}<a href="{{ url_for('compta.saisie') }}">Nouvelle écriture</a>{% endif %}
+{% if peut('consulter') %}<a href="{{ url_for('compta.journal') }}">Liste des écritures</a>{% endif %}
+{% if peut('ecritures') %}<a href="{{ url_for('compta.journal') }}#import">Importer des écritures (CSV)</a>{% endif %}
+</div></details>{% endif %}
+{% if peut('consulter') %}<details><summary>États</summary><div>
 <a href="{{ url_for('compta.balance') }}">Balance</a>
-<a href="{{ url_for('compta.historique') }}">Historique</a>
-<a href="{{ url_for('compta.plan') }}">Plan comptable</a>
-<a href="{{ url_for('compta.axes') }}">Codes des axes</a>
-<a href="{{ url_for('compta.journaux') }}">Journaux</a>
-{% if g.utilisateur %}<span class="droite"><a href="{{ url_for('auth.utilisateurs') }}">{{ g.utilisateur.nom }}</a>
-<form method="post" action="{{ url_for('auth.logout') }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Déconnexion</button></form></span>{% endif %}</nav>
+<a href="{{ url_for('compta.grand_livre_choix') }}">Grand livre</a>
+<a href="{{ url_for('compta.analytique', n=1) }}">Totaux par code Axe 1</a>
+<a href="{{ url_for('compta.analytique', n=2) }}">Totaux par code Axe 2</a>
+<a href="{{ url_for('compta.historique') }}">Historique des modifications</a>
+</div></details>{% endif %}
+{% if peut('parametrer') or peut('administrer') %}<details><summary>Paramétrage</summary><div>
+{% if peut('parametrer') %}<a href="{{ url_for('compta.plan') }}">Plan comptable</a>
+<a href="{{ url_for('compta.axes') }}">Codes Axe 1 et Axe 2</a>
+<a href="{{ url_for('compta.journaux') }}">Journaux</a>{% endif %}
+{% if peut('administrer') %}<a href="{{ url_for('auth.utilisateurs') }}">Utilisateurs et droits</a>
+<a href="{{ url_for('compta.reinitialiser') }}">Vider / recharger l'application</a>{% endif %}
+</div></details>{% endif %}
+{% if peut('benevoles') %}<a href="{{ url_for('compta.benevoles') }}">Bénévoles</a>{% endif %}
+<span class="droite"><details class="user"><summary>👤 {{ g.utilisateur.nom }} <small>({{ ROLES[g.utilisateur.role] }})</small></summary><div>
+<a href="{{ url_for('auth.mon_compte') }}">Mon compte / mot de passe</a>
+<form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Déconnexion</button></form></div></details></span>
+{% endif %}</nav>
+{% if g.utilisateur and request.endpoint != 'compta.accueil' %}<div class="fil">
+<button type="button" onclick="retour()" title="Revenir à la page précédente">← Retour</button>
+<a class="fermer" href="{{ url_for('compta.accueil') }}" title="Fermer cette page et revenir à l'accueil">✕ Fermer</a></div>{% endif %}
+</header>
 <main>
 {% for cat, msg in get_flashed_messages(with_categories=true) %}<p class="msg {{ cat }}">{{ msg }}</p>{% endfor %}
 {% block contenu %}{% endblock %}

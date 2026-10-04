@@ -303,12 +303,24 @@ class TestRechercheEtSelection(Base):
         self.assertIn("Aucune écriture", self.page("?q=zzz"))
         self.assertEqual(self.c.get("/journal?du=pas-une-date&page=abc").status_code, 200)
 
-    def test_pagination(self):
-        for i in range(55):
-            self.ecriture(libelle=f"E{i}")
-        self.assertIn("Page 1 / 2", self.page())
-        self.assertIn("Page 2 / 2", self.page("?page=2"))
-        self.assertIn("Page 2 / 2", self.page("?page=99"))
+    def test_limite_d_affichage(self):
+        from comptajlc import vues
+        self.remplir()
+        ancienne, vues.LIMITE = vues.LIMITE, 2
+        try:
+            h = self.page()
+        finally:
+            vues.LIMITE = ancienne
+        self.assertIn("limité aux 2 premières", h)
+        self.assertEqual(h.count('data-group="'), 4)           # 2 écritures x 2 lignes
+
+    def test_totaux_debit_credit(self):
+        self.remplir()
+        h = self.page()
+        self.assertIn("débit <strong>206,00</strong> · crédit <strong>206,00</strong>", h)
+        self.assertIn('data-total="cents"', h)
+        self.assertEqual(h.count('data-group="'), 6)
+        self.assertIn("<tfoot", h)
 
     def test_suppression_par_selection(self):
         self.remplir()
@@ -336,6 +348,90 @@ class TestRechercheEtSelection(Base):
         self.remplir()
         ws = load_workbook(io.BytesIO(self.c.get("/export/journal.xlsx?q=loyer").data)).active
         self.assertEqual(ws.max_row, 1 + 4)                             # 2 écritures x 2 lignes
+
+
+class TestRoles(Base):
+    def client(self, role):
+        """Connecte un utilisateur de ce niveau (créé directement en base)."""
+        from werkzeug.security import generate_password_hash
+        from comptajlc.models import Utilisateur
+        with self.app.app_context():
+            db.session.add(Utilisateur(nom=role, role=role, mot_de_passe=generate_password_hash("motdepasse123")))
+            db.session.commit()
+        c = self.app.test_client()
+        with c.session_transaction() as s:
+            s["csrf"] = "j"
+        c.post("/connexion", data={"csrf_token": "j", "nom": role, "mdp": "motdepasse123"})
+        with c.session_transaction() as s:
+            c.jeton = s["csrf"]
+        return c
+
+    def codes(self, c, methode, url, **data):
+        data["csrf_token"] = c.jeton
+        return (c.get(url) if methode == "GET" else c.post(url, data=data)).status_code
+
+    def test_gestion(self):
+        c = self.client("gestion")
+        for url in ["/journal", "/balance", "/grand-livre", "/saisie", "/historique", "/analytique/2",
+                    "/export/journal.xlsx", "/benevoles", "/mon-compte", "/"]:
+            self.assertEqual(self.codes(c, "GET", url), 200, url)
+        for url in ["/plan", "/axes", "/journaux", "/utilisateurs", "/reinitialiser"]:
+            self.assertEqual(self.codes(c, "GET", url), 403, url)
+        self.assertEqual(self.codes(c, "POST", "/plan", numero="999", libelle="x"), 403)
+        self.assertEqual(self.codes(c, "POST", "/plan/importer"), 403)
+        self.assertEqual(self.codes(c, "POST", "/reinitialiser", portee="tout", mdp="x", phrase="VIDER"), 403)
+        self.assertEqual(self.codes(c, "POST", "/saisie", date="2026-01-01", journal="OD", libelle="L",
+                                    compte0="606", debit0="5", compte1="512", credit1="5"), 302)
+        self.assertEqual(self.codes(c, "POST", "/ecritures/supprimer", mvt="1", motif="essai"), 302)
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(Compte, "606"))
+
+    def test_benevole(self):
+        c = self.client("benevole")
+        self.assertEqual(self.codes(c, "GET", "/benevoles"), 200)
+        self.assertEqual(self.codes(c, "GET", "/"), 200)
+        self.assertEqual(self.codes(c, "GET", "/mon-compte"), 200)
+        for url in ["/journal", "/balance", "/saisie", "/historique", "/export/journal.xlsx", "/plan", "/utilisateurs"]:
+            self.assertEqual(self.codes(c, "GET", url), 403, url)
+        self.assertEqual(self.codes(c, "POST", "/ecritures/importer"), 403)
+        self.assertNotIn("Plan comptable", c.get("/").get_data(as_text=True))
+
+    def test_administrateur_tout(self):
+        for url in ["/journal", "/plan", "/axes", "/journaux", "/utilisateurs", "/reinitialiser", "/benevoles"]:
+            self.assertEqual(self.c.get(url).status_code, 200, url)
+
+    def test_page_non_declaree_reservee_admin(self):
+        from comptajlc import auth
+        auth.EXIGE.pop("compta.journaux")
+        try:
+            g = self.client("gestion")
+            self.assertEqual(g.get("/journaux").status_code, 403)
+            self.assertEqual(self.c.get("/journaux").status_code, 200)
+        finally:
+            auth.EXIGE["compta.journaux"] = "parametrer"
+
+    def test_gestion_des_utilisateurs(self):
+        self.post("/utilisateurs", data={"nom": "paul", "mdp": "motdepasse123", "mdp2": "motdepasse123", "role": "gestion"})
+        self.post("/utilisateurs", data={"nom": "x", "mdp": "motdepasse123", "mdp2": "motdepasse123", "role": "pirate"})
+        from comptajlc.models import Utilisateur
+        with self.app.app_context():
+            self.assertEqual(Utilisateur.query.filter_by(nom="paul").one().role, "gestion")
+            self.assertIsNone(Utilisateur.query.filter_by(nom="x").first())
+            moi = Utilisateur.query.filter_by(nom="tresorier").one().id
+        self.post(f"/utilisateurs/{moi}/role", data={"role": "gestion"})      # seul administrateur : refusé
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Utilisateur, moi).role, "admin")
+        self.assertEqual(self.c.get("/mon-compte").status_code, 200)
+
+    def test_changer_son_mot_de_passe(self):
+        c = self.client("gestion")
+        c.post("/mon-compte", data={"csrf_token": c.jeton, "ancien": "motdepasse123",
+                                    "mdp": "nouveaumotdepasse", "mdp2": "nouveaumotdepasse"})
+        c.post("/deconnexion", data={"csrf_token": c.jeton})
+        with c.session_transaction() as s:
+            s["csrf"] = "k"
+        c.post("/connexion", data={"csrf_token": "k", "nom": "gestion", "mdp": "nouveaumotdepasse"})
+        self.assertEqual(c.get("/journal").status_code, 200)
 
 
 class TestReinitialisation(Base):

@@ -1,8 +1,9 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Balance</h1>
 <p><a href="{{ url_for('compta.export_balance') }}">Exporter en Excel</a></p>
-<table><tr><th>Compte</th><th>Libellé</th><th>Axe 1</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>
+<table class="grille" id="tb"><thead><tr><th>Compte</th><th>Libellé</th><th>Axe 1</th>
+<th class="n" data-total="cents">Débit</th><th class="n" data-total="cents">Crédit</th><th class="n" data-total="cents">Solde</th></tr></thead><tbody>
 {% for n, lib, d, c, axe1 in rows %}<tr><td><a href="{{ url_for('compta.grand_livre', numero=n) }}">{{ n }}</a></td><td>{{ lib }}</td><td>{{ axe1 or '' }}</td>
-<td class="n">{{ d|montant }}</td><td class="n">{{ c|montant }}</td><td class="n">{{ (d - c)|montant }}</td></tr>{% endfor %}
-<tr><th colspan="3">Total</th><th class="n">{{ td|montant }}</th><th class="n">{{ tc|montant }}</th><th class="n">{{ (td - tc)|montant }}</th></tr>
-</table>{% endblock %}
+<td class="n" data-v="{{ d }}">{{ d|montant }}</td><td class="n" data-v="{{ c }}">{{ c|montant }}</td><td class="n" data-v="{{ d - c }}">{{ (d - c)|montant }}</td></tr>{% endfor %}
+</tbody><tfoot class="serveur"><tr><th colspan="3">Total</th><th class="n">{{ td|montant }}</th><th class="n">{{ tc|montant }}</th><th class="n">{{ (td - tc)|montant }}</th></tr></tfoot></table>
+{% endblock %}

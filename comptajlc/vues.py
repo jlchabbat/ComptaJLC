@@ -559,7 +559,7 @@ def resume_ecriture(snap):
 
 # ---------- États ----------
 
-PAR_PAGE = 50
+LIMITE = 5000  # écritures affichées au plus ; au-delà, affiner la recherche
 FILTRES = ("q", "journal", "compte", "axe2", "du", "au", "mvt_de", "mvt_a")
 
 
@@ -597,15 +597,13 @@ def ecritures_filtrees(args):
 def journal():
     q = ecritures_filtrees(request.args)
     total = q.count()
-    pages = max(1, -(-total // PAR_PAGE))
-    page = min(max(request.args.get("page", 1, type=int), 1), pages)
-    ecritures = q.limit(PAR_PAGE).offset((page - 1) * PAR_PAGE).all()
-    mvts = q.with_entities(Ecriture.mvt).subquery()
-    somme = db.session.query(func.sum(Ligne.debit)).filter(Ligne.mvt.in_(db.select(mvts.c.mvt))).scalar() or 0
+    ecritures = q.limit(LIMITE).all()
     filtres = {k: request.args[k] for k in FILTRES if request.args.get(k)}
-    return render_template("journal.html", ecritures=ecritures, total=total, page=page, pages=pages,
-                           somme=somme, filtres=filtres, journaux=Journal.query.order_by(Journal.code).all(),
-                           codes2=CodeAxe2.query.order_by(CodeAxe2.code).all(), par_page=PAR_PAGE)
+    return render_template("journal.html", ecritures=ecritures, total=total, limite=LIMITE,
+                           debit=sum(l.debit for e in ecritures for l in e.lignes),
+                           credit=sum(l.credit for e in ecritures for l in e.lignes),
+                           filtres=filtres, journaux=Journal.query.order_by(Journal.code).all(),
+                           codes2=CodeAxe2.query.order_by(CodeAxe2.code).all())
 
 
 @bp.post("/ecritures/supprimer")
@@ -643,12 +641,33 @@ def balance():
                            td=sum(r[2] for r in rows), tc=sum(r[3] for r in rows))
 
 
+@bp.route("/grand-livre")
+def grand_livre_choix():
+    n = request.args.get("compte", "").strip()
+    if n and db.session.get(Compte, n):
+        return redirect(url_for("compta.grand_livre", numero=n))
+    if n:
+        flash(f"Compte « {n} » introuvable.", "erreur")
+    return render_template("grand_livre_choix.html",
+                           comptes=Compte.query.filter(Compte.numero.in_(db.select(Ligne.compte_numero))).order_by(Compte.numero).all())
+
+
 @bp.route("/grand-livre/<numero>")
 def grand_livre(numero):
     c = db.get_or_404(Compte, numero)
     lignes = (Ligne.query.filter_by(compte_numero=numero).join(Ecriture)
-              .order_by(Ecriture.date, Ecriture.mvt).all())
-    return render_template("grand_livre.html", compte=c, lignes=lignes)
+              .order_by(Ecriture.date, Ecriture.mvt, Ligne.id).all())
+    solde, rows = 0, []
+    for l in lignes:
+        solde += l.debit - l.credit
+        rows.append((l, solde))
+    return render_template("grand_livre.html", compte=c, rows=rows,
+                           debit=sum(l.debit for l in lignes), credit=sum(l.credit for l in lignes))
+
+
+@bp.route("/benevoles")
+def benevoles():
+    return render_template("benevoles.html")
 
 
 @bp.route("/analytique/<int:n>")
@@ -659,7 +678,8 @@ def analytique(n):
         q = q.join(Compte, Compte.axe1_code == M.code).join(Ligne, Ligne.compte_numero == Compte.numero)
     else:
         q = q.join(Ligne, Ligne.axe2_code == M.code)
-    return render_template("analytique.html", nom=AXES[n][1], rows=q.group_by(M.code).order_by(M.code).all())
+    rows = q.group_by(M.code).order_by(M.code).all()
+    return render_template("analytique.html", nom=AXES[n][1], n=n, rows=rows)
 
 
 # ---------- Exports Excel ----------

@@ -1,8 +1,14 @@
 {% extends "base.html" %}{% block contenu %}
-<h1>Bienvenue</h1>
-<p>{{ nb }} écriture(s) enregistrée(s).</p>
-<ul>
-<li><a href="{{ url_for('compta.saisie') }}">Saisir une écriture</a></li>
-<li><a href="{{ url_for('compta.plan') }}">Adapter le plan comptable</a> (rubrique Axe 1 de chaque compte, import CSV)</li>
-<li><a href="{{ url_for('compta.axes') }}">Codes Axe 1 et Axe 2 (import CSV)</a></li>
-</ul>{% endblock %}
+<h1>Bienvenue, {{ g.utilisateur.nom }}</h1>
+<p class="aide">Niveau : {{ ROLES[g.utilisateur.role] }}{% if peut('consulter') %} · {{ nb }} écriture(s) enregistrée(s){% endif %}</p>
+<div class="cartes">
+{% if peut('ecritures') %}<a class="carte" href="{{ url_for('compta.saisie') }}"><strong>Nouvelle écriture</strong><span>Saisir une opération</span></a>{% endif %}
+{% if peut('consulter') %}<a class="carte" href="{{ url_for('compta.journal') }}"><strong>Liste des écritures</strong><span>Rechercher, corriger, supprimer, importer</span></a>
+<a class="carte" href="{{ url_for('compta.balance') }}"><strong>Balance</strong><span>Totaux par compte</span></a>
+<a class="carte" href="{{ url_for('compta.grand_livre_choix') }}"><strong>Grand livre</strong><span>Détail d'un compte</span></a>
+<a class="carte" href="{{ url_for('compta.analytique', n=2) }}"><strong>Axe 2</strong><span>Totaux par activité / projet</span></a>{% endif %}
+{% if peut('parametrer') %}<a class="carte" href="{{ url_for('compta.plan') }}"><strong>Plan comptable</strong><span>Comptes, Axe 1, import CSV</span></a>
+<a class="carte" href="{{ url_for('compta.axes') }}"><strong>Codes Axe 1 et Axe 2</strong><span>Import CSV, statuts</span></a>{% endif %}
+{% if peut('administrer') %}<a class="carte" href="{{ url_for('auth.utilisateurs') }}"><strong>Utilisateurs et droits</strong><span>Administrateur, Gestion, Bénévole</span></a>{% endif %}
+{% if peut('benevoles') %}<a class="carte" href="{{ url_for('compta.benevoles') }}"><strong>Bénévoles</strong><span>Section à venir</span></a>{% endif %}
+</div>{% endblock %}

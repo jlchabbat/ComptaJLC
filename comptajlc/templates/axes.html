@@ -12,11 +12,11 @@ Seuls les codes « En cours » sont proposés à la saisie.</p>
 <input type="file" name="fichier" accept=".csv,.txt" required>
 <label><input type="checkbox" name="remplacer"> Supprimer les codes inutilisés absents du fichier</label>
 <button>Importer un CSV</button> <span class="aide">Colonnes : <code>Code;Libellé;Statut</code></span></form>
-<table><tr><th>Code</th><th>Libellé</th><th>Statut</th><th></th><th></th></tr>
+<table class="grille" id="tax{{ n }}"><thead><tr><th>Code</th><th>Libellé</th><th>Statut</th><th class="nf"></th><th class="nf"></th></tr></thead><tbody>
 {% for c in codes %}{% set f = 'c' ~ n ~ '-' ~ c.code %}<tr>
 <td><form id="{{ f }}" method="post" action="{{ url_for('compta.code_modifier', n=n, code=c.code) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>{{ c.code }}</td>
 <td><input form="{{ f }}" name="libelle" value="{{ c.libelle }}" size="35"></td>
 <td><select form="{{ f }}" name="statut">{% for k, v in statuts.items() %}<option value="{{ k }}" {{ 'selected' if k == c.statut }}>{{ v }}</option>{% endfor %}</select></td>
 <td><button form="{{ f }}">Enregistrer</button></td>
-<td><form method="post" action="{{ url_for('compta.code_supprimer', n=n, code=c.code) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}</table>
+<td><form method="post" action="{{ url_for('compta.code_supprimer', n=n, code=c.code) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}</tbody></table>
 </section>{% endfor %}{% endblock %}

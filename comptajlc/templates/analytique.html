@@ -1,5 +1,6 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Totaux par code – {{ nom }}</h1>
-<table><tr><th>Code</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
-{% for c, lib, d, cr in rows %}<tr><td>{{ c }}</td><td>{{ lib }}</td><td class="n">{{ d|montant }}</td><td class="n">{{ cr|montant }}</td></tr>{% endfor %}
-</table>{% endblock %}
+<table class="grille" id="ta"><thead><tr><th>Code</th><th>Libellé</th><th class="n" data-total="cents">Débit</th><th class="n" data-total="cents">Crédit</th><th class="n" data-total="cents">Solde</th></tr></thead><tbody>
+{% for c, lib, d, cr in rows %}<tr><td>{{ c }}</td><td>{{ lib }}</td><td class="n" data-v="{{ d }}">{{ d|montant }}</td><td class="n" data-v="{{ cr }}">{{ cr|montant }}</td><td class="n" data-v="{{ d - cr }}">{{ (d - cr)|montant }}</td></tr>{% endfor %}
+</tbody><tfoot class="serveur"><tr><th colspan="2">Total</th><th class="n">{{ rows|sum(attribute=2)|montant }}</th><th class="n">{{ rows|sum(attribute=3)|montant }}</th><th class="n">{{ (rows|sum(attribute=2) - rows|sum(attribute=3))|montant }}</th></tr></tfoot></table>
+{% endblock %}

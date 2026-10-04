@@ -1,48 +1,41 @@
 {% extends "base.html" %}{% block contenu %}
-<h1>Écritures</h1>
-<form method="get" class="ligne filtre">
-<input name="q" value="{{ filtres.get('q', '') }}" placeholder="Libellé ou pièce" size="22">
-<input name="compte" value="{{ filtres.get('compte', '') }}" placeholder="Compte (début)" size="10">
+<h1>Liste des écritures</h1>
+<form method="get" class="ligne filtre"><span class="aide">Recherche sur la base :</span>
+<input name="q" value="{{ filtres.get('q', '') }}" placeholder="Libellé ou pièce" size="18">
+<input name="compte" value="{{ filtres.get('compte', '') }}" placeholder="Compte (début)" size="9">
 <select name="journal"><option value="">Tous journaux</option>{% for j in journaux %}<option value="{{ j.code }}" {{ 'selected' if filtres.get('journal') == j.code }}>{{ j.code }}</option>{% endfor %}</select>
 <select name="axe2"><option value="">Tout Axe 2</option>{% for c in codes2 %}<option value="{{ c.code }}" {{ 'selected' if filtres.get('axe2') == c.code }}>{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select>
 <label>du <input type="date" name="du" value="{{ filtres.get('du', '') }}"></label>
 <label>au <input type="date" name="au" value="{{ filtres.get('au', '') }}"></label>
-<label>Mvt n° <input name="mvt_de" value="{{ filtres.get('mvt_de', '') }}" size="5"> à <input name="mvt_a" value="{{ filtres.get('mvt_a', '') }}" size="5"></label>
+<label>Mvt n° <input name="mvt_de" value="{{ filtres.get('mvt_de', '') }}" size="4"> à <input name="mvt_a" value="{{ filtres.get('mvt_a', '') }}" size="4"></label>
 <button>Rechercher</button> <a href="{{ url_for('compta.journal') }}">Tout afficher</a></form>
-<p><strong>{{ total }}</strong> écriture(s) · total débit <strong>{{ somme|montant }}</strong> ·
+<p><strong>{{ total }}</strong> écriture(s) · débit <strong>{{ debit|montant }}</strong> · crédit <strong>{{ credit|montant }}</strong> ·
 <a href="{{ url_for('compta.export_journal', **filtres) }}">Exporter en Excel{% if filtres %} (selon la recherche){% endif %}</a> ·
 <a href="{{ url_for('compta.saisie') }}">Nouvelle écriture</a></p>
-<form method="post" action="{{ url_for('compta.ecritures_supprimer') }}" id="selection"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input type="hidden" name="retour" value="{{ '?' ~ request.query_string.decode() if request.query_string else '?' }}">
-<table><tr><th><input type="checkbox" id="tout" title="Tout cocher sur cette page"></th><th>Mvt</th><th>Date</th><th>Jnl</th><th>Pièce</th><th>Libellé</th><th>Montant</th><th>Détail</th><th></th></tr>
-{% for e in ecritures %}<tr>
-<td><input type="checkbox" name="mvt" value="{{ e.mvt }}"></td><td>{{ e.mvt }}</td><td>{{ e.date.strftime('%d/%m/%Y') }}</td><td>{{ e.journal_code }}</td><td>{{ e.piece }}</td>
+{% if total == 0 %}<p class="msg">Aucune écriture.</p>{% endif %}
+{% if total > limite %}<p class="msg erreur">Affichage limité aux {{ limite }} premières écritures : affinez la recherche.</p>{% endif %}
+<p class="aide">Tableau : clic sur un titre = tri · cases sous les titres = filtres (<code>&gt;100</code>, <code>=800</code>, <code>a|b</code>, <code>!texte</code>) ·
+clic / Ctrl+clic / Maj+clic = sélection d'écritures · Copier = coller dans Excel · glisser le bord d'un titre = largeur.</p>
+<table class="grille" id="tj"><thead><tr>
+<th class="nf"><input type="checkbox" class="gselall" title="Tout cocher (lignes affichées)"></th><th>Mvt</th><th>Date</th><th>Jnl</th><th>Pièce</th><th>Libellé</th><th>Compte</th><th>Libellé du compte</th>
+<th class="n" data-total="cents">Débit</th><th class="n" data-total="cents">Crédit</th><th>Axe 1</th><th>Axe 2</th><th class="nf"></th></tr></thead><tbody>
+{% for e in ecritures %}{% for l in e.lignes %}<tr data-group="{{ e.mvt }}">
+<td><input type="checkbox" class="gsel" aria-label="Sélectionner l'écriture {{ e.mvt }}"></td><td>{{ e.mvt }}</td><td data-v="{{ e.date.isoformat() }}">{{ e.date.strftime('%d/%m/%Y') }}</td><td>{{ e.journal_code }}</td><td>{{ e.piece }}</td>
 <td>{{ e.libelle }}{% if e.lien and e.lien.lower().startswith(('http://', 'https://')) %} <a href="{{ e.lien }}" rel="noopener noreferrer" target="_blank">📎</a>{% endif %}</td>
-<td class="n">{{ (e.lignes|sum(attribute='debit'))|montant }}</td>
-<td><details><summary>{{ e.lignes|length }} lignes</summary><table>
-{% for l in e.lignes %}<tr><td>{{ l.compte_numero }} {{ l.compte.libelle }}</td><td class="n">{{ l.debit|montant if l.debit }}</td><td class="n">{{ l.credit|montant if l.credit }}</td><td>{{ l.compte.axe1_code or '' }}</td><td>{{ l.axe2_code or '' }}</td></tr>{% endfor %}
-</table></details></td>
-<td><a href="{{ url_for('compta.ecriture_modifier', mvt=e.mvt) }}">Modifier</a></td></tr>
-{% else %}<tr><td colspan="9">Aucune écriture.</td></tr>{% endfor %}
-</table>
-{% if ecritures %}<p class="ligne"><span id="nbcoche">0 cochée(s)</span>
+<td>{{ l.compte_numero }}</td><td>{{ l.compte.libelle }}</td>
+<td class="n" data-v="{{ l.debit if l.debit else '' }}">{{ l.debit|montant if l.debit }}</td><td class="n" data-v="{{ l.credit if l.credit else '' }}">{{ l.credit|montant if l.credit }}</td>
+<td>{{ l.compte.axe1_code or '' }}</td><td>{{ l.axe2_code or '' }}</td>
+<td>{% if loop.first %}{% if peut('ecritures') %}<a href="{{ url_for('compta.ecriture_modifier', mvt=e.mvt) }}">Modifier</a>{% endif %}{% endif %}</td></tr>{% endfor %}{% endfor %}
+</tbody><tfoot class="serveur"><tr><td colspan="8">Total</td><td class="n">{{ debit|montant }}</td><td class="n">{{ credit|montant }}</td><td colspan="3"></td></tr></tfoot></table>
+{% if peut('ecritures') %}<form method="post" action="{{ url_for('compta.ecritures_supprimer') }}" class="ligne" data-grille-table="#tj" data-grille-champ="mvt"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="retour" value="{{ '?' ~ request.query_string.decode() if request.query_string else '?' }}">
+<span class="gnbsel">0 écriture(s) sélectionnée(s)</span>
 <input name="motif" placeholder="Motif de la suppression" size="35">
-<button id="supprimer" onclick="return confirm(document.querySelectorAll('input[name=mvt]:checked').length + ' écriture(s) à supprimer. Confirmer ?')">Supprimer les écritures cochées</button></p>{% endif %}
-</form>
-{% if pages > 1 %}<p class="ligne">Page {{ page }} / {{ pages }} :
-{% if page > 1 %}<a href="{{ url_for('compta.journal', page=page - 1, **filtres) }}">« précédente</a>{% endif %}
-{% if page < pages %}<a href="{{ url_for('compta.journal', page=page + 1, **filtres) }}">suivante »</a>{% endif %}</p>{% endif %}
-<script>
-const cases = () => document.querySelectorAll('input[name=mvt]');
-const maj = () => { document.getElementById('nbcoche').textContent = document.querySelectorAll('input[name=mvt]:checked').length + ' cochée(s)'; };
-document.getElementById('tout').addEventListener('change', function () { cases().forEach(c => { c.checked = this.checked; }); maj(); });
-cases().forEach(c => c.addEventListener('change', maj));
-</script>
-<h2>Importer des écritures (CSV)</h2>
+<button onclick="return confirm('Supprimer les écritures sélectionnées ? Elles resteront dans l\'historique.')">Supprimer les écritures sélectionnées</button></form>
+<h2 id="import">Importer des écritures (CSV)</h2>
 <form method="post" action="{{ url_for('compta.ecritures_importer') }}" enctype="multipart/form-data" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input type="file" name="fichier" accept=".csv,.txt" required>
 <label><input type="checkbox" name="renumeroter"> Renuméroter à la suite des écritures existantes</label>
-<button onclick="var r = document.querySelector('[name=renumeroter]').checked; return !r || confirm('Les écritures du fichier seront AJOUTÉES à la suite des existantes. Si ce fichier a déjà été importé, elles seront en double. Continuer ?')">Importer</button>
-<span class="aide">Sans la case : numéros du fichier conservés, import refusé si un numéro existe déjà. </span><br>
-<span class="aide">Format : <a href="https://github.com/jlchabbat/ComptaJLC/blob/main/docs/import-ecritures.md">docs/import-ecritures.md</a>. Importez d'abord codes Axe 1, codes Axe 2 et plan comptable.</span></form>
+<button onclick="var r = document.querySelector('[name=renumeroter]').checked; return !r || confirm('Les écritures du fichier seront AJOUTÉES à la suite des existantes. Si ce fichier a déjà été importé, elles seront en double. Continuer ?')">Importer</button></form>
+<p class="aide">Sans la case : numéros du fichier conservés, import refusé si un numéro existe déjà. Format : <a href="https://github.com/jlchabbat/ComptaJLC/blob/main/docs/import-ecritures.md">docs/import-ecritures.md</a>. Importez d'abord codes Axe 1, codes Axe 2 et plan comptable.</p>{% endif %}
 {% endblock %}

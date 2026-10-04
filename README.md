@@ -23,6 +23,22 @@ python -m unittest discover tests
 
 La base est créée dans `instance/compta.db` (hors Git). Déploiement : `deploiement/pythonanywhere.md`.
 
+## Utilisateurs et droits
+
+Trois niveaux, définis dans `comptajlc/auth.py` (tables `DROITS` et `EXIGE`) ; toute page non déclarée est réservée à l'administrateur.
+
+| | Administrateur | Gestion (comptabilité) | Bénévole |
+|---|---|---|---|
+| Section bénévoles (à définir) | ✔ | ✔ | ✔ |
+| Consulter écritures, états, exports, historique | ✔ | ✔ | — |
+| Saisir, corriger, supprimer, importer des écritures | ✔ | ✔ | — |
+| Paramétrage : plan comptable, codes des axes, journaux | ✔ | — | — |
+| Utilisateurs, vider / recharger l'application | ✔ | — | — |
+
+## Tableaux
+
+Tous les tableaux de données se comportent comme dans Excel (`static/grille.js`) : tri par clic sur le titre, filtre sous chaque titre (`>100`, `=800`, `a|b`, `!texte`), recherche, largeur des colonnes modifiable et mémorisée, sélection de lignes (clic, Ctrl+clic, Maj+clic), copie vers Excel, totaux débit / crédit des lignes affichées et sélectionnées. Chaque page a « ← Retour » et « ✕ Fermer ».
+
 ## Accès
 
 Tout est protégé par connexion. Au premier lancement, la page `/premier-demarrage` crée le premier compte ; d'autres comptes s'ajoutent dans « Utilisateurs ». Mots de passe hachés (10 caractères minimum), jeton CSRF sur tous les formulaires, cookie de session `Secure` en HTTPS. La clé de session est lue dans `COMPTAJLC_SECRET` ou, à défaut, générée dans `instance/secret.key`.

@@ -10,6 +10,7 @@ AJOUTS = {
     "compte": [("axe1_code", "VARCHAR(20)"), ("lettrable", "BOOLEAN NOT NULL DEFAULT 0"),
                ("actif", "BOOLEAN NOT NULL DEFAULT 1")],
     "ligne": [("axe2_code", "VARCHAR(20)")],
+    "utilisateur": [("role", "VARCHAR(12) NOT NULL DEFAULT 'admin'")],  # comptes existants : administrateurs
     "ecriture": [("lien", "VARCHAR(300) DEFAULT ''")],
 }
 ANCIENS_AXES = ["ligne_analytique", "code_analytique", "axe"]  # modèle d'axes libres, abandonné

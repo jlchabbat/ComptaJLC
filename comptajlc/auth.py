@@ -11,6 +11,37 @@ from .models import Utilisateur, db
 
 bp = Blueprint("auth", __name__)
 PUBLIC = {"auth.login", "auth.premier", "static"}
+
+# Trois niveaux d'utilisateur. Les droits sont définis ici, et seulement ici.
+ROLES = {"admin": "Administrateur", "gestion": "Gestion (comptabilité)", "benevole": "Bénévole"}
+DROITS = {
+    "admin": {"consulter", "ecritures", "parametrer", "administrer", "benevoles"},
+    "gestion": {"consulter", "ecritures", "benevoles"},
+    "benevole": {"benevoles"},   # section bénévoles : à définir plus tard
+}
+# Droit exigé par page. None = tout utilisateur connecté. Page non listée = « administrer » (refus par défaut).
+EXIGE = {
+    "compta.accueil": None, "auth.mon_compte": None, "auth.logout": None,
+    "compta.benevoles": "benevoles",
+    "compta.journal": "consulter", "compta.balance": "consulter", "compta.grand_livre": "consulter",
+    "compta.grand_livre_choix": "consulter", "compta.analytique": "consulter", "compta.historique": "consulter",
+    "compta.export_journal": "consulter", "compta.export_balance": "consulter",
+    "compta.export_historique": "consulter",
+    "compta.saisie": "ecritures", "compta.ecriture_modifier": "ecritures",
+    "compta.ecriture_supprimer": "ecritures", "compta.ecritures_supprimer": "ecritures",
+    "compta.ecritures_importer": "ecritures",
+    "compta.plan": "parametrer", "compta.plan_modifier": "parametrer", "compta.plan_supprimer": "parametrer",
+    "compta.plan_importer": "parametrer", "compta.axes": "parametrer", "compta.code_ajouter": "parametrer",
+    "compta.code_modifier": "parametrer", "compta.code_supprimer": "parametrer",
+    "compta.codes_importer": "parametrer", "compta.journaux": "parametrer", "compta.journal_modifier": "parametrer",
+    "compta.reinitialiser": "administrer",
+    "auth.utilisateurs": "administrer", "auth.supprimer": "administrer", "auth.role": "administrer",
+}
+
+
+def peut(droit):
+    u = getattr(g, "utilisateur", None)
+    return bool(u and droit in DROITS.get(u.role, ()))
 MIN_MDP = 10
 # Hachage factice : le temps de réponse ne révèle pas si le nom existe.
 FAUX_HASH = generate_password_hash("sans-importance")
@@ -49,6 +80,9 @@ def garde():
     if g.utilisateur is None:
         session.pop("uid", None)
         return redirect(url_for("auth.login", suite=request.full_path.rstrip("?")))
+    droit = EXIGE.get(request.endpoint, "administrer")
+    if droit and not peut(droit):
+        abort(403)
     return None
 
 
@@ -76,7 +110,7 @@ def premier():
         if erreur:
             flash(erreur, "erreur")
         else:
-            u = Utilisateur(nom=nom, mot_de_passe=generate_password_hash(request.form["mdp"]))
+            u = Utilisateur(nom=nom, role="admin", mot_de_passe=generate_password_hash(request.form["mdp"]))
             db.session.add(u)
             db.session.commit()
             ouvrir_session(u)
@@ -114,35 +148,56 @@ def logout():
 def utilisateurs():
     if request.method == "POST":
         nom = request.form["nom"].strip()
+        role = request.form.get("role", "")
         erreur = mdp_valide(request.form["mdp"], request.form["mdp2"])
         if not nom:
             erreur = "Nom obligatoire."
+        elif role not in ROLES:
+            erreur = "Choisissez un niveau d'utilisateur."
         elif Utilisateur.query.filter_by(nom=nom).first():
             erreur = "Ce nom existe déjà."
         if erreur:
             flash(erreur, "erreur")
         else:
-            db.session.add(Utilisateur(nom=nom, mot_de_passe=generate_password_hash(request.form["mdp"])))
+            db.session.add(Utilisateur(nom=nom, role=role, mot_de_passe=generate_password_hash(request.form["mdp"])))
             db.session.commit()
             flash("Utilisateur ajouté.", "ok")
         return redirect(url_for("auth.utilisateurs"))
-    return render_template("utilisateurs.html", utilisateurs=Utilisateur.query.order_by(Utilisateur.nom).all())
+    return render_template("utilisateurs.html", utilisateurs=Utilisateur.query.order_by(Utilisateur.nom).all(),
+                           roles=ROLES, droits=DROITS)
 
 
-@bp.post("/utilisateurs/mot-de-passe")
-def changer_mdp():
-    u = g.utilisateur
-    if not check_password_hash(u.mot_de_passe, request.form["ancien"]):
-        flash("Ancien mot de passe incorrect.", "erreur")
+@bp.post("/utilisateurs/<int:uid>/role")
+def role(uid):
+    u = db.get_or_404(Utilisateur, uid)
+    nouveau = request.form.get("role", "")
+    if nouveau not in ROLES:
+        flash("Niveau inconnu.", "erreur")
+    elif u.role == "admin" and nouveau != "admin" and Utilisateur.query.filter_by(role="admin").count() <= 1:
+        flash("Il doit rester au moins un administrateur.", "erreur")
     else:
-        erreur = mdp_valide(request.form["mdp"], request.form["mdp2"])
-        if erreur:
-            flash(erreur, "erreur")
-        else:
-            u.mot_de_passe = generate_password_hash(request.form["mdp"])
-            db.session.commit()
-            flash("Mot de passe modifié.", "ok")
+        u.role = nouveau
+        db.session.commit()
+        flash(f"{u.nom} : {ROLES[nouveau]}.", "ok")
     return redirect(url_for("auth.utilisateurs"))
+
+
+@bp.route("/mon-compte", methods=["GET", "POST"])
+def mon_compte():
+    u = g.utilisateur
+    if request.method == "POST":
+        if not check_password_hash(u.mot_de_passe, request.form["ancien"]):
+            flash("Ancien mot de passe incorrect.", "erreur")
+        else:
+            erreur = mdp_valide(request.form["mdp"], request.form["mdp2"])
+            if erreur:
+                flash(erreur, "erreur")
+            else:
+                u.mot_de_passe = generate_password_hash(request.form["mdp"])
+                db.session.commit()
+                flash("Mot de passe modifié.", "ok")
+        return redirect(url_for("auth.mon_compte"))
+    return render_template("mon_compte.html", roles=ROLES)
 
 
 @bp.post("/utilisateurs/<int:uid>/supprimer")

@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Historique des modifications</h1>
 <p><a href="{{ url_for('compta.export_historique') }}">Exporter en Excel</a></p>
-<table><tr><th>Date</th><th>Qui</th><th>Action</th><th>Mvt</th><th>Motif</th><th>Avant</th><th>Après</th></tr>
-{% for h, avant, apres in rows %}<tr><td>{{ h.quand.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ h.utilisateur }}</td><td>{{ h.action }}</td><td>{{ h.mvt }}</td><td>{{ h.motif }}</td>
+<table class="grille" id="th"><thead><tr><th>Date</th><th>Qui</th><th>Action</th><th>Mvt</th><th>Motif</th><th>Avant</th><th>Après</th></tr></thead><tbody>
+{% for h, avant, apres in rows %}<tr><td data-v="{{ h.quand.isoformat() }}">{{ h.quand.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ h.utilisateur }}</td><td>{{ h.action }}</td><td>{{ h.mvt }}</td><td>{{ h.motif }}</td>
 <td><pre>{{ avant|resume_ecriture }}</pre></td><td><pre>{{ apres|resume_ecriture }}</pre></td></tr>{% endfor %}
-</table>{% endblock %}
+</tbody></table>{% endblock %}

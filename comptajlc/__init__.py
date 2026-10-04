@@ -25,6 +25,18 @@ def create_app(config=None):
     app.register_blueprint(vues.bp)
     app.before_request(auth.garde)
     app.jinja_env.globals["csrf_token"] = auth.csrf_token
+    app.jinja_env.globals["peut"] = auth.peut
+    app.jinja_env.globals["ROLES"] = auth.ROLES
+
+    messages = {400: "Requête refusée (jeton de sécurité périmé ?). Rechargez la page et recommencez.",
+                403: "Droits insuffisants : cette page n'est pas accessible avec votre niveau d'utilisateur.",
+                404: "Page introuvable."}
+
+    def erreur(e):
+        from flask import render_template
+        return render_template("erreur.html", code=e.code, message=messages.get(e.code, e.description)), e.code
+    for code in messages:
+        app.register_error_handler(code, erreur)
     app.jinja_env.filters["montant"] = vues.fmt_montant
 
     with app.app_context():
