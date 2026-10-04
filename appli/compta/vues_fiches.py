@@ -49,10 +49,7 @@ def liste(request):
         benevole_form = BenevoleForm(request.POST if "creer_benevole" in request.POST else None, prefix="benevole")
         if "creer_fiche" in request.POST and fiche_form.is_valid():
             with transaction.atomic():
-                nouveau_code = fiche_form.cleaned_data.get("nouveau_libelle")
                 f = fiche_form.save()
-                if nouveau_code:
-                    journaliser(request, "Création", f"code axe 2 {f.anal2_id}", apres=f.anal2.libelle)
                 journaliser(request, "Création", f"fiche {f.pk} {f.titre}", apres=f.get_type_display())
             messages.success(request, f"Fiche créée : {f.titre}.")
             return redirect("fiche", f.pk)
@@ -225,7 +222,7 @@ def provisoires(request):
             with transaction.atomic():
                 compte = form.cleaned_data["compte"]
                 if compte is None:
-                    compte = creer_tiers(form.cleaned_data["type"], p.nom, p.prenom)
+                    compte = creer_tiers(form.cleaned_data["type"], p.nom, p.prenom, telephone=p.telephone, email=p.email)
                     journaliser(request, "Création", f"compte {compte.numero}", apres=compte.libelle)
                 p.compte = compte
                 p.save(update_fields=["compte"])

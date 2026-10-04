@@ -783,20 +783,14 @@ class EcransFiches(TestCase):
         f = Fiche.objects.get(titre="Aides")
         self.assertRedirects(r, f"/fiches/{f.pk}/")
         self.assertEqual(list(f.benevoles.all()), [jeanne])
-        # code axe 2 choisi dans la liste, ou créé avec la fiche
+        # code axe 2 : choisi parmi les codes actifs déjà créés
         Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
         self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Rallye 2", "fiche-anal2": "MAN.001",
                                       "creer_fiche": "1"})
         self.assertEqual(Fiche.objects.get(titre="Rallye 2").anal2_id, "MAN.001")
-        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Gala", "fiche-nouveau_prefixe": "MAN.",
-                                      "fiche-nouveau_libelle": "Gala 2026", "creer_fiche": "1"})
-        g = Fiche.objects.get(titre="Gala")
-        self.assertEqual((g.anal2_id, g.anal2.libelle, g.anal2.axe), ("MAN.002", "GALA 2026", 2))
-        r = self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Double", "fiche-anal2": "MAN.001",
-                                          "fiche-nouveau_prefixe": "MAN.", "fiche-nouveau_libelle": "Autre", "creer_fiche": "1"})
-        self.assertContains(r, "pas les deux")
-        self.assertFalse(Fiche.objects.filter(titre="Double").exists())
-        self.assertFalse(CodeAnalytique.objects.filter(libelle="AUTRE").exists())
+        r = self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Gala", "creer_fiche": "1"})
+        self.assertContains(r, "code axe 2 actif")                    # sans code axe 2 : pas de fiche d'activité
+        self.assertFalse(Fiche.objects.filter(titre="Gala").exists())
 
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire

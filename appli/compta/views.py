@@ -353,4 +353,5 @@ def codes(request):
                     return redirect("codes")
     prefixes = [(p, p.code_suivant()) for p in Prefixe.objects.all()]
     return render(request, "compta/codes.html", {"code_form": code_form, "membre_form": membre_form, "statut_form": statut_form,
-                                                 "prefixes": prefixes})
+                                                 "prefixes": prefixes,
+                                                 "prochains": {p.prefixe: {"code": c, "axe": p.axe} for p, c in prefixes}})
