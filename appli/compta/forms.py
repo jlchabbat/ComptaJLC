@@ -60,6 +60,8 @@ class MembreForm(forms.Form):
     type = forms.ModelChoiceField(TypeTiers.objects.all(), label="Type de tiers", empty_label=None)
     nom = forms.CharField(max_length=60, label="Nom ou raison sociale")
     prenom = forms.CharField(max_length=60, required=False, label="Prénom")
+    nouveau_tel = forms.CharField(max_length=40, required=False, label="Téléphone (facultatif)")
+    nouveau_email = forms.EmailField(required=False, label="E-mail (facultatif)")
     adresse = forms.CharField(max_length=150, required=False)
     code_postal = forms.CharField(max_length=12, required=False, label="Code postal")
     ville = forms.CharField(max_length=60, required=False)
@@ -190,7 +192,7 @@ class LigneFicheForm(forms.ModelForm):
         fields = ["sens", "date", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "anal2"]
         widgets = {"date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
-    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "personnes", "nature", "montant", "mode",
+    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "nouveau_tel", "nouveau_email", "personnes", "nature", "montant", "mode",
                    "justificatif", "remarque", "anal2"]
 
     def __init__(self, *a, fiche, tresorier, **k):
@@ -242,6 +244,8 @@ class LigneFicheForm(forms.ModelForm):
             l.provisoire = TiersProvisoire.objects.get(pk=qui[2:])
         elif nom:
             l.provisoire = TiersProvisoire.objects.create(nom=nom, prenom=(self.cleaned_data.get("nouveau_prenom") or "").strip(),
+                                                          remarque=" · ".join(x for x in (self.cleaned_data.get("nouveau_tel"),
+                                                                                         self.cleaned_data.get("nouveau_email")) if x)[:100],
                                                           cree_par=utilisateur)
         if not l.pk:
             l.cree_par = utilisateur

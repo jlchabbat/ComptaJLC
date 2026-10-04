@@ -25,17 +25,19 @@
   }
   // tiers connu / nouveau tiers : l'un grise l'autre ; cliquer sur le tiers connu le réactive
   var qui = document.getElementById("id_qui"), nom = document.getElementById("id_nouveau_nom"), pre = document.getElementById("id_nouveau_prenom");
+  var autres = ["id_nouveau_tel", "id_nouveau_email"].map(function (i) { return document.getElementById(i); });
+  function viderNouveau() { nom.value = ""; pre.value = ""; autres.forEach(function (e) { e.value = ""; }); }
   function grise(el, oui) { var c = el && (el.closest(".liste-cherchable") || el); if (c) { c.style.opacity = oui ? ".45" : ""; } }
   function tiers() {
-    var nouveau = !!((nom && nom.value) || (pre && pre.value));
+    var nouveau = !!((nom && nom.value) || (pre && pre.value) || (autres[0] && autres[0].value) || (autres[1] && autres[1].value));
     grise(qui, nouveau);
     if (nouveau && qui) { qui.value = ""; if (qui.majListe) qui.majListe(); }
   }
   if (nom && qui) {
-    [nom, pre].forEach(function (e) { e.addEventListener("input", tiers); });
+    [nom, pre].concat(autres).forEach(function (e) { e.addEventListener("input", tiers); });
     var boite = qui.closest(".liste-cherchable");
-    (boite || qui).addEventListener("focusin", function () { nom.value = ""; pre.value = ""; grise(qui, false); });
-    qui.addEventListener("change", function () { if (qui.value) { nom.value = ""; pre.value = ""; } });
+    (boite || qui).addEventListener("focusin", function () { viderNouveau(); grise(qui, false); });
+    qui.addEventListener("change", function () { if (qui.value) viderNouveau(); });
     tiers();
   }
   document.querySelectorAll("input[name=sens]").forEach(function (r) { r.addEventListener("change", maj); });
