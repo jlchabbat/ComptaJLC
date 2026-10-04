@@ -2137,6 +2137,12 @@ class Utilisateurs(TestCase):
         self.assertContains(self.client.get(f"/utilisateurs/{self.tresorier.pk}/"), 'value="CHABBAT"')
         self.assertTrue(self.tresorier.is_superuser)
         self.assertEqual(list(self.tresorier.groups.values_list("name", flat=True)), ["Administration"])
+        # suppression par cases à cocher : jamais un administrateur
+        r = self.client.post("/utilisateurs/", {"supprimer_utilisateurs": "1", "cochees": [self.admin.pk]}, follow=True)
+        self.assertContains(r, "administrateur ne se supprime pas")
+        self.assertTrue(User.objects.filter(pk=self.admin.pk).exists())
+        self.client.post("/utilisateurs/", {"supprimer_utilisateurs": "1", "cochees": [b.pk]})
+        self.assertFalse(User.objects.filter(pk=b.pk).exists())
         # toujours au moins un administrateur actif
         self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Gestion", "actif": "on"})
         r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Consultation", "actif": "on"})
