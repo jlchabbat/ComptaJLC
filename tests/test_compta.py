@@ -266,6 +266,64 @@ class TestExport(Base):
         self.assertEqual(anonyme.get("/export/journal.xlsx").status_code, 302)
 
 
+class TestReinitialisation(Base):
+    def vider(self, **extra):
+        d = {"portee": "tout", "mdp": "motdepasse123", "phrase": "VIDER"}
+        d.update(extra)
+        return self.post("/reinitialiser", data=d)
+
+    def compter(self):
+        with self.app.app_context():
+            return (Ecriture.query.count(), Compte.query.count(), CodeAxe1.query.count())
+
+    def test_refus_sans_mot_de_passe_ou_phrase(self):
+        self.ecriture()
+        self.vider(mdp="faux")
+        self.vider(phrase="vider")
+        self.vider(portee="rien")
+        self.assertEqual(self.compter()[0], 1)
+
+    def test_vider_ecritures_seulement(self):
+        self.ecriture()
+        self.assertEqual(self.vider(portee="ecritures").status_code, 302)
+        e, comptes, _ = self.compter()
+        self.assertEqual((e, comptes), (0, 3))                    # plan conservé
+        from comptajlc.models import Historique
+        with self.app.app_context():
+            self.assertEqual([h.action for h in Historique.query], ["réinitialisation"])
+        self.ecriture()                                             # on peut ressaisir
+        with self.app.app_context():
+            self.assertEqual(db.session.query(Ecriture.mvt).scalar(), 1)
+
+    def test_tout_vider_puis_recharger(self):
+        with self.app.app_context():
+            db.session.add(CodeAxe1(code="ACT.1", libelle="x"))
+            db.session.commit()
+        self.ecriture()
+        self.vider()
+        self.assertEqual(self.compter(), (0, 0, 0))
+        im = TestImportEcritures("test_import_complet")
+        im.app, im.c = self.app, self.c
+        im.jeton, im.post = self.jeton, self.post
+        im.prepare()
+        self.assertIn("Import réussi", im.importer(TestImportEcritures.OK))
+
+    def test_copie_de_sauvegarde_et_export_historique(self):
+        import os, tempfile
+        d = tempfile.mkdtemp()
+        app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///" + os.path.join(d, "t.db")})
+        app.instance_path = d
+        c = app.test_client()
+        with c.session_transaction() as s:
+            s["csrf"] = "j"
+        c.post("/premier-demarrage", data={"csrf_token": "j", "nom": "a", "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+        with c.session_transaction() as s:
+            jeton = s["csrf"]                       # renouvelé à la connexion
+        c.post("/reinitialiser", data={"csrf_token": jeton, "portee": "ecritures", "mdp": "motdepasse123", "phrase": "VIDER"})
+        self.assertEqual(len(os.listdir(os.path.join(d, "sauvegardes"))), 1)
+        self.assertEqual(c.get("/export/historique.xlsx").status_code, 200)
+
+
 class TestAuth(unittest.TestCase):
     def setUp(self):
         self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})

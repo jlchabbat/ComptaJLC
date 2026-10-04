@@ -11,4 +11,6 @@
 <form method="post" action="{{ url_for('auth.changer_mdp') }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input type="password" name="ancien" placeholder="Ancien" required><input type="password" name="mdp" placeholder="Nouveau" required>
 <input type="password" name="mdp2" placeholder="Confirmation" required><button>Modifier</button></form>
+<h2>Données</h2>
+<p><a href="{{ url_for('compta.reinitialiser') }}">Vider l'application et recharger les fichiers CSV</a></p>
 {% endblock %}

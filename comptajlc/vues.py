@@ -1,12 +1,15 @@
 import csv
 import io
 import json
+import os
+import shutil
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, render_template,
                    request, url_for)
 from sqlalchemy import func
+from werkzeug.security import check_password_hash
 
 from . import imports
 from .models import (STATUTS, CodeAxe1, CodeAxe2, Compte, Ecriture, Historique,
@@ -458,6 +461,75 @@ def ecritures_importer():
           f"{res['ignores_axe2']} code(s) Axe 2 ignoré(s) sur des comptes hors classes "
           + " et ".join(classes_axe2()) + ".", "ok")
     return redirect(url_for("compta.journal"))
+
+
+PHRASE_VIDER = "VIDER"
+
+
+def sauvegarder_base():
+    """Copie du fichier SQLite dans instance/sauvegardes/ ; None si la base n'est pas un fichier."""
+    chemin = db.engine.url.database
+    if not chemin or not os.path.exists(chemin):
+        return None
+    dossier = os.path.join(current_app.instance_path, "sauvegardes")
+    os.makedirs(dossier, exist_ok=True)
+    dest = os.path.join(dossier, "compta-" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".db")
+    shutil.copy2(chemin, dest)
+    return os.path.basename(dest)
+
+
+@bp.route("/reinitialiser", methods=["GET", "POST"])
+def reinitialiser():
+    """Vide l'application pour la recharger par les imports CSV (copie de sauvegarde faite avant)."""
+    if request.method == "POST":
+        portee = request.form.get("portee")
+        if portee not in ("ecritures", "tout"):
+            flash("Choisissez ce qu'il faut vider.", "erreur")
+        elif request.form.get("phrase", "").strip() != PHRASE_VIDER:
+            flash(f"Tapez {PHRASE_VIDER} en majuscules pour confirmer.", "erreur")
+        elif not check_password_hash(g.utilisateur.mot_de_passe, request.form.get("mdp", "")):
+            flash("Mot de passe incorrect.", "erreur")
+        else:
+            copie = sauvegarder_base()
+            nb = Ecriture.query.count()
+            Ligne.query.delete()
+            Ecriture.query.delete()
+            if portee == "tout":
+                Compte.query.delete()
+                CodeAxe2.query.delete()
+                CodeAxe1.query.delete()
+            # L'historique est vidé avec les écritures (sinon les numéros de mouvement resteraient
+            # « pris » et le rechargement serait refusé) ; la copie de sauvegarde le conserve.
+            Historique.query.delete()
+            journaliser("réinitialisation", 0,
+                        ("Écritures" if portee == "ecritures" else "Écritures, plan comptable, codes Axe 1 et Axe 2")
+                        + f" supprimés ({nb} écritures)" + (f" ; copie : {copie}" if copie else ""), None, None)
+            db.session.commit()
+            flash(f"Application vidée ({nb} écritures supprimées)."
+                  + (f" Copie de sauvegarde : instance/sauvegardes/{copie}." if copie else "")
+                  + " Vous pouvez recharger vos fichiers CSV.", "ok")
+            return redirect(url_for("compta.accueil"))
+    return render_template("reinitialiser.html", nb=Ecriture.query.count(), nb_comptes=Compte.query.count(),
+                           nb1=CodeAxe1.query.count(), nb2=CodeAxe2.query.count(), phrase=PHRASE_VIDER)
+
+
+@bp.route("/export/historique.xlsx")
+def export_historique():
+    from openpyxl import Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Historique"
+    for k, h in enumerate(["Date", "Utilisateur", "Action", "Mvt", "Motif", "Avant", "Après"], 1):
+        _texte(ws, 1, k, h)
+    for r, h in enumerate(Historique.query.order_by(Historique.id).all(), 2):
+        ws.cell(row=r, column=1, value=h.quand).number_format = "DD/MM/YYYY HH:MM"
+        _texte(ws, r, 2, h.utilisateur)
+        _texte(ws, r, 3, h.action)
+        ws.cell(row=r, column=4, value=h.mvt)
+        _texte(ws, r, 5, h.motif or "")
+        _texte(ws, r, 6, resume_ecriture(json.loads(h.avant)) if h.avant else "")
+        _texte(ws, r, 7, resume_ecriture(json.loads(h.apres)) if h.apres else "")
+    return _reponse(wb, "historique.xlsx")
 
 
 @bp.route("/historique")

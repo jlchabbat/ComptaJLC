@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Vider l'application et recharger</h1>
+<p>Contenu actuel : <strong>{{ nb }}</strong> écriture(s), <strong>{{ nb_comptes }}</strong> compte(s), <strong>{{ nb1 }}</strong> code(s) Axe 1, <strong>{{ nb2 }}</strong> code(s) Axe 2.</p>
+<p class="msg erreur">Opération irréversible depuis l'application. Une copie de la base est enregistrée sur le serveur
+(<code>instance/sauvegardes/</code>) juste avant, mais gardez aussi vos fichiers CSV. L'historique des modifications est vidé avec les écritures.
+Les utilisateurs et les journaux sont conservés.</p>
+<p>Avant de vider, exportez si besoin :
+<a href="{{ url_for('compta.export_journal') }}">journal</a> ·
+<a href="{{ url_for('compta.export_balance') }}">balance</a> ·
+<a href="{{ url_for('compta.export_historique') }}">historique</a> (Excel).</p>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<p><label><input type="radio" name="portee" value="ecritures" required> Vider les <strong>écritures</strong> seulement (plan comptable et codes des axes conservés)</label></p>
+<p><label><input type="radio" name="portee" value="tout"> Tout vider : <strong>écritures, plan comptable, codes Axe 1 et Axe 2</strong></label></p>
+<p><label>Votre mot de passe <input type="password" name="mdp" required></label></p>
+<p><label>Pour confirmer, tapez <strong>{{ phrase }}</strong> <input name="phrase" required autocomplete="off"></label></p>
+<p><button onclick="return confirm('Vider définitivement ?')">Vider l'application</button></p></form>
+<h2>Recharger ensuite</h2>
+<ol><li><a href="{{ url_for('compta.axes') }}">Codes des axes</a> : importer les codes Axe 1, puis Axe 2</li>
+<li><a href="{{ url_for('compta.plan') }}">Plan comptable</a> : importer le plan</li>
+<li><a href="{{ url_for('compta.journal') }}">Journal</a> : importer les écritures</li></ol>
+{% endblock %}
