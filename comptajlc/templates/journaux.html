@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Journaux</h1>
+<form method="post" class="ligne"><input name="code" placeholder="Code" required size="6"><input name="libelle" placeholder="Libellé" required><button>Ajouter</button></form>
+<table>{% for j in journaux %}<tr><td>{{ j.code }}</td><td>{{ j.libelle }}</td></tr>{% endfor %}</table>{% endblock %}

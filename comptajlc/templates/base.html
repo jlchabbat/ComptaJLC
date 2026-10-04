@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ComptaJLC</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+<nav><strong>ComptaJLC</strong>
+<a href="{{ url_for('compta.accueil') }}">Accueil</a>
+<a href="{{ url_for('compta.saisie') }}">Saisie</a>
+<a href="{{ url_for('compta.journal') }}">Journal</a>
+<a href="{{ url_for('compta.balance') }}">Balance</a>
+<a href="{{ url_for('compta.plan') }}">Plan comptable</a>
+<a href="{{ url_for('compta.axes') }}">Axes analytiques</a>
+<a href="{{ url_for('compta.journaux') }}">Journaux</a></nav>
+<main>
+{% for cat, msg in get_flashed_messages(with_categories=true) %}<p class="msg {{ cat }}">{{ msg }}</p>{% endfor %}
+{% block contenu %}{% endblock %}
+</main></body></html>

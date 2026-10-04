@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Bienvenue</h1>
+<p>{{ nb }} écriture(s) enregistrée(s).</p>
+<ul>
+<li><a href="{{ url_for('compta.saisie') }}">Saisir une écriture</a></li>
+<li><a href="{{ url_for('compta.plan') }}">Adapter le plan comptable</a> (ajout, modification, import CSV)</li>
+<li><a href="{{ url_for('compta.axes') }}">Adapter les axes et codes analytiques</a></li>
+</ul>{% endblock %}

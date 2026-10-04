@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Balance</h1>
+<table><tr><th>Compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>
+{% for n, lib, d, c in rows %}<tr><td><a href="{{ url_for('compta.grand_livre', numero=n) }}">{{ n }}</a></td><td>{{ lib }}</td>
+<td class="n">{{ d|montant }}</td><td class="n">{{ c|montant }}</td><td class="n">{{ (d - c)|montant }}</td></tr>{% endfor %}
+<tr><th colspan="2">Total</th><th class="n">{{ td|montant }}</th><th class="n">{{ tc|montant }}</th><th class="n">{{ (td - tc)|montant }}</th></tr>
+</table>{% endblock %}

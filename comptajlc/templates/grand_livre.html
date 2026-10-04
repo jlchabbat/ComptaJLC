@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Grand livre – {{ compte.numero }} {{ compte.libelle }}</h1>
+<table><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
+{% for l in lignes %}<tr><td>{{ l.ecriture.date.strftime('%d/%m/%Y') }}</td><td>{{ l.mvt }}</td><td>{{ l.ecriture.libelle }}</td>
+<td class="n">{{ l.debit|montant if l.debit }}</td><td class="n">{{ l.credit|montant if l.credit }}</td></tr>{% endfor %}
+</table>{% endblock %}
