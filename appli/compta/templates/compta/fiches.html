@@ -11,8 +11,7 @@
 {% empty %}<tr><td colspan="9">Aucune fiche{% if not fiche_form %} ne vous est confiée pour l'instant{% endif %}.</td></tr>{% endfor %}</table>
 {% if fiche_form %}<div class="deux" style="margin-top:16px">
 <form method="post" class="carte" id="f-fiche">{% csrf_token %}<h2>Nouvelle fiche</h2>
-<p class="aide">Activité : fixez d'avance le code axe 2 de l'activité, choisi dans la liste ou créé ici (préfixe et libellé). Gestion (dons et aides reçus ou versés) : vous choisirez le code
-et le mode de paiement de chaque ligne ensuite.</p>
+<p class="aide">Activité : choisissez le code axe 2 actif, créé au préalable dans <a href="{% url 'codes' %}">Codes</a>. Gestion : le code et le mode de paiement se choisissent ligne par ligne.</p>
 <div class="formulaire">{% for f in fiche_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form>
 <form method="post" class="carte" id="f-benevole">{% csrf_token %}<h2>Nouveau bénévole</h2>

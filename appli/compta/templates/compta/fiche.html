@@ -36,8 +36,7 @@ Au report en comptabilité, chaque document devient le justificatif du mouvement
 {% elif not peut_joindre %}<p class="aide">Aucun document.</p>{% endif %}</section>
 
 {% if form %}<form method="post" class="carte" style="margin-top:16px" id="f-ajout">{% csrf_token %}<h2>Ajouter une ligne</h2>
-<p class="aide">Dans les listes, tapez une partie du nom ou du code. Un tiers absent de la liste : remplissez « Nouveau tiers » (le trésorier lui
-attribuera un compte) ou « Autre payeur ou bénéficiaire » pour une personne extérieure.</p>
+<p class="aide">Dans les listes, tapez une partie du nom ou du code.</p>
 <div class="formulaire">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form>
 {% include "compta/_js_fiche.html" %}{% endif %}

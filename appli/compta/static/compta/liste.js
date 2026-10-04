@@ -108,6 +108,21 @@
   function tout(racine) {
     (racine || document).querySelectorAll("select[data-cherchable]").forEach(function (s) { if (!s.majListe) ameliorer(s); });
   }
+  // champs d'une même ligne : <input data-avec="nom_du_champ_précédent"> rejoint la case de ce champ
+  function groupes() {
+    document.querySelectorAll("input[data-avec]").forEach(function (e) {
+      var nom = e.name.replace(/[^-]*$/, e.dataset.avec), cible = document.querySelector('[name="' + nom + '"]');
+      if (!cible) return;
+      var etiquette = e.closest("div").previousElementSibling, boite = e.closest("div");
+      cible.parentNode.insertBefore(e, cible.nextSibling);
+      cible.style.cssText = e.style.cssText = "width:calc(50% - 4px);display:inline-block";
+      if (etiquette && etiquette.tagName === "LABEL") etiquette.hidden = true;
+      if (boite && !boite.children.length) boite.hidden = true;
+      var erreurs = boite && boite.querySelector(".erreurs");
+      if (erreurs) cible.parentNode.appendChild(erreurs);
+    });
+  }
+  groupes();
   window.listesCherchables = tout;       // pour les lignes ajoutées après coup
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tout); else tout();
 })();

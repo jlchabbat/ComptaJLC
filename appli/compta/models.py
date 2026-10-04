@@ -441,7 +441,9 @@ class TiersProvisoire(models.Model):
 
     nom = models.CharField(max_length=60)
     prenom = models.CharField("prénom", max_length=60, blank=True)
-    remarque = models.CharField(max_length=100, blank=True, help_text="Téléphone, e-mail…")
+    remarque = models.CharField(max_length=100, blank=True)
+    telephone = models.CharField("téléphone", max_length=40, blank=True)
+    email = models.EmailField("e-mail", blank=True)
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
     cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     cree_le = models.DateTimeField(auto_now_add=True)

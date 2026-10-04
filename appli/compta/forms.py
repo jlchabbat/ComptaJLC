@@ -42,9 +42,8 @@ class SaisieForm(forms.Form):
 
 
 class CodeForm(forms.Form):
-    prefixe = forms.ModelChoiceField(Prefixe.objects.all(), label="Préfixe")
-    libelle = forms.CharField(max_length=100, label="Libellé")
-    statut = forms.TypedChoiceField(choices=CodeAnalytique.STATUTS, coerce=int, initial=1, label="Statut (axe 2)")
+    prefixe = forms.ModelChoiceField(Prefixe.objects.all(), label="1. Préfixe")
+    libelle = forms.CharField(max_length=100, label="2. Libellé")
 
     def __init__(self, *a, axe1=False, **k):
         super().__init__(*a, **k)
@@ -58,13 +57,14 @@ class MembreForm(forms.Form):
     """Nouveau tiers : membre, fournisseur… (le compte est proposé d'après le type et le nom)."""
 
     type = forms.ModelChoiceField(TypeTiers.objects.all(), label="Type de tiers", empty_label=None)
-    nom = forms.CharField(max_length=60, label="Nom ou raison sociale")
-    prenom = forms.CharField(max_length=60, required=False, label="Prénom")
+    nom = forms.CharField(max_length=60, label="Nom (ou raison sociale), prénom", widget=forms.TextInput(attrs={"placeholder": "Nom"}))
+    prenom = forms.CharField(max_length=60, required=False, label="Prénom",
+                             widget=forms.TextInput(attrs={"data-avec": "nom", "placeholder": "Prénom"}))
+    telephone = forms.CharField(max_length=40, required=False, label="Téléphone, e-mail", widget=forms.TextInput(attrs={"placeholder": "Téléphone"}))
+    email = forms.EmailField(required=False, label="E-mail", widget=forms.EmailInput(attrs={"data-avec": "telephone", "placeholder": "E-mail"}))
     adresse = forms.CharField(max_length=150, required=False)
-    code_postal = forms.CharField(max_length=12, required=False, label="Code postal")
-    ville = forms.CharField(max_length=60, required=False)
-    telephone = forms.CharField(max_length=40, required=False, label="Téléphone")
-    email = forms.EmailField(required=False, label="E-mail")
+    code_postal = forms.CharField(max_length=12, required=False, label="Code postal, ville", widget=forms.TextInput(attrs={"placeholder": "Code postal"}))
+    ville = forms.CharField(max_length=60, required=False, widget=forms.TextInput(attrs={"data-avec": "code_postal", "placeholder": "Ville"}))
 
 
 class StatutForm(forms.Form):
@@ -109,11 +109,8 @@ class ChoixBenevoles(forms.ModelMultipleChoiceField):
 
 
 class FicheForm(forms.ModelForm):
-    """Fiche : à la création, le code axe 2 se choisit dans la liste ou se crée (préfixe + libellé)."""
+    """Fiche : le code axe 2 d'une activité doit déjà exister et être actif (créé dans Codes, préfixe puis libellé)."""
 
-    nouveau_prefixe = forms.ModelChoiceField(Prefixe.objects.none(), required=False, label="Ou nouveau code : préfixe")
-    nouveau_libelle = forms.CharField(max_length=100, required=False, label="Nouveau code : libellé",
-                                      help_text="Le code est numéroté automatiquement (ex. MAN.008).")
     benevoles = ChoixBenevoles(User.objects.none(), required=False, widget=forms.CheckboxSelectMultiple(attrs={"class": "radios"}),
                                 label="Bénévoles")
 
@@ -121,40 +118,23 @@ class FicheForm(forms.ModelForm):
         model = Fiche
         fields = ["type", "titre", "anal2", "benevoles"]
 
-    field_order = ["type", "titre", "anal2", "nouveau_prefixe", "nouveau_libelle", "benevoles"]
+    field_order = ["type", "titre", "anal2", "benevoles"]
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
+        self.fields["anal2"].help_text = "Code actif créé au préalable dans Codes (activité seulement)."
         self.fields["benevoles"].queryset = User.objects.filter(groups__name="Bénévole", is_active=True).order_by("username")
         if self.instance.pk:
-            del self.fields["type"], self.fields["nouveau_prefixe"], self.fields["nouveau_libelle"]
-        else:
-            prefixes = Prefixe.objects.filter(axe=2)
-            self.fields["nouveau_prefixe"].queryset = prefixes
-            if prefixes.count() == 1:
-                self.fields["nouveau_prefixe"].initial = prefixes.get()
+            del self.fields["type"]
         cherchable(self)
 
     def clean(self):
         c = super().clean()
-        lib = (c.get("nouveau_libelle") or "").strip().upper()
-        c["nouveau_libelle"] = lib
-        if lib:
-            if c.get("anal2"):
-                self.add_error("nouveau_libelle", "Choisissez un code existant OU créez-en un, pas les deux.")
-            elif not c.get("nouveau_prefixe"):
-                self.add_error("nouveau_prefixe", "Préfixe obligatoire pour créer le code.")
-            elif CodeAnalytique.objects.filter(axe=2, libelle=lib).exists():
-                self.add_error("nouveau_libelle", "Ce libellé existe déjà sur l'axe 2 : choisissez-le dans la liste.")
+        t = c.get("type") or self.instance.type
+        if t == "activite" and not c.get("anal2"):
+            self.add_error("anal2", "Une fiche d'activité demande un code axe 2 actif : le créer d'abord dans Codes.")
         return c
-
-    def save(self, commit=True):
-        lib = self.cleaned_data.get("nouveau_libelle")
-        if lib:
-            self.instance.anal2 = CodeAnalytique.objects.create(code=self.cleaned_data["nouveau_prefixe"].code_suivant(), axe=2,
-                                                                libelle=lib, statut=1)
-        return super().save(commit)
 
 
 class BenevoleForm(forms.Form):
@@ -179,18 +159,23 @@ class LigneFicheForm(forms.ModelForm):
     """Ligne saisie par le bénévole ; le trésorier voit en plus ses colonnes (mode en gestion, compte, axe 2)."""
 
     sens = forms.ChoiceField(choices=[("R", "Recette"), ("D", "Dépense")], widget=forms.RadioSelect(attrs={"class": "radios"}))
-    qui = forms.ChoiceField(required=False, label="Membre ou tiers",
-                            help_text="Tapez le nom ; s'il n'existe pas, remplissez « Nouveau tiers » ou « Autre ».")
-    nouveau_nom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : nom")
-    nouveau_prenom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : prénom")
+    qui = forms.ChoiceField(required=False, label="Tiers connu",
+                            help_text="Membre ou tiers répertorié : tapez le nom.")
+    nouveau_nom = forms.CharField(max_length=60, required=False, label="Nouveau tiers : nom, prénom", widget=forms.TextInput(attrs={"placeholder": "Nom"}),
+                                  help_text="Absent de la liste ? Le trésorier lui attribuera un compte.")
+    nouveau_prenom = forms.CharField(max_length=60, required=False, label="Prénom",
+                                     widget=forms.TextInput(attrs={"data-avec": "nouveau_nom", "placeholder": "Prénom"}))
+    nouveau_tel = forms.CharField(max_length=40, required=False, label="Téléphone, e-mail (facultatifs)",
+                                  widget=forms.TextInput(attrs={"placeholder": "Téléphone"}))
+    nouveau_email = forms.EmailField(required=False, label="E-mail", widget=forms.EmailInput(attrs={"data-avec": "nouveau_tel", "placeholder": "E-mail"}))
 
     class Meta:
         model = LigneFiche
-        fields = ["sens", "date", "autre", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "compte", "anal2"]
+        fields = ["sens", "date", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "anal2"]
         widgets = {"date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
-    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "autre", "personnes", "nature", "montant", "mode",
-                   "justificatif", "remarque", "compte", "anal2"]
+    field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "nouveau_tel", "nouveau_email", "personnes", "nature", "montant", "mode",
+                   "justificatif", "remarque", "anal2"]
 
     def __init__(self, *a, fiche, tresorier, **k):
         super().__init__(*a, **k)
@@ -213,12 +198,11 @@ class LigneFicheForm(forms.ModelForm):
             if not tresorier:
                 del f["mode"]
         if tresorier:
-            f["compte"].queryset = Compte.objects.filter(Q(numero__startswith="6") | Q(numero__startswith="7"), actif=True)
             f["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
             if t == "activite":
                 del f["anal2"]
         else:
-            del f["compte"], f["anal2"]
+            del f["anal2"]
         if fiche.type == "gestion":
             f["sens"].choices = [("R", "Reçu"), ("D", "Versé")]
         cherchable(self)
@@ -228,7 +212,7 @@ class LigneFicheForm(forms.ModelForm):
         c = super().clean()
         qui, nom = c.get("qui"), (c.get("nouveau_nom") or "").strip()
         if qui and nom:
-            self.add_error("nouveau_nom", "Choisir un membre OU créer un nouveau tiers, pas les deux.")
+            self.add_error("nouveau_nom", "Tiers connu OU nouveau tiers, pas les deux.")
         return c
 
     def save(self, utilisateur):
@@ -242,6 +226,8 @@ class LigneFicheForm(forms.ModelForm):
             l.provisoire = TiersProvisoire.objects.get(pk=qui[2:])
         elif nom:
             l.provisoire = TiersProvisoire.objects.create(nom=nom, prenom=(self.cleaned_data.get("nouveau_prenom") or "").strip(),
+                                                          telephone=(self.cleaned_data.get("nouveau_tel") or "").strip(),
+                                                          email=(self.cleaned_data.get("nouveau_email") or "").strip(),
                                                           cree_par=utilisateur)
         if not l.pk:
             l.cree_par = utilisateur
