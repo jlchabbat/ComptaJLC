@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Premier démarrage</h1>
+<p>Créez le premier compte (accès complet). Mot de passe : 10 caractères au moins.</p>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<p><label>Nom <input name="nom" autofocus required></label></p>
+<p><label>Mot de passe <input type="password" name="mdp" required></label></p>
+<p><label>Confirmation <input type="password" name="mdp2" required></label></p>
+<p><button>Créer le compte</button></p></form>{% endblock %}

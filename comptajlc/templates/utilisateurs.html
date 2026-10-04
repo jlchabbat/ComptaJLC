@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Utilisateurs</h1>
+<table><tr><th>Nom</th><th></th></tr>
+{% for u in utilisateurs %}<tr><td>{{ u.nom }}</td><td>{% if u.id != g.utilisateur.id %}
+<form method="post" action="{{ url_for('auth.supprimer', uid=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form>{% endif %}</td></tr>{% endfor %}</table>
+<h2>Ajouter un utilisateur</h2>
+<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="nom" placeholder="Nom" required><input type="password" name="mdp" placeholder="Mot de passe" required>
+<input type="password" name="mdp2" placeholder="Confirmation" required><button>Ajouter</button></form>
+<h2>Changer mon mot de passe</h2>
+<form method="post" action="{{ url_for('auth.changer_mdp') }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="password" name="ancien" placeholder="Ancien" required><input type="password" name="mdp" placeholder="Nouveau" required>
+<input type="password" name="mdp2" placeholder="Confirmation" required><button>Modifier</button></form>
+{% endblock %}

@@ -9,12 +9,27 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
         self.c = self.app.test_client()
+        self.connecter(self.c)
+
+    def jeton(self, client):
+        with client.session_transaction() as s:
+            s.setdefault("csrf", "jeton-test")
+            return s["csrf"]
+
+    def connecter(self, client):
+        j = self.jeton(client)
+        client.post("/premier-demarrage", data={"csrf_token": j, "nom": "tresorier",
+                                                "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+
+    def post(self, url, **kw):
+        kw.setdefault("data", {})["csrf_token"] = self.jeton(self.c)
+        return self.c.post(url, **kw)
 
     def ecriture(self, **extra):
         d = {"date": "2026-01-15", "journal": "OD", "libelle": "Test", "piece": "",
              "compte0": "606", "debit0": "100,50", "compte1": "512", "credit1": "100,50"}
         d.update(extra)
-        return self.c.post("/saisie", data=d)
+        return self.post("/saisie", data=d)
 
 
 class TestMontants(unittest.TestCase):
@@ -53,18 +68,67 @@ class TestSaisie(Base):
 
 class TestPlan(Base):
     def test_ajout_import_suppression(self):
-        self.c.post("/plan", data={"numero": "6061", "libelle": "Fournitures"})
+        self.post("/plan", data={"numero": "6061", "libelle": "Fournitures"})
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(Compte, "6061"))
         import io
-        self.c.post("/plan/importer", data={"fichier": (io.BytesIO("7061;Dons\n".encode()), "p.csv")},
-                    content_type="multipart/form-data")
+        self.post("/plan/importer", data={"fichier": (io.BytesIO("7061;Dons\n".encode()), "p.csv")},
+                  content_type="multipart/form-data")
         with self.app.app_context():
             self.assertEqual(db.session.get(Compte, "7061").libelle, "Dons")
         self.ecriture(compte0="6061")
-        self.c.post("/plan/6061/supprimer")  # utilisé : refusé
+        self.post("/plan/6061/supprimer")  # utilisé : refusé
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(Compte, "6061"))
+
+
+class TestAuth(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+        self.c = self.app.test_client()
+
+    def jeton(self):
+        with self.c.session_transaction() as s:
+            s.setdefault("csrf", "jeton-test")
+            return s["csrf"]
+
+    def test_premier_demarrage_puis_connexion_obligatoire(self):
+        self.assertIn("/premier-demarrage", self.c.get("/plan").headers["Location"])
+        r = self.c.post("/premier-demarrage", data={"csrf_token": self.jeton(), "nom": "a",
+                                                    "mdp": "court", "mdp2": "court"})
+        self.assertIn("au moins 10", r.get_data(as_text=True))
+        self.c.post("/premier-demarrage", data={"csrf_token": self.jeton(), "nom": "a",
+                                                "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+        self.assertEqual(self.c.get("/plan").status_code, 200)
+        self.c.post("/deconnexion", data={"csrf_token": self.jeton()})
+        self.assertIn("/connexion", self.c.get("/plan").headers["Location"])
+        self.assertEqual(self.c.get("/premier-demarrage").status_code, 302)
+
+    def test_mauvais_mot_de_passe_et_bon(self):
+        self.c.post("/premier-demarrage", data={"csrf_token": self.jeton(), "nom": "a",
+                                                "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+        self.c.post("/deconnexion", data={"csrf_token": self.jeton()})
+        r = self.c.post("/connexion", data={"csrf_token": self.jeton(), "nom": "a", "mdp": "faux"})
+        self.assertIn("incorrect", r.get_data(as_text=True))
+        self.assertIn("/connexion", self.c.get("/saisie").headers["Location"])
+        r = self.c.post("/connexion", data={"csrf_token": self.jeton(), "nom": "a",
+                                            "mdp": "motdepasse123", "suite": "/saisie"})
+        self.assertTrue(r.headers["Location"].endswith("/saisie"))
+
+    def test_redirection_externe_refusee(self):
+        self.c.post("/premier-demarrage", data={"csrf_token": self.jeton(), "nom": "a",
+                                                "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+        self.c.post("/deconnexion", data={"csrf_token": self.jeton()})
+        r = self.c.post("/connexion", data={"csrf_token": self.jeton(), "nom": "a",
+                                            "mdp": "motdepasse123", "suite": "//evil.example"})
+        self.assertNotIn("evil", r.headers["Location"])
+
+    def test_csrf_refuse(self):
+        self.c.post("/premier-demarrage", data={"csrf_token": self.jeton(), "nom": "a",
+                                                "mdp": "motdepasse123", "mdp2": "motdepasse123"})
+        self.assertEqual(self.c.post("/plan", data={"numero": "999", "libelle": "x"}).status_code, 400)
+        self.assertEqual(self.c.post("/plan", data={"csrf_token": "faux", "numero": "999",
+                                                    "libelle": "x"}).status_code, 400)
 
 
 if __name__ == "__main__":

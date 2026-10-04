@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Saisie d'une écriture</h1>
-<form method="post">
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <p class="ligne"><label>Date <input type="date" name="date" value="{{ request.form.get('date', aujourdhui) }}" required></label>
 <label>Journal <select name="journal">{% for j in journaux %}<option value="{{ j.code }}" {{ 'selected' if request.form.get('journal') == j.code }}>{{ j.code }} – {{ j.libelle }}</option>{% endfor %}</select></label>
 <label>Pièce <input name="piece" size="10" value="{{ request.form.get('piece', '') }}"></label></p>

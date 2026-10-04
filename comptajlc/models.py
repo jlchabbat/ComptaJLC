@@ -62,3 +62,9 @@ class LigneAnalytique(db.Model):
     ligne_id = db.Column(db.Integer, db.ForeignKey("ligne.id"), nullable=False)
     code_id = db.Column(db.Integer, db.ForeignKey("code_analytique.id"), nullable=False)
     code = db.relationship("CodeAnalytique")
+
+
+class Utilisateur(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(60), unique=True, nullable=False)
+    mot_de_passe = db.Column(db.String(256), nullable=False)

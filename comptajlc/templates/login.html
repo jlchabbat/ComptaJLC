@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block contenu %}
+<h1>Connexion</h1>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="suite" value="{{ suite }}">
+<p><label>Nom <input name="nom" autofocus required></label></p>
+<p><label>Mot de passe <input type="password" name="mdp" required></label></p>
+<p><button>Se connecter</button></p></form>{% endblock %}

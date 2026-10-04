@@ -1,12 +1,12 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Axes analytiques</h1>
-<form method="post" class="ligne"><input name="nom" placeholder="Nom du nouvel axe" required><button>Ajouter un axe</button></form>
+<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="nom" placeholder="Nom du nouvel axe" required><button>Ajouter un axe</button></form>
 {% for a in axes %}<section><h2>{{ a.nom }}</h2>
-<form method="post" action="{{ url_for('compta.axe_renommer', axe_id=a.id) }}" class="ligne">
+<form method="post" action="{{ url_for('compta.axe_renommer', axe_id=a.id) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input name="nom" value="{{ a.nom }}"><button>Renommer</button>
 <a href="{{ url_for('compta.analytique', axe_id=a.id) }}">Totaux par code</a></form>
-<form method="post" action="{{ url_for('compta.code_ajouter', axe_id=a.id) }}" class="ligne">
+<form method="post" action="{{ url_for('compta.code_ajouter', axe_id=a.id) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input name="code" placeholder="Code (ex. ACT.1)" required><input name="libelle" placeholder="Libellé" required size="30"><button>Ajouter un code</button></form>
 <table>{% for c in a.codes %}<tr><td>{{ c.code }}</td><td>{{ c.libelle }}</td>
-<td><form method="post" action="{{ url_for('compta.code_supprimer', code_id=c.id) }}"><button>Supprimer</button></form></td></tr>{% endfor %}</table>
+<td><form method="post" action="{{ url_for('compta.code_supprimer', code_id=c.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}</table>
 </section>{% endfor %}{% endblock %}

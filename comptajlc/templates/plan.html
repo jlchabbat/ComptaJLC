@@ -1,12 +1,12 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Plan comptable</h1>
-<form method="post" class="ligne"><input name="numero" placeholder="Numéro" required>
+<form method="post" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="numero" placeholder="Numéro" required>
 <input name="libelle" placeholder="Libellé" required size="40"><button>Ajouter</button></form>
-<form method="post" action="{{ url_for('compta.plan_importer') }}" enctype="multipart/form-data" class="ligne">
+<form method="post" action="{{ url_for('compta.plan_importer') }}" enctype="multipart/form-data" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input type="file" name="fichier" accept=".csv,.txt" required><button>Importer un CSV (numéro;libellé)</button></form>
 <table><tr><th>Numéro</th><th>Libellé</th><th></th></tr>
 {% for c in comptes %}<tr><td><a href="{{ url_for('compta.grand_livre', numero=c.numero) }}">{{ c.numero }}</a></td>
-<td><form method="post" action="{{ url_for('compta.plan_modifier', numero=c.numero) }}" class="ligne">
+<td><form method="post" action="{{ url_for('compta.plan_modifier', numero=c.numero) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input name="libelle" value="{{ c.libelle }}" size="40"><button>Modifier</button></form></td>
-<td><form method="post" action="{{ url_for('compta.plan_supprimer', numero=c.numero) }}"><button>Supprimer</button></form></td></tr>{% endfor %}
+<td><form method="post" action="{{ url_for('compta.plan_supprimer', numero=c.numero) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form></td></tr>{% endfor %}
 </table>{% endblock %}

@@ -12,12 +12,16 @@ Comptabilité web en français (Flask + SQLite), conçue pour PythonAnywhere.
 ```
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-flask --app wsgi run
+COMPTAJLC_HTTP=1 flask --app wsgi run   # HTTP local : cookie de session non « Secure »
 python -m unittest discover tests
 ```
 
 La base est créée dans `instance/compta.db` (hors Git). Déploiement : `deploiement/pythonanywhere.md`.
 
+## Accès
+
+Tout est protégé par connexion. Au premier lancement, la page `/premier-demarrage` crée le premier compte ; d'autres comptes s'ajoutent dans « Utilisateurs ». Mots de passe hachés (10 caractères minimum), jeton CSRF sur tous les formulaires, cookie de session `Secure` en HTTPS. La clé de session est lue dans `COMPTAJLC_SECRET` ou, à défaut, générée dans `instance/secret.key`.
+
 ## À faire
 
-Authentification, correction/suppression d'écritures avec historique, clôture d'exercice, rapprochement bancaire, exports.
+Correction/suppression d'écritures avec historique, clôture d'exercice, rapprochement bancaire, exports.
