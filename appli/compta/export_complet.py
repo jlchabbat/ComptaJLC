@@ -193,7 +193,7 @@ FEUILLES = {
     "Relevés": ["Journal", "Date", "Rang", "Référence", "Opération", "Montant", "Solde", "Ouverture", "Source",
                 "Importé le", "Pointage"],
     "Budget": ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"],
-    "Tiers provisoires": ["N°", "Nom", "Prénom", "Remarque", "Compte", "Créé par", "Créé le"],
+    "Tiers provisoires": ["N°", "Nom", "Prénom", "Téléphone", "E-mail", "Remarque", "Compte", "Créé par", "Créé le"],
     "Fiches": ["N°", "Type", "Titre", "Axe 2", "Bénévoles", "Statut", "Créée le"],
     "Lignes de fiches": ["Fiche", "Sens", "Date", "Tiers", "Tiers provisoire", "Autre", "Personnes", "Nature", "Montant",
                          "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Axe 2", "Mvt", "Créé par",
@@ -226,7 +226,7 @@ def _lignes_donnees():
                       for l in LigneReleve.objects.order_by("journal", "date", "rang", "pk"))
     yield "Budget", ([b.exercice.libelle, b.nature, b.compte_id, b.anal1_id, b.anal2_id, _montant(b.montant)]
                      for b in Budget.objects.select_related("exercice"))
-    yield "Tiers provisoires", ([t.pk, t.nom, t.prenom, t.remarque, t.compte_id, _nom_utilisateur(t.cree_par),
+    yield "Tiers provisoires", ([t.pk, t.nom, t.prenom, t.telephone, t.email, t.remarque, t.compte_id, _nom_utilisateur(t.cree_par),
                                  _heure(t.cree_le)] for t in TiersProvisoire.objects.select_related("cree_par").order_by("pk"))
     yield "Fiches", ([f.pk, f.type, f.titre, f.anal2_id, ";".join(sorted(u.get_username() for u in f.benevoles.all())),
                       f.statut, _heure(f.cree_le)] for f in Fiche.objects.prefetch_related("benevoles").order_by("pk"))
@@ -362,7 +362,7 @@ def vider():
 
 
 FACULTATIVES = ("Justificatifs", "Documents fiches", "Axes de comptes")       # absentes des exports faits avant leur création
-COLONNES_FACULTATIVES = {"Lien"}         # idem pour les colonnes
+COLONNES_FACULTATIVES = {"Lien", "Téléphone", "E-mail"}         # idem pour les colonnes
 
 
 def _rangees(wb, nom, fichier="Donnees.xlsx"):
@@ -446,6 +446,7 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
     provisoires = {}
     for r in _rangees(wb, "Tiers provisoires"):
         t = TiersProvisoire.objects.create(nom=_texte(r["Nom"]), prenom=_texte(r["Prénom"]), remarque=_texte(r["Remarque"]),
+                                           telephone=_texte(r.get("Téléphone")), email=_texte(r.get("E-mail")),
                                            compte_id=_texte(r["Compte"]) or None, cree_par=qui(r["Créé par"]))
         TiersProvisoire.objects.filter(pk=t.pk).update(cree_le=_lire_heure(r["Créé le"]) or t.cree_le)
         provisoires[_entier(r["N°"])] = t
