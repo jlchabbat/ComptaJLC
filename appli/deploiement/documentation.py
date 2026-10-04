@@ -78,7 +78,9 @@ def demonstration():
         Journal.objects.create(code=code, intitule=intitule, compte_id=compte)
     Exercice.objects.create(libelle="2025", debut=dt.date(2025, 1, 1), fin=dt.date(2025, 12, 31), clos=True)
     Exercice.objects.create(libelle="2026", debut=dt.date(2026, 1, 1), fin=dt.date(2026, 12, 31))
-    for cle, valeur in (("compte_virement", "580000"), ("compte_attente", "470000"), ("compte_cotisations", "700000")):
+    for cle, valeur in (("compte_virement", "580000"), ("compte_attente", "470000"), ("compte_cotisations", "700000"),
+                         ("nom_association", "Loge Bnei Brith"), ("releves_mizrahi", "B1,B2"), ("releve_bit", "B3"),
+                         ("carte_bancaire", "Isracard"), ("traductions_releve", "oui")):
         Reglage.objects.update_or_create(cle=cle, defaults={"valeur": valeur})
     moteur.initialiser_parametres()
     fiches.initialiser()
@@ -121,7 +123,7 @@ def demonstration():
 
     j = lambda m, d: dt.date(2026, m, d)  # noqa: E731
     from compta.models import Ligne, Mouvement
-    an = Mouvement.objects.create(numero=1, date=j(1, 1), journal_id="AN", piece=1, origine="import", commentaire="Soldes d'ouverture")
+    an = Mouvement.objects.create(numero=1, date=j(1, 1), journal_id="AN", origine="import", commentaire="Soldes d'ouverture")
     for ordre, (compte, debit, credit) in enumerate((("512000", 8000, 0), ("512100", 3000, 0), ("512200", 1200, 0),
                                                      ("530000", 450, 0), ("110000", 0, 12650))):
         Ligne.objects.create(mouvement=an, ordre=ordre, compte_id=compte, libelle="A NOUVEAU", debit=D(debit), credit=D(credit),
