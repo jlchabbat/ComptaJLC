@@ -318,8 +318,7 @@ def codes(request):
                 if CodeAnalytique.objects.filter(axe=p.axe, libelle=lib).exists():
                     code_form.add_error("libelle", "Ce libellé existe déjà dans cet axe.")
                 else:
-                    nouveau = CodeAnalytique.objects.create(code=p.code_suivant(), axe=p.axe, libelle=lib,
-                                                            statut=c["statut"] if p.axe == 2 else 1)
+                    nouveau = CodeAnalytique.objects.create(code=p.code_suivant(), axe=p.axe, libelle=lib, statut=1)
                     _journaliser(request, "Création", f"code axe {p.axe} {nouveau.code}", apres=lib)
                     messages.success(request, f"Code {nouveau.code} créé : {lib}.")
                     return redirect("codes")

@@ -44,7 +44,6 @@ class SaisieForm(forms.Form):
 class CodeForm(forms.Form):
     prefixe = forms.ModelChoiceField(Prefixe.objects.all(), label="1. Préfixe")
     libelle = forms.CharField(max_length=100, label="2. Libellé")
-    statut = forms.TypedChoiceField(choices=CodeAnalytique.STATUTS, coerce=int, initial=1, label="Statut (axe 2)")
 
     def __init__(self, *a, axe1=False, **k):
         super().__init__(*a, **k)
