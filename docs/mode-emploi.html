@@ -271,20 +271,24 @@ Une cellule vide n'efface rien. Rien n'est supprimé.</div>
 <ol><li><span class="menu">Saisie › Fiches bénévoles</span>, carte <b>Nouveau bénévole</b> : choisir le <b>membre</b> dans la liste des fiches tiers
 (un bénévole est toujours un membre ; s'il est absent, créer d'abord sa fiche, type Membre), puis identifiant (nom ou e-mail) et mot de passe ;
 <b>Créer le bénévole</b> en haut.</li>
-<li>Carte <b>Nouvelle fiche</b> : type <b>Activité</b> ou <b>Gestion</b> (dons et aides reçus ou versés), titre, bénévoles. Pour une activité, le
-<b>code axe 2</b> se choisit dans la liste, <b>ou se crée sur place</b> : indiquer le préfixe et le libellé, le numéro est attribué automatiquement.
-<b>Créer la fiche</b> en haut.</li></ol>
+<li>Page <span class="menu">Saisie › Codes et nouveaux tiers</span> : pour une activité, créer d'abord son <b>code axe 2</b> (choisir le préfixe : le numéro
+suivant est attribué et affiché, puis saisir le libellé). Le code est créé actif.</li>
+<li>Carte <b>Nouvelle fiche</b> : type <b>Activité</b> ou <b>Gestion</b> (dons et aides reçus ou versés), bénévoles. Une activité prend le <b>code axe 2 actif</b>
+choisi dans la liste ; son <b>titre est le libellé de ce code</b> (rien à saisir). Une fiche de gestion demande un titre. <b>Créer la fiche</b> en haut.</li>
+<li><b>Fiche papier (PDF)</b>, bouton en haut de chaque fiche : grille remplissable à l'écran ou à la main, à remettre aux bénévoles qui préfèrent le papier.
+Le trésorier en recopie les lignes dans la fiche en ligne.</li></ol>
 <figure><img src="images/09_fiches.png"><figcaption>Liste des fiches avec leurs totaux ; nouvelle fiche et nouveau bénévole.</figcaption></figure>
 <h2>Le bénévole saisit</h2>
 <ol><li>Il se connecte : il ne voit que ses fiches.</li>
-<li>Pour chaque ligne : Recette ou Dépense, date, <b>membre ou tiers</b> (taper le nom), nombre de personnes, nature, montant, mode de paiement,
-justificatif, remarque ; <b>Ajouter la ligne</b> en haut.</li>
-<li>Un tiers absent de la liste : remplir <b>« Nouveau tiers »</b> (nom, prénom) : il est <b>provisoire</b> ; ou « Autre payeur ou bénéficiaire » pour une personne extérieure.</li>
+<li>Pour chaque ligne : Recette ou Dépense, date, <b>tiers connu</b> (taper le nom) <i>ou</i> <b>nouveau tiers</b> (nom, prénom, téléphone, e-mail facultatifs : l'un grise l'autre),
+nombre de personnes, nature, montant, mode de paiement, justificatif, remarque ; <b>Ajouter la ligne</b> en haut.</li>
+<li>Un nouveau tiers est <b>provisoire</b> : le trésorier lui attribue un compte (téléphone et e-mail sont repris dans sa fiche).</li>
+<li>Pour supprimer des lignes : <b>cocher</b> la case en fin de ligne, puis <b>Supprimer les lignes cochées</b> en haut (lignes non encore reportées).</li>
 <li>Quand c'est fini : <b>Transmettre au trésorier</b> (la fiche n'est plus modifiable par les bénévoles).</li></ol>
 <figure><img src="images/20_benevole.png"><figcaption>Ce que voit une bénévole.</figcaption></figure>
 <h2>Le trésorier complète et reporte</h2>
 <ol><li><span class="menu">Tiers › Tiers provisoires</span> : rattacher chaque nouveau tiers à un compte existant, ou laisser vide et choisir le type pour créer son compte.</li>
-<li>Fiche <b>Gestion</b> : pour chaque ligne (Modifier), choisir le mode de paiement, le compte de contrepartie et le code axe 2.</li>
+<li>Fiche <b>Gestion</b> : pour chaque ligne (Modifier), choisir le mode de paiement et le code axe 2 (le compte vient de la nature).</li>
 <li><b>Reporter en comptabilité</b> : un mouvement par ligne. Refusé tant qu'une ligne est signalée dans la colonne Contrôle ; les lignes reportées sont verrouillées.</li>
 <li><b>Rouvrir aux bénévoles</b> pour qu'ils ajoutent des lignes.</li></ol>
 <figure><img src="images/10_fiche_benevole.png"><figcaption>Fiche vue par le trésorier : une ligne à corriger (tiers provisoire) bloque le report.</figcaption></figure>

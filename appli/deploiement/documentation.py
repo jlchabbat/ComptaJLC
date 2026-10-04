@@ -28,6 +28,7 @@ SORTIE = APPLI / "compta" / "documentation"
 MOT_DE_PASSE = "Demo-ComptaBB-2026"
 DOCUMENTS = {"presentation.html": ("Présentation", "ComptaBB_presentation.pdf"),
              "mode-emploi.html": ("Mode d'emploi", "ComptaBB_mode_emploi.pdf"),
+             "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaBB_guide_benevoles.pdf"),
              "installation.html": ("Installation et mises à jour", "ComptaBB_installation.pdf")}
 
 
@@ -100,7 +101,7 @@ def demonstration():
     tresorier = User.objects.create_user("tresorier", password=MOT_DE_PASSE, first_name="Paul", last_name="Trésorier",
                                          email="tresorier@exemple.org")
     donner_role(tresorier, "Gestion")
-    donner_role(User.objects.create_user("bureau", password=MOT_DE_PASSE, first_name="Anne", last_name="Bureau"), "Bureau")
+    donner_role(User.objects.create_user("bureau", password=MOT_DE_PASSE, first_name="Anne", last_name="Bureau"), "Consultation")
     benevole = User.objects.create_user("sarah", password=MOT_DE_PASSE, first_name="Sarah", last_name="LEVY")
     donner_role(benevole, "Bénévole")
     Membre.objects.filter(compte_id="411LEVYS001").update(utilisateur=benevole)

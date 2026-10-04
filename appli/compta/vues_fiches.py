@@ -117,6 +117,18 @@ def fiche(request, pk):
         just.supprimer_document_fiche(d, request.user.get_username())
         messages.success(request, f"Document « {d.nom} » retiré de la fiche.")
         return redirect("fiche", fiche.pk)
+    peut_supprimer = saisie and request.user.has_perm("compta.delete_lignefiche")
+    if request.method == "POST" and "supprimer_lignes" in request.POST:          # lignes cochées dans les listes
+        if not peut_supprimer:
+            raise PermissionDenied
+        cochees = fiche.lignes.filter(pk__in=[int(x) for x in request.POST.getlist("cochees") if x.isdigit()], mouvement__isnull=True)
+        with transaction.atomic():
+            for l in cochees:
+                journaliser(request, "Suppression", f"ligne de fiche {l.pk} ({fiche.titre})", avant=f"{l.date:%d/%m/%Y} {l.qui} {l.montant}")
+            n = cochees.count()
+            cochees.delete()
+        messages.success(request, f"{n} ligne(s) supprimée(s)." if n else "Aucune ligne cochée.")
+        return redirect("fiche", fiche.pk)
     if request.method == "POST":
         action = next((a for a in ("ajouter", "transmettre", "rouvrir", "reporter", "modifier") if a in request.POST), None)
         if action == "ajouter" and form and form.is_valid():
@@ -154,8 +166,20 @@ def fiche(request, pk):
         "a_reporter": sum(1 for l, r in lignes if not l.mouvement_id),
         "fiche_form": FicheForm(instance=fiche, prefix="fiche") if est_tresorier else None, "parametres": _parametres_js(fiche),
         "documents": fiche.documents.select_related("ligne", "ligne__nature"), "peut_joindre": peut_joindre,
-        "toutes_lignes": fiche.lignes.select_related("nature").order_by("date", "pk"),
+        "toutes_lignes": fiche.lignes.select_related("nature").order_by("date", "pk"), "peut_supprimer": peut_supprimer,
     })
+
+
+@login_required
+@voir_fiches
+def papier(request, pk):
+    """Fiche papier (PDF remplissable) : donnée par le trésorier, utilisable par tous ceux qui voient la fiche."""
+    from django.http import HttpResponse
+    from .fiche_papier import pdf
+    fiche = _fiche(request, pk)
+    rep = HttpResponse(pdf(fiche), content_type="application/pdf")
+    rep["Content-Disposition"] = f'inline; filename="Fiche_{fiche.pk}.pdf"'
+    return rep
 
 
 @login_required

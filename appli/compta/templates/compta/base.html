@@ -58,6 +58,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exporter des données (Excel)</a>{% endif %}
 <a href="{% url 'document' 'presentation' %}" target="_blank">Présentation (PDF)</a>
 <a href="{% url 'document' 'mode-emploi' %}" target="_blank">Mode d'emploi (PDF)</a>
+<a href="{% url 'document' 'benevoles' %}" target="_blank">Guide des bénévoles (PDF)</a>
 </div></div>
 {% if user.is_staff or perms.compta.parametrer %}<div class="menu admin m-admin"><button type="button">Administration ▾</button><div class="sous">
 <div class="groupe">Réservé à l'administrateur · utilisateurs et paramétrage</div>
