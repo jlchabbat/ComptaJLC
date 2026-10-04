@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from flask_sqlalchemy import SQLAlchemy
 
@@ -68,3 +68,15 @@ class Utilisateur(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(60), unique=True, nullable=False)
     mot_de_passe = db.Column(db.String(256), nullable=False)
+
+
+class Historique(db.Model):
+    """Trace de chaque création, modification et suppression d'écriture (jamais effacée)."""
+    id = db.Column(db.Integer, primary_key=True)
+    quand = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    utilisateur = db.Column(db.String(60), nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # création / modification / suppression
+    mvt = db.Column(db.Integer, nullable=False)
+    motif = db.Column(db.String(300), default="")
+    avant = db.Column(db.Text)  # JSON de l'écriture avant (None à la création)
+    apres = db.Column(db.Text)  # JSON de l'écriture après (None à la suppression)

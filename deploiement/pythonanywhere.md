@@ -30,3 +30,7 @@ Au premier accès, ouvrir l'adresse du site : la page « Premier démarrage » d
 ## Même compte que ComptaBB
 
 `comptabb.pythonanywhere.com` est déjà l'adresse de ComptaBB : un compte n'a qu'un site à son adresse `.pythonanywhere.com`. Pour héberger ComptaJLC dans ce compte, il faudrait un nom de domaine personnalisé (formule payante).
+
+## Mise à jour
+
+Console Bash : `cd ~/ComptaJLC && git pull && ~/.venvs/comptajlc/bin/pip install -r requirements.txt`, puis **Reload** dans l'onglet Web. Les nouvelles tables sont créées au démarrage ; les données existantes sont conservées.

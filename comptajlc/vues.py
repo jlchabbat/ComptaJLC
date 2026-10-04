@@ -1,13 +1,15 @@
 import csv
 import io
+import json
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import (Blueprint, Response, flash, g, redirect, render_template,
+                   request, url_for)
 from sqlalchemy import func
 
-from .models import (Axe, CodeAnalytique, Compte, Ecriture, Journal, Ligne,
-                     LigneAnalytique, db)
+from .models import (Axe, CodeAnalytique, Compte, Ecriture, Historique, Journal,
+                     Ligne, LigneAnalytique, db)
 
 bp = Blueprint("compta", __name__)
 
@@ -169,61 +171,173 @@ def journaux():
     return render_template("journaux.html", journaux=Journal.query.order_by(Journal.code).all())
 
 
-# ---------- Saisie ----------
+# ---------- Saisie, correction, suppression ----------
 
-@bp.route("/saisie", methods=["GET", "POST"])
-def saisie():
-    axes_ = Axe.query.order_by(Axe.id).all()
-    ctx = dict(journaux=Journal.query.all(), comptes=Compte.query.order_by(Compte.numero).all(),
-               axes=axes_, aujourdhui=date.today().isoformat(), nb_lignes=6)
-    if request.method == "GET":
-        return render_template("saisie.html", **ctx)
+def instantane(e):
+    """Copie lisible d'une écriture (stockée dans l'historique)."""
+    return {"date": e.date.isoformat(), "journal": e.journal_code, "piece": e.piece or "",
+            "libelle": e.libelle,
+            "lignes": [{"compte": l.compte_numero, "debit": l.debit, "credit": l.credit,
+                        "analytique": [f"{x.code.axe.nom} : {x.code.code}" for x in l.analytiques]}
+                       for l in e.lignes]}
 
-    f = request.form
-    try:
-        d = datetime.strptime(f["date"], "%Y-%m-%d").date()
-        if not f["libelle"].strip():
-            raise ValueError("Libellé obligatoire.")
-        if not db.session.get(Journal, f["journal"]):
-            raise ValueError("Journal inconnu.")
-        lignes = []
-        for i in range(ctx["nb_lignes"]):
-            num = f.get(f"compte{i}", "").strip()
-            deb, cre = en_centimes(f.get(f"debit{i}")), en_centimes(f.get(f"credit{i}"))
-            if not num and not deb and not cre:
-                continue
-            if not db.session.get(Compte, num):
-                raise ValueError(f"Ligne {i + 1} : compte « {num} » introuvable.")
-            if (deb and cre) or not (deb or cre) or deb < 0 or cre < 0:
-                raise ValueError(f"Ligne {i + 1} : un montant positif au débit OU au crédit.")
-            codes = []
-            for a in axes_:
-                cid = f.get(f"axe{a.id}_{i}", "")
-                if cid:
-                    c = db.session.get(CodeAnalytique, int(cid))
-                    if not c or c.axe_id != a.id:
-                        raise ValueError(f"Ligne {i + 1} : code analytique invalide.")
-                    codes.append(c)
-            lignes.append((num, deb, cre, codes))
-        if len(lignes) < 2:
-            raise ValueError("Au moins deux lignes.")
-        if sum(l[1] for l in lignes) != sum(l[2] for l in lignes):
-            raise ValueError("Écriture non équilibrée : total débit ≠ total crédit.")
-    except ValueError as e:
-        flash(str(e), "erreur")
-        return render_template("saisie.html", **ctx), 400
 
-    mvt = (db.session.query(func.max(Ecriture.mvt)).scalar() or 0) + 1
-    e = Ecriture(mvt=mvt, date=d, journal_code=f["journal"], piece=f.get("piece", "").strip(),
-                 libelle=f["libelle"].strip())
+def journaliser(action, mvt, motif, avant, apres):
+    db.session.add(Historique(utilisateur=g.utilisateur.nom, action=action, mvt=mvt, motif=motif,
+                              avant=json.dumps(avant) if avant else None,
+                              apres=json.dumps(apres) if apres else None))
+
+
+def prochain_mvt():
+    """Les numéros de mouvement supprimés ne sont jamais réutilisés (l'historique les cite)."""
+    a = db.session.query(func.max(Ecriture.mvt)).scalar() or 0
+    b = db.session.query(func.max(Historique.mvt)).scalar() or 0
+    return max(a, b) + 1
+
+
+def centimes_texte(c):
+    return f"{c // 100},{c % 100:02d}"
+
+
+def valeurs_ecriture(e):
+    """Valeurs de départ du formulaire pour modifier une écriture."""
+    v = {"date": e.date.isoformat(), "journal": e.journal_code, "piece": e.piece or "",
+         "libelle": e.libelle}
+    for i, l in enumerate(e.lignes):
+        v[f"compte{i}"] = l.compte_numero
+        v[f"debit{i}"] = centimes_texte(l.debit) if l.debit else ""
+        v[f"credit{i}"] = centimes_texte(l.credit) if l.credit else ""
+        for x in l.analytiques:
+            v[f"axe{x.code.axe_id}_{i}"] = str(x.code_id)
+    return v
+
+
+def lire_formulaire(f, axes_, nb_lignes):
+    """Valide le formulaire ; lève ValueError (message en français) sinon."""
+    d = datetime.strptime(f["date"], "%Y-%m-%d").date()
+    if not f["libelle"].strip():
+        raise ValueError("Libellé obligatoire.")
+    if not db.session.get(Journal, f["journal"]):
+        raise ValueError("Journal inconnu.")
+    lignes = []
+    for i in range(nb_lignes):
+        num = f.get(f"compte{i}", "").strip()
+        deb, cre = en_centimes(f.get(f"debit{i}")), en_centimes(f.get(f"credit{i}"))
+        if not num and not deb and not cre:
+            continue
+        if not db.session.get(Compte, num):
+            raise ValueError(f"Ligne {i + 1} : compte « {num} » introuvable.")
+        if (deb and cre) or not (deb or cre) or deb < 0 or cre < 0:
+            raise ValueError(f"Ligne {i + 1} : un montant positif au débit OU au crédit.")
+        codes = []
+        for a in axes_:
+            cid = f.get(f"axe{a.id}_{i}", "")
+            if cid:
+                c = db.session.get(CodeAnalytique, int(cid))
+                if not c or c.axe_id != a.id:
+                    raise ValueError(f"Ligne {i + 1} : code analytique invalide.")
+                codes.append(c)
+        lignes.append((num, deb, cre, codes))
+    if len(lignes) < 2:
+        raise ValueError("Au moins deux lignes.")
+    if sum(l[1] for l in lignes) != sum(l[2] for l in lignes):
+        raise ValueError("Écriture non équilibrée : total débit ≠ total crédit.")
+    return d, f["journal"].strip(), f.get("piece", "").strip(), f["libelle"].strip(), lignes
+
+
+def construire_lignes(lignes):
+    out = []
     for num, deb, cre, codes in lignes:
         l = Ligne(compte_numero=num, debit=deb, credit=cre)
         l.analytiques = [LigneAnalytique(code_id=c.id) for c in codes]
-        e.lignes.append(l)
+        out.append(l)
+    return out
+
+
+def contexte_saisie(val, nb_lignes=6, ecriture=None):
+    return dict(journaux=Journal.query.all(), comptes=Compte.query.order_by(Compte.numero).all(),
+                axes=Axe.query.order_by(Axe.id).all(), aujourdhui=date.today().isoformat(),
+                nb_lignes=nb_lignes, val=val, ecriture=ecriture)
+
+
+@bp.route("/saisie", methods=["GET", "POST"])
+def saisie():
+    ctx = contexte_saisie(request.form if request.method == "POST" else {})
+    if request.method == "GET":
+        return render_template("saisie.html", **ctx)
+    try:
+        d, jnl, piece, libelle, lignes = lire_formulaire(request.form, ctx["axes"], ctx["nb_lignes"])
+    except ValueError as e:
+        flash(str(e), "erreur")
+        return render_template("saisie.html", **ctx), 400
+    e = Ecriture(mvt=prochain_mvt(), date=d, journal_code=jnl, piece=piece, libelle=libelle)
+    e.lignes = construire_lignes(lignes)
     db.session.add(e)
+    db.session.flush()
+    journaliser("création", e.mvt, "", None, instantane(e))
     db.session.commit()
-    flash(f"Écriture n° {mvt} enregistrée.", "ok")
+    flash(f"Écriture n° {e.mvt} enregistrée.", "ok")
     return redirect(url_for("compta.saisie"))
+
+
+@bp.route("/ecriture/<int:mvt>/modifier", methods=["GET", "POST"])
+def ecriture_modifier(mvt):
+    e = db.get_or_404(Ecriture, mvt)
+    nb = max(6, len(e.lignes) + 2)
+    post = request.method == "POST"
+    ctx = contexte_saisie(request.form if post else valeurs_ecriture(e), nb, ecriture=e)
+    if not post:
+        return render_template("saisie.html", **ctx)
+    try:
+        motif = request.form.get("motif", "").strip()
+        if not motif:
+            raise ValueError("Indiquez le motif de la modification.")
+        d, jnl, piece, libelle, lignes = lire_formulaire(request.form, ctx["axes"], nb)
+    except ValueError as err:
+        flash(str(err), "erreur")
+        return render_template("saisie.html", **ctx), 400
+    avant = instantane(e)
+    e.date, e.journal_code, e.piece, e.libelle = d, jnl, piece, libelle
+    e.lignes = construire_lignes(lignes)
+    db.session.flush()
+    db.session.refresh(e)
+    journaliser("modification", mvt, motif, avant, instantane(e))
+    db.session.commit()
+    flash(f"Écriture n° {mvt} modifiée.", "ok")
+    return redirect(url_for("compta.journal"))
+
+
+@bp.post("/ecriture/<int:mvt>/supprimer")
+def ecriture_supprimer(mvt):
+    e = db.get_or_404(Ecriture, mvt)
+    motif = request.form.get("motif", "").strip()
+    if not motif:
+        flash("Indiquez le motif de la suppression.", "erreur")
+        return redirect(url_for("compta.ecriture_modifier", mvt=mvt))
+    journaliser("suppression", mvt, motif, instantane(e), None)
+    db.session.delete(e)
+    db.session.commit()
+    flash(f"Écriture n° {mvt} supprimée (conservée dans l'historique).", "ok")
+    return redirect(url_for("compta.journal"))
+
+
+@bp.route("/historique")
+def historique():
+    rows = Historique.query.order_by(Historique.id.desc()).all()
+    return render_template("historique.html", rows=[(h, json.loads(h.avant) if h.avant else None,
+                                                     json.loads(h.apres) if h.apres else None) for h in rows])
+
+
+@bp.app_template_filter("resume_ecriture")
+def resume_ecriture(snap):
+    if not snap:
+        return ""
+    out = [f"{snap['date']} · {snap['journal']} · {snap['piece']} · {snap['libelle']}"]
+    for l in snap["lignes"]:
+        sens = f"D {fmt_montant(l['debit'])}" if l["debit"] else f"C {fmt_montant(l['credit'])}"
+        ana = " [" + " ; ".join(l["analytique"]) + "]" if l["analytique"] else ""
+        out.append(f"  {l['compte']}  {sens}{ana}")
+    return "\n".join(out)
 
 
 # ---------- États ----------
@@ -259,3 +373,86 @@ def analytique(axe_id):
             .filter(CodeAnalytique.axe_id == a.id).group_by(CodeAnalytique.id)
             .order_by(CodeAnalytique.code).all())
     return render_template("analytique.html", axe=a, rows=rows)
+
+
+# ---------- Exports Excel ----------
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _texte(ws, ligne, col, valeur):
+    """Écrit un texte sans jamais l'interpréter comme une formule (=, +, -, @)."""
+    c = ws.cell(row=ligne, column=col, value=valeur)
+    if isinstance(valeur, str):
+        c.data_type = "s"
+    return c
+
+
+def _reponse(wb, nom):
+    from openpyxl.styles import Font
+    for ws in wb.worksheets:
+        for c in ws[1]:
+            c.font = Font(bold=True)
+        ws.freeze_panes = "A2"
+        for col in ws.columns:
+            ws.column_dimensions[col[0].column_letter].width = min(
+                50, max(10, max(len(str(c.value or "")) for c in col) + 2))
+    buf = io.BytesIO()
+    wb.save(buf)
+    return Response(buf.getvalue(), mimetype=XLSX,
+                    headers={"Content-Disposition": f"attachment; filename={nom}"})
+
+
+@bp.route("/export/journal.xlsx")
+def export_journal():
+    from openpyxl import Workbook
+    axes_ = Axe.query.order_by(Axe.id).all()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Journal"
+    ent = ["Mvt", "Date", "Journal", "Pièce", "Libellé", "Compte", "Libellé du compte",
+           "Débit", "Crédit"] + [a.nom for a in axes_]
+    for k, h in enumerate(ent, 1):
+        _texte(ws, 1, k, h)
+    r = 2
+    for e in Ecriture.query.order_by(Ecriture.date, Ecriture.mvt).all():
+        for l in e.lignes:
+            ws.cell(row=r, column=1, value=e.mvt)
+            ws.cell(row=r, column=2, value=e.date).number_format = "DD/MM/YYYY"
+            _texte(ws, r, 3, e.journal_code)
+            _texte(ws, r, 4, e.piece or "")
+            _texte(ws, r, 5, e.libelle)
+            _texte(ws, r, 6, l.compte_numero)
+            _texte(ws, r, 7, l.compte.libelle)
+            ws.cell(row=r, column=8, value=l.debit / 100 if l.debit else None).number_format = "#,##0.00"
+            ws.cell(row=r, column=9, value=l.credit / 100 if l.credit else None).number_format = "#,##0.00"
+            par_axe = {x.code.axe_id: x.code for x in l.analytiques}
+            for k, a in enumerate(axes_):
+                c = par_axe.get(a.id)
+                if c:
+                    _texte(ws, r, 10 + k, f"{c.code} {c.libelle}")
+            r += 1
+    return _reponse(wb, "journal.xlsx")
+
+
+@bp.route("/export/balance.xlsx")
+def export_balance():
+    from openpyxl import Workbook
+    rows = (db.session.query(Ligne.compte_numero, Compte.libelle, func.sum(Ligne.debit), func.sum(Ligne.credit))
+            .join(Compte).group_by(Ligne.compte_numero).order_by(Ligne.compte_numero).all())
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Balance"
+    for k, h in enumerate(["Compte", "Libellé", "Débit", "Crédit", "Solde"], 1):
+        _texte(ws, 1, k, h)
+    for r, (n, lib, d, c) in enumerate(rows, 2):
+        _texte(ws, r, 1, n)
+        _texte(ws, r, 2, lib)
+        ws.cell(row=r, column=3, value=d / 100).number_format = "#,##0.00"
+        ws.cell(row=r, column=4, value=c / 100).number_format = "#,##0.00"
+        ws.cell(row=r, column=5, value=f"=C{r}-D{r}").number_format = "#,##0.00"
+    t = len(rows) + 2
+    _texte(ws, t, 2, "Total")
+    for col, L in ((3, "C"), (4, "D"), (5, "E")):
+        ws.cell(row=t, column=col, value=f"=SUM({L}2:{L}{t - 1})").number_format = "#,##0.00"
+    return _reponse(wb, "balance.xlsx")

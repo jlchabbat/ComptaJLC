@@ -5,6 +5,8 @@ Comptabilité web en français (Flask + SQLite), conçue pour PythonAnywhere.
 - **Plan comptable modifiable** : ajout, modification, suppression (si inutilisé), import CSV `numéro;libellé`.
 - **Axes analytiques paramétrables** : nombre d'axes et codes libres ; un code par axe et par ligne d'écriture.
 - **Partie double** : une écriture est refusée si débit ≠ crédit. Montants stockés en centimes.
+- **Correction et suppression d'écritures** avec motif obligatoire ; chaque création, modification et suppression est conservée dans l'**historique** (qui, quand, avant/après). Un numéro de mouvement supprimé n'est jamais réutilisé.
+- **Export Excel** du journal et de la balance (`/export/journal.xlsx`, `/export/balance.xlsx`).
 - Journaux, saisie, journal des écritures, balance, grand livre, totaux par code analytique.
 
 ## Lancer en local
@@ -24,4 +26,4 @@ Tout est protégé par connexion. Au premier lancement, la page `/premier-demarr
 
 ## À faire
 
-Correction/suppression d'écritures avec historique, clôture d'exercice, rapprochement bancaire, exports.
+Clôture d'exercice, rapprochement bancaire, exports.

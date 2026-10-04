@@ -1,17 +1,22 @@
 {% extends "base.html" %}{% block contenu %}
-<h1>Saisie d'une écriture</h1>
+<h1>{% if ecriture %}Modifier l'écriture n° {{ ecriture.mvt }}{% else %}Saisie d'une écriture{% endif %}</h1>
 <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<p class="ligne"><label>Date <input type="date" name="date" value="{{ request.form.get('date', aujourdhui) }}" required></label>
-<label>Journal <select name="journal">{% for j in journaux %}<option value="{{ j.code }}" {{ 'selected' if request.form.get('journal') == j.code }}>{{ j.code }} – {{ j.libelle }}</option>{% endfor %}</select></label>
-<label>Pièce <input name="piece" size="10" value="{{ request.form.get('piece', '') }}"></label></p>
-<p><label>Libellé <input name="libelle" size="60" value="{{ request.form.get('libelle', '') }}" required></label></p>
+<p class="ligne"><label>Date <input type="date" name="date" value="{{ val.get('date') or aujourdhui }}" required></label>
+<label>Journal <select name="journal">{% for j in journaux %}<option value="{{ j.code }}" {{ 'selected' if val.get('journal') == j.code }}>{{ j.code }} – {{ j.libelle }}</option>{% endfor %}</select></label>
+<label>Pièce <input name="piece" size="10" value="{{ val.get('piece', '') }}"></label></p>
+<p><label>Libellé <input name="libelle" size="60" value="{{ val.get('libelle', '') }}" required></label></p>
 <table><tr><th>Compte</th><th>Débit</th><th>Crédit</th>{% for a in axes %}<th>{{ a.nom }}</th>{% endfor %}</tr>
 {% for i in range(nb_lignes) %}<tr>
-<td><input name="compte{{ i }}" list="comptes" size="10" value="{{ request.form.get('compte' ~ i, '') }}"></td>
-<td><input name="debit{{ i }}" size="10" value="{{ request.form.get('debit' ~ i, '') }}"></td>
-<td><input name="credit{{ i }}" size="10" value="{{ request.form.get('credit' ~ i, '') }}"></td>
+<td><input name="compte{{ i }}" list="comptes" size="10" value="{{ val.get('compte' ~ i, '') }}"></td>
+<td><input name="debit{{ i }}" size="10" value="{{ val.get('debit' ~ i, '') }}"></td>
+<td><input name="credit{{ i }}" size="10" value="{{ val.get('credit' ~ i, '') }}"></td>
 {% for a in axes %}<td><select name="axe{{ a.id }}_{{ i }}"><option value=""></option>
-{% for c in a.codes %}<option value="{{ c.id }}" {{ 'selected' if request.form.get('axe' ~ a.id ~ '_' ~ i) == c.id|string }}>{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select></td>{% endfor %}
+{% for c in a.codes %}<option value="{{ c.id }}" {{ 'selected' if val.get('axe' ~ a.id ~ '_' ~ i) == c.id|string }}>{{ c.code }} {{ c.libelle }}</option>{% endfor %}</select></td>{% endfor %}
 </tr>{% endfor %}</table>
 <datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
-<p><button>Enregistrer</button></p></form>{% endblock %}
+{% if ecriture %}<p><label>Motif de la modification <input name="motif" size="50" value="{{ val.get('motif', '') }}" required></label></p>{% endif %}
+<p><button>Enregistrer</button></p></form>
+{% if ecriture %}<h2>Supprimer cette écriture</h2>
+<form method="post" action="{{ url_for('compta.ecriture_supprimer', mvt=ecriture.mvt) }}" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="motif" placeholder="Motif de la suppression" size="40" required>
+<button onclick="return confirm('Supprimer définitivement cette écriture ? Elle restera dans l\'historique.')">Supprimer</button></form>{% endif %}{% endblock %}

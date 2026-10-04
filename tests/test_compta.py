@@ -82,6 +82,76 @@ class TestPlan(Base):
             self.assertIsNotNone(db.session.get(Compte, "6061"))
 
 
+class TestCorrection(Base):
+    def historique(self):
+        from comptajlc.models import Historique
+        with self.app.app_context():
+            return [(h.action, h.mvt, h.motif, h.utilisateur) for h in Historique.query.order_by(Historique.id)]
+
+    def donnees(self, **extra):
+        d = {"date": "2026-02-01", "journal": "OD", "libelle": "Corrigée", "piece": "P1",
+             "compte0": "606", "debit0": "50", "compte1": "512", "credit1": "50", "motif": "erreur de montant"}
+        d.update(extra)
+        return d
+
+    def test_creation_tracee_et_modification(self):
+        self.ecriture()
+        self.assertEqual(self.historique(), [("création", 1, "", "tresorier")])
+        self.assertIn("Modifier l'écriture n° 1", self.c.get("/ecriture/1/modifier").get_data(as_text=True))
+        self.assertEqual(self.post("/ecriture/1/modifier", data=self.donnees()).status_code, 302)
+        self.assertIn("50,00", self.c.get("/balance").get_data(as_text=True))
+        self.assertNotIn("100,50", self.c.get("/balance").get_data(as_text=True))
+        self.assertEqual(self.historique()[1], ("modification", 1, "erreur de montant", "tresorier"))
+        h = self.c.get("/historique").get_data(as_text=True)
+        self.assertIn("100,50", h)   # l'ancienne valeur reste visible
+        self.assertIn("erreur de montant", h)
+
+    def test_modification_sans_motif_ou_desequilibree(self):
+        self.ecriture()
+        self.assertEqual(self.post("/ecriture/1/modifier", data=self.donnees(motif="")).status_code, 400)
+        self.assertEqual(self.post("/ecriture/1/modifier", data=self.donnees(credit1="1")).status_code, 400)
+        self.assertIn("100,50", self.c.get("/balance").get_data(as_text=True))
+        self.assertEqual(len(self.historique()), 1)
+
+    def test_suppression_et_numero_non_reutilise(self):
+        self.ecriture()
+        self.post("/ecriture/1/supprimer", data={"motif": ""})      # refusé
+        self.assertEqual(len(self.historique()), 1)
+        self.post("/ecriture/1/supprimer", data={"motif": "doublon"})
+        self.assertEqual(self.historique()[-1], ("suppression", 1, "doublon", "tresorier"))
+        self.assertNotIn("100,50", self.c.get("/balance").get_data(as_text=True))
+        self.ecriture()
+        self.assertEqual(self.historique()[-1][:2], ("création", 2))   # 1 n'est pas réutilisé
+
+    def test_inconnue(self):
+        self.assertEqual(self.c.get("/ecriture/99/modifier").status_code, 404)
+
+
+class TestExport(Base):
+    def charger(self, url):
+        import io
+        from openpyxl import load_workbook
+        r = self.c.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("spreadsheetml", r.mimetype)
+        return load_workbook(io.BytesIO(r.data))
+
+    def test_journal_et_balance(self):
+        self.ecriture(libelle="=1+1")
+        ws = self.charger("/export/journal.xlsx").active
+        self.assertEqual(ws["H2"].value, 100.5)
+        self.assertEqual(ws["I3"].value, 100.5)
+        self.assertEqual(ws["E2"].value, "=1+1")
+        self.assertEqual(ws["E2"].data_type, "s")      # texte, pas une formule
+        wb = self.charger("/export/balance.xlsx").active
+        self.assertEqual(wb["C3"].value, 100.5)   # 606 (512 est en C2)
+        self.assertEqual(wb["C4"].value, "=SUM(C2:C3)")
+
+    def test_export_protege(self):
+        anonyme = self.app.test_client()
+        self.assertEqual(anonyme.get("/export/journal.xlsx").status_code, 302)
+
+
 class TestAuth(unittest.TestCase):
     def setUp(self):
         self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})

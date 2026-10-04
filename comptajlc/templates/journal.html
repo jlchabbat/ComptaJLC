@@ -1,8 +1,9 @@
 {% extends "base.html" %}{% block contenu %}
 <h1>Journal des écritures</h1>
-<table><tr><th>Mvt</th><th>Date</th><th>Jnl</th><th>Pièce</th><th>Libellé</th><th>Compte</th><th>Débit</th><th>Crédit</th><th>Analytique</th></tr>
+<p><a href="{{ url_for('compta.export_journal') }}">Exporter en Excel</a></p>
+<table><tr><th>Mvt</th><th>Date</th><th>Jnl</th><th>Pièce</th><th>Libellé</th><th>Compte</th><th>Débit</th><th>Crédit</th><th>Analytique</th><th></th></tr>
 {% for e in ecritures %}{% for l in e.lignes %}<tr>
 {% if loop.first %}<td>{{ e.mvt }}</td><td>{{ e.date.strftime('%d/%m/%Y') }}</td><td>{{ e.journal_code }}</td><td>{{ e.piece }}</td><td>{{ e.libelle }}</td>{% else %}<td colspan="5"></td>{% endif %}
 <td>{{ l.compte_numero }} {{ l.compte.libelle }}</td><td class="n">{{ l.debit|montant if l.debit }}</td><td class="n">{{ l.credit|montant if l.credit }}</td>
-<td>{% for x in l.analytiques %}{{ x.code.axe.nom }} : {{ x.code.code }}{% if not loop.last %} ; {% endif %}{% endfor %}</td></tr>{% endfor %}{% endfor %}
+<td>{% for x in l.analytiques %}{{ x.code.axe.nom }} : {{ x.code.code }}{% if not loop.last %} ; {% endif %}{% endfor %}</td><td>{% if loop.first %}<a href="{{ url_for('compta.ecriture_modifier', mvt=e.mvt) }}">Modifier</a>{% endif %}</td></tr>{% endfor %}{% endfor %}
 </table>{% endblock %}
