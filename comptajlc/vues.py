@@ -554,9 +554,75 @@ def resume_ecriture(snap):
 
 # ---------- États ----------
 
+PAR_PAGE = 50
+FILTRES = ("q", "journal", "compte", "axe2", "du", "au", "mvt_de", "mvt_a")
+
+
+def echapper_like(t):
+    return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def ecritures_filtrees(args):
+    """Requête des écritures selon les filtres de la page Journal (champs vides ignorés)."""
+    q = Ecriture.query
+    if args.get("q", "").strip():
+        t = "%" + echapper_like(args["q"].strip()) + "%"
+        q = q.filter(Ecriture.libelle.ilike(t, escape="\\") | Ecriture.piece.ilike(t, escape="\\"))
+    if args.get("journal"):
+        q = q.filter(Ecriture.journal_code == args["journal"])
+    if args.get("compte", "").strip():
+        q = q.filter(Ecriture.lignes.any(Ligne.compte_numero.like(echapper_like(args["compte"].strip()) + "%", escape="\\")))
+    if args.get("axe2"):
+        q = q.filter(Ecriture.lignes.any(Ligne.axe2_code == args["axe2"]))
+    for cle, champ, op in (("du", Ecriture.date, ">="), ("au", Ecriture.date, "<=")):
+        if args.get(cle):
+            try:
+                d = datetime.strptime(args[cle], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            q = q.filter(champ >= d if op == ">=" else champ <= d)
+    for cle, op in (("mvt_de", ">="), ("mvt_a", "<=")):
+        if args.get(cle, "").strip().isdigit():
+            n = int(args[cle])
+            q = q.filter(Ecriture.mvt >= n if op == ">=" else Ecriture.mvt <= n)
+    return q.order_by(Ecriture.date, Ecriture.mvt)
+
+
 @bp.route("/journal")
 def journal():
-    return render_template("journal.html", ecritures=Ecriture.query.order_by(Ecriture.date, Ecriture.mvt).all())
+    q = ecritures_filtrees(request.args)
+    total = q.count()
+    pages = max(1, -(-total // PAR_PAGE))
+    page = min(max(request.args.get("page", 1, type=int), 1), pages)
+    ecritures = q.limit(PAR_PAGE).offset((page - 1) * PAR_PAGE).all()
+    mvts = q.with_entities(Ecriture.mvt).subquery()
+    somme = db.session.query(func.sum(Ligne.debit)).filter(Ligne.mvt.in_(db.select(mvts.c.mvt))).scalar() or 0
+    filtres = {k: request.args[k] for k in FILTRES if request.args.get(k)}
+    return render_template("journal.html", ecritures=ecritures, total=total, page=page, pages=pages,
+                           somme=somme, filtres=filtres, journaux=Journal.query.order_by(Journal.code).all(),
+                           codes2=CodeAxe2.query.order_by(CodeAxe2.code).all(), par_page=PAR_PAGE)
+
+
+@bp.post("/ecritures/supprimer")
+def ecritures_supprimer():
+    """Suppression de plusieurs écritures cochées : motif obligatoire, une trace par écriture."""
+    mvts = request.form.getlist("mvt", type=int)
+    motif = request.form.get("motif", "").strip()
+    retour = request.form.get("retour", "")
+    retour = retour if retour.startswith("?") else ""
+    if not mvts:
+        flash("Aucune écriture cochée.", "erreur")
+    elif not motif:
+        flash("Indiquez le motif de la suppression.", "erreur")
+    else:
+        n = 0
+        for e in Ecriture.query.filter(Ecriture.mvt.in_(mvts)).all():
+            journaliser("suppression", e.mvt, motif, instantane(e), None)
+            db.session.delete(e)
+            n += 1
+        db.session.commit()
+        flash(f"{n} écriture(s) supprimée(s) (conservées dans l'historique).", "ok")
+    return redirect(url_for("compta.journal") + retour)
 
 
 def lignes_balance():
@@ -629,7 +695,7 @@ def export_journal():
                            "Débit", "Crédit", "Axe 1", "Axe 2", "Lien"], 1):
         _texte(ws, 1, k, h)
     r = 2
-    for e in Ecriture.query.order_by(Ecriture.date, Ecriture.mvt).all():
+    for e in ecritures_filtrees(request.args).all():
         for l in e.lignes:
             ws.cell(row=r, column=1, value=e.mvt)
             ws.cell(row=r, column=2, value=e.date).number_format = "DD/MM/YYYY"

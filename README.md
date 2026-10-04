@@ -7,6 +7,7 @@ Comptabilité web en français (Flask + SQLite), conçue pour PythonAnywhere.
 - **Vider et recharger** : page « Utilisateurs » → « Vider l'application » (mot de passe + mot `VIDER`, copie de la base dans `instance/sauvegardes/` avant), au choix les écritures seules ou tout (écritures, plan, codes Axe 1 et Axe 2) ; puis réimport des CSV.
 - **Imports CSV** : codes Axe 1, codes Axe 2, plan comptable, écritures (tout ou rien) — format dans `docs/import-ecritures.md`.
 - **Partie double** : une écriture est refusée si débit ≠ crédit. Montants stockés en centimes.
+- **Page Écritures** : recherche (libellé, pièce, compte, journal, axe 2, dates, n° de mouvement), pagination par 50, détail des lignes, **suppression de plusieurs écritures cochées** (motif obligatoire), export Excel de la sélection.
 - **Correction et suppression d'écritures** avec motif obligatoire ; chaque création, modification et suppression est conservée dans l'**historique** (qui, quand, avant/après). Un numéro de mouvement supprimé n'est jamais réutilisé.
 - **Export Excel** du journal et de la balance (`/export/journal.xlsx`, `/export/balance.xlsx`) ; lien d'un justificatif (http/https) par écriture.
 - Journaux, saisie, journal des écritures, balance, grand livre, totaux par code analytique.

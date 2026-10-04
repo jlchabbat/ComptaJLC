@@ -266,6 +266,63 @@ class TestExport(Base):
         self.assertEqual(anonyme.get("/export/journal.xlsx").status_code, 302)
 
 
+class TestRechercheEtSelection(Base):
+    def remplir(self):
+        self.ecriture(libelle="Loyer janvier", date="2026-01-10")
+        self.ecriture(libelle="Cotisation 100%", date="2026-02-10", journal="CA")
+        self.ecriture(libelle="Loyer février", date="2026-02-20", compte0="706", compte1="512", debit0="", credit0="5", debit1="5", credit1="")
+
+    def page(self, qs=""):
+        return self.c.get("/journal" + qs).get_data(as_text=True)
+
+    def test_filtres(self):
+        self.remplir()
+        self.assertIn("<strong>3</strong> écriture(s)", self.page())
+        self.assertIn("<strong>2</strong> écriture(s)", self.page("?q=loyer"))
+        self.assertIn("<strong>1</strong> écriture(s)", self.page("?q=100%25"))        # % est un texte, pas un joker
+        self.assertIn("<strong>1</strong> écriture(s)", self.page("?journal=CA"))
+        self.assertIn("<strong>1</strong> écriture(s)", self.page("?compte=706"))
+        self.assertIn("<strong>2</strong> écriture(s)", self.page("?du=2026-02-01"))
+        self.assertIn("<strong>1</strong> écriture(s)", self.page("?du=2026-02-01&au=2026-02-15"))
+        self.assertIn("<strong>1</strong> écriture(s)", self.page("?mvt_de=2&mvt_a=2"))
+        self.assertIn("Aucune écriture", self.page("?q=zzz"))
+        self.assertEqual(self.c.get("/journal?du=pas-une-date&page=abc").status_code, 200)
+
+    def test_pagination(self):
+        for i in range(55):
+            self.ecriture(libelle=f"E{i}")
+        self.assertIn("Page 1 / 2", self.page())
+        self.assertIn("Page 2 / 2", self.page("?page=2"))
+        self.assertIn("Page 2 / 2", self.page("?page=99"))
+
+    def test_suppression_par_selection(self):
+        self.remplir()
+        self.post("/ecritures/supprimer", data={"mvt": ["1", "2"], "motif": ""})
+        self.post("/ecritures/supprimer", data={"motif": "x"})
+        with self.app.app_context():
+            self.assertEqual(Ecriture.query.count(), 3)                 # refusées
+        r = self.post("/ecritures/supprimer", data={"mvt": ["1", "3"], "motif": "doublons", "retour": "?q=loyer"})
+        self.assertTrue(r.headers["Location"].endswith("/journal?q=loyer"))
+        with self.app.app_context():
+            self.assertEqual([e.mvt for e in Ecriture.query], [2])
+        from comptajlc.models import Historique
+        with self.app.app_context():
+            h = [(x.action, x.mvt, x.motif) for x in Historique.query.filter_by(action="suppression")]
+        self.assertEqual(sorted(h), [("suppression", 1, "doublons"), ("suppression", 3, "doublons")])
+
+    def test_retour_externe_ignore(self):
+        self.remplir()
+        r = self.post("/ecritures/supprimer", data={"mvt": ["1"], "motif": "x", "retour": "//evil.example"})
+        self.assertNotIn("evil", r.headers["Location"])
+
+    def test_export_filtre(self):
+        import io
+        from openpyxl import load_workbook
+        self.remplir()
+        ws = load_workbook(io.BytesIO(self.c.get("/export/journal.xlsx?q=loyer").data)).active
+        self.assertEqual(ws.max_row, 1 + 4)                             # 2 écritures x 2 lignes
+
+
 class TestReinitialisation(Base):
     def vider(self, **extra):
         d = {"portee": "tout", "mdp": "motdepasse123", "phrase": "VIDER"}
