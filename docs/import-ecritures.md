@@ -17,7 +17,7 @@ Une ligne = un débit **ou** un crédit ; les lignes d'une même opération part
 
 | Colonne | Obligatoire | Rôle |
 |---|---|---|
-| `Mvt` | oui | numéro de l'opération (conservé ; refusé s'il existe déjà) |
+| `Mvt` | oui | numéro de l'opération : conservé et refusé s'il existe déjà, **sauf** avec la case « Renuméroter à la suite des écritures existantes » (numéros consécutifs après le dernier numéro ; l'ancien numéro est noté dans l'historique) |
 | `Jnl` | oui | code du journal (créé s'il n'existe pas) |
 | `Date` | oui | `jj/mm/aaaa` |
 | `Compte` | oui | numéro de compte (créé s'il n'est pas au plan) |

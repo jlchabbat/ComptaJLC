@@ -40,6 +40,9 @@ cases().forEach(c => c.addEventListener('change', maj));
 </script>
 <h2>Importer des écritures (CSV)</h2>
 <form method="post" action="{{ url_for('compta.ecritures_importer') }}" enctype="multipart/form-data" class="ligne"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input type="file" name="fichier" accept=".csv,.txt" required><button>Importer</button>
+<input type="file" name="fichier" accept=".csv,.txt" required>
+<label><input type="checkbox" name="renumeroter"> Renuméroter à la suite des écritures existantes</label>
+<button onclick="var r = document.querySelector('[name=renumeroter]').checked; return !r || confirm('Les écritures du fichier seront AJOUTÉES à la suite des existantes. Si ce fichier a déjà été importé, elles seront en double. Continuer ?')">Importer</button>
+<span class="aide">Sans la case : numéros du fichier conservés, import refusé si un numéro existe déjà. </span><br>
 <span class="aide">Format : <a href="https://github.com/jlchabbat/ComptaJLC/blob/main/docs/import-ecritures.md">docs/import-ecritures.md</a>. Importez d'abord codes Axe 1, codes Axe 2 et plan comptable.</span></form>
 {% endblock %}

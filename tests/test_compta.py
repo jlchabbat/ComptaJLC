@@ -179,6 +179,21 @@ class TestImportEcritures(Base):
         with self.app.app_context():
             self.assertEqual(db.session.query(Ecriture.mvt).order_by(Ecriture.mvt.desc()).first()[0], 10)
 
+    def test_renumeroter_a_la_suite(self):
+        self.prepare()
+        self.importer(self.OK)                                   # écritures 7 et 9
+        data = {"fichier": (csv_octets(self.ENTETE + self.OK), "e.csv"), "renumeroter": "on"}
+        r = self.post("/ecritures/importer", data=data, content_type="multipart/form-data",
+                      follow_redirects=True).get_data(as_text=True)
+        self.assertIn("renumérotées 10 à 11", r)
+        with self.app.app_context():
+            self.assertEqual([e.mvt for e in Ecriture.query.order_by(Ecriture.mvt)], [7, 9, 10, 11])
+            from comptajlc.models import Historique
+            self.assertIn("n° 7 dans le fichier", Historique.query.filter_by(mvt=10).one().motif)
+            self.assertEqual(db.session.get(Ecriture, 10).libelle, "Rallye Dupont")
+        # sans la case, le doublon reste refusé
+        self.assertIn("existe déjà", self.importer(self.OK))
+
     def test_rien_si_erreur(self):
         self.prepare()
         mauvais = self.OK + "11;OD;01/02/2026;512;B;Seul;5;;;;;;;\n"       # déséquilibré

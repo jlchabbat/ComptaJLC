@@ -429,12 +429,14 @@ def ecriture_supprimer(mvt):
 @bp.post("/ecritures/importer")
 def ecritures_importer():
     """CSV d'écritures (voir docs/import-ecritures.md) : tout ou rien, numéros de mouvement conservés."""
+    renum = "renumeroter" in request.form
     try:
         octets = fichier_importe()
         res = imports.lire_ecritures(
             octets, {c.numero: c.axe1_code for c in Compte.query},
             {c.code for c in CodeAxe1.query}, {c.code for c in CodeAxe2.query}, classes_axe2(),
-            {m for (m,) in db.session.query(Ecriture.mvt)} | {m for (m,) in db.session.query(Historique.mvt)})
+            {m for (m,) in db.session.query(Ecriture.mvt)} | {m for (m,) in db.session.query(Historique.mvt)},
+            renumeroter=renum, premier_numero=prochain_mvt())
     except imports.ErreurImport as e:
         signaler(e)
         return redirect(url_for("compta.journal"))
@@ -454,9 +456,12 @@ def ecritures_importer():
         db.session.add(e)
         db.session.flush()
         db.session.refresh(e)
-        journaliser("création", e.mvt, f"Import CSV : {nom}", None, instantane(e))
+        journaliser("création", e.mvt, f"Import CSV : {nom}" + (f" (n° {m['ancien']} dans le fichier)" if renum else ""),
+                    None, instantane(e))
     db.session.commit()
-    flash(f"Import réussi : {len(res['mouvements'])} écritures ({nb_lignes} lignes), "
+    plage = (f" renumérotées {res['mouvements'][0]['mvt']} à {res['mouvements'][-1]['mvt']}"
+             if renum and res["mouvements"] else "")
+    flash(f"Import réussi : {len(res['mouvements'])} écritures{plage} ({nb_lignes} lignes), "
           f"{len(res['comptes_a_creer'])} compte(s) créé(s), "
           f"{res['ignores_axe2']} code(s) Axe 2 ignoré(s) sur des comptes hors classes "
           + " et ".join(classes_axe2()) + ".", "ok")

@@ -146,12 +146,15 @@ def date_texte(texte):
     raise ValueError(f"date « {texte} » invalide (jj/mm/aaaa attendu)")
 
 
-def lire_ecritures(octets, comptes, codes_axe1, codes_axe2, classes_axe2, mvt_existants):
+def lire_ecritures(octets, comptes, codes_axe1, codes_axe2, classes_axe2, mvt_existants,
+                   renumeroter=False, premier_numero=1):
     """Fichier d'écritures (une ligne = un débit ou un crédit, regroupées par Mvt).
 
     `comptes` : {numéro: axe1 ou None} des comptes déjà au plan.
     Retourne un dict : mouvements, comptes_a_creer, journaux, ignores_axe2.
     Tout est validé avant la moindre écriture en base.
+    `renumeroter` : les mouvements reçoivent des numéros consécutifs à partir de `premier_numero`
+    (le numéro du fichier est gardé dans "ancien") au lieu d'être refusés quand ils existent déjà.
     """
     lignes = lire(octets, ["mvt", "date", "compte", "debit", "credit"])
     erreurs, par_mvt = [], {}
@@ -177,7 +180,7 @@ def lire_ecritures(octets, comptes, codes_axe1, codes_axe2, classes_axe2, mvt_ex
     for mvt in sorted(par_mvt):
         l = par_mvt[mvt]
         n0 = l[0][0]
-        if mvt in mvt_existants:
+        if mvt in mvt_existants and not renumeroter:
             erreurs.append(f"Mouvement {mvt} (ligne {n0}) : ce numéro existe déjà dans la base.")
             continue
         if len({x[1] for x in l}) > 1 or len({x[2] for x in l}) > 1:
@@ -219,7 +222,7 @@ def lire_ecritures(octets, comptes, codes_axe1, codes_axe2, classes_axe2, mvt_ex
             lg.append((num, deb, cre, axe2))
         else:
             journaux.add(l[0][1])
-            mouvements.append({"mvt": mvt, "date": l[0][2], "journal": l[0][1], "libelle": libelle,
+            mouvements.append({"mvt": premier_numero + len(mouvements) if renumeroter else mvt, "ancien": mvt, "date": l[0][2], "journal": l[0][1], "libelle": libelle,
                                "lien": lien,
                                "lignes": lg})
     if erreurs:
