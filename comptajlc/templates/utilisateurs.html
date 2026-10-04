@@ -2,7 +2,7 @@
 <h1>Utilisateurs et droits</h1>
 <table class="grille"><thead><tr><th>Nom</th><th>Niveau</th><th></th></tr></thead><tbody>
 {% for u in utilisateurs %}{% set f = 'u' ~ u.id %}<tr><td><form id="{{ f }}" method="post" action="{{ url_for('auth.role', uid=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>{{ u.nom }}</td>
-<td><select form="{{ f }}" name="role">{% for k, v in roles.items() %}<option value="{{ k }}" {{ 'selected' if k == u.role }}>{{ v }}</option>{% endfor %}</select> <button form="{{ f }}">Enregistrer</button></td>
+<td><select form="{{ f }}" name="role">{% if u.role not in roles %}<option value="" selected disabled>— sans droits : à choisir —</option>{% endif %}{% for k, v in roles.items() %}<option value="{{ k }}" {{ 'selected' if k == u.role }}>{{ v }}</option>{% endfor %}</select> <button form="{{ f }}">Enregistrer</button></td>
 <td>{% if u.id != g.utilisateur.id %}<form method="post" action="{{ url_for('auth.supprimer', uid=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Supprimer</button></form>{% endif %}</td></tr>{% endfor %}
 </tbody></table>
 <h2>Ajouter un utilisateur</h2>
@@ -11,8 +11,8 @@
 <input type="password" name="mdp2" placeholder="Confirmation" required>
 <select name="role">{% for k, v in roles.items() %}<option value="{{ k }}" {{ 'selected' if k == 'gestion' }}>{{ v }}</option>{% endfor %}</select><button>Ajouter</button></form>
 <h2>Ce que chaque niveau peut faire</h2>
-<table><tr><th></th><th>Administrateur</th><th>Gestion (comptabilité)</th><th>Bénévole</th></tr>
-{% for libelle, droit in [('Section bénévoles', 'benevoles'), ('Consulter écritures, états, exports, historique', 'consulter'), ('Saisir, corriger, supprimer, importer des écritures', 'ecritures'), ('Paramétrage : plan comptable, codes des axes, journaux', 'parametrer'), ('Utilisateurs, vider / recharger l\'application', 'administrer')] %}
-<tr><td>{{ libelle }}</td>{% for r in ['admin', 'gestion', 'benevole'] %}<td>{{ '✔' if droit in droits[r] else '—' }}</td>{% endfor %}</tr>{% endfor %}
+<table><tr><th></th><th>Administrateur</th><th>Gestion (comptabilité)</th></tr>
+{% for libelle, droit in [('Consulter écritures, états, exports, historique', 'consulter'), ('Saisir, corriger, supprimer, importer des écritures', 'ecritures'), ('Paramétrage : plan comptable, codes des axes, journaux', 'parametrer'), ('Utilisateurs, vider / recharger l\'application', 'administrer')] %}
+<tr><td>{{ libelle }}</td>{% for r in ['admin', 'gestion'] %}<td>{{ '✔' if droit in droits[r] else '—' }}</td>{% endfor %}</tr>{% endfor %}
 </table>
 {% endblock %}

@@ -10,5 +10,4 @@
 {% if peut('parametrer') %}<a class="carte" href="{{ url_for('compta.plan') }}"><strong>Plan comptable</strong><span>Comptes, Axe 1, import CSV</span></a>
 <a class="carte" href="{{ url_for('compta.axes') }}"><strong>Codes Axe 1 et Axe 2</strong><span>Import CSV, statuts</span></a>{% endif %}
 {% if peut('administrer') %}<a class="carte" href="{{ url_for('auth.utilisateurs') }}"><strong>Utilisateurs et droits</strong><span>Administrateur, Gestion, Bénévole</span></a>{% endif %}
-{% if peut('benevoles') %}<a class="carte" href="{{ url_for('compta.benevoles') }}"><strong>Bénévoles</strong><span>Section à venir</span></a>{% endif %}
 </div>{% endblock %}

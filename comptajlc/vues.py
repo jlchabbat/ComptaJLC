@@ -665,11 +665,6 @@ def grand_livre(numero):
                            debit=sum(l.debit for l in lignes), credit=sum(l.credit for l in lignes))
 
 
-@bp.route("/benevoles")
-def benevoles():
-    return render_template("benevoles.html")
-
-
 @bp.route("/analytique/<int:n>")
 def analytique(n):
     M = modele_axe(n)

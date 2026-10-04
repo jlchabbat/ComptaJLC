@@ -373,12 +373,17 @@ class TestRoles(Base):
     def test_gestion(self):
         c = self.client("gestion")
         for url in ["/journal", "/balance", "/grand-livre", "/saisie", "/historique", "/analytique/2",
-                    "/export/journal.xlsx", "/benevoles", "/mon-compte", "/"]:
+                    "/export/journal.xlsx", "/mon-compte", "/", "/plan", "/axes", "/journaux"]:
             self.assertEqual(self.codes(c, "GET", url), 200, url)
-        for url in ["/plan", "/axes", "/journaux", "/utilisateurs", "/reinitialiser"]:
-            self.assertEqual(self.codes(c, "GET", url), 403, url)
-        self.assertEqual(self.codes(c, "POST", "/plan", numero="999", libelle="x"), 403)
-        self.assertEqual(self.codes(c, "POST", "/plan/importer"), 403)
+        for url in ["/utilisateurs", "/reinitialiser", "/benevoles"]:
+            self.assertEqual(self.codes(c, "GET", url), 403 if url != "/benevoles" else 404, url)
+        # Gestion peut modifier le plan comptable et les codes des axes
+        self.assertEqual(self.codes(c, "POST", "/plan", numero="999", libelle="x"), 302)
+        self.assertEqual(self.codes(c, "POST", "/axes/2/ajouter", code="MAN.9", libelle="Nouveau", statut="1"), 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Compte, "999").libelle, "x")
+            self.assertEqual(db.session.get(CodeAxe2, "MAN.9").libelle, "Nouveau")
+        self.assertEqual(self.codes(c, "POST", "/utilisateurs", nom="z", mdp="a", mdp2="a", role="admin"), 403)
         self.assertEqual(self.codes(c, "POST", "/reinitialiser", portee="tout", mdp="x", phrase="VIDER"), 403)
         self.assertEqual(self.codes(c, "POST", "/saisie", date="2026-01-01", journal="OD", libelle="L",
                                     compte0="606", debit0="5", compte1="512", credit1="5"), 302)
@@ -386,18 +391,21 @@ class TestRoles(Base):
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(Compte, "606"))
 
-    def test_benevole(self):
-        c = self.client("benevole")
-        self.assertEqual(self.codes(c, "GET", "/benevoles"), 200)
+    def test_ancien_niveau_benevole_sans_droits(self):
+        """Un compte resté à l'ancien niveau « benevole » n'a plus aucun droit (hors accueil et mot de passe)."""
+        from comptajlc.models import Utilisateur
+        c = self.client("gestion")
+        with self.app.app_context():
+            Utilisateur.query.filter_by(nom="gestion").one().role = "benevole"
+            db.session.commit()
         self.assertEqual(self.codes(c, "GET", "/"), 200)
         self.assertEqual(self.codes(c, "GET", "/mon-compte"), 200)
-        for url in ["/journal", "/balance", "/saisie", "/historique", "/export/journal.xlsx", "/plan", "/utilisateurs"]:
+        for url in ["/journal", "/saisie", "/plan", "/utilisateurs"]:
             self.assertEqual(self.codes(c, "GET", url), 403, url)
-        self.assertEqual(self.codes(c, "POST", "/ecritures/importer"), 403)
-        self.assertNotIn("Plan comptable", c.get("/").get_data(as_text=True))
+        self.assertEqual(self.c.get("/utilisateurs").status_code, 200)            # l'admin peut le reclasser
 
     def test_administrateur_tout(self):
-        for url in ["/journal", "/plan", "/axes", "/journaux", "/utilisateurs", "/reinitialiser", "/benevoles"]:
+        for url in ["/journal", "/plan", "/axes", "/journaux", "/utilisateurs", "/reinitialiser"]:
             self.assertEqual(self.c.get(url).status_code, 200, url)
 
     def test_page_non_declaree_reservee_admin(self):

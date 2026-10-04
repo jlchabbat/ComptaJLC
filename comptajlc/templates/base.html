@@ -26,7 +26,6 @@
 {% if peut('administrer') %}<a href="{{ url_for('auth.utilisateurs') }}">Utilisateurs et droits</a>
 <a href="{{ url_for('compta.reinitialiser') }}">Vider / recharger l'application</a>{% endif %}
 </div></details>{% endif %}
-{% if peut('benevoles') %}<a href="{{ url_for('compta.benevoles') }}">Bénévoles</a>{% endif %}
 <span class="droite"><details class="user"><summary>👤 {{ g.utilisateur.nom }} <small>({{ ROLES[g.utilisateur.role] }})</small></summary><div>
 <a href="{{ url_for('auth.mon_compte') }}">Mon compte / mot de passe</a>
 <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Déconnexion</button></form></div></details></span>

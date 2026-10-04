@@ -25,15 +25,14 @@ La base est créée dans `instance/compta.db` (hors Git). Déploiement : `deploi
 
 ## Utilisateurs et droits
 
-Trois niveaux, définis dans `comptajlc/auth.py` (tables `DROITS` et `EXIGE`) ; toute page non déclarée est réservée à l'administrateur.
+Deux niveaux, définis dans `comptajlc/auth.py` (tables `DROITS` et `EXIGE`) ; toute page non déclarée est réservée à l'administrateur.
 
-| | Administrateur | Gestion (comptabilité) | Bénévole |
-|---|---|---|---|
-| Section bénévoles (à définir) | ✔ | ✔ | ✔ |
-| Consulter écritures, états, exports, historique | ✔ | ✔ | — |
-| Saisir, corriger, supprimer, importer des écritures | ✔ | ✔ | — |
-| Paramétrage : plan comptable, codes des axes, journaux | ✔ | — | — |
-| Utilisateurs, vider / recharger l'application | ✔ | — | — |
+| | Administrateur | Gestion (comptabilité) |
+|---|---|---|
+| Consulter écritures, états, exports, historique | ✔ | ✔ |
+| Saisir, corriger, supprimer, importer des écritures | ✔ | ✔ |
+| Paramétrage : plan comptable, codes des axes, journaux | ✔ | ✔ |
+| Utilisateurs, vider / recharger l'application | ✔ | — |
 
 ## Tableaux
 

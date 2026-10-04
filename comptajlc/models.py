@@ -71,7 +71,7 @@ class Utilisateur(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(60), unique=True, nullable=False)
     mot_de_passe = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(12), nullable=False, default="admin")  # admin / gestion / benevole
+    role = db.Column(db.String(12), nullable=False, default="admin")  # admin / gestion
 
 
 class Historique(db.Model):

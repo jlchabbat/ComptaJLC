@@ -12,17 +12,15 @@ from .models import Utilisateur, db
 bp = Blueprint("auth", __name__)
 PUBLIC = {"auth.login", "auth.premier", "static"}
 
-# Trois niveaux d'utilisateur. Les droits sont définis ici, et seulement ici.
-ROLES = {"admin": "Administrateur", "gestion": "Gestion (comptabilité)", "benevole": "Bénévole"}
+# Deux niveaux d'utilisateur. Les droits sont définis ici, et seulement ici.
+ROLES = {"admin": "Administrateur", "gestion": "Gestion (comptabilité)"}
 DROITS = {
-    "admin": {"consulter", "ecritures", "parametrer", "administrer", "benevoles"},
-    "gestion": {"consulter", "ecritures", "benevoles"},
-    "benevole": {"benevoles"},   # section bénévoles : à définir plus tard
+    "admin": {"consulter", "ecritures", "parametrer", "administrer"},
+    "gestion": {"consulter", "ecritures", "parametrer"},
 }
 # Droit exigé par page. None = tout utilisateur connecté. Page non listée = « administrer » (refus par défaut).
 EXIGE = {
     "compta.accueil": None, "auth.mon_compte": None, "auth.logout": None,
-    "compta.benevoles": "benevoles",
     "compta.journal": "consulter", "compta.balance": "consulter", "compta.grand_livre": "consulter",
     "compta.grand_livre_choix": "consulter", "compta.analytique": "consulter", "compta.historique": "consulter",
     "compta.export_journal": "consulter", "compta.export_balance": "consulter",
