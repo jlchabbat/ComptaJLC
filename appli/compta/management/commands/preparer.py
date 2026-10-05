@@ -13,6 +13,7 @@ class Command(BaseCommand):
 
     def handle(self, **options):
         call_command("migrate", verbosity=0)
+        call_command("corriger_axes", "--appliquer", verbosity=0)       # anomalies d'axes résiduelles (mise à jour)
         call_command("collectstatic", interactive=False, verbosity=0)
         from compta.saisie import initialiser_parametres
         initialiser_parametres()

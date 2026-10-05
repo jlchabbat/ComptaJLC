@@ -2,7 +2,8 @@
 <h1>Plan comptable</h1>
 <div class="barre"><a class="bouton principal" href="{% url 'compte_nouveau' %}">Nouveau compte</a>
 <form method="get" style="display:inline"><input name="q" value="{{ q }}" placeholder="n° ou libellé" size="16"> <button>Chercher</button></form></div>
-<table class="triable"><tr><th>Compte</th><th>Libellé</th><th>Axe 1</th><th>Tiers</th><th>Proposé</th></tr>
-{% for c in comptes %}<tr><td><a href="{% url 'compte' c.numero %}">{{ c.numero }}</a></td><td>{{ c.libelle }}</td><td>{{ c.anal1_id|default:"" }} {{ c.anal1.libelle }}</td>
+<table class="triable"><tr><th>Compte</th><th>Libellé</th><th>Axe 1</th><th>Affectation</th><th>Tiers</th><th>Proposé</th></tr>
+{% for c in comptes %}<tr><td><a href="{% url 'compte' c.numero %}">{{ c.numero }}</a></td><td>{{ c.libelle }}</td><td>{{ c.anal1_id|default:"" }} {{ c.anal1.libelle }}{% if not c.anal1_id %}<span class="neg">à renseigner</span>{% endif %}</td>
+<td>{% if c.numero|slice:":1" == "6" or c.numero|slice:":1" == "7" %}{% if c.projet %}projet (axe 2 obligatoire){% else %}fonctionnement{% endif %}{% endif %}</td>
 <td>{% if c.lettrable %}oui{% endif %}</td><td>{% if c.actif %}oui{% else %}<span class="neg">non</span>{% endif %}</td></tr>
-{% empty %}<tr><td colspan="5">Aucun compte.</td></tr>{% endfor %}</table>{% endblock %}
+{% empty %}<tr><td colspan="6">Aucun compte.</td></tr>{% endfor %}</table>{% endblock %}

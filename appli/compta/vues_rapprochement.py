@@ -252,7 +252,8 @@ def pointer_apres_saisie(releve_id, mouvements, utilisateur):
 @login_required
 @pointer
 def traductions(request):
-    if request.method == "POST":
+    from .traduction_auto import cle_api, proposer, traduire_par_claude, HEBREU, LOT
+    if request.method == "POST" and "proposer_claude" not in request.POST:
         n = 0
         for cle, valeur in request.POST.items():
             if cle.startswith("t_") and valeur.strip():
@@ -270,12 +271,35 @@ def traductions(request):
         if cle and cle not in vus and l.traduction == "À traduire":
             vus.add(cle)
             a_traduire.append(l)
-    return render(request, "compta/traductions.html", {"a_traduire": a_traduire, "connues": Traduction.objects.all()})
+    lignes = [(l, *proposer(l.operation)) for l in a_traduire]
+    if request.method == "POST":                                  # « Proposer par traduction automatique » : rien n'est enregistré
+        try:
+            auto = traduire_par_claude([l.operation for l, _, _ in lignes])
+        except ValueError as e:
+            messages.error(request, str(e))
+        else:
+            lignes = [(l, auto[l.operation], not HEBREU.search(auto[l.operation])) if l.operation in auto else (l, p, c)
+                      for l, p, c in lignes]
+            messages.success(request, f"{len(auto)} traduction(s) proposée(s) par Claude (au plus {LOT} à la fois) : à lire et à valider.")
+    return render(request, "compta/traductions.html", {"a_traduire": lignes, "connues": Traduction.objects.all(),
+                                                       "nb_propositions": sum(1 for _, p, _ in lignes if p),
+                                                       "claude": bool(cle_api())})
 
 
 @login_required
 @consulter
 def historique(request):
-    """Historique des imports de relevés : fichier, banque, date, lignes ajoutées, doublons ignorés."""
+    """Historique des imports de relevés : fichier, banque, date, lignes ajoutées, doublons ignorés.
+    Supprimer une ligne de l'historique n'enlève rien au relevé ni à la comptabilité : c'est seulement le journal des imports."""
     from .models import ImportReleve
-    return render(request, "compta/releves_historique.html", {"imports": ImportReleve.objects.select_related("journal")})
+    peut = request.user.has_perm("compta.pointer_releve")
+    if request.method == "POST" and peut:
+        pks = [int(x) for x in request.POST.getlist("coche") if x.isdigit()]
+        if pks:
+            n, _ = ImportReleve.objects.filter(pk__in=pks).delete()
+            journaliser(request, "Historique des imports", f"{n} ligne(s) supprimée(s)")
+            messages.success(request, f"{n} ligne(s) supprimée(s) de l'historique (le relevé et les écritures sont inchangés).")
+        else:
+            messages.warning(request, "Cocher d'abord les lignes à supprimer.")
+        return redirect("releves_historique")
+    return render(request, "compta/releves_historique.html", {"imports": ImportReleve.objects.select_related("journal"), "peut": peut})

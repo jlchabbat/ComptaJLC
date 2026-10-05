@@ -139,6 +139,8 @@ def controler(op):
         e["Compte"] = f"Choisir le compte (classe {m.classe})."
     elif m.classe and not contrepartie.numero.startswith(m.classe):
         e["Compte"] = f"Ce type d'opération attend un compte de classe {m.classe}."
+    if contrepartie and contrepartie.projet and not op.anal2 and "Compte" not in e:
+        e["Événement / projet (axe 2)"] = f"Le compte {contrepartie.numero} est affecté à un projet : choisir le code axe 2."
     if r.lignes and not e:
         if any(l.compte is None for l in r.lignes):
             e["Écritures générées"] = "Un compte généré est manquant (vérifier les réglages et les moyens de paiement)."

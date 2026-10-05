@@ -20,18 +20,26 @@ TYPES_JOURNAL = [("AN", "AN – à-nouveaux"), ("BQ", "BQ – banque"), ("CA", "
 class CompteForm(forms.ModelForm):
     class Meta:
         model = Compte
-        fields = ["numero", "libelle", "anal1", "lettrable", "actif"]
-        labels = {"numero": "Compte", "anal1": "Axe 1 (nature)", "lettrable": "Compte de tiers (lettrable)", "actif": "Proposé en saisie"}
+        fields = ["numero", "libelle", "anal1", "projet", "lettrable", "actif"]
+        labels = {"numero": "Compte", "anal1": "Axe 1 (nature) – obligatoire", "projet": "Compte de projet (charges et produits)", "lettrable": "Compte de tiers (lettrable)", "actif": "Proposé en saisie"}
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["anal1"].queryset = CodeAnalytique.objects.filter(axe=1)
-        self.fields["anal1"].empty_label = "(aucun)"
+        self.fields["anal1"].required = True
+        self.fields["anal1"].empty_label = "— choisir —"
         if self.instance.pk:
             self.fields["numero"].disabled = True
 
     def clean_numero(self):
         return self.cleaned_data["numero"].strip()
+
+    def clean(self):
+        c = super().clean()
+        numero = c.get("numero") or self.instance.pk or ""
+        if c.get("projet") and numero[:1] not in ("6", "7"):
+            self.add_error("projet", "Seuls les comptes de charges (6) et de produits (7) peuvent être affectés à un projet.")
+        return c
 
 
 class JournalForm(forms.ModelForm):

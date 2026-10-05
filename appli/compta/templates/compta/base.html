@@ -4,6 +4,9 @@
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
 <script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+function precedente(a) {    // page précédente de l'historique ; à défaut (page ouverte seule), la page d'origine
+  if (history.length > 1 && !window.opener) { history.back(); return false; }
+  return true; }
 function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se ferme ; sinon, retour à la page d'origine
   if (window.opener || history.length <= 1) { window.close(); setTimeout(function () { location.href = a.href; }, 300); return false; }
   return true; }
@@ -71,12 +74,13 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.parametrer %}{% url 'echanges' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Imports et exports</a>{% endif %}
 {% if user.is_superuser %}{% url 'base' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Base de données</a>{% endif %}
 <div class="groupe">Réservé à l'administrateur · installation</div>
+<a href="{% url 'document' 'principes' %}" target="_blank">Principes de fonctionnement (PDF)</a>
 <a href="{% url 'document' 'installation' %}" target="_blank">Installation et mises à jour (PDF)</a>
 {% if licence_etat and perms.compta.parametrer %}{% url 'licence' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Licence</a>{% endif %}
 </div></div>{% endif %}
 </nav>
 <span class="qui"><span class="editer"><a class="bouton" id="vers-excel" href="#" hidden title="Les tableaux de cette page dans un classeur Excel (copie dans le dossier Exports)">Excel</a><button type="button" onclick="window.print()" title="Imprimer, ou choisir « Enregistrer au format PDF » comme imprimante">Imprimer / PDF</button></span>
-{% if adresse_fermer %}<a class="bouton fermer" href="{{ adresse_fermer }}" onclick="return fermer(this)" title="Fermer cette page et revenir d'où vous venez">✕ Fermer</a>{% endif %}
+{% if adresse_fermer %}<a class="bouton precedente" href="{{ adresse_fermer }}" onclick="return precedente(this)" title="Revenir à la page précédente">← Précédente</a><a class="bouton fermer" href="{{ adresse_fermer }}" onclick="return fermer(this)" title="Fermer cette page et revenir d'où vous venez">✕ Fermer</a>{% endif %}
 <button type="button" id="bascule-aides" class="bascule-aides" onclick="aides()" title="Afficher ou masquer les aides (mémorisé sur cet ordinateur)" aria-pressed="false">?</button>
 <span class="taille" title="Taille des caractères (mémorisée sur cet ordinateur)">
 <button type="button" onclick="taille(-0.1)">A−</button><button type="button" onclick="taille(0)">A</button><button type="button" onclick="taille(0.1)">A+</button></span>

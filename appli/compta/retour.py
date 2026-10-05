@@ -56,7 +56,10 @@ PARENTS = {                                   # page -> page d'où elle s'ouvre 
     "rapprochement_journal": "rapprochement", "traductions": "rapprochement", "provisoires": "fiches",
     "compte": "plan", "compte_nouveau": "plan", "journal": "journaux_param", "journal_nouveau": "journaux_param",
     "code_axe": "axes_param", "releves_historique": "rapprochement",
-    "archive": "cloture", "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
+    "archive": "cloture", "analytique_detail": "analytique", "situation": "tableau_de_bord", "situation_excel": "situation",
+    "etats": "tableau_de_bord", "licence": "tableau_de_bord", "echanges": "tableau_de_bord", "referentiels": "tableau_de_bord",
+    "base": "tableau_de_bord", "parametres": "tableau_de_bord", "justificatifs_imprimer": "justificatifs_a_classer",
+    "fiche_papier": "fiches", "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
 }
 
 

@@ -16,8 +16,8 @@ cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher «
 <section class="sit-cles">
 <div class="sit-cle"><div class="lib">Produits</div><div class="val">{{ produits|shekel }} {{ devise }}</div></div>
 <div class="sit-cle"><div class="lib">Charges</div><div class="val">{{ charges|shekel }} {{ devise }}</div></div>
-<div class="sit-cle fort {% if resultat < 0 %}perte{% else %}gain{% endif %}"><div class="lib">Résultat</div><div class="val">{{ resultat|shekel }} {{ devise }}</div>
-<div class="note">{% if resultat < 0 %}déficit{% else %}excédent{% endif %}</div></div>
+<div class="sit-cle fort {% if solde < 0 %}perte{% else %}gain{% endif %}"><div class="lib">Solde</div><div class="val">{{ solde|shekel }} {{ devise }}</div>
+<div class="note">{% if solde < 0 %}déficit{% else %}excédent{% endif %}</div></div>
 <div class="sit-cle"><div class="lib">Trésorerie au {{ fin|date:"d/m/Y" }}</div><div class="val">{{ total_tresorerie|shekel }} {{ devise }}</div></div>
 </section>
 <p class="sit-note">{{ nb_mouvements }} mouvement{{ nb_mouvements|pluralize }} sur la période · contrôles comptables : <b>{{ etat }}</b>{% if a_verifier %} ({{ a_verifier }} à vérifier){% endif %}</p>
@@ -27,10 +27,10 @@ cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher «
 {% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td>{{ t.journal.compte }}</td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ total_tresorerie|shekel }}</td></tr></table></section>
 
-<section class="sit-bloc"><h2>Résultat par nature (axe 1)</h2>
-{% include "compta/_situation_axe.html" with lignes=axe1 %}</section>
-<section class="sit-bloc"><h2>Résultat par événement / projet (axe 2)</h2>
-{% include "compta/_situation_axe.html" with lignes=axe2 %}</section>
+<section class="sit-bloc"><h2>Solde par nature (axe 1)</h2>
+{% include "compta/_situation_axe.html" with lignes=axe1 total=total_axe1 %}</section>
+<section class="sit-bloc"><h2>Solde par événement / projet (axe 2)</h2>
+{% include "compta/_situation_axe.html" with lignes=axe2 total=total_axe2 %}</section>
 
 <div class="sit-deux">
 <section class="sit-bloc"><h2>Produits par compte</h2>

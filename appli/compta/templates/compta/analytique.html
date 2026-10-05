@@ -9,7 +9,7 @@
 {% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}</select></label>
 <button class="principal">État détaillé</button>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
-<label>Type de comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
+<label>Type de comptes <select name="comptes" class="court">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <button formaction="{% url 'analytique' %}">Actualiser le tableau</button></form>
 <p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
 La liste contient les libellés des codes {% if axe == 1 %}axe 1 (nature){% else %}axe 2 (objet){% endif %}, pas ceux des comptes. Choisir un libellé puis « État détaillé », ou cliquer sur une ligne du tableau.</p>

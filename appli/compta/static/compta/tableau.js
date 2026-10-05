@@ -3,7 +3,7 @@
    - sélection de cellules : clic, glisser, Maj+clic (plage), Ctrl+clic (cellule isolée) ; Échap efface ;
    - barre en bas de l'écran : nombre de cellules, somme, moyenne, minimum et maximum des montants sélectionnés ;
    - Ctrl+C copie la sélection (colonnes séparées par des tabulations, collables dans Excel).
-   Exclure un tableau : class="sans-outils". Les tableaux à cellules fusionnées n'ont pas le choix des colonnes. */
+   Exclure un tableau : class="sans-outils". Les tableaux à en-tête fusionné n'ont pas le choix des colonnes. */
 (function () {
   "use strict";
   var lire = function (k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
@@ -137,15 +137,23 @@
     var entete = Array.prototype.find.call(table.rows, function (r) { return r.querySelector("th"); });
     if (!entete || !table.dataset.outils) return;
     var n = entete.cells.length;
-    var simple = !table.querySelector("td[colspan], th[colspan], td[rowspan], th[rowspan]");
-    if (!simple || n < 3 || table.querySelector("tr.sit-compte, tr.sit-sous-total")) return;
+    // en-tête simple (ni colonnes ni lignes fusionnées) ; les lignes de total ou de remarque peuvent fusionner des colonnes
+    var simple = !entete.querySelector("th[colspan], td[colspan], th[rowspan], td[rowspan]") && !table.querySelector("td[rowspan]");
+    if (!simple || n < 2 || table.querySelector("tr.sit-compte, tr.sit-sous-total")) return;
     var cle = "comptabb-masquees:" + location.pathname + ":" + rang, masquees = lire(cle) || [];
     var titre = function (i) { return (entete.cells[i].textContent || "").replace(/[▾▴▲▼]/g, "").trim() || "(colonne " + (i + 1) + ")"; };
 
     function appliquer() {
       Array.prototype.forEach.call(table.rows, function (r) {
-        if (r.cells.length !== n) return;
-        for (var i = 0; i < n; i++) r.cells[i].style.display = masquees.indexOf(i) >= 0 ? "none" : "";
+        var i = 0;
+        Array.prototype.forEach.call(r.cells, function (c) {
+          var s = c.dataset.span ? +c.dataset.span : c.colSpan, vues = 0;
+          if (s > 1) c.dataset.span = s;
+          for (var k = i; k < i + s && k < n; k++) if (masquees.indexOf(k) < 0) vues++;
+          c.style.display = vues ? "" : "none";
+          if (s > 1 && vues) c.colSpan = vues;                 // la cellule fusionnée se réduit aux colonnes visibles
+          i += s;
+        });
       });
       bouton.classList.toggle("filtre-actif", masquees.length > 0);
       bouton.textContent = masquees.length ? "Colonnes (" + masquees.length + " masquée" + (masquees.length > 1 ? "s" : "") + ") ▾" : "Colonnes ▾";

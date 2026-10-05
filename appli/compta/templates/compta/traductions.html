@@ -1,13 +1,16 @@
 {% extends "compta/base.html" %}{% block titre %}Traductions{% endblock %}{% block contenu %}
-<p><a href="{% url 'rapprochement' %}">← Rapprochement</a></p>
 <h1>Traductions des opérations du relevé</h1>
-<div class="barre"><a class="bouton" href="{{ adresse_fermer }}">Annuler</a>{% if a_traduire %}<button form="f-trad" class="principal">Enregistrer les traductions</button>{% endif %}</div>
+<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a>{% if a_traduire and claude %}<button form="f-trad" name="proposer_claude" value="1" title="Envoie les libellés hébreux (sans montant) à l'API de Claude ; rien n'est enregistré avant validation">Proposer par traduction automatique</button>{% endif %}{% if a_traduire %}<button form="f-trad" class="principal">Valider et enregistrer les traductions</button>{% endif %}</div>
 <form method="post" class="carte" id="f-trad">{% csrf_token %}<h2 style="margin-top:0">À traduire ({{ a_traduire|length }})</h2>
-<table><tr><th>Opération (hébreu)</th><th>Exemple</th><th>Traduction</th></tr>
-{% for l in a_traduire %}<tr><td dir="rtl">{{ l.operation }}<input type="hidden" name="h_{{ forloop.counter }}" value="{{ l.operation }}"></td>
-<td>{{ l.date|date:"d/m/Y" }} · {{ l.montant }}</td><td><input name="t_{{ forloop.counter }}" size="40"></td></tr>
-{% empty %}<tr><td colspan="3">Tout est traduit.</td></tr>{% endfor %}</table>
+{% if a_traduire %}<p class="aide">Une <b>proposition</b> est déjà inscrite pour {{ nb_propositions }} opération{{ nb_propositions|pluralize }} (glossaire des termes bancaires courants{% if claude %}, ou traduction automatique par Claude après un clic sur « Proposer par traduction automatique »{% endif %} ; ce n'est pas une
+traduction certaine). Lire chaque ligne, corriger si besoin, vider la case pour ne rien enregistrer, puis <b>Valider et enregistrer</b>.
+<span class="ok">« à valider »</span> : tous les mots sont reconnus ; <span class="ko">« à compléter »</span> : des mots hébreux restent à traduire.</p>{% endif %}
+<table><tr><th>Opération (hébreu)</th><th>Exemple</th><th>Traduction à valider</th><th></th></tr>
+{% for l, propose, complete in a_traduire %}<tr><td dir="rtl">{{ l.operation }}<input type="hidden" name="h_{{ forloop.counter }}" value="{{ l.operation }}"></td>
+<td>{{ l.date|date:"d/m/Y" }} · {{ l.montant }}</td><td><input name="t_{{ forloop.counter }}" size="40" value="{{ propose }}"></td>
+<td>{% if propose %}{% if complete %}<span class="ok">à valider</span>{% else %}<span class="ko">à compléter</span>{% endif %}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4">Tout est traduit.</td></tr>{% endfor %}</table>
 </form>
-<h2>Traductions connues ({{ connues|length }})</h2><p class="aide">Modifiables dans Référentiels › Traductions.</p>
+<h2>Traductions connues ({{ connues|length }})</h2><p class="aide">Modifiables dans Administration › Paramètres (Excel), feuille Traductions.</p>
 <table class="triable"><tr><th>Hébreu</th><th>Traduction</th></tr>{% for t in connues %}<tr><td dir="rtl">{{ t.hebreu }}</td><td>{{ t.traduction }}</td></tr>{% endfor %}</table>
 {% endblock %}

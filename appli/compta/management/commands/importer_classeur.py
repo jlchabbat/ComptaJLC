@@ -105,7 +105,7 @@ class Command(BaseCommand):
                                          origine="import")
             Ligne.objects.bulk_create([
                 Ligne(mouvement=m, ordre=i, compte_id=texte(r["Compte"]), libelle=texte(r["Libellé"]),
-                      debit=montant(r["Débit"]), credit=montant(r["Crédit"]), anal2_id=texte(r["Anal2"]), lettrage=texte(r.get("Let")))
+                      debit=montant(r["Débit"]), credit=montant(r["Crédit"]), anal2_id=(texte(r["Anal2"]) if texte(r["Compte"])[:1] in ("6", "7") else None), lettrage=texte(r.get("Let")))
                 for i, r in enumerate(ls)])
 
         # exercices et réglages

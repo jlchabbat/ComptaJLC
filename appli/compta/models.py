@@ -63,12 +63,25 @@ class Compte(models.Model):
                               related_name="comptes", verbose_name="axe 1")
     lettrable = models.BooleanField(default=False)
     actif = models.BooleanField(default=True)
+    projet = models.BooleanField("compte de projet", default=False,
+                                 help_text="Charges et produits d'un projet (activité ponctuelle, opération durable) : "
+                                           "toute écriture porte un code axe 2. Sinon : frais de fonctionnement (ex. 600000 / 600001).")
 
     class Meta:
         ordering = ["numero"]
 
     def __str__(self):
         return f"{self.numero} – {self.libelle}"
+
+    def clean(self):
+        if self.anal1_id and self.anal1.axe != 1:
+            raise ValidationError({"anal1": "Un compte ne reçoit qu'un code d'axe 1 (nature)."})
+        if self.projet and not self.porte_axe2:
+            raise ValidationError({"projet": "Seuls les comptes de charges (6) et de produits (7) peuvent être affectés à un projet."})
+
+    def save(self, *a, **k):
+        self.clean()
+        super().save(*a, **k)
 
     @property
     def classe(self):
@@ -201,6 +214,20 @@ class Ligne(models.Model):
     def clean(self):
         if (self.debit > 0) == (self.credit > 0):
             raise ValidationError("Une ligne porte soit un débit, soit un crédit (RG-03).")
+        self.verifier_axes()
+
+    def verifier_axes(self):
+        """Axe 2 : codes d'axe 2 seulement, comptes de charges et de produits seulement (jamais un code d'axe 1)."""
+        if not self.anal2_id:
+            return
+        if self.anal2.axe != 2:
+            raise ValidationError({"anal2": f"Le code {self.anal2_id} est un code d'axe 1 : une écriture ne reçoit qu'un code d'axe 2."})
+        if not self.compte.porte_axe2:
+            self.anal2 = None                       # comptes de bilan : pas d'axe 2
+
+    def save(self, *a, **k):
+        self.verifier_axes()
+        super().save(*a, **k)
 
     @property
     def montant(self):

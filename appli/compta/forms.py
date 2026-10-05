@@ -300,6 +300,11 @@ class LigneMouvementForm(forms.Form):
             defaut = code_axe2_defaut()
             if defaut:
                 c["anal2"] = CodeAnalytique.objects.get(code=defaut)
+        compte = c.get("compte")
+        if compte and c.get("anal2") and not compte.porte_axe2:
+            self.add_error("anal2", "Le code axe 2 ne s'applique qu'aux comptes de charges (6) et de produits (7).")
+        if compte and compte.projet and not c.get("anal2"):
+            self.add_error("anal2", f"Le compte {compte.numero} est affecté à un projet : choisir le code axe 2.")
         return c
 
 

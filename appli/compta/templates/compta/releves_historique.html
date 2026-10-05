@@ -1,6 +1,10 @@
 {% extends "compta/base.html" %}{% block titre %}Historique des imports{% endblock %}{% block contenu %}
 <h1>Historique des imports de relevés</h1>
-<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a></div>
-<table class="triable"><tr><th>Date</th><th>Banque</th><th>Fichier</th><th class="n">Lignes ajoutées</th><th class="n">Doublons ignorés</th><th>Par</th></tr>
-{% for i in imports %}<tr><td>{{ i.importe_le|date:"d/m/Y H:i" }}</td><td>{{ i.journal_id }}</td><td>{{ i.fichier }}</td><td class="n">{{ i.ajoutees }}</td><td class="n">{{ i.doublons }}</td><td>{{ i.auteur }}</td></tr>
-{% empty %}<tr><td colspan="6">Aucun import enregistré.</td></tr>{% endfor %}</table>{% endblock %}
+<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a>
+{% if peut and imports %}<button form="f-hist" class="ko" onclick="return confirm('Supprimer les lignes cochées de l\'historique ? Le relevé et les écritures ne sont pas touchés.')">Supprimer les lignes cochées</button>{% endif %}</div>
+<p class="aide">Une ligne par fichier de relevé téléchargé : banque, date, nombre de lignes ajoutées et de doublons ignorés (lignes déjà connues, jamais ajoutées deux fois).
+C'est un simple journal : le supprimer ne retire <b>aucune ligne de relevé ni aucune écriture</b>. Les doublons sont de toute façon écartés à chaque import.</p>
+<form method="post" id="f-hist">{% csrf_token %}
+<table class="triable"><tr>{% if peut %}<th></th>{% endif %}<th>Date</th><th>Banque</th><th>Fichier</th><th class="n">Lignes ajoutées</th><th class="n">Doublons ignorés</th><th>Par</th></tr>
+{% for i in imports %}<tr>{% if peut %}<td><input type="checkbox" name="coche" value="{{ i.pk }}"></td>{% endif %}<td>{{ i.importe_le|date:"d/m/Y H:i" }}</td><td>{{ i.journal_id }}</td><td>{{ i.fichier }}</td><td class="n">{{ i.ajoutees }}</td><td class="n">{{ i.doublons }}</td><td>{{ i.auteur }}</td></tr>
+{% empty %}<tr><td colspan="7">Aucun import enregistré.</td></tr>{% endfor %}</table></form>{% endblock %}

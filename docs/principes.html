@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Principes de fonctionnement</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 16mm; }
+body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
+.bandeau { background: #1f3864; color: #fff; padding: 7mm 9mm; border-radius: 3mm; margin-bottom: 5mm; }
+.bandeau h1 { margin: 0; font-size: 22pt; } .bandeau p { margin: 2mm 0 0; font-size: 11pt; color: #dfe7f5; }
+.bandeau a { color: #fff; }
+h2 { color: #1f3864; font-size: 14pt; border-bottom: 2px solid #1f3864; padding-bottom: 1mm; margin: 7mm 0 3mm; break-after: avoid; }
+h3 { color: #1f3864; font-size: 11.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.5mm 0 2.5mm; }
+ol, ul { padding-left: 6mm; margin: 1mm 0 3mm; } li { margin: 1mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9.8pt; }
+th, td { border: 1px solid #c9d3e3; padding: 1.6mm 2.2mm; text-align: left; vertical-align: top; }
+th { background: #1f3864; color: #fff; } tr { break-inside: avoid; }
+td:first-child { font-weight: 600; color: #1f3864; }
+code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; background: #f1f4f9; padding: 0 1mm; }
+.cmd { display: block; padding: 2mm 3mm; margin: 1.5mm 0 3mm; border-left: 3px solid #1f3864; white-space: pre-wrap; }
+.cadre { border: 1.5px solid #1f3864; border-radius: 3mm; padding: 2.5mm 4mm; margin: 3mm 0; break-inside: avoid; background: #eef3fb; }
+.attention { border-color: #c00000; background: #fdf1ec; }
+.menu { font-weight: bold; color: #1f3864; }
+.saut { break-before: page; }
+</style></head><body>
+<div class="bandeau"><h1>ComptaBB – Principes de fonctionnement</h1>
+<p>Référentiels · Paramètres Excel · Imports et exports · Base de données · Installation · Contrôles · Banque</p></div>
+
+<p>Ce document explique <b>comment l'application tient ensemble</b>. Cinq mécanismes en sont la base : les référentiels (ce que l'on peut choisir
+en saisie), les paramètres (réglés dans Excel), les échanges de fichiers (imports et exports), la base de données (avec ses sauvegardes et ses
+archives) et le cycle installation / mise à jour du site. Les menus cités sont ceux de l'application ; les quatre premiers sont réservés à
+l'administrateur (certains au trésorier).</p>
+
+<div class="cadre"><b>L'idée directrice.</b> Rien de propre à l'association n'est écrit dans le programme : noms, comptes, journaux, codes, modèles
+d'opérations, traductions sont des <b>données</b>. On les modifie dans l'application ou dans Excel, jamais dans le code. Le programme (le « site »)
+se remplace par une mise à jour ; les données restent là où elles sont et sont sauvegardées avant chaque changement important.</div>
+
+<h2>1. Administration › Référentiels</h2>
+<h3>Le principe</h3>
+<p>Un <b>référentiel</b> est une liste de valeurs autorisées, créée une fois, que la saisie propose ensuite. On ne tape pas un compte ou un code de
+mémoire : on le choisit. Cela évite les fautes de frappe et garantit que chaque écriture ne cite que des éléments qui existent.</p>
+<table><tr><th style="width:24%">Référentiel</th><th>Rôle</th><th style="width:26%">Où le gérer</th></tr>
+<tr><td>Plan comptable</td><td>Les comptes (512000 banque, 600000 achats…). <b>Chaque compte porte obligatoirement un code d'axe 1</b> (sa nature).</td><td>Saisie › Plan comptable</td></tr>
+<tr><td>Axe 1 – nature</td><td>Ce que sont les sommes : cotisations, fonctionnement, bilan (BIL)…</td><td>Saisie › Codes des axes 1 et 2</td></tr>
+<tr><td>Axe 2 – événement, projet</td><td>À quoi servent les sommes : un rallye, un gala, une bourse. Codes proposés par l'application (préfixe + numéro suivant) ; l'utilisateur ne saisit que le libellé.</td><td>Saisie › Codes et nouveaux tiers</td></tr>
+<tr><td>Journaux</td><td>Banques et caisses (B1, CA…), achats, ventes, opérations diverses, à-nouveaux.</td><td>Administration › Journaux</td></tr>
+<tr><td>Tiers</td><td>Membres (411…), fournisseurs (401…) : un compte par tiers.</td><td>Tiers › Liste des tiers</td></tr>
+<tr><td>Utilisateurs et rôles</td><td>Administrateur, trésorier, bureau, bénévole.</td><td>Administration › Utilisateurs</td></tr>
+<tr><td>Modèles, moyens de paiement, traductions…</td><td>Types d'opérations de la saisie guidée, banques et caisses proposées, traduction des relevés en hébreu.</td><td>Administration › Paramètres (Excel)</td></tr></table>
+<h3>Les règles d'affectation des axes</h3>
+<ul>
+<li><b>Axe 1 = le compte.</b> Un compte porte toujours un code d'axe 1 (jamais un code d'axe 2) ; les écritures en héritent. Un compte sans code d'axe 1 est refusé
+dans le plan, à l'import, et signalé par les Contrôles.</li>
+<li><b>Axe 2 = l'écriture.</b> Une écriture ne reçoit qu'un code d'axe 2 (jamais un code d'axe 1), et seulement sur un compte de <b>charges (6) ou de produits (7)</b>.
+Les comptes de bilan (classes 1 à 5) n'ont pas d'axe 2.</li>
+<li><b>Fonctionnement ou projet.</b> Pour une même nature de dépense ou de recette, on ouvre deux comptes : l'un pour le fonctionnement courant
+(ex. <code>600000</code>), l'autre pour les projets (ex. <code>600001</code>, coché « Compte de projet »). Toute écriture sur un compte de projet
+doit porter un code d'axe 2 ; le compte de fonctionnement n'en exige pas.</li></ul>
+<div class="cadre">Rien n'est supprimé d'un référentiel utilisé par des écritures : on le <b>désactive</b> (« Proposé en saisie » décoché). Chaque création ou
+modification est inscrite dans <span class="menu">Contrôle › Historique</span>.</div>
+
+<h2 class="saut">2. Administration › Paramètres (Excel)</h2>
+<h3>Le principe</h3>
+<p>Tous les paramètres tiennent dans <b>un seul classeur, Parametres.xlsx</b>, une feuille par table : Réglages, Axe 1, Axe 2, Préfixes, Plan comptable,
+Journaux, Types de tiers, Moyens de paiement, Schémas, Modèles d'opération, Natures et modes des fiches, Relevés, Traductions. On l'exporte, on le
+modifie dans Excel (copier-coller de dizaines de lignes d'un coup), puis on le réinjecte.</p>
+<ol><li><b>Télécharger</b> Parametres.xlsx (<span class="menu">Administration › Paramètres (Excel)</span>) ; une copie reste dans le dossier Exports.</li>
+<li><b>Modifier</b> dans Excel, sans changer les en-têtes de colonnes ni l'ordre des feuilles.</li>
+<li><b>Envoyer</b> le fichier : l'application le contrôle, puis l'applique.</li></ol>
+<h3>Les règles de l'import</h3>
+<table><tr><th style="width:30%">Situation</th><th>Effet</th></tr>
+<tr><td>La clé de la ligne existe</td><td>L'élément est mis à jour. La clé est en colonne grise (Compte, Code, Journal…).</td></tr>
+<tr><td>La clé est nouvelle</td><td>L'élément est créé.</td></tr>
+<tr><td>Cellule vide</td><td>Rien n'est remplacé.</td></tr>
+<tr><td>Ligne absente du fichier</td><td>Rien n'est supprimé. Pour retirer un élément : <b>Actif = Non</b>.</td></tr>
+<tr><td>Une seule erreur</td><td><b>Tout ou rien</b> : rien n'est enregistré ; le rapport liste chaque ligne à corriger (feuille, ligne, motif).</td></tr>
+<tr><td>Dans tous les cas</td><td>Une sauvegarde de la base est faite juste avant ; chaque changement est inscrit dans l'Historique.</td></tr></table>
+<p>Les comptes de tiers n'y figurent pas : ils ont leur fichier <b>Tiers.xlsx</b>. Un fichier venu d'une autre application de comptabilité
+n'est jamais lu tel quel : l'administrateur l'adapte d'abord à cette structure (Power Query ou macro dans Excel).</p>
+
+<h2>3. Administration › Imports et exports</h2>
+<h3>Le principe</h3>
+<p>Les échanges avec l'extérieur se font par <b>fichiers Excel (.xlsx)</b> dont la structure est fixée (colonnes décrites dans <b>Lexique.xlsx</b>, livré avec les
+modèles vierges). L'application ne lit ni PDF ni format de banque : le fichier est préparé en amont, puis importé.</p>
+<table><tr><th style="width:24%">Dossier</th><th>Contenu</th></tr>
+<tr><td>Imports</td><td>Les fichiers à importer, déposés depuis le navigateur (« Déposer »). Le fichier est <b>reconnu d'après les colonnes de sa ligne 1</b>, quel que soit son nom.</td></tr>
+<tr><td>Exports</td><td>Ce que l'application écrit : exports, Parametres.xlsx téléchargé, états.</td></tr>
+<tr><td>Exports/Sauvegardes</td><td>Copies de la base (voir § 4).</td></tr>
+<tr><td>Exports/Archives</td><td>Classeurs figés des clôtures, copies de l'historique effacé.</td></tr></table>
+<h3>Les formats reconnus</h3>
+<p>Exercices · Réglages · Axe 1 · Axe 2 · Préfixes · Plan comptable · Axes de comptes · Journaux · Tiers · Traductions · Budget · Écritures · Libellés ·
+Liens des documents · Banque (relevés de toutes les banques et caisses).</p>
+<h3>Importer</h3>
+<ul><li><b>Tout importer</b> traite les fichiers déposés <b>dans l'ordre du lexique</b> : chaque fichier ne cite que des codes définis par les précédents (les axes avant le
+plan comptable, le plan avant les écritures).</li>
+<li><b>Tout ou rien</b> : une erreur dans une ligne et rien n'est importé ; une sauvegarde précède chaque import ; les référentiels sont mis à jour, jamais supprimés.</li>
+<li>Les <b>écritures</b> importées sont contrôlées comme les écritures saisies : un débit OU un crédit par ligne, mouvements équilibrés, exercice non clos,
+codes existants, axe 2 réservé aux comptes 6 et 7 (un code d'axe 1 en axe 2 est refusé). Un nouveau compte doit porter son code d'axe 1.</li>
+<li>Un Mvt déjà présent et inchangé est ignoré (aucun doublon) ; un Mvt modifié est mis à jour avec l'avant / après dans l'historique.</li></ul>
+<h3>Exporter</h3>
+<p><b>Exporter des données</b> (menu Éditions) donne un fichier par référentiel ou nature de données, ou tout dans un .zip avec Parametres.xlsx et Lexique.xlsx.
+Un fichier exporté se réimporte tel quel : on peut donc corriger dans Excel puis réinjecter.</p>
+<div class="cadre attention"><b>Attention.</b> Un fichier Écritures, Banque ou Budget importé par « Tout réinjecter » <b>remplace</b> toutes les données de sa nature (ce qui n'est
+plus dans le fichier est supprimé) ; il faut taper REMPLACER pour confirmer. L'import ordinaire, lui, n'efface rien.</div>
+
+<h2 class="saut">4. Administration › Base de données : exports complets et sauvegardes</h2>
+<h3>Le principe</h3>
+<p>Toute la comptabilité est dans <b>une seule base de données</b> (un fichier <code>comptabb.sqlite3</code> dans le dossier de données du site). Elle est protégée de
+trois façons complémentaires, toutes visibles sur la page <span class="menu">Administration › Base de données</span> :</p>
+<table><tr><th style="width:23%">Protection</th><th>Ce que c'est</th><th style="width:25%">Où est-ce rangé</th></tr>
+<tr><td>Sauvegarde</td><td>Copie datée et cohérente de la base (même pendant que le site tourne), faite à la demande, avant chaque import, chaque remise à zéro et chaque mise à jour.
+Les <b>3 dernières</b> sont gardées.</td><td>Exports/Sauvegardes, sur le site</td></tr>
+<tr><td>Export complet</td><td>Un .zip : base, Parametres, Tiers, Écritures, Données (budget, relevés, fiches, historique), justificatifs (scans et photos) et états de chaque exercice.
+Il est lisible dans Excel, donc <b>indépendant du logiciel</b>.</td><td>Exports ; à télécharger et ranger sur le PC ou OneDrive</td></tr>
+<tr><td>Archives</td><td>Classeur Excel <b>figé en valeurs</b> à chaque clôture d'exercice, et copie de l'historique avant effacement. Lecture seule, preuve de l'exercice clos.</td><td>Exports/Archives, sur le site</td></tr></table>
+<h3>Que faire, et quand</h3>
+<ul><li><b>Chaque mois, et avant une clôture</b> : « Créer une sauvegarde », puis « Tout exporter » et télécharger le .zip sur le PC.</li>
+<li><b>Une sauvegarde sur le site ne suffit pas</b> : elle disparaît avec le site. Seul l'export téléchargé hors du site protège d'une perte de l'hébergement.</li>
+<li><b>Restaurer ou recharger</b> : « Remettre à zéro et recharger » accepte une sauvegarde (.sqlite3 : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris),
+un export complet (.zip : la comptabilité est vidée puis rechargée depuis ses fichiers Excel, puis comparée au fichier de contrôle ; au moindre écart, rien n'est modifié) ou, pour une reprise, le classeur ComptaBB.xlsm.
+Pour un export dont les fichiers Excel ont été modifiés, cocher « Fichiers modifiés » : la base est alors vérifiée par les contrôles de cohérence.</li>
+<li><b>Sécurité de l'opération</b> : il faut taper REMPLACER pour confirmer ; une sauvegarde de la base actuelle est faite juste avant, on peut donc tout annuler en la rechargeant.</li></ul>
+<div class="cadre">Les écritures ne se modifient ni ne se suppriment « en douce » : une correction passe par l'application (trésorier), jamais dans un exercice clos, avec l'avant / après
+conservé dans l'Historique. Les contrôles (Contrôle › Contrôles) vérifient l'équilibre, les axes, les exercices clos et les comptes d'attente ; leur résultat doit être « OK » avant toute clôture.</div>
+
+<h2>5. Installation et mise à jour</h2>
+<h3>Le principe : un site par association</h3>
+<p>ComptaBB est un site hébergé chez PythonAnywhere : rien à installer sur les ordinateurs, on s'y connecte par internet (connexion chiffrée). Le <b>code</b> (dossier <code>ComptaBB</code>)
+et les <b>données</b> (dossier <code>comptabb-data</code> : base, Imports, Exports, justificatifs) sont séparés : une mise à jour remplace le code et ne touche jamais aux données.
+Chaque association a son propre site, son propre compte d'hébergement, sa licence ; ce qui lui est propre (nom, devise, journaux, traductions) est dans les réglages, pas dans le code.</p>
+<h3>Installer un site neuf (une seule fois)</h3>
+<ol><li>Sur PythonAnywhere : onglet <b>Web › Add a new web app › Manual configuration</b>.</li>
+<li>Envoyer le ZIP de ComptaBB (téléchargé depuis GitHub) dans <b>Files</b>.</li>
+<li>Dans une console Bash : <span class="cmd">unzip -qo ComptaBB-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh</span>
+Le script installe le code, l'environnement Python, la base vide et le fichier WSGI, puis affiche un <b>code d'installation</b>.</li>
+<li>Régler l'onglet Web (version de Python, virtualenv, fichiers statiques <code>/static/</code>, HTTPS forcé), cliquer <b>Reload</b>.</li>
+<li>Ouvrir le site : l'assistant « Bienvenue dans ComptaBB » demande le code, crée l'administrateur, puis guide le paramétrage de base.</li></ol>
+<h3>Mettre à jour</h3>
+<ol><li><b>Télécharger le ZIP</b> de la branche indiquée sur GitHub (<b>&lt;&gt; Code › Download ZIP</b>).</li>
+<li>L'envoyer dans <b>Files</b>, dossier de l'utilisateur (le nom doit commencer par <code>ComptaBB-</code>).</li>
+<li>Dans une console Bash : <span class="cmd">bash ~/maj.sh</span></li>
+<li>Le script enchaîne <b>5 étapes</b> : (1) sauvegarde de la base et copie des justificatifs, (2) installation du nouveau code (l'ancien est gardé dans <code>ComptaBB-ancien</code>),
+(3) bibliothèques Python, (4) migration de la base et des paramètres, (5) rechargement du site. Il se termine par « MISE À JOUR TERMINÉE ».</li>
+<li>Ouvrir le site et appuyer sur <b>Ctrl+F5</b>.</li></ol>
+<div class="cadre attention"><b>En cas de problème</b> : <span class="cmd">bash ~/maj.sh --retour</span> remet le code précédent ; les données n'ont jamais été touchées, et les 3 dernières sauvegardes
+de la base sont listées par le script. Les corrections de données faites par une mise à jour (par exemple, retirer un code d'axe 2 d'une écriture de bilan) sont appliquées automatiquement à l'étape 4.</div>
+<h3>Ce qu'une mise à jour apporte avec elle</h3>
+<p>Le code, les migrations de la base, et les documents PDF du menu Éditions (Présentation, Mode d'emploi, Guide des bénévoles, Principes de fonctionnement) : ils sont livrés avec le code
+et donc toujours à jour. Les <b>comptes de la comptabilité, les paramètres et les réglages ne sont jamais écrasés</b>.</p>
+
+<h2 class="saut">6. Contrôle › Contrôles</h2>
+<h3>Le principe</h3>
+<p>La page <span class="menu">Contrôle › Contrôles</span> relit <b>toute la comptabilité</b> et vérifie des règles que l'application impose déjà à la saisie, au cas où
+une écriture serait arrivée autrement (import, reprise, ancienne version). Elle ne modifie rien : elle <b>constate</b>. Le bandeau du tableau de bord reprend son verdict :
+<b>OK</b>, ou « n anomalie(s) ». Une clôture d'exercice n'est possible que si tout est OK.</p>
+<table><tr><th style="width:14%">Statut</th><th>Sens</th></tr>
+<tr><td>OK</td><td>La règle est respectée.</td></tr>
+<tr><td>Anomalie</td><td>Une règle est violée : à corriger (le détail liste les écritures ou comptes concernés, avec un lien vers le Mvt).</td></tr>
+<tr><td>À vérifier</td><td>Pas une erreur certaine : par exemple un compte d'attente ou de virement interne dont le solde n'est pas nul.</td></tr>
+<tr><td>Info</td><td>Simple indication (remboursements : recette au débit, dépense au crédit).</td></tr></table>
+<h3>Ce qui est contrôlé</h3>
+<ul><li><b>Équilibre</b> : total débit = total crédit ; aucun mouvement déséquilibré ni de moins de deux lignes ; une ligne = un débit <b>ou</b> un crédit.</li>
+<li><b>Axes</b> : chaque compte porte un code d'axe 1 (et c'est bien un code d'axe 1) ; aucune écriture n'a un code d'axe 1 en axe 2 ni un axe 2 sur un compte de bilan ;
+toute écriture d'un compte « de projet » porte un code d'axe 2.</li>
+<li><b>Exercices clos</b> : aucune écriture nouvelle dans un exercice clos.</li>
+<li><b>Comptes techniques</b> : le compte de virement interne et le compte d'attente doivent revenir à zéro.</li></ul>
+<div class="cadre"><b>Corriger.</b> Une écriture se corrige depuis l'application (<span class="menu">Saisie › Modifier une écriture</span>), jamais dans un exercice clos, avec l'avant / après dans
+l'Historique. Les anomalies d'axes les plus courantes (code d'axe 2 invalide, compte sans axe 1 repris d'un compte voisin) sont aussi corrigées automatiquement à chaque mise à jour,
+ou à la demande par la commande <code>python manage.py corriger_axes</code> (aperçu sans l'option <code>--appliquer</code>) ; chaque correction est inscrite dans l'Historique.</div>
+
+<h2>7. Banque › Relevés à passer en comptabilité</h2>
+<h3>Le principe</h3>
+<p>Le relevé de la banque est la <b>preuve</b> de ce qui s'est réellement passé sur le compte. L'application le compare à la comptabilité : chaque ligne du relevé doit avoir
+<b>une écriture, et une seule</b>. Les lignes qui n'en ont pas encore sont listées sur cette page, par banque (un onglet par journal : B1, B2…). On ne tape jamais une écriture de banque à la main :
+on indique seulement la contrepartie, et l'application crée l'écriture à deux lignes (banque / contrepartie), aussitôt <b>reliée</b> à sa ligne de relevé, qui disparaît de la liste.</p>
+<h3>Déroulement</h3>
+<ol><li><b>Télécharger le relevé</b> (« Télécharger un relevé… », en bas de page) : un fichier Excel ou CSV unique pour toutes les banques (colonnes Jnl, Date, Libelle, Debit, Credit, Solde facultatif),
+préparé en amont. Les lignes déjà connues sont ignorées : on peut reprendre un relevé qui chevauche le précédent, sans doublon.</li>
+<li><b>Relier celles déjà en compta</b> : l'application relie d'elle-même les lignes dont <b>une seule</b> écriture de même montant existe déjà à quelques jours près (7 jours par défaut, réglage
+<code>tolerance_rapprochement</code>). Rien n'est créé ; les cas douteux restent dans la liste, avec des pistes (même montant plus ancien, autre banque, plusieurs écritures regroupées).</li>
+<li><b>Reprendre les propositions</b> : l'application se souvient du compte utilisé pour un même libellé et le propose ; on l'accepte ligne à ligne ou pour toutes les lignes vides.</li>
+<li>Pour chaque ligne restante, choisir le <b>compte de contrepartie</b> (et le <b>code axe 2</b> si le compte est de charges ou de produits) ; le libellé de l'écriture est modifiable.</li>
+<li><b>Créer les écritures</b> : une écriture par ligne renseignée. Les lignes laissées vides restent à faire.</li>
+<li><b>Écarter</b> une ligne déjà passée autrement (doublon, écriture d'une autre banque…) : elle quitte la liste sans écriture ; on peut la <b>remettre</b> plus tard.</li></ol>
+<div class="cadre">La fenêtre est organisée du plus fréquent au plus rare : onglets des banques et titre sur une seule ligne, puis une barre d'actions (Créer, Reprendre les propositions,
+Relier, Écarter ▾), un « Comment faire ? » repliable, la liste, et enfin, repliés, le téléchargement du relevé et les paramètres de la banque (date de reprise : les lignes antérieures
+sont dans le solde d'ouverture et ne sont pas proposées).</div>
+
+<h2>8. Banque › Historique des imports</h2>
+<p>C'est le <b>journal des fichiers de relevé téléchargés</b> : date, banque, nom du fichier, nombre de lignes ajoutées, nombre de doublons ignorés, auteur. Il sert à retrouver quel fichier a
+apporté quelles lignes et à vérifier qu'un relevé n'a pas été repris deux fois (ses lignes apparaîtraient alors en « doublons ignorés », jamais en « ajoutées »).</p>
+<p><b>Peut-on le supprimer ?</b> Oui, ligne par ligne (cases à cocher puis « Supprimer les lignes cochées »). Ce n'est qu'un journal : supprimer une ligne n'enlève <b>aucune ligne de relevé et aucune
+écriture</b>, et n'empêche pas de reprendre le même fichier (les doublons restent écartés à chaque import). La suppression est inscrite dans l'Historique général.</p>
+
+<h2>9. Banque › Traductions du relevé</h2>
+<p>Les relevés arrivent en hébreu. Une <b>traduction</b> associe un libellé hébreu à son équivalent français ; elle s'applique ensuite à toutes les lignes identiques et devient le libellé proposé
+des écritures. La page liste les opérations « À traduire » avec un exemple (date, montant).</p>
+<p><b>Propositions à valider.</b> Pour chaque opération, l'application inscrit une proposition fondée sur un glossaire de termes bancaires courants (virement, commission, dépôt, retrait, chèque,
+électricité, assurance, cotisation…) et sur les traductions déjà validées. Ce n'est pas une traduction certaine : « à valider » signifie que tous les mots sont reconnus, « à compléter » que des mots
+hébreux restent. On lit, on corrige, puis <b>Valider et enregistrer</b> ; une case vidée n'enregistre rien.</p>
+<h3>Traduction automatique (API de Claude)</h3>
+<p>Si une clé d'API est installée, le bouton <b>Proposer par traduction automatique</b> apparaît : il envoie les libellés hébreux (40 au plus à la fois, <b>sans montant ni date</b>)
+à l'API de Claude et inscrit les traductions proposées dans les cases, <b>sans rien enregistrer</b> : on valide comme d'habitude. Sans clé, ou si le service est injoignable, le glossaire reste utilisé.</p>
+<ol><li>Créer une clé sur <b>console.anthropic.com</b> (menu API keys), avec un peu de crédit sur le compte.</li>
+<li>Sur PythonAnywhere, onglet <b>Files</b>, dossier <code>comptabb-data</code> : créer un fichier <code>cle-claude.txt</code> contenant seulement la clé.
+Ce fichier n'est ni dans la base, ni dans les exports, ni touché par les mises à jour. (Variante : variable d'environnement <code>ANTHROPIC_API_KEY</code> dans le fichier WSGI.)</li>
+<li>Recharger le site (onglet Web › Reload). L'accès sortant vers <code>api.anthropic.com</code> doit être autorisé par l'hébergement (liste blanche des comptes gratuits : à vérifier ; sinon, formule payante).</li></ol>
+<div class="cadre attention">Les libellés de relevé quittent le site pour être traduits (noms de personnes compris). Ne pas activer si cela n'est pas acceptable pour l'association.</div>
+
+<h2>Récapitulatif : qui fait quoi</h2>
+<table><tr><th style="width:26%">Besoin</th><th>Où</th><th style="width:22%">Qui</th></tr>
+<tr><td>Ajouter un compte, un code, un journal</td><td>Plan comptable, Codes, Journaux</td><td>Administrateur, gestion</td></tr>
+<tr><td>Modifier des dizaines de paramètres</td><td>Paramètres (Excel)</td><td>Administrateur, trésorier</td></tr>
+<tr><td>Importer des écritures, un relevé, un budget</td><td>Imports et exports</td><td>Administrateur</td></tr>
+<tr><td>Sauvegarder, exporter, restaurer</td><td>Base de données</td><td>Administrateur</td></tr>
+<tr><td>Vérifier la comptabilité</td><td>Contrôle › Contrôles</td><td>Trésorier, bureau</td></tr>
+<tr><td>Passer le relevé en comptabilité, traduire</td><td>Banque</td><td>Trésorier</td></tr>
+<tr><td>Installer, mettre à jour, revenir en arrière</td><td>PythonAnywhere : <code>installer.sh</code>, <code>maj.sh</code></td><td>Administrateur</td></tr></table>
+</body></html>
