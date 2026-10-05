@@ -2,7 +2,7 @@
    - clic sur un en-tête = tri croissant, second clic = décroissant (sauf tableaux déjà triés par le serveur) ;
    - bord droit d'un en-tête à glisser = largeur de la colonne (mémorisée sur cet ordinateur) ;
    - bouton ▾ d'un en-tête = choisir les valeurs à garder dans cette colonne (cases à cocher, recherche) ;
-   - case « Filtrer ce tableau… » au-dessus des tableaux de plus de 8 lignes.
+   - case « Filtrer ce tableau… » (recherche) au-dessus des tableaux de 3 lignes ou plus.
    Les lignes de total (tr.total) restent en bas. Exclure un tableau : class="sans-outils" ; ne pas trier : data-tri="non". */
 (function () {
   "use strict";
@@ -10,8 +10,18 @@
   var lire = function (k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
   var ecrire = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* rien */ } };
 
+  // texte d'une cellule ; à défaut, valeur du champ de saisie (ou de la liste) qu'elle contient
+  function contenu(c) {
+    if (!c) return "";
+    var t = (c.dataset.tri || c.textContent || "").trim();
+    if (t || !c.querySelector) return t;
+    var champ = c.querySelector("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea");
+    if (!champ) return "";
+    return champ.tagName === "SELECT" ? (champ.selectedOptions[0] ? champ.selectedOptions[0].textContent.trim() : "") : (champ.value || "").trim();
+  }
+
   function valeur(cellule) {
-    var t = (cellule && (cellule.dataset.tri || cellule.textContent) || "").trim();
+    var t = contenu(cellule);
     var d = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (d) return { n: +(d[3] + d[2] + d[1]) };
     var m = t.replace(/[\s  ₪€$£%]/g, "").replace("−", "-").replace(",", ".");
@@ -27,7 +37,9 @@
                                                              { numeric: true, sensitivity: "base" });
   }
 
-  var texte = function (c) { return (c ? c.textContent : "").trim().replace(/\s+/g, " "); };
+  var texte = function (c) { return contenu(c).replace(/\s+/g, " "); };
+  // lignes de remarques (tr.remarques) : elles suivent la ligne de données qui les précède (tri, filtre)
+  var remarques = function (r) { var res = []; for (var x = r.nextElementSibling; x && x.classList.contains("remarques"); x = x.nextElementSibling) res.push(x); return res; };
 
   function preparer(table, rang) {
     if (table.dataset.outils) return;
@@ -36,7 +48,7 @@
     table.dataset.outils = "1";
     var donnees = function () {
       return Array.prototype.filter.call(table.rows, function (r) {
-        return r !== entete && !r.classList.contains("total") && !r.querySelector("th") && r.cells.length >= entete.cells.length;
+        return r !== entete && !r.classList.contains("total") && !r.classList.contains("remarques") && !r.querySelector("th") && r.cells.length >= entete.cells.length;
       });
     };
     var groupes = table.querySelector("tr.sit-compte, tr.sit-sous-total");      // tableau à sous-totaux : ni tri ni filtre
@@ -48,9 +60,10 @@
     function appliquer() {
       var mots = champGlobal ? sansAccent(champGlobal.value).split(/\s+/).filter(Boolean) : [], vues = 0, rs = donnees();
       rs.forEach(function (r) {
-        var ok = mots.every(function (m) { return sansAccent(r.textContent).indexOf(m) >= 0; });
+        var ok = mots.every(function (m) { return sansAccent(r.textContent + " " + Array.prototype.map.call(r.cells, texte).join(" ")).indexOf(m) >= 0; });
         Object.keys(choix).forEach(function (i) { if (ok && !choix[i].has(texte(r.cells[i]))) ok = false; });
         r.style.display = ok ? "" : "none";
+        remarques(r).forEach(function (x) { x.style.display = ok ? "" : "none"; });
         if (ok) vues++;
       });
       var actif = mots.length || Object.keys(choix).length;
@@ -76,7 +89,8 @@
           rs.sort(function (a, b) { var r = comparer(valeur(a.cells[i]), valeur(b.cells[i])); return sens === "asc" ? r : -r; });
           var totaux = Array.prototype.filter.call(table.rows, function (r) { return r.classList.contains("total"); });
           var parent = rs.length ? rs[0].parentNode : entete.parentNode;
-          rs.forEach(function (r) { parent.appendChild(r); });
+          var blocs = rs.map(function (r) { return [r].concat(remarques(r)); });
+          blocs.forEach(function (b) { b.forEach(function (r) { parent.appendChild(r); }); });
           totaux.forEach(function (r) { r.parentNode.appendChild(r); });
         });
       }
@@ -170,7 +184,7 @@
       });
     });
 
-    if (!groupes && donnees().length >= 8 && table.dataset.filtre !== "non") {
+    if (!groupes && donnees().length >= 3 && table.dataset.filtre !== "non") {
       champGlobal = document.createElement("input");
       champGlobal.type = "search";
       champGlobal.placeholder = "Filtrer ce tableau…";
