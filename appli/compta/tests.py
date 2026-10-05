@@ -3468,3 +3468,39 @@ class CorrigerAxes(TestCase):
         self.assertIsNone(Compte.objects.get(numero="600200").anal1_id)
         call_command("corriger_axes", "--appliquer", stdout=StringIO())
         self.assertEqual(Compte.objects.get(numero="600200").anal1_id, "FON.1")
+
+
+class TraductionClaude(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        call_command("migrate", verbosity=0)
+        self.client.force_login(User.objects.create_superuser("adm", password="x" * 12))
+        LigneReleve.objects.create(journal=Journal.objects.get(code="B1"), date=dt.date(2026, 3, 1), montant=D(-10), operation="חשבונית אברהם")
+
+    def test_appel_api(self):
+        import json
+        from unittest import mock
+        from . import traduction_auto as ta
+
+        class Reponse:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b""
+        envoyees = []
+
+        def faux(requete, timeout=0):
+            envoyees.append((requete.get_header("X-api-key"), json.loads(requete.data)))
+            return io.BytesIO(json.dumps({"content": [{"type": "text", "text": '["Facture ABRAHAM"]'}]}).encode())
+        with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "cle-test"}), mock.patch("urllib.request.urlopen", faux):
+            self.assertEqual(ta.traduire_par_claude(["חשבונית אברהם"]), {"חשבונית אברהם": "Facture ABRAHAM"})
+            r = self.client.post("/rapprochement/traductions/", {"proposer_claude": "1"})
+            self.assertContains(r, 'value="Facture ABRAHAM"')
+            self.assertEqual(Traduction.objects.count(), 0)                      # rien d'enregistré avant validation
+            self.assertContains(self.client.get("/rapprochement/traductions/"), "Proposer par traduction automatique")
+        self.assertEqual(envoyees[0][0], "cle-test")
+        self.assertNotIn("10", envoyees[0][1]["messages"][0]["content"])         # le montant n'est pas envoyé
+
+    def test_sans_cle(self):
+        from unittest import mock
+        with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}), mock.patch("compta.traduction_auto.cle_api", return_value=""):
+            self.assertNotContains(self.client.get("/rapprochement/traductions/"), "Proposer par traduction automatique")

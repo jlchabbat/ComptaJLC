@@ -196,6 +196,14 @@ des écritures. La page liste les opérations « À traduire » avec un exemple 
 <p><b>Propositions à valider.</b> Pour chaque opération, l'application inscrit une proposition fondée sur un glossaire de termes bancaires courants (virement, commission, dépôt, retrait, chèque,
 électricité, assurance, cotisation…) et sur les traductions déjà validées. Ce n'est pas une traduction certaine : « à valider » signifie que tous les mots sont reconnus, « à compléter » que des mots
 hébreux restent. On lit, on corrige, puis <b>Valider et enregistrer</b> ; une case vidée n'enregistre rien.</p>
+<h3>Traduction automatique (API de Claude)</h3>
+<p>Si une clé d'API est installée, le bouton <b>Proposer par traduction automatique</b> apparaît : il envoie les libellés hébreux (40 au plus à la fois, <b>sans montant ni date</b>)
+à l'API de Claude et inscrit les traductions proposées dans les cases, <b>sans rien enregistrer</b> : on valide comme d'habitude. Sans clé, ou si le service est injoignable, le glossaire reste utilisé.</p>
+<ol><li>Créer une clé sur <b>console.anthropic.com</b> (menu API keys), avec un peu de crédit sur le compte.</li>
+<li>Sur PythonAnywhere, onglet <b>Files</b>, dossier <code>comptabb-data</code> : créer un fichier <code>cle-claude.txt</code> contenant seulement la clé.
+Ce fichier n'est ni dans la base, ni dans les exports, ni touché par les mises à jour. (Variante : variable d'environnement <code>ANTHROPIC_API_KEY</code> dans le fichier WSGI.)</li>
+<li>Recharger le site (onglet Web › Reload). L'accès sortant vers <code>api.anthropic.com</code> doit être autorisé par l'hébergement (liste blanche des comptes gratuits : à vérifier ; sinon, formule payante).</li></ol>
+<div class="cadre attention">Les libellés de relevé quittent le site pour être traduits (noms de personnes compris). Ne pas activer si cela n'est pas acceptable pour l'association.</div>
 
 <h2>Récapitulatif : qui fait quoi</h2>
 <table><tr><th style="width:26%">Besoin</th><th>Où</th><th style="width:22%">Qui</th></tr>

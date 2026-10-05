@@ -1,8 +1,8 @@
 {% extends "compta/base.html" %}{% block titre %}Traductions{% endblock %}{% block contenu %}
 <h1>Traductions des opérations du relevé</h1>
-<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a>{% if a_traduire %}<button form="f-trad" class="principal">Valider et enregistrer les traductions</button>{% endif %}</div>
+<div class="barre"><a class="bouton" href="{% url 'rapprochement' %}">← Relevés à passer en compta</a>{% if a_traduire and claude %}<button form="f-trad" name="proposer_claude" value="1" title="Envoie les libellés hébreux (sans montant) à l'API de Claude ; rien n'est enregistré avant validation">Proposer par traduction automatique</button>{% endif %}{% if a_traduire %}<button form="f-trad" class="principal">Valider et enregistrer les traductions</button>{% endif %}</div>
 <form method="post" class="carte" id="f-trad">{% csrf_token %}<h2 style="margin-top:0">À traduire ({{ a_traduire|length }})</h2>
-{% if a_traduire %}<p class="aide">Une <b>proposition</b> est déjà inscrite pour {{ nb_propositions }} opération{{ nb_propositions|pluralize }} (glossaire des termes bancaires courants ; ce n'est pas une
+{% if a_traduire %}<p class="aide">Une <b>proposition</b> est déjà inscrite pour {{ nb_propositions }} opération{{ nb_propositions|pluralize }} (glossaire des termes bancaires courants{% if claude %}, ou traduction automatique par Claude après un clic sur « Proposer par traduction automatique »{% endif %} ; ce n'est pas une
 traduction certaine). Lire chaque ligne, corriger si besoin, vider la case pour ne rien enregistrer, puis <b>Valider et enregistrer</b>.
 <span class="ok">« à valider »</span> : tous les mots sont reconnus ; <span class="ko">« à compléter »</span> : des mots hébreux restent à traduire.</p>{% endif %}
 <table><tr><th>Opération (hébreu)</th><th>Exemple</th><th>Traduction à valider</th><th></th></tr>

@@ -69,3 +69,59 @@ def proposer(texte):
         return "", False
     texte_fr = " ".join(sortie)
     return (texte_fr[:1].upper() + texte_fr[1:])[:120], restants == 0
+
+
+# ---------------------------------------------------------------- traduction automatique par l'API de Claude
+
+MODELE_CLAUDE = "claude-haiku-4-5-20251001"
+LOT = 40
+
+
+def cle_api():
+    """Clé d'API : variable ANTHROPIC_API_KEY, ou fichier cle-claude.txt du dossier de données (jamais dans la base ni dans les exports)."""
+    import os
+
+    from django.conf import settings
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return os.environ["ANTHROPIC_API_KEY"].strip()
+    fichier = settings.DATA_DIR / "cle-claude.txt"
+    return fichier.read_text(encoding="utf-8").strip() if fichier.is_file() else ""
+
+
+def traduire_par_claude(libelles):
+    """{libellé hébreu: traduction française} pour au plus LOT libellés (seul le texte du libellé est envoyé : ni montant ni nom de banque).
+    Lève ValueError avec un message lisible si la clé manque ou si l'appel échoue."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    cle = cle_api()
+    if not cle:
+        raise ValueError("Clé d'API Claude absente : voir Administration › Principes de fonctionnement (PDF), « Traduction automatique ».")
+    libelles = list(dict.fromkeys(libelles))[:LOT]
+    if not libelles:
+        return {}
+    consigne = ("Tu traduis des libellés d'opérations de relevés bancaires israéliens (hébreu) pour la comptabilité d'une association française. "
+                "Pour chaque libellé, donne une traduction française courte (2 à 6 mots), en gardant tels quels les chiffres, dates et noms propres latins ; "
+                "translittère les noms de personnes ou d'enseignes hébreux en lettres latines majuscules. "
+                "Réponds uniquement par un tableau JSON de chaînes, dans le même ordre et de même longueur que la liste reçue.")
+    corps = {"model": MODELE_CLAUDE, "max_tokens": 2000, "system": consigne,
+             "messages": [{"role": "user", "content": json.dumps(libelles, ensure_ascii=False)}]}
+    requete = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(corps).encode("utf-8"), method="POST",
+                                     headers={"x-api-key": cle, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    try:
+        with urllib.request.urlopen(requete, timeout=60) as r:
+            reponse = json.load(r)
+    except urllib.error.HTTPError as e:
+        raise ValueError(f"Service de traduction refusé (code {e.code}) : vérifier la clé d'API et le crédit du compte.") from e
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise ValueError("Service de traduction injoignable (réseau ou accès sortant non autorisé par l'hébergement).") from e
+    texte = "".join(b.get("text", "") for b in reponse.get("content", []) if b.get("type") == "text")
+    debut, fin = texte.find("["), texte.rfind("]")
+    try:
+        valeurs = json.loads(texte[debut:fin + 1])
+    except ValueError as e:
+        raise ValueError("Réponse du service de traduction illisible.") from e
+    if not isinstance(valeurs, list) or len(valeurs) != len(libelles):
+        raise ValueError("Réponse du service de traduction incomplète.")
+    return {h: str(t).strip()[:120] for h, t in zip(libelles, valeurs) if str(t).strip()}
