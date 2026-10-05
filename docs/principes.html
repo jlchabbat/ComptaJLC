@@ -22,7 +22,7 @@ code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; backg
 .saut { break-before: page; }
 </style></head><body>
 <div class="bandeau"><h1>ComptaBB – Principes de fonctionnement</h1>
-<p>Référentiels · Paramètres Excel · Imports et exports · Base de données et sauvegardes · Installation et mise à jour</p></div>
+<p>Référentiels · Paramètres Excel · Imports et exports · Base de données · Installation · Contrôles · Banque</p></div>
 
 <p>Ce document explique <b>comment l'application tient ensemble</b>. Cinq mécanismes en sont la base : les référentiels (ce que l'on peut choisir
 en saisie), les paramètres (réglés dans Excel), les échanges de fichiers (imports et exports), la base de données (avec ses sauvegardes et ses
@@ -146,11 +146,64 @@ de la base sont listées par le script. Les corrections de données faites par u
 <p>Le code, les migrations de la base, et les documents PDF du menu Éditions (Présentation, Mode d'emploi, Guide des bénévoles, Principes de fonctionnement) : ils sont livrés avec le code
 et donc toujours à jour. Les <b>comptes de la comptabilité, les paramètres et les réglages ne sont jamais écrasés</b>.</p>
 
+<h2 class="saut">6. Contrôle › Contrôles</h2>
+<h3>Le principe</h3>
+<p>La page <span class="menu">Contrôle › Contrôles</span> relit <b>toute la comptabilité</b> et vérifie des règles que l'application impose déjà à la saisie, au cas où
+une écriture serait arrivée autrement (import, reprise, ancienne version). Elle ne modifie rien : elle <b>constate</b>. Le bandeau du tableau de bord reprend son verdict :
+<b>OK</b>, ou « n anomalie(s) ». Une clôture d'exercice n'est possible que si tout est OK.</p>
+<table><tr><th style="width:14%">Statut</th><th>Sens</th></tr>
+<tr><td>OK</td><td>La règle est respectée.</td></tr>
+<tr><td>Anomalie</td><td>Une règle est violée : à corriger (le détail liste les écritures ou comptes concernés, avec un lien vers le Mvt).</td></tr>
+<tr><td>À vérifier</td><td>Pas une erreur certaine : par exemple un compte d'attente ou de virement interne dont le solde n'est pas nul.</td></tr>
+<tr><td>Info</td><td>Simple indication (remboursements : recette au débit, dépense au crédit).</td></tr></table>
+<h3>Ce qui est contrôlé</h3>
+<ul><li><b>Équilibre</b> : total débit = total crédit ; aucun mouvement déséquilibré ni de moins de deux lignes ; une ligne = un débit <b>ou</b> un crédit.</li>
+<li><b>Axes</b> : chaque compte porte un code d'axe 1 (et c'est bien un code d'axe 1) ; aucune écriture n'a un code d'axe 1 en axe 2 ni un axe 2 sur un compte de bilan ;
+toute écriture d'un compte « de projet » porte un code d'axe 2.</li>
+<li><b>Exercices clos</b> : aucune écriture nouvelle dans un exercice clos.</li>
+<li><b>Comptes techniques</b> : le compte de virement interne et le compte d'attente doivent revenir à zéro.</li></ul>
+<div class="cadre"><b>Corriger.</b> Une écriture se corrige depuis l'application (<span class="menu">Saisie › Modifier une écriture</span>), jamais dans un exercice clos, avec l'avant / après dans
+l'Historique. Les anomalies d'axes les plus courantes (code d'axe 2 invalide, compte sans axe 1 repris d'un compte voisin) sont aussi corrigées automatiquement à chaque mise à jour,
+ou à la demande par la commande <code>python manage.py corriger_axes</code> (aperçu sans l'option <code>--appliquer</code>) ; chaque correction est inscrite dans l'Historique.</div>
+
+<h2>7. Banque › Relevés à passer en comptabilité</h2>
+<h3>Le principe</h3>
+<p>Le relevé de la banque est la <b>preuve</b> de ce qui s'est réellement passé sur le compte. L'application le compare à la comptabilité : chaque ligne du relevé doit avoir
+<b>une écriture, et une seule</b>. Les lignes qui n'en ont pas encore sont listées sur cette page, par banque (un onglet par journal : B1, B2…). On ne tape jamais une écriture de banque à la main :
+on indique seulement la contrepartie, et l'application crée l'écriture à deux lignes (banque / contrepartie), aussitôt <b>reliée</b> à sa ligne de relevé, qui disparaît de la liste.</p>
+<h3>Déroulement</h3>
+<ol><li><b>Télécharger le relevé</b> (« Télécharger un relevé… », en bas de page) : un fichier Excel ou CSV unique pour toutes les banques (colonnes Jnl, Date, Libelle, Debit, Credit, Solde facultatif),
+préparé en amont. Les lignes déjà connues sont ignorées : on peut reprendre un relevé qui chevauche le précédent, sans doublon.</li>
+<li><b>Relier celles déjà en compta</b> : l'application relie d'elle-même les lignes dont <b>une seule</b> écriture de même montant existe déjà à quelques jours près (7 jours par défaut, réglage
+<code>tolerance_rapprochement</code>). Rien n'est créé ; les cas douteux restent dans la liste, avec des pistes (même montant plus ancien, autre banque, plusieurs écritures regroupées).</li>
+<li><b>Reprendre les propositions</b> : l'application se souvient du compte utilisé pour un même libellé et le propose ; on l'accepte ligne à ligne ou pour toutes les lignes vides.</li>
+<li>Pour chaque ligne restante, choisir le <b>compte de contrepartie</b> (et le <b>code axe 2</b> si le compte est de charges ou de produits) ; le libellé de l'écriture est modifiable.</li>
+<li><b>Créer les écritures</b> : une écriture par ligne renseignée. Les lignes laissées vides restent à faire.</li>
+<li><b>Écarter</b> une ligne déjà passée autrement (doublon, écriture d'une autre banque…) : elle quitte la liste sans écriture ; on peut la <b>remettre</b> plus tard.</li></ol>
+<div class="cadre">La fenêtre est organisée du plus fréquent au plus rare : onglets des banques et titre sur une seule ligne, puis une barre d'actions (Créer, Reprendre les propositions,
+Relier, Écarter ▾), un « Comment faire ? » repliable, la liste, et enfin, repliés, le téléchargement du relevé et les paramètres de la banque (date de reprise : les lignes antérieures
+sont dans le solde d'ouverture et ne sont pas proposées).</div>
+
+<h2>8. Banque › Historique des imports</h2>
+<p>C'est le <b>journal des fichiers de relevé téléchargés</b> : date, banque, nom du fichier, nombre de lignes ajoutées, nombre de doublons ignorés, auteur. Il sert à retrouver quel fichier a
+apporté quelles lignes et à vérifier qu'un relevé n'a pas été repris deux fois (ses lignes apparaîtraient alors en « doublons ignorés », jamais en « ajoutées »).</p>
+<p><b>Peut-on le supprimer ?</b> Oui, ligne par ligne (cases à cocher puis « Supprimer les lignes cochées »). Ce n'est qu'un journal : supprimer une ligne n'enlève <b>aucune ligne de relevé et aucune
+écriture</b>, et n'empêche pas de reprendre le même fichier (les doublons restent écartés à chaque import). La suppression est inscrite dans l'Historique général.</p>
+
+<h2>9. Banque › Traductions du relevé</h2>
+<p>Les relevés arrivent en hébreu. Une <b>traduction</b> associe un libellé hébreu à son équivalent français ; elle s'applique ensuite à toutes les lignes identiques et devient le libellé proposé
+des écritures. La page liste les opérations « À traduire » avec un exemple (date, montant).</p>
+<p><b>Propositions à valider.</b> Pour chaque opération, l'application inscrit une proposition fondée sur un glossaire de termes bancaires courants (virement, commission, dépôt, retrait, chèque,
+électricité, assurance, cotisation…) et sur les traductions déjà validées. Ce n'est pas une traduction certaine : « à valider » signifie que tous les mots sont reconnus, « à compléter » que des mots
+hébreux restent. On lit, on corrige, puis <b>Valider et enregistrer</b> ; une case vidée n'enregistre rien.</p>
+
 <h2>Récapitulatif : qui fait quoi</h2>
 <table><tr><th style="width:26%">Besoin</th><th>Où</th><th style="width:22%">Qui</th></tr>
 <tr><td>Ajouter un compte, un code, un journal</td><td>Plan comptable, Codes, Journaux</td><td>Administrateur, gestion</td></tr>
 <tr><td>Modifier des dizaines de paramètres</td><td>Paramètres (Excel)</td><td>Administrateur, trésorier</td></tr>
 <tr><td>Importer des écritures, un relevé, un budget</td><td>Imports et exports</td><td>Administrateur</td></tr>
 <tr><td>Sauvegarder, exporter, restaurer</td><td>Base de données</td><td>Administrateur</td></tr>
+<tr><td>Vérifier la comptabilité</td><td>Contrôle › Contrôles</td><td>Trésorier, bureau</td></tr>
+<tr><td>Passer le relevé en comptabilité, traduire</td><td>Banque</td><td>Trésorier</td></tr>
 <tr><td>Installer, mettre à jour, revenir en arrière</td><td>PythonAnywhere : <code>installer.sh</code>, <code>maj.sh</code></td><td>Administrateur</td></tr></table>
 </body></html>

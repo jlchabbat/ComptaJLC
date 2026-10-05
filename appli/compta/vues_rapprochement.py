@@ -270,12 +270,26 @@ def traductions(request):
         if cle and cle not in vus and l.traduction == "À traduire":
             vus.add(cle)
             a_traduire.append(l)
-    return render(request, "compta/traductions.html", {"a_traduire": a_traduire, "connues": Traduction.objects.all()})
+    from .traduction_auto import proposer
+    a_traduire = [(l, *proposer(l.operation)) for l in a_traduire]
+    return render(request, "compta/traductions.html", {"a_traduire": a_traduire, "connues": Traduction.objects.all(),
+                                                       "nb_propositions": sum(1 for _, p, _ in a_traduire if p)})
 
 
 @login_required
 @consulter
 def historique(request):
-    """Historique des imports de relevés : fichier, banque, date, lignes ajoutées, doublons ignorés."""
+    """Historique des imports de relevés : fichier, banque, date, lignes ajoutées, doublons ignorés.
+    Supprimer une ligne de l'historique n'enlève rien au relevé ni à la comptabilité : c'est seulement le journal des imports."""
     from .models import ImportReleve
-    return render(request, "compta/releves_historique.html", {"imports": ImportReleve.objects.select_related("journal")})
+    peut = request.user.has_perm("compta.pointer_releve")
+    if request.method == "POST" and peut:
+        pks = [int(x) for x in request.POST.getlist("coche") if x.isdigit()]
+        if pks:
+            n, _ = ImportReleve.objects.filter(pk__in=pks).delete()
+            journaliser(request, "Historique des imports", f"{n} ligne(s) supprimée(s)")
+            messages.success(request, f"{n} ligne(s) supprimée(s) de l'historique (le relevé et les écritures sont inchangés).")
+        else:
+            messages.warning(request, "Cocher d'abord les lignes à supprimer.")
+        return redirect("releves_historique")
+    return render(request, "compta/releves_historique.html", {"imports": ImportReleve.objects.select_related("journal"), "peut": peut})

@@ -1,24 +1,22 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Banque{% endblock %}{% block contenu %}
-<h1>Banque : relevés à passer en comptabilité</h1>
-{% if not journaux %}<p class="carte">Aucun journal de trésorerie avec un compte (Référentiels › Journaux).</p>{% else %}
-{% if peut %}<div class="barre">{% if lignes %}<button form="affectation" class="principal" name="creer" value="1" id="bouton-creer">Créer les écritures</button>{% endif %}
-{% if lignes %}<button form="affectation" name="relier_evidentes" value="1" formnovalidate title="Relie les lignes dont une seule écriture de même montant existe déjà à quelques jours près (rien n'est créé) ; les cas douteux restent dans la liste">Relier les lignes déjà en compta</button>{% endif %}{% if lignes %}<button form="affectation" name="ecarter_cochees" value="1" formnovalidate onclick="return confirm('Écarter les lignes cochées ? Aucune écriture ne sera créée (elles pourront être remises).')" title="Écarte les lignes cochées : déjà comptabilisées autrement">Écarter les lignes cochées</button>
-<span class="aide">ou toutes jusqu'au <input type="date" name="jusquau" form="affectation"> <button form="affectation" name="ecarter_jusquau" value="1" formnovalidate onclick="return confirm('Écarter toutes les lignes jusqu\'à cette date ?')">Écarter</button></span>{% endif %}<button form="f-import">Télécharger le relevé choisi</button>{% if parametres_form %}<button form="f-param">Enregistrer les paramètres</button>{% endif %}</div>{% endif %}
-<div class="onglets">{% for j in journaux %}<a href="{% url 'rapprochement_journal' j.code %}" {% if j == journal %}class="actif"{% endif %}>{{ j.code }} – {{ j.intitule }}</a>{% endfor %}</div>
-<p>{% if parametres.libelle %}{{ parametres.libelle }} · {% endif %}compte {{ journal.compte }}{% if parametres.date_reprise %} · lignes à partir du {{ parametres.date_reprise|date:"d/m/Y" }}{% endif %}</p>
+<div class="rap-tete"><h1>Relevés à passer en comptabilité</h1>
+<div class="onglets">{% for j in journaux %}<a href="{% url 'rapprochement_journal' j.code %}" {% if j == journal %}class="actif"{% endif %}>{{ j.code }} – {{ j.intitule }}</a>{% endfor %}</div></div>
+{% if not journaux %}<p class="carte">Aucun journal de trésorerie avec un compte (Administration › Journaux).</p>{% else %}
+{% if peut %}<div class="barre rap-barre">{% if lignes %}<button form="affectation" class="principal" name="creer" value="1" id="bouton-creer" title="Crée une écriture pour chaque ligne dont le compte est renseigné">Créer les écritures</button>
+<button type="button" form="affectation" onclick="document.querySelectorAll('#affectation [data-propose]').forEach(function (a) { var i = a.closest('td').querySelector('input'); if (!i.value) i.value = a.dataset.propose; })"
+ title="Recopie dans chaque ligne vide le compte déjà utilisé pour ce libellé (rien n'est enregistré avant « Créer les écritures »)">Reprendre les propositions</button>
+<button form="affectation" name="relier_evidentes" value="1" formnovalidate title="Relie les lignes dont une seule écriture de même montant existe déjà à quelques jours près (rien n'est créé) ; les cas douteux restent dans la liste">Relier celles déjà en compta</button>
+<details class="plus"><summary>Écarter ▾</summary><div class="plus-liste">
+<button form="affectation" name="ecarter_cochees" value="1" formnovalidate onclick="return confirm('Écarter les lignes cochées ? Aucune écriture ne sera créée (elles pourront être remises).')" title="Écarte les lignes cochées : déjà comptabilisées autrement">Les lignes cochées</button>
+<span class="aide">ou toutes jusqu'au <input type="date" name="jusquau" form="affectation"> <button form="affectation" name="ecarter_jusquau" value="1" formnovalidate onclick="return confirm('Écarter toutes les lignes jusqu\'à cette date ?')">Écarter</button></span></div></details>{% endif %}
+<button type="button" onclick="var d=document.getElementById('outils-releve'); d.open=true; d.scrollIntoView({behavior:'smooth'})">Télécharger un relevé…</button>
+<span class="sommaire">{{ journal.compte }}{% if parametres.date_reprise %} · depuis le {{ parametres.date_reprise|date:"d/m/Y" }}{% endif %} · <b>{{ lignes|length }}</b> ligne{{ lignes|length|pluralize }} à passer</span></div>{% else %}<p class="aide">{{ journal.compte }} · <b>{{ lignes|length }}</b> ligne{{ lignes|length|pluralize }} à passer</p>{% endif %}
 {% if a_traduire and peut %}<p class="carte message warning">{{ a_traduire }} ligne(s) « À traduire » : <a href="{% url 'traductions' %}">Traductions</a>.</p>{% endif %}
-
-<h2>Lignes téléchargées sans écriture ({{ lignes|length }})</h2>
-{% if peut %}<p class="aide">Pour chaque ligne, choisir le <b>compte de contrepartie</b> et le <b>code axe 2</b> (taper une partie du numéro, du code ou du
-libellé), puis <b>Créer les écritures</b>. Chaque écriture créée est reliée à sa ligne, qui disparaît de la liste : pas de double écriture possible.
-Les lignes laissées vides restent à faire.</p>{% endif %}
+{% if peut %}<details class="aide-bloc"><summary>Comment faire ?</summary><p class="aide">Pour chaque ligne du relevé, choisir le <b>compte de contrepartie</b>{% if deux_axes %} et le <b>code axe 2</b>{% endif %}
+(taper une partie du numéro, du code ou du libellé), puis <b>Créer les écritures</b>. Chaque écriture créée est reliée à sa ligne, qui disparaît de la liste : pas de double écriture possible.
+Les lignes laissées vides restent à faire. Une ligne déjà passée autrement s'<b>écarte</b> (elle pourra être remise) ; cocher la case de la colonne Date pour agir sur plusieurs lignes.</p></details>{% endif %}
 <form method="post" id="affectation">{% csrf_token %}
-{% if peut %}<p><button type="button" onclick="document.querySelectorAll('#affectation [data-propose]').forEach(function (a) { var i = a.closest('td').querySelector('input'); if (!i.value) i.value = a.dataset.propose; })"
- title="Recopie dans chaque ligne vide le compte déjà utilisé pour ce libellé (mémoire des affectations) ; rien n'est enregistré avant « Enregistrer »">Reprendre toutes les propositions</button></p>{% endif %}
-{% if peut and lignes %}<p class="aide"><label><input type="checkbox" onclick="document.querySelectorAll('#affectation input[name=coche]').forEach(function (c) { c.checked = this.checked; }, this)"> Tout cocher</label>
- <button name="ecarter_cochees" value="1" formnovalidate onclick="return confirm('Écarter les lignes cochées ? Aucune écriture ne sera créée (elles pourront être remises).')" title="Écarte les lignes cochées : déjà comptabilisées autrement">Écarter les lignes cochées</button>
- Le bouton « Écarter » d'une ligne écarte aussi les lignes cochées.</p>{% endif %}
-<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>{% if deux_axes %}Code axe 2{% endif %}</th><th>Libellé de l'écriture</th><th></th>{% endif %}</tr>
+<table class="rap-table"><tr><th>{% if peut and lignes %}<input type="checkbox" title="Tout cocher" onclick="document.querySelectorAll('#affectation input[name=coche]').forEach(function (c) { c.checked = this.checked; }, this)"> {% endif %}Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>{% if deux_axes %}Code axe 2{% endif %}</th><th>Libellé de l'écriture</th><th></th>{% endif %}</tr>
 {% for x in lignes %}<tr><td>{% if peut %}<input type="checkbox" name="coche" value="{{ x.l.pk|stringformat:'d' }}" title="Cocher pour écarter cette ligne">{% endif %} {{ x.l.date|date:"d/m/Y" }}</td><td><span dir="auto" class="libelle-banque" {% if x.l.traduction != "À traduire" and x.l.traduction != x.l.operation %}title="{{ x.l.traduction }}"{% endif %}>{{ x.l.operation }}</span>{% if x.l.traduction == "À traduire" %} <span class="aide">(à traduire)</span>{% endif %}{% if x.l.reference %} <span class="aide">réf. {{ x.l.reference }}</span>{% endif %}</td>
 <td class="n {% if x.l.montant < 0 %}neg{% endif %}">{{ x.l.montant|shekel }}</td>
 {% if peut %}<td><input name="compte_{{ x.l.pk|stringformat:'d' }}" list="comptes" value="{{ x.compte }}" autocomplete="off" placeholder="Compte ou libellé…" style="min-width:16em">
@@ -56,15 +54,15 @@ Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}<
   var b = document.getElementById("bouton-creer"); if (b) setTimeout(function () { b.disabled = true; }, 0);   // pas de double envoi
 });</script>
 
-{% if peut %}<div class="deux" style="margin-top:16px">
+{% if peut %}<details class="carte" id="outils-releve" style="margin-top:12px"><summary>Télécharger un relevé · paramètres de {{ journal.code }}</summary><div class="deux" style="margin-top:10px">
 <form method="post" enctype="multipart/form-data" action="{% url 'releve_import' journal.code %}" class="carte" id="f-import">{% csrf_token %}<h2 style="margin-top:0">Télécharger un relevé {{ journal.code }}</h2>
 <p class="aide">Fichier unique pour toutes les banques (colonne Jnl = journal), Excel ou CSV. Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent,
 sans doublon.</p>
-<div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div><p><button class="principal">Télécharger le relevé choisi</button></p>
 </form>
 {% if parametres_form %}<form method="post" action="{% url 'releve_parametres' journal.code %}" class="carte" id="f-param">{% csrf_token %}<h2 style="margin-top:0">Paramètres</h2>
-<div class="formulaire">{% for f in parametres_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
+<div class="formulaire">{% for f in parametres_form %}{% include "compta/_champ.html" %}{% endfor %}</div><p><button>Enregistrer les paramètres</button></p>
 <p class="aide">Les lignes antérieures à la date de reprise sont dans le solde d'ouverture de la comptabilité : elles ne sont pas proposées.
 « Déjà en compta » : même montant à ± {{ tolerance }} jours (Référentiels › Réglages, clé tolerance_rapprochement).</p>
-</form>{% endif %}</div>{% endif %}
+</form>{% endif %}</div></details>{% endif %}
 {% endif %}{% endblock %}

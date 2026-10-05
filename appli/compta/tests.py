@@ -1176,7 +1176,7 @@ class EcransRapprochement(TestCase):
         self.client.force_login(b)
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
         r = self.client.get("/rapprochement/B1/")
-        self.assertContains(r, "Lignes téléchargées sans écriture (1)")
+        self.assertContains(r, "<b>1</b> ligne à passer")
         self.assertNotContains(r, f'name="compte_{l.pk}"')
         self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"anal2_{l.pk}": "GEN.004", "creer": "1"})
         l.refresh_from_db()
@@ -3424,3 +3424,47 @@ class AxesStricts(TestCase):
         for libelle in ("Comptes sans code d'axe 1 (chaque compte en porte un)", "Écritures dont l'axe 2 est un code d'axe 1",
                         "Écritures d'un compte de bilan portant un code axe 2", "Écritures d'un compte de projet sans code axe 2"):
             self.assertEqual(res[libelle].statut, "OK", libelle)
+
+
+class BanqueConfort(TestCase):
+    """Historique des imports supprimable ; traductions proposées à valider."""
+
+    def setUp(self):
+        referentiels_saisie()
+        call_command("migrate", verbosity=0)
+        self.admin = User.objects.create_superuser("adm", password="x" * 12)
+        self.client.force_login(self.admin)
+
+    def test_proposition_de_traduction(self):
+        from .traduction_auto import proposer
+        self.assertEqual(proposer("עמלת הפקדה"), ("Commission dépôt", True))
+        self.assertEqual(proposer("העברה 12345 אברהם"), ("Virement 12345 אברהם", False))
+        self.assertEqual(proposer("xyz 123"), ("", False))
+        Traduction.objects.create(cle="אברהם", hebreu="אברהם", traduction="ABRAHAM")
+        self.assertEqual(proposer("העברה אברהם"), ("Virement ABRAHAM", True))
+
+    def test_page_traductions_propose(self):
+        j = Journal.objects.get(code="B1")
+        LigneReleve.objects.create(journal=j, date=dt.date(2026, 3, 1), montant=D(-10), operation="עמלת הפקדה")
+        self.assertContains(self.client.get("/rapprochement/traductions/"), 'value="Commission dépôt"')
+
+    def test_suppression_dans_l_historique(self):
+        from .models import ImportReleve
+        i = ImportReleve.objects.create(journal_id="B1", fichier="banque.xlsx", ajoutees=3)
+        self.assertContains(self.client.get("/rapprochement/historique/"), "ne retire <b>aucune ligne de relevé")
+        self.client.post("/rapprochement/historique/", {"coche": [i.pk]})
+        self.assertFalse(ImportReleve.objects.filter(pk=i.pk).exists())
+
+
+class CorrigerAxes(TestCase):
+    def test_commande(self):
+        referentiels_saisie()
+        call_command("migrate", verbosity=0)
+        Compte.objects.create(numero="600200", libelle="SANS AXE")
+        from io import StringIO
+        out = StringIO()
+        call_command("corriger_axes", stdout=out)
+        self.assertIn("600200", out.getvalue())
+        self.assertIsNone(Compte.objects.get(numero="600200").anal1_id)
+        call_command("corriger_axes", "--appliquer", stdout=StringIO())
+        self.assertEqual(Compte.objects.get(numero="600200").anal1_id, "FON.1")
