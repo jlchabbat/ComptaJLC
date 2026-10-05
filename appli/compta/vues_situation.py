@@ -26,15 +26,18 @@ def donnees(debut, fin):
     ls = lignes_periode(debut, fin)
     _, _, charges = soldes(ls.filter(compte__numero__startswith="6"))
     _, _, produits = soldes(ls.filter(compte__numero__startswith="7"))
+    axe1 = resultat_par_axe(ls, 1)
+    axe2 = [a for a in resultat_par_axe(ls, 2) if a["produits"] or a["charges"]]
     tresorerie = [{"journal": j, "solde": etats.solde_cumule(j.compte, fin)}
                   for j in Journal.objects.filter(compte__isnull=False).select_related("compte")]
     etat, a_verifier = ctrl.etat_general(ctrl.executer())
     return {
         "debut": debut, "fin": fin, "edite_le": dt.datetime.now(),
         "association": Reglage.lire("nom_association", "") or Reglage.lire("association", ""),
-        "produits": -produits, "charges": charges, "resultat": -(produits + charges),
+        "produits": -produits, "charges": charges, "solde": -(produits + charges),
         "tresorerie": tresorerie, "total_tresorerie": sum((t["solde"] for t in tresorerie), ZERO),
-        "axe1": resultat_par_axe(ls, 1), "axe2": [a for a in resultat_par_axe(ls, 2) if a["produits"] or a["charges"]],
+        "axe1": axe1, "axe2": axe2, "total_axe1": sum((a["resultat"] for a in axe1), ZERO),
+        "total_axe2": sum((a["resultat"] for a in axe2), ZERO),
         "charges_par_compte": par_compte(ls, "6"), "produits_par_compte": par_compte(ls, "7"),
         "nb_mouvements": Mouvement.objects.filter(date__range=(debut, fin)).count(), "etat": etat, "a_verifier": a_verifier,
     }
@@ -62,7 +65,7 @@ def classeur(d):
             f"Période du {d['debut']:%d/%m/%Y} au {d['fin']:%d/%m/%Y} · éditée le {d['edite_le']:%d/%m/%Y à %H:%M}")
     p.section("Chiffres clés")
     p.tableau(["", "Indicateur", "Montant"],
-              [["", "Produits", d["produits"]], ["", "Charges", d["charges"]], ["", "Résultat", d["resultat"]],
+              [["", "Produits", d["produits"]], ["", "Charges", d["charges"]], ["", "Solde", d["solde"]],
                ["", f"Trésorerie au {d['fin']:%d/%m/%Y}", d["total_tresorerie"]]], montants=(3,))
     p.note(f"{d['nb_mouvements']} mouvements sur la période · contrôles : {d['etat']}"
            + (f" ({d['a_verifier']} à vérifier)" if d["a_verifier"] else ""))
@@ -70,14 +73,11 @@ def classeur(d):
     p.tableau(["Journal", "Compte", "Solde"],
               [[t["journal"].code, f"{t['journal'].compte_id} – {t['journal'].compte.libelle}", t["solde"]] for t in d["tresorerie"]],
               montants=(3,), total=["Total", "", d["total_tresorerie"]])
-    for titre, cle in (("Résultat par nature (axe 1)", "axe1"), ("Résultat par événement / projet (axe 2)", "axe2")):
+    for titre, cle in (("Solde par nature (axe 1)", "axe1"), ("Solde par événement / projet (axe 2)", "axe2")):
         p.section(titre)
         ls = d[cle]
-        p.tableau(["Code", "Libellé", "Produits", "Charges", "Résultat"],
-                  [[a["code"] or "(sans code)", a["libelle"] or "", a["produits"], a["charges"], a["resultat"]] for a in ls],
-                  montants=(3, 4, 5),
-                  total=["Total", "", sum((a["produits"] for a in ls), ZERO), sum((a["charges"] for a in ls), ZERO),
-                         sum((a["resultat"] for a in ls), ZERO)])
+        p.tableau(["Code", "Libellé", "Solde"], [[a["code"] or "(sans code)", a["libelle"] or "", a["resultat"]] for a in ls],
+                  montants=(3,), total=["Total", "", d["total_" + cle]])
     for titre, cle, total in (("Produits par compte", "produits_par_compte", d["produits"]),
                               ("Charges par compte", "charges_par_compte", d["charges"])):
         p.section(titre)

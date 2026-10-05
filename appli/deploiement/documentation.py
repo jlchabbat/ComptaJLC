@@ -29,7 +29,8 @@ MOT_DE_PASSE = "Demo-ComptaBB-2026"
 DOCUMENTS = {"presentation.html": ("Présentation", "ComptaBB_presentation.pdf"),
              "mode-emploi.html": ("Mode d'emploi", "ComptaBB_mode_emploi.pdf"),
              "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaBB_guide_benevoles.pdf"),
-             "installation.html": ("Installation et mises à jour", "ComptaBB_installation.pdf")}
+             "installation.html": ("Installation et mises à jour", "ComptaBB_installation.pdf"),
+             "principes.html": ("Principes de fonctionnement", "ComptaBB_principes.pdf")}
 
 
 def preparer_django(dossier):
@@ -285,6 +286,8 @@ def imprimer():
     with sync_playwright() as p:
         navigateur = p.chromium.launch(**chromium())
         for source, (titre, pdf) in DOCUMENTS.items():
+            if "--seul" in sys.argv and source != sys.argv[sys.argv.index("--seul") + 1]:
+                continue                                      # ex. : --sans-captures --seul principes.html
             pg = navigateur.new_page()
             pg.goto((DOCS / source).as_uri())
             pg.wait_for_load_state("networkidle")

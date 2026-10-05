@@ -375,7 +375,7 @@ def imp_plan(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
     nouveaux_codes = {}
     for n, d in lignes:
-        numero, lib, anal1 = L.texte(n, d, "Compte", True, 20), L.texte(n, d, "Libellé", True, 100), L.texte(n, d, "Axe 1")
+        numero, lib, anal1 = L.texte(n, d, "Compte", True, 20), L.texte(n, d, "Libellé", True, 100), L.texte(n, d, "Axe 1", True)
         if anal1 and axe_du_code(anal1) not in (1, None):
             L.erreur(n, f"le code {anal1} existe déjà sur l'axe {axe_du_code(anal1)}.")
         elif anal1 and axe_du_code(anal1) is None:                  # code axe 1 inconnu : créé à l'import
@@ -602,11 +602,18 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             L.erreur(n, f"journal {jnl} inconnu.")
         if compte and compte not in comptes:                  # compte ou tiers inconnu : créé à l'import
             a1 = L.texte(n, d, "Anal1")
+            if not a1:                                    # compte de tiers : axe 1 des comptes de même racine (401, 411…)
+                modele = Compte.objects.filter(numero__startswith=compte[:3], anal1__isnull=False).first()
+                a1 = modele.anal1_id if modele else ""
+            if not a1:
+                L.erreur(n, f"le nouveau compte {compte} doit porter un code d'axe 1 (colonne Anal1).")
             nouveaux.setdefault(compte, (L.texte(n, d, "LibelCompte", longueur=100), a1))
             if a1 and axe_du_code(a1) is None:                # code axe 1 du nouveau compte inconnu : créé aussi
                 nouveaux_codes.setdefault((1, a1), L.texte(n, d, "LibelAnal1", longueur=100))
             elif a1 and axe_du_code(a1) != 1:
                 L.erreur(n, f"le code {a1} existe déjà sur l'axe {axe_du_code(a1)}.")
+        if compte[:1] not in ("6", "7"):                      # axe 2 : charges et produits seulement (comptes de bilan : ignoré)
+            anal2 = None
         if anal2 and anal2 not in axe2:
             if axe_du_code(anal2) is not None:
                 L.erreur(n, f"le code {anal2} existe déjà sur l'axe {axe_du_code(anal2)}.")

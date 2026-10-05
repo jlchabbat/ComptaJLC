@@ -174,6 +174,11 @@ def _verifier_modele(m):
         raise Refus(f"schéma « {m.schema} » inconnu (schémas : {', '.join(sorted(set(LigneSchema.objects.values_list('schema', flat=True))))})")
 
 
+def _verifier_compte(c):
+    if c.projet and c.numero[:1] not in ("6", "7"):
+        raise Refus("seuls les comptes de charges (6) et de produits (7) peuvent être « Projet »")
+
+
 def _verifier_mode(m):
     if m.genre == "TRESO" and not m.compte_id:
         raise Refus("un mode « banque, caisse ou carte » demande un compte de trésorerie")
@@ -214,11 +219,13 @@ FEUILLES = [
     Feuille("Plan comptable", Compte, ["numero"], [
         Colonne("Compte", "numero", Texte(20), True, 14),
         Colonne("Libellé", "libelle", Texte(100), True, 42),
-        Colonne("Axe 1", "anal1", AXE1, False, 12, "code de la feuille Axe 1"),
+        Colonne("Axe 1", "anal1", AXE1, True, 12, "code de la feuille Axe 1 : obligatoire pour chaque compte"),
+        Colonne("Projet", "projet", Booleen(), False, 9, "Oui : charges ou produits d'un projet (code axe 2 obligatoire) ; Non : fonctionnement"),
         Colonne("Lettrable", "lettrable", Booleen(), False, 11, "Oui ou Non"),
         Colonne("Actif", "actif", Booleen(), False, 9, "Oui ou Non"),
-    ], "Comptes généraux. Les comptes de tiers (membres, fournisseurs…) sont dans Tiers.xlsx.",
-        requete=_comptes_hors_tiers),
+    ], "Comptes généraux. Les comptes de tiers (membres, fournisseurs…) sont dans Tiers.xlsx. Un compte 6 ou 7 de projet "
+       "(ex. 600001) se distingue du compte de fonctionnement (600000).",
+        requete=_comptes_hors_tiers, verifier=_verifier_compte),
     Feuille("Journaux", Journal, ["code"], [
         Colonne("Code", "code", Texte(10), True, 10),
         Colonne("Intitulé", "intitule", Texte(60), True, 30),

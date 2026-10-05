@@ -90,6 +90,11 @@ python -m unittest discover tests
   (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
   Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).
   Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptabb-licence`) ne va jamais dans le dépôt.
+- Axes (application web) : chaque compte porte un code d'axe 1 ; une écriture ne reçoit un code d'axe 2 que sur un compte 6 ou 7,
+  jamais un code d'axe 1 (contrôlé par `Ligne.save`, les formulaires, les imports et les Contrôles RG-02). Compte 6/7 « de projet »
+  (`Compte.projet`, ex. 600001) : code axe 2 obligatoire ; compte de fonctionnement (600000) : facultatif.
+- Situation financière : colonnes « Solde » seulement, le mot « résultat » n'y figure pas.
+- Documentation PDF : `docs/*.html` → `python appli/deploiement/documentation.py --sans-captures [--seul principes.html]`.
 - Paramètres nommés dans Paramètres!D3:F16 (P_DebutExercice, P_FinExercice,
   P_DateCloture, P_DernierMvtClos, P_CompteVirement 580000, P_CompteAttente
   470000, P_Dossier, P_ReleveB1).
