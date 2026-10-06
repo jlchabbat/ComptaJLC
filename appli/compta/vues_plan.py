@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .models import CodeAnalytique, Compte, Journal, Modification
 
 administrer = permission_required("compta.parametrer", raise_exception=True)
-# plan comptable et codes d'axe : administrateur et gestion (pas le bénévole ni la consultation) ; journaux : administrateur
+# plan comptable et codes d'axe : administrateur et gestion  ; journaux : administrateur
 gerer_plan = permission_required(["compta.add_compte", "compta.change_compte", "compta.delete_compte"], raise_exception=True)
 gerer_codes = permission_required(["compta.add_codeanalytique", "compta.change_codeanalytique", "compta.delete_codeanalytique"],
                                   raise_exception=True)

@@ -1,9 +1,19 @@
 # ComptaJLC — contexte pour Claude Code
 
-Comptabilité d'une association, en ligne (application Django, base SQLite, hébergée
-sur PythonAnywhere). Dépôt indépendant, issu de ComptaBB (copie renommée) : les
-deux applications évoluent séparément. Utilisateurs non comptables : trésorier,
-bureau, vérificateur. Interface en français ; relevés bancaires possibles en hébreu.
+Comptabilité ordinaire, en ligne (application Django, base SQLite, hébergée sur
+PythonAnywhere). Dépôt indépendant, issu de ComptaBB (copie renommée) : les deux
+applications sont **différentes** ; on ne touche jamais à ComptaBB, on ne modifie
+que ComptaJLC. Interface en français ; relevés bancaires possibles en hébreu.
+
+## Principes
+
+- Compta ordinaire : **plus de bénévoles, de fiches bénévoles ni de tiers provisoires**.
+- **On ne parle plus de membres** : il y a des **tiers** (clients 411, fournisseurs 401,
+  autres types des Référentiels). Plus d'adhésion, de statut ni de cotisation.
+- **Deux modes** seulement : **Administration** (paramétrage de base, utilisateurs, base de
+  données, imports / exports) et **Gestion** (tenue de la comptabilité). Plus de rôles
+  Consultation ni Bénévole.
+- Base neuve : aucune donnée de ComptaBB (ni plan, ni codes Anal, ni écritures).
 
 ## Un seul axe analytique : Anal
 
@@ -38,11 +48,13 @@ bureau, vérificateur. Interface en français ; relevés bancaires possibles en 
 
 ## À reprendre (héritage de ComptaBB)
 
-- `src/`, `tests/recette_*.py`, `docs/cahier-des-charges.md`, `docs/plan-lots.md` et
-  `docs/inventaire.md` décrivent le classeur Excel de ComptaBB et ses « lots » ; ils sont
-  conservés pour mémoire et ne reflètent pas encore ComptaJLC (axes 1 et 2, Loge Bnei Brith).
-- Les PDF de `docs/` et de `appli/compta/documentation/` portent encore le texte de
-  ComptaBB : à régénérer après adaptation des `docs/*.html`.
+- `src/`, `tests/recette_*.py`, `docs/cahier-des-charges.md`, `docs/plan-lots.md`,
+  `docs/inventaire.md` et `docs/livraison-*.md` décrivent le classeur Excel de ComptaBB et ses
+  « lots » ; conservés pour mémoire, ils ne reflètent pas ComptaJLC.
+- `docs/*.html` et les PDF (`docs/`, `appli/compta/documentation/`) portent encore le texte de
+  ComptaBB (axes 1 et 2, membres, bénévoles) : à réécrire puis à régénérer.
+- `appli/deploiement/documentation.py` (génération des PDF avec captures) crée des données
+  d'exemple qui utilisent l'ancien modèle : à réécrire avant usage.
 
 ## Git
 

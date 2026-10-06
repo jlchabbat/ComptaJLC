@@ -22,8 +22,8 @@ FORMATS_RELEVE = [("excel", "Autre banque"), ("mizrahi", "Banque Mizrahi-Tefahot
 # plan de base : codes Anal, préfixes, comptes (numéro, libellé, code Anal, lettrable) ; 401000 et 411000 donnent
 # leur code Anal aux comptes de tiers créés ensuite (401…, 411…)
 ANAL = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
-        ("ACT.1", "ACTIVITES"), ("COT.1", "COTISATIONS"), ("DON.1", "DONS ET SUBVENTIONS")]
-PREFIXES = [("ACT.", "Activités"), ("COT.", "Cotisations"), ("DON.", "Dons et subventions")]
+        ("ACT.1", "ACTIVITES"), ("REC.1", "RECETTES"), ("DON.1", "DONS ET SUBVENTIONS")]
+PREFIXES = [("ACT.", "Activités"), ("REC.", "Recettes"), ("DON.", "Dons et subventions")]
 COMPTES = [
     ("110000", "REPORT A NOUVEAU", "BIL", False), ("401000", "FOURNISSEURS DIVERS", "BIL", True),
     ("411000", "CLIENTS DIVERS", "BIL", True),
@@ -31,7 +31,7 @@ COMPTES = [
     ("600000", "ACHATS ET FRAIS DIVERS", "FON.1", False), ("600100", "FRAIS BANCAIRES", "FON.1", False),
     ("600200", "LOCATION DE SALLES", "ACT.1", False), ("610000", "MANIFESTATIONS", "ACT.1", False),
     ("625000", "DONS VERSES", "DON.1", False), ("630000", "AIDES VERSEES", "DON.1", False),
-    ("700000", "COTISATIONS", "COT.1", False), ("710000", "PARTICIPATIONS AUX MANIFESTATIONS", "ACT.1", False),
+    ("700000", "VENTES ET PRESTATIONS", "REC.1", False), ("710000", "PARTICIPATIONS AUX MANIFESTATIONS", "ACT.1", False),
     ("720000", "AUTRES RECETTES", "ACT.1", False), ("725000", "DONS RECUS", "DON.1", False),
     ("740000", "SUBVENTIONS", "DON.1", False), ("750000", "PRODUITS FINANCIERS", "FON.1", False),
 ]

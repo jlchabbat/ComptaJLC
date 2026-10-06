@@ -1354,7 +1354,7 @@ def reinjecter(utilisateur=None):
 
     Un fichier d'écritures, de relevé (Banque) ou de budget remplace entièrement les données de sa
     nature ; les référentiels sont mis à jour (jamais supprimés : les écritures y renvoient). Pointages, à-nouveaux et
-    fiches bénévoles reportées sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
+    à-nouveaux de clôture sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
     from .base_donnees import sauvegarder
     choisis = fichiers_a_reinjecter()
     if not choisis:

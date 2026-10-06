@@ -1,0 +1,3 @@
+﻿Compte;Type;Nom;Prénom;Adresse;Code postal;Ville;Téléphone;E-mail
+411001;Client;EXEMPLE;Prénom;12 rue Herzl;4250000;Netanya;+972 50 000 0000;client@example.org
+401001;Fournisseur;TRAITEUR EXEMPLE;;5 rue Allenby;6100000;Tel Aviv;+972 3 000 0000;contact@example.org

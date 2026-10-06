@@ -28,7 +28,6 @@ SORTIE = APPLI / "compta" / "documentation"
 MOT_DE_PASSE = "Demo-ComptaJLC-2026"
 DOCUMENTS = {"presentation.html": ("Présentation", "ComptaJLC_presentation.pdf"),
              "mode-emploi.html": ("Mode d'emploi", "ComptaJLC_mode_emploi.pdf"),
-             "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaJLC_guide_benevoles.pdf"),
              "installation.html": ("Installation et mises à jour", "ComptaJLC_installation.pdf"),
              "principes.html": ("Principes de fonctionnement", "ComptaJLC_principes.pdf")}
 

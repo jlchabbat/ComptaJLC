@@ -9,8 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 
 DOSSIER = Path(__file__).resolve().parent / "documentation"
-DOCUMENTS = {"presentation": "ComptaJLC_presentation.pdf", "mode-emploi": "ComptaJLC_mode_emploi.pdf",
-             "benevoles": "ComptaJLC_guide_benevoles.pdf", "installation": "ComptaJLC_installation.pdf",
+DOCUMENTS = {"presentation": "ComptaJLC_presentation.pdf", "mode-emploi": "ComptaJLC_mode_emploi.pdf", "installation": "ComptaJLC_installation.pdf",
              "principes": "ComptaJLC_principes.pdf"}
 
 

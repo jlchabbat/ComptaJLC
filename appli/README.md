@@ -10,55 +10,32 @@ L'ancien programme du PC (`ComptaJLC.exe`) est abandonné et retiré du dépôt.
 Données (hors Git) : dossier `comptajlc-data` du site (`comptajlc.sqlite3`,
 `secret.txt`, justificatifs, Imports, Exports, sauvegardes).
 
-## Rôles
+## Deux modes
 
-| Rôle | Droits |
+| Mode | Droits |
 |---|---|
-| Administrateur | tous les droits, dont le paramétrage de base : Référentiels (journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, natures et modes des fiches, réglages), Paramètres (Excel), paramètres des relevés, utilisateurs, base de données |
-| Trésorier | l'usage courant : saisie, tiers, **plan comptable et codes d'axe 1 et 2 (ajout, modification, suppression)**, consultation, banque, éditions, exports (ni paramétrage, ni imports, ni base de données) |
-| Bureau | consultation seule : tableau de bord, écritures, grand livre, balance, analytique, contrôles, journal |
-| Bénévole | la liaison seulement : ses fiches bénévoles (saisie des lignes, nouveaux tiers provisoires, transmission) |
+| Administration | tous les droits, dont le paramétrage de base : Référentiels (journaux, préfixes, types de tiers, moyens de paiement, modèles d'opération, réglages), Paramètres (Excel), paramètres des relevés, utilisateurs, base de données, imports / exports |
+| Gestion | la tenue de la comptabilité : saisie, tiers, **plan comptable et codes Anal (ajout, modification, suppression)**, consultation, banque, éditions, exports (ni paramétrage de base, ni imports de fichiers, ni base de données) |
 
-Il n'y a pas d'autre rôle. Chacun change son identifiant (un nom ou une
+Il n'y a pas d'autre mode. Chacun change son identifiant (un nom ou une
 adresse e-mail) et son mot de passe dans **Mon compte** (clic sur son nom en
 haut à droite) ; on se connecte avec l'identifiant ou l'e-mail enregistré.
-L'administrateur crée les comptes dans Administration › Utilisateurs ;
-un bénévole se crée aussi depuis Fiches bénévoles › Nouveau bénévole, en choisissant un membre (fiche tiers).
+L'administrateur crée les comptes dans Administration › Utilisateurs.
 
 ## Pages (socle W0)
 
 Tableau de bord (produits, charges, résultat, trésorerie par journal,
-résultat par axe 1 et 2, état des contrôles) · Écritures (filtres journal,
-compte, axe 2, recherche) · Mouvement · Grand livre (solde cumulé) ·
+résultat par code Anal, état des contrôles) · Écritures (filtres journal,
+compte, Anal, recherche) · Mouvement · Grand livre (solde cumulé) ·
 Balance · Analytique · Contrôles (RG-01 à RG-04, comptes de liaison) ·
 Journal des modifications (repris du classeur).
 
 ## Saisie (W1)
 
 Saisie guidée d'une opération (aperçu des écritures, 11 contrôles bloquants,
-un ou deux Mvt) · Codes (nouveau code analytique d'après le préfixe, nouveau
-membre, statut d'un code axe 2). Toutes les listes se cherchent en tapant une
+un ou deux Mvt) · Codes (nouveau code Anal d'après le préfixe, nouveau
+tiers). Toutes les listes se cherchent en tapant une
 partie du code ou du libellé.
-
-## Fiches bénévoles (W2)
-
-Remplacent le fichier de liaison Excel (même conventions d'écritures, voir
-`compta/fiches.py`).
-
-1. Le trésorier crée la fiche : **Activité** (code axe 2 fixé d'avance, choisi ou créé sur place) ou
-   **Gestion** (dons et aides reçus ou versés), et lui attribue un ou
-   plusieurs bénévoles.
-2. Le bénévole se connecte, note ses recettes et dépenses ; il cherche un
-   membre existant ou crée un **nouveau tiers provisoire** ; puis il
-   **transmet** la fiche.
-3. Le trésorier attribue un compte aux tiers provisoires (Tiers provisoires),
-   complète en Gestion le mode de paiement, le compte de contrepartie et le
-   code axe 2, puis **reporte** : un Mvt par ligne (origine « Fiche
-   bénévole »). Le report est refusé tant qu'une ligne est signalée ; les
-   lignes reportées sont verrouillées.
-
-Natures et modes de paiement des fiches : Référentiels (modifiables).
-Un bénévole se connecte au site avec son propre identifiant (rôle Bénévole).
 
 ## Rapprochement bancaire (W3)
 
@@ -72,7 +49,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   Les opérations sont traduites (Banque › Traductions du relevé).
 - **Relevés à passer en compta** (menu Banque) : seulement les lignes
   téléchargées sans écriture (à partir de la date de reprise). Pour chacune :
-  compte de contrepartie et, pour les comptes 6 et 7 seulement, code axe 2 (listes cherchables par code ou
+  compte de contrepartie (liste cherchable par numéro ou
   libellé), puis **Créer les écritures** : un Mvt banque / contrepartie par
   ligne, aussitôt relié à la ligne (`releves.creer_ecriture`).
 - **Pas de doublon** : une ligne reliée sort de la liste et n'accepte plus
@@ -82,15 +59,14 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   cocher « nouvelle écriture ».
 - Plus de pointage automatique ou manuel ni d'état de rapprochement à l'écran.
 
-## Tiers et suivi des membres (W5)
+## Tiers (W5)
 
 - **Fiches tiers** (menu Tiers) : une par compte de tiers de chaque type
-  (membres 411, fournisseurs 401, autres types des Référentiels), créées
+  (clients 411, fournisseurs 401, autres types des Référentiels), créées
   automatiquement et à chaque nouveau tiers (Codes › Nouveau tiers) ;
-  adresse, code postal, ville, téléphone, e-mail ; pour les membres : adhésion,
-  statut (actif, honoraire, démissionnaire), cotisation attendue ; import du
-  modèle `Imports/modeles/07_membres.csv`.
-- **Fiche membre** : facturé, réglé, solde dû, historique.
+  adresse, code postal, ville, téléphone, e-mail ; import du
+  modèle `Imports/modeles/07_tiers.csv` (Tiers.xlsx).
+- **Fiche d'un tiers** : facturé, réglé, solde dû, historique.
 - **Justificatifs** (page d'un mouvement) : scans PDF ou photos joints au mouvement (plusieurs par
   mouvement, 10 Mo au plus chacun, photo directe sur téléphone) ; consultables par tous les rôles qui voient
   la comptabilité, suppression par le trésorier seulement et jamais dans un exercice clos ; colonne 📎 et
@@ -99,7 +75,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 - **Corriger ou supprimer une écriture** (trésorier) : Saisie › Modifier une écriture (n° de Mvt), ou boutons Modifier /
   Supprimer de la fiche du mouvement ; motif facultatif ; l'avant et l'après restent dans l'historique. Refusé dans un
   exercice clos et pour les à-nouveaux. Une suppression dépointe les lignes, efface les justificatifs du mouvement et
-  remet à reporter la ligne de fiche bénévole d'origine. Chaque fiche a un bouton « ← Retour à la liste » (dernière
+  Chaque fiche a un bouton « ← Retour à la liste » (dernière
   liste consultée, filtres compris).
 - **Justificatifs existants** (Administration, administrateur et trésorier) : dépôt en masse (ZIP ou
   fichiers), rattachement proposé d'après le nom du fichier (n° de Mvt en tête suivi d'une espace, « 389 facture.pdf » :
@@ -112,8 +88,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
   (colonne Mvt + lien) convient aussi ; un lien peut être collé sur la page du mouvement. Les documents des liens
   sont copiés sur le site (aussitôt, ou bouton « Les enregistrer sur le site », ou
   `python manage.py rapatrier_justificatifs`) .
-- Pas de suivi des impayés : le solde du compte tiers suffit ; **cotisations** de l'exercice attendues,
-  facturées, reçues et taux de recouvrement (réglage `compte_cotisations`).
+- Pas de suivi des impayés : le solde du compte tiers suffit.
 - **Lettrage** (colonne Let) : manuel sur des lignes équilibrées, automatique
   (même opération, puis premier règlement de même montant), annulable ;
   journalisé.
@@ -121,7 +96,7 @@ Par journal de trésorerie (B1, B2, B3, CA) :
 ## Imports / Exports (administrateur)
 
 Menu **Administration › Imports / Exports** (`compta/echanges.py`), en complément des imports des écrans Tiers
-et Rapprochement. Un fichier `.xlsx` par nature de données (Exercices, Reglages, Axe1, Axe2, Prefixes,
+et Rapprochement. Un fichier `.xlsx` par nature de données (Exercices, Reglages, Anal, Prefixes,
 PlanComptable, Journaux, Tiers, Traductions, Budget, Ecritures, Banque, Bit), de même
 structure à l'import et à l'export, décrit dans `Lexique.xlsx` et dans [`Imports/README.md`](../Imports/README.md).
 Dossiers : les mêmes `Imports` et `Exports` que Paramètres (Excel), modifiables dans la page (réglages
@@ -158,11 +133,11 @@ sauvegarde automatique juste avant ; journalisé.
 ## États annuels et clôture (W4)
 
 - **États** (menu États, exercice au choix, N comparé à N-1) : compte de
-  résultat par compte, résultat par axe 1 et par axe 2, bilan simplifié
+  résultat par compte, résultat par code Anal, bilan simplifié
   (classes 1 à 5 ; résultat de l'exercice et résultats antérieurs non
   reportés), budget et réalisé avec écarts en montant et en %. Impression et
   téléchargement Excel.
-- **Budget** : par compte (6 ou 7), par code d'axe 1 ou par code d'axe 2.
+- **Budget** : par compte (6 ou 7), ou par code Anal.
 - **Clôture** (menu Clôture, trésorier) : exercices clôturés dans l'ordre ;
   blocage si mouvement déséquilibré ou bilan déséquilibré ; avertissements
   (contrôles, fiches non reportées, tiers provisoires). Crée **un** Mvt
