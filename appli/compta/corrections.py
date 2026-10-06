@@ -133,9 +133,8 @@ def refus_suppression(m):
 @transaction.atomic
 def supprimer(m, utilisateur):
     """Supprime le mouvement (trésorier) : ses lignes sortent des pointages et lettrages, ses justificatifs sont effacés,
-    une ligne de fiche bénévole reportée redevient à reporter. L'avant reste dans l'historique."""
+    L'avant reste dans l'historique."""
     from . import justificatifs
-    from .models import LigneFiche
     refus = refus_suppression(m)
     if refus:
         raise ValueError(refus)
@@ -143,12 +142,6 @@ def supprimer(m, utilisateur):
     for l in m.lignes.all():
         _liberer(l)
     fichiers = [justificatifs.chemin(j) for j in m.justificatifs.all()]
-    from .models import Fiche
-    fiches = list(Fiche.objects.filter(lignes__mouvement=m, statut="reportee").distinct())
-    LigneFiche.objects.filter(mouvement=m).update(mouvement=None)
-    for f in fiches:                                      # la ligne est à reporter de nouveau
-        f.statut = "transmise"
-        f.save(update_fields=["statut"])
     numero = m.numero
     m.delete()
     for f in fichiers:

@@ -21,9 +21,7 @@
 <p>Remplace <b>toutes</b> les données par un existant :</p>
 <ul><li><b>une sauvegarde</b> (.sqlite3) : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris ;</li>
 <li><b>un export complet</b> (.zip) : la comptabilité est vidée puis rechargée depuis ses fichiers Excel (paramètres, tiers, écritures,
-données), et comparée à l'export ; les comptes utilisateurs sont gardés. Export modifié dans Excel : cocher « Fichiers modifiés » ;</li>
-<li><b>le classeur ComptaJLC.xlsm</b> : la comptabilité est vidée puis reprise du classeur (plan, journaux, codes, écritures, relevé) ;
-les comptes utilisateurs sont gardés, les fiches bénévoles, budgets et pointages sont effacés.</li></ul>
+données), et comparée à l'export ; les comptes utilisateurs sont gardés. Export modifié dans Excel : cocher « Fichiers modifiés ».</li></ul>
 <p class="aide">Une sauvegarde de la base actuelle est faite juste avant : en cas d'erreur, choisissez-la ici pour tout remettre comme avant.</p>
 <div class="formulaire">{{ form.non_field_errors }}{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form>

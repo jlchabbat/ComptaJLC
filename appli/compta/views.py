@@ -53,8 +53,6 @@ def resultat_par_anal(lignes):
 @login_required
 def tableau_de_bord(request):
     if not request.user.has_perm("compta.view_mouvement"):
-        if request.user.has_perm("compta.view_fiche"):
-            return redirect("fiches")     # bénévole : ses fiches
         raise PermissionDenied
     debut, fin = periode(request)
     ls = lignes_periode(debut, fin)
@@ -260,7 +258,7 @@ from django.contrib import messages  # noqa: E402
 from django.db import transaction  # noqa: E402
 
 from . import saisie as moteur  # noqa: E402
-from .forms import CodeForm, MembreForm, SaisieForm  # noqa: E402
+from .forms import CodeForm, SaisieForm, TiersForm  # noqa: E402
 from .models import ModeleOperation, Prefixe  # noqa: E402
 
 
@@ -305,7 +303,7 @@ def _journaliser(request, action, objet, avant="", apres=""):
 @permission_required("compta.add_codeanalytique", raise_exception=True)
 def codes(request):
     code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code")
-    membre_form = MembreForm(request.POST if "creer_membre" in request.POST else None, prefix="membre")
+    tiers_form = TiersForm(request.POST if "creer_tiers" in request.POST else None, prefix="tiers")
     if request.method == "POST":
         with transaction.atomic():
             if "creer_code" in request.POST and code_form.is_valid():
@@ -318,20 +316,20 @@ def codes(request):
                     _journaliser(request, "Création", f"code Anal {nouveau.code}", apres=lib)
                     messages.success(request, f"Code {nouveau.code} créé : {lib}.")
                     return redirect("codes")
-            if "creer_membre" in request.POST and membre_form.is_valid():
-                c = membre_form.cleaned_data
+            if "creer_tiers" in request.POST and tiers_form.is_valid():
+                c = tiers_form.cleaned_data
                 libelle = f"{c['nom'].strip().upper()} {c['prenom'].strip().upper()}".strip()
                 existant = Compte.objects.filter(libelle=libelle, numero__startswith=c["type"].prefixe).first()
                 if existant:
-                    membre_form.add_error("nom", f"Un compte existe déjà à ce nom : {existant.numero}.")
+                    tiers_form.add_error("nom", f"Un compte existe déjà à ce nom : {existant.numero}.")
                 else:
-                    from .membres import creer_tiers
+                    from .tiers import creer_tiers
                     compte = creer_tiers(c["type"], c["nom"], c["prenom"], **{k: c[k] for k in (
                         "adresse", "code_postal", "ville", "telephone", "email")})
                     _journaliser(request, "Création", f"compte {compte.numero}", apres=f"{c['type']} {libelle}")
                     messages.success(request, f"{c['type']} créé : {compte.numero} – {libelle}.")
                     return redirect("codes")
     prefixes = [(p, p.code_suivant()) for p in Prefixe.objects.all()]
-    return render(request, "compta/codes.html", {"code_form": code_form, "membre_form": membre_form,
+    return render(request, "compta/codes.html", {"code_form": code_form, "tiers_form": tiers_form,
                                                  "prefixes": prefixes,
                                                  "prochains": {p.prefixe: {"code": c} for p, c in prefixes}})

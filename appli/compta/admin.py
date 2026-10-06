@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from .models import (
-    CodeAnalytique, Compte, Exercice, Fiche, Journal, Ligne, LigneFiche, LigneSchema, ModeFiche, Modification, ModeleOperation, Mouvement,
-    AxeCompte, Membre, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, TiersProvisoire, Traduction, TypeTiers, ValeurCompte,
+    CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneSchema, Modification, ModeleOperation, Mouvement,
+    AxeCompte, Tiers, MoyenPaiement, ParametreReleve, Prefixe, Reglage, Traduction, TypeTiers, ValeurCompte,
 )
 
 
@@ -110,41 +110,6 @@ class ModeleOperationAdmin(admin.ModelAdmin):
     autocomplete_fields = ("compte", "journal_defaut")
 
 
-@admin.register(NatureFiche)
-class NatureFicheAdmin(admin.ModelAdmin):
-    list_display = ("libelle", "type_fiche", "sens", "compte", "libelle_ecriture", "ordre")
-    list_filter = ("type_fiche", "sens")
-    autocomplete_fields = ("compte",)
-
-
-@admin.register(ModeFiche)
-class ModeFicheAdmin(admin.ModelAdmin):
-    list_display = ("libelle", "type_fiche", "sens", "genre", "journal", "compte", "ordre")
-    list_filter = ("type_fiche",)
-    autocomplete_fields = ("journal", "compte")
-
-
-@admin.register(Fiche)
-class FicheAdmin(admin.ModelAdmin):
-    list_display = ("titre", "type", "statut", "cree_le")
-    list_filter = ("type", "statut")
-
-
-@admin.register(TiersProvisoire)
-class TiersProvisoireAdmin(admin.ModelAdmin):
-    list_display = ("nom", "prenom", "compte", "cree_par", "cree_le")
-    autocomplete_fields = ("compte",)
-
-
-@admin.register(LigneFiche)
-class LigneFicheAdmin(admin.ModelAdmin):
-    list_display = ("fiche", "sens", "date", "nature", "montant", "mode", "mouvement")
-    list_filter = ("fiche",)
-
-    def has_change_permission(self, request, obj=None):
-        return False    # les lignes se modifient depuis la fiche (contrôles et verrou après report)
-
-
 @admin.register(Traduction)
 class TraductionAdmin(admin.ModelAdmin):
     list_display = ("hebreu", "traduction")
@@ -161,8 +126,8 @@ class ParametreReleveAdmin(admin.ModelAdmin):
     list_display = ("journal", "date_reprise", "libelle")
 
 
-@admin.register(Membre)
-class MembreAdmin(admin.ModelAdmin):
-    list_display = ("nom", "prenom", "compte", "statut", "telephone", "email", "cotisation")
-    list_filter = ("statut",)
+@admin.register(Tiers)
+class TiersAdmin(admin.ModelAdmin):
+    list_display = ("nom", "prenom", "compte", "type", "telephone", "email")
+    list_filter = ("type",)
     search_fields = ("nom", "prenom", "compte__numero", "email")

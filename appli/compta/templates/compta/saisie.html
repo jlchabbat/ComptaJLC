@@ -36,7 +36,7 @@
   function maj() {
     var m = modeles[modele.value] || null;
     document.getElementById("aide-modele").textContent = m ? m.aide : "";
-    // tiers : seulement ceux du type attendu (membre 411…, fournisseur 401…)
+    // tiers : seulement ceux du type attendu (client 411…, fournisseur 401…)
     for (var i = 0; i < tiers.options.length; i++) {
       var o = tiers.options[i];
       o.hidden = !!(o.value && m && (!m.prefixe || o.value.indexOf(m.prefixe) !== 0));

@@ -5,7 +5,7 @@ L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
 - Parametres.xlsx : les paramètres (même classeur que la page Paramètres) ;
 - Tiers.xlsx : les fiches tiers (même format que l'import Tiers.xlsx) ;
 - Ecritures.xlsx : toutes les écritures (une ligne par ligne d'écriture, avec pointage, origine et auteur) ;
-- Donnees.xlsx : comptes de tiers, exercices, pointages, relevés, budget, fiches bénévoles et leurs documents, justificatifs,
+- Donnees.xlsx : comptes de tiers, exercices, pointages, relevés, budget, justificatifs,
   historique ;
 - Justificatifs/ : les scans et photos joints aux mouvements ;
 - Etats_<exercice>.xlsx : états de chaque exercice (lecture seule) ;
@@ -35,11 +35,11 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from . import membres, parametres
+from . import parametres, tiers as moteur_tiers
 from .models import (
-    ZERO, Budget, CodeAnalytique, Compte, DocumentFiche, Exercice, Fiche, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, LigneSchema, Membre,
-    ModeFiche, ModeleOperation, Modification, Mouvement, MoyenPaiement, NatureFiche, ParametreReleve, Prefixe,
-    Rapprochement, Reglage, TiersProvisoire, Traduction, TypeTiers, arrondi,
+    ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneReleve, LigneSchema, Tiers,
+    ModeleOperation, Modification, Mouvement, MoyenPaiement, ParametreReleve, Prefixe,
+    Rapprochement, Reglage, Traduction, TypeTiers, arrondi,
 )
 
 GARDER = 20                     # exports complets conservés dans Exports
@@ -112,8 +112,8 @@ def _nom_utilisateur(u):
 # ---------------------------------------------------------------- empreinte (contrôle)
 
 COMPTES = [Compte, Journal, CodeAnalytique, Prefixe, Reglage, TypeTiers, MoyenPaiement, LigneSchema, ModeleOperation,
-           NatureFiche, ModeFiche, Traduction, ParametreReleve, Exercice, Mouvement, Ligne, Rapprochement, LigneReleve,
-           Budget, Membre, TiersProvisoire, Fiche, LigneFiche, Justificatif, DocumentFiche]
+           Traduction, ParametreReleve, Exercice, Mouvement, Ligne, Rapprochement, LigneReleve,
+           Budget, Tiers, Justificatif]
 
 
 def empreinte():
@@ -130,7 +130,6 @@ def empreinte():
         "releve": str(arrondi(LigneReleve.objects.aggregate(s=Sum("montant"))["s"])),
         "releve_pointe": LigneReleve.objects.filter(rapprochement__isnull=False).count(),
         "budget": str(arrondi(Budget.objects.aggregate(s=Sum("montant"))["s"])),
-        "fiches": str(arrondi(LigneFiche.objects.aggregate(s=Sum("montant"))["s"])),
         "historique": Modification.objects.count(),
         "contenu": signature(),
     }
@@ -138,9 +137,7 @@ def empreinte():
 
 
 # colonnes qui portent un numéro interne : remplacé par le rang (l'ordre de création est conservé)
-REFERENCES = {"Pointages": {"N°": "p"}, "Écritures": {"Pointage": "p"}, "Relevés": {"Pointage": "p"},
-              "Tiers provisoires": {"N°": "t"}, "Fiches": {"N°": "f"}, "Lignes de fiches": {"Fiche": "f", "Tiers provisoire": "t"},
-              "Documents fiches": {"Fiche": "f"}}
+REFERENCES = {"Pointages": {"N°": "p"}, "Écritures": {"Pointage": "p"}, "Relevés": {"Pointage": "p"}}
 
 
 def _normal(v):
@@ -155,14 +152,12 @@ def _normal(v):
 
 def signature():
     """Empreinte de tout le contenu : paramètres, tiers et données, cellule par cellule."""
-    rangs = {"p": {pk: i for i, pk in enumerate(Rapprochement.objects.order_by("pk").values_list("pk", flat=True))},
-             "t": {pk: i for i, pk in enumerate(TiersProvisoire.objects.order_by("pk").values_list("pk", flat=True))},
-             "f": {pk: i for i, pk in enumerate(Fiche.objects.order_by("pk").values_list("pk", flat=True))}}
+    rangs = {"p": {pk: i for i, pk in enumerate(Rapprochement.objects.order_by("pk").values_list("pk", flat=True))}}
     h = hashlib.sha256()
     for f in parametres.FEUILLES:
         for obj in f.elements():
             h.update(repr([_normal(c.type.vers_excel(getattr(obj, c.champ))) for c in f.colonnes]).encode())
-    for m in Membre.objects.order_by("compte"):
+    for m in Tiers.objects.order_by("compte"):
         h.update(repr([_normal(v) for v in _ligne_tiers(m)]).encode())
     for nom, lignes in _lignes_donnees():
         refs = {FEUILLES[nom].index(col): cle for col, cle in REFERENCES.get(nom, {}).items()}
@@ -193,22 +188,14 @@ FEUILLES = {
     "Relevés": ["Journal", "Date", "Rang", "Référence", "Opération", "Montant", "Solde", "Ouverture", "Source",
                 "Importé le", "Pointage"],
     "Budget": ["Exercice", "Nature", "Compte", "Anal", "Montant"],
-    "Tiers provisoires": ["N°", "Nom", "Prénom", "Téléphone", "E-mail", "Remarque", "Compte", "Créé par", "Créé le"],
-    "Fiches": ["N°", "Type", "Titre", "Bénévoles", "Statut", "Créée le"],
-    "Lignes de fiches": ["Fiche", "Sens", "Date", "Tiers", "Tiers provisoire", "Autre", "Personnes", "Nature", "Montant",
-                         "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Mvt", "Créé par",
-                         "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
-    "Bénévoles": ["Compte", "Identifiant"],
     "Justificatifs": ["Mvt", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte", "Lien"],
-    # reçus des bénévoles ; Ligne = rang de la ligne dans « Lignes de fiches » (1 = la première), vide = toute la fiche
-    "Documents fiches": ["Fiche", "Ligne", "Fichier", "Nom", "Description", "Taille", "Ajouté le", "Ajouté par", "Empreinte"],
     "Axes de comptes": ["Compte", "Axe", "Ordre", "Valeur"],
 }
 
 
 def _lignes_donnees():
-    tiers = set(Membre.objects.values_list("compte_id", flat=True))
+    tiers = set(Tiers.objects.values_list("compte_id", flat=True))
     yield "Comptes de tiers", ([c.numero, c.libelle, c.anal1_id, _oui(c.lettrable), _oui(c.actif)]
                                for c in Compte.objects.filter(numero__in=tiers))
     yield "Exercices", ([e.libelle, e.debut, e.fin, _oui(e.clos), e.mouvement_an.numero if e.mouvement_an else None,
@@ -226,16 +213,6 @@ def _lignes_donnees():
                       for l in LigneReleve.objects.order_by("journal", "date", "rang", "pk"))
     yield "Budget", ([b.exercice.libelle, b.nature, b.compte_id, b.anal1_id, _montant(b.montant)]
                      for b in Budget.objects.select_related("exercice"))
-    yield "Tiers provisoires", ([t.pk, t.nom, t.prenom, t.telephone, t.email, t.remarque, t.compte_id, _nom_utilisateur(t.cree_par),
-                                 _heure(t.cree_le)] for t in TiersProvisoire.objects.select_related("cree_par").order_by("pk"))
-    yield "Fiches", ([f.pk, f.type, f.titre, ";".join(sorted(u.get_username() for u in f.benevoles.all())),
-                      f.statut, _heure(f.cree_le)] for f in Fiche.objects.prefetch_related("benevoles").order_by("pk"))
-    yield "Lignes de fiches", ([l.fiche_id, l.sens, l.date, l.tiers_id, l.provisoire_id, l.autre, l.personnes, l.nature.libelle,
-                                _montant(l.montant), l.mode.libelle if l.mode else "", l.mode.sens if l.mode else "",
-                                l.justificatif, l.remarque, l.compte_id,
-                                l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
-                               for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
-                               .order_by("pk"))
     from .models import ValeurCompte
     yield "Axes de comptes", ([v.compte_id, v.axe.nom, v.axe.ordre, v.valeur]
                               for v in ValeurCompte.objects.select_related("axe").order_by("axe__ordre", "axe__nom", "compte"))
@@ -243,15 +220,8 @@ def _lignes_donnees():
     yield "Justificatifs", ([j.mouvement.numero, j.chemin or "", j.nom, j.description, j.taille, _heure(j.ajoute_le), j.ajoute_par,
                              "lien" if j.lien else _empreinte_fichier(chemin_justificatif(j)), j.lien]
                             for j in Justificatif.objects.select_related("mouvement").order_by("mouvement__numero", "pk"))
-    rang_ligne = {pk: i for i, pk in enumerate(LigneFiche.objects.order_by("pk").values_list("pk", flat=True), 1)}
-    from .justificatifs import dossier as dossier_justificatifs
-    yield "Documents fiches", ([d.fiche_id, rang_ligne.get(d.ligne_id), d.chemin, d.nom, d.description, d.taille, _heure(d.ajoute_le),
-                                d.ajoute_par, _empreinte_fichier(dossier_justificatifs() / d.chemin)]
-                               for d in DocumentFiche.objects.order_by("pk"))
     yield "Historique", ([_heure(m.date), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres]
                          for m in Modification.objects.order_by("date", "pk"))
-    yield "Bénévoles", ([m.compte_id, m.utilisateur.get_username()]
-                        for m in Membre.objects.filter(utilisateur__isnull=False).select_related("utilisateur").order_by("compte"))
 
 
 def _empreinte_fichier(chemin):
@@ -287,15 +257,15 @@ def classeur_tiers():
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Tiers"
-    ws.append(membres.ENTETES_MODELE)
-    for m in Membre.objects.select_related("type").order_by("compte"):
+    ws.append(moteur_tiers.ENTETES_MODELE)
+    for m in Tiers.objects.select_related("type").order_by("compte"):
         ws.append(_ligne_tiers(m))
     return wb
 
 
 def _ligne_tiers(m):
     return [m.compte_id, m.type.libelle if m.type else "", m.nom, m.prenom, m.adresse, m.code_postal, m.ville,
-            m.telephone, m.email, m.date_adhesion, m.statut, _montant(m.cotisation)]
+            m.telephone, m.email]
 
 
 def _octets(wb):
@@ -336,10 +306,6 @@ def exporter(auteur=""):
         for j in Justificatif.objects.exclude(chemin=None):
             if chemin_justificatif(j).exists():
                 z.write(chemin_justificatif(j), f"Justificatifs/{j.chemin}")
-        from .justificatifs import dossier as dossier_justificatifs
-        for d in DocumentFiche.objects.all():                    # reçus des bénévoles (fiches non encore reportées)
-            if (dossier_justificatifs() / d.chemin).exists():
-                z.write(dossier_justificatifs() / d.chemin, f"Justificatifs/{d.chemin}")
         z.writestr("controle.json", json.dumps(controle, ensure_ascii=False, indent=1))
         z.writestr("LISEZMOI.txt", __doc__.strip() + "\n")
     for vieux in liste()[GARDER:]:
@@ -355,13 +321,13 @@ def vider():
     """Efface toute la comptabilité ; les comptes utilisateurs sont gardés."""
     Exercice.objects.update(mouvement_an=None)
     from .models import AxeCompte, ValeurCompte
-    for m in (ValeurCompte, AxeCompte, Membre, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction, DocumentFiche, LigneFiche, Fiche, TiersProvisoire,
-              NatureFiche, ModeFiche, Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers,
+    for m in (ValeurCompte, AxeCompte, Tiers, Budget, LigneReleve, Rapprochement, ParametreReleve, Traduction,
+              Ligne, Mouvement, Modification, ModeleOperation, MoyenPaiement, LigneSchema, TypeTiers,
               Journal, Compte, Prefixe, CodeAnalytique, Exercice, Reglage):
         m.objects.all().delete()
 
 
-FACULTATIVES = ("Justificatifs", "Documents fiches", "Axes de comptes")       # absentes des exports faits avant leur création
+FACULTATIVES = ("Justificatifs", "Axes de comptes")       # absentes des exports faits avant leur création
 COLONNES_FACULTATIVES = {"Lien", "Téléphone", "E-mail"}         # idem pour les colonnes
 
 
@@ -443,36 +409,6 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
         Budget.objects.create(exercice=exercices[_texte(r["Exercice"])], nature=_texte(r["Nature"]),
                               compte_id=_texte(r["Compte"]) or None, anal1_id=_texte(r["Anal"]) or None,
                               montant=_lire_montant(r["Montant"]))
-    provisoires = {}
-    for r in _rangees(wb, "Tiers provisoires"):
-        t = TiersProvisoire.objects.create(nom=_texte(r["Nom"]), prenom=_texte(r["Prénom"]), remarque=_texte(r["Remarque"]),
-                                           telephone=_texte(r.get("Téléphone")), email=_texte(r.get("E-mail")),
-                                           compte_id=_texte(r["Compte"]) or None, cree_par=qui(r["Créé par"]))
-        TiersProvisoire.objects.filter(pk=t.pk).update(cree_le=_lire_heure(r["Créé le"]) or t.cree_le)
-        provisoires[_entier(r["N°"])] = t
-    fiches = {}
-    for r in _rangees(wb, "Fiches"):
-        f = Fiche.objects.create(type=_texte(r["Type"]), titre=_texte(r["Titre"]),
-                                 statut=_texte(r["Statut"]))
-        Fiche.objects.filter(pk=f.pk).update(cree_le=_lire_heure(r["Créée le"]) or f.cree_le)
-        f.benevoles.set([u for u in (qui(n) for n in _texte(r["Bénévoles"]).split(";")) if u])
-        fiches[_entier(r["N°"])] = f
-    lignes_fiches = []
-    for r in _rangees(wb, "Lignes de fiches"):
-        f = fiches[_entier(r["Fiche"])]
-        sens = _texte(r["Sens"])
-        mode = None
-        if _texte(r["Mode"]):
-            mode = ModeFiche.objects.get(type_fiche=f.type, sens=_texte(r["Sens du mode"]), libelle=_texte(r["Mode"]))
-        l = LigneFiche.objects.create(
-            fiche=f, sens=sens, date=_jour(r["Date"]), tiers_id=_texte(r["Tiers"]) or None,
-            provisoire=provisoires.get(_entier(r["Tiers provisoire"])), autre=_texte(r["Autre"]),
-            personnes=_entier(r["Personnes"]), montant=_lire_montant(r["Montant"]), mode=mode,
-            nature=NatureFiche.objects.get(type_fiche=f.type, sens=sens, libelle=_texte(r["Nature"])),
-            justificatif=_texte(r["Justificatif"]), remarque=_texte(r["Remarque"]), compte_id=_texte(r["Compte"]) or None,
-            mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
-        LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
-        lignes_fiches.append(l)
     from .models import AxeCompte, ValeurCompte
     for r in _rangees(wb, "Axes de comptes"):
         axe, _ = AxeCompte.objects.get_or_create(nom=_texte(r["Axe"]), defaults={"ordre": _entier(r["Ordre"]) or 0})
@@ -498,22 +434,6 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
                                         description=_texte(r["Description"]), taille=_entier(r["Taille"]) or 0,
                                         ajoute_par=_texte(r["Ajouté par"]))
         Justificatif.objects.filter(pk=j.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or j.ajoute_le)
-    for r in _rangees(wb, "Documents fiches"):
-        relatif = _texte(r["Fichier"])
-        contenu = (pieces or {}).get(relatif)
-        if contenu is None:
-            raise ExportInvalide(f"Document de fiche {relatif} absent de l'export.")
-        cible = dossier_justificatifs() / relatif
-        if not cible.exists() or cible.read_bytes() != contenu:
-            if ecrits is not None:
-                ecrits.append((cible, cible.read_bytes() if cible.exists() else None))
-            cible.parent.mkdir(parents=True, exist_ok=True)
-            cible.write_bytes(contenu)
-        rang = _entier(r["Ligne"])
-        d = DocumentFiche.objects.create(fiche=fiches[_entier(r["Fiche"])], ligne=lignes_fiches[rang - 1] if rang else None,
-                                         chemin=relatif, nom=_texte(r["Nom"]), description=_texte(r["Description"]),
-                                         taille=_entier(r["Taille"]) or 0, ajoute_par=_texte(r["Ajouté par"]))
-        DocumentFiche.objects.filter(pk=d.pk).update(ajoute_le=_lire_heure(r["Ajouté le"]) or d.ajoute_le)
     historique = []
     for r in _rangees(wb, "Historique"):
         historique.append((Modification(auteur=_texte(r["Auteur"]), lot=_texte(r["Lot"]), action=_texte(r["Action"]),
@@ -523,9 +443,6 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
         m.save()
         if quand:
             Modification.objects.filter(pk=m.pk).update(date=quand)
-    if "Bénévoles" in wb.sheetnames:                          # absente des exports antérieurs
-        for r in _rangees(wb, "Bénévoles"):
-            Membre.objects.filter(compte_id=_texte(r["Compte"])).update(utilisateur=qui(r["Identifiant"]))
 
 
 def lire_export(source):
@@ -605,7 +522,7 @@ def _reinjecter(fichiers, attendu, auteur, ecrits, modifie):
                      if "Ecritures.xlsx" in fichiers else None)
         try:
             _charger_comptes_tiers(wb)                       # comptes avant les fiches tiers
-            t = membres.importer_tableau(membres.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
+            t = moteur_tiers.importer_tableau(moteur_tiers.lire_tableau("Tiers.xlsx", fichiers["Tiers.xlsx"]))
             if t.erreurs:
                 raise ExportInvalide("Tiers.xlsx : " + " · ".join(t.erreurs[:10]))
             _charger_donnees(wb, ecritures, fichiers["justificatifs"], ecrits)
@@ -623,7 +540,7 @@ def _reinjecter(fichiers, attendu, auteur, ecrits, modifie):
         elif differences:
             raise ExportInvalide("La base rechargée diffère de l'export : " + " · ".join(differences[:10])
                                  + ". Si vous avez modifié les fichiers, cochez « Fichiers modifiés ».")
-        n = {m: m.objects.count() for m in (Mouvement, Ligne, Membre, Justificatif)}
+        n = {m: m.objects.count() for m in (Mouvement, Ligne, Tiers, Justificatif)}
         Modification.objects.create(auteur=auteur, lot="Base de données", action="Réinjection d'un export complet",
                                     objet=f"export du {(attendu or {}).get('cree_le', '?')}"
                                           + (" (fichiers modifiés)" if modifie else ""),
@@ -631,4 +548,4 @@ def _reinjecter(fichiers, attendu, auteur, ecrits, modifie):
     controle = ("contrôles de cohérence satisfaits (fichiers modifiés)" if modifie
                 else "base identique à l'export")
     return (f"Export du {(attendu or {}).get('cree_le', '?')} réinjecté : {n[Mouvement]} mouvements, "
-            f"{n[Ligne]} lignes, {n[Membre]} tiers, {n[Justificatif]} justificatif(s). Contrôle : {controle}.")
+            f"{n[Ligne]} lignes, {n[Tiers]} tiers, {n[Justificatif]} justificatif(s). Contrôle : {controle}.")

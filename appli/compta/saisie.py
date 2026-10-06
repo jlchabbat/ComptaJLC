@@ -170,7 +170,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
 
 # ---------------------------------------------------------------- paramètres initiaux (repris du classeur, Lot 1)
 
-TYPES_TIERS = [("Membre", "411"), ("Fournisseur", "401")]
+TYPES_TIERS = [("Client", "411"), ("Fournisseur", "401")]
 MOYENS = [("Mizrahi compte courant", "B1"), ("Mizrahi épargne", "B2"), ("BIT", "BIT"), ("Caisse (espèces)", "CA"), ("Non réglé", None)]
 SCHEMAS = [
     ("RT", 1, 1, "TIERS", "D", False, "PAIEMENT_OU_DEFAUT"), ("RT", 2, 1, "CONTREPARTIE", "C", False, "PAIEMENT_OU_DEFAUT"),
@@ -188,15 +188,10 @@ SCHEMAS = [
 ]
 MODELES = [
     # type, schéma, compte, journal par défaut, tiers, paiement obligatoire, classe, libellé type, aide
-    ("Cotisation membre", "RT", "700000", "VT", "Membre", False, "7", "COTISATION",
-     "Facture la cotisation au membre ; avec un moyen de paiement, le règlement est passé dans la même opération."),
-    ("Facture manifestation (membre)", "RT", "710000", "VT", "Membre", False, "7", "FACTURE MANIFESTATION",
-     "Participation d'un membre à une manifestation, réglée ou non."),
-    ("Recette d'opération (membre)", "RT", "720000", "VT", "Membre", False, "7", "FACTURE OPERATION",
-     "Recette d'une opération facturée à un membre."),
-    ("Don reçu d'un membre", "RT", "725000", "VT", "Membre", False, "7", "DON", "Don d'un membre, suivi sur son compte."),
-    ("Règlement d'un membre", "RM", None, None, "Membre", True, "", "REGLEMENT", "Encaissement d'une facture déjà passée au membre."),
-    ("Don reçu (sans tiers)", "RS", "725000", None, None, True, "7", "DON", "Don encaissé directement, sans compte de membre."),
+    ("Facture client", "RT", None, "VT", "Client", False, "7", "FACTURE CLIENT",
+     "Facture à un client ; avec un moyen de paiement, le règlement est passé dans la même opération : choisir le compte de produit."),
+    ("Règlement d'un client", "RM", None, None, "Client", True, "", "REGLEMENT CLIENT", "Encaissement d'une facture déjà passée au client."),
+    ("Recette (sans tiers)", "RS", None, None, None, True, "7", "RECETTE", "Recette encaissée directement : choisir le compte de produit."),
     ("Subvention", "RS", "740000", None, None, True, "7", "SUBVENTION", "Subvention encaissée."),
     ("Intérêts perçus", "RS", "750000", None, None, True, "7", "INTERETS", "Intérêts versés par la banque."),
     ("Dépense directe", "DS", None, None, None, True, "6", "DEPENSE", "Dépense payée immédiatement : choisir le compte de charge."),
@@ -242,10 +237,5 @@ def initialiser_parametres():
         ModeleOperation.objects.get_or_create(type=t, defaults=dict(
             schema=s, compte_id=compte, journal_defaut_id=jnl, tiers=TypeTiers.objects.filter(libelle=tiers).first(),
             paiement_obligatoire=oblig, classe=classe, libelle_type=lib, aide=aide, ordre=i))
-    from .fiches import initialiser as initialiser_fiches
-    initialiser_fiches()
-    if Compte.objects.filter(numero="700000").exists():
-        Reglage.objects.get_or_create(cle="compte_cotisations", defaults={
-            "valeur": "700000", "description": "Compte des cotisations (suivi des membres)"})
-    from .membres import creer_manquants
+    from .tiers import creer_manquants
     creer_manquants()

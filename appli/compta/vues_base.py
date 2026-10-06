@@ -1,4 +1,4 @@
-"""Page « Base de données » : sauvegarder, télécharger, restaurer, remettre à zéro et reprendre un classeur."""
+"""Page « Base de données » : sauvegarder, télécharger, restaurer et remettre à zéro."""
 
 import tempfile
 from pathlib import Path
@@ -77,8 +77,8 @@ def base(request):
                     f = c["fichier"]
                     nom = f.name
                     suffixe = Path(nom).suffix.lower()
-                    if suffixe not in (".sqlite3", ".sqlite", ".db", ".zip", ".xlsm", ".xlsx"):
-                        raise ValueError("Fichier .sqlite3 (sauvegarde), .zip (export complet) ou .xlsm (classeur ComptaJLC) attendu.")
+                    if suffixe not in (".sqlite3", ".sqlite", ".db", ".zip"):
+                        raise ValueError("Fichier .sqlite3 (sauvegarde) ou .zip (export complet) attendu.")
                     tmp = Path(tempfile.mkdtemp()) / f"import{suffixe}"
                     with open(tmp, "wb") as sortie:
                         for morceau in f.chunks():
@@ -87,11 +87,6 @@ def base(request):
                 if chemin.suffix.lower() == ".zip":
                     resume, avant = ec.reinjecter(chemin, auteur=auteur, modifie=c["modifie"])
                     messages.success(request, f"Base remise à zéro et rechargée depuis {nom}. {resume} Sauvegarde d'avant : {avant.name}.")
-                elif chemin.suffix.lower() in (".xlsm", ".xlsx"):
-                    resume, avant = bd.reprendre_classeur(chemin)
-                    Modification.objects.create(auteur=auteur, lot="Base de données", action="Remise à zéro et reprise",
-                                                objet=nom[:200], apres=f"{resume} ; sauvegarde {avant.name}"[:300])
-                    messages.success(request, f"Base remise à zéro et reprise depuis {nom} : {resume}. Sauvegarde d'avant : {avant.name}.")
                 else:
                     n, avant = bd.restaurer(chemin)
                     Modification.objects.create(auteur=auteur, lot="Base de données", action="Restauration", objet=nom[:200],

@@ -57,12 +57,6 @@ def preparer(ex):
     etat, _ = ctrl.etat_general()
     if etat != "OK":
         p.avertissements.append(f"Contrôles : {etat} (page Contrôles).")
-    from .models import LigneFiche, TiersProvisoire
-    n = LigneFiche.objects.filter(mouvement__isnull=True, date__range=(ex.debut, ex.fin)).count()
-    if n:
-        p.avertissements.append(f"{n} ligne(s) de fiches bénévoles de l'exercice non reportée(s).")
-    if TiersProvisoire.objects.filter(compte__isnull=True).exists():
-        p.avertissements.append("Des tiers provisoires attendent un compte.")
     if b["resultats_anterieurs"]:
         p.avertissements.append(f"Résultats d'exercices antérieurs jamais reportés : {etats.montant(b['resultats_anterieurs'])} ; "
                                 "ils sont affectés avec celui de l'exercice.")

@@ -20,7 +20,7 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.table import Table
 
 from . import controles, reglages
-from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, soldes
+from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, Tiers, TypeTiers, soldes
 
 D = Decimal
 # Les tests décrivent le site de la Loge : un réglage absent y prend la valeur de la Loge (Mizrahi, Bit, Isracard…).
@@ -117,60 +117,13 @@ class Droits(TestCase):
 
     def test_pages_bureau(self):
         mouvement(1, dt.date(2026, 2, 1), [("512000", 100, 0), ("700000", 0, 100)])
-        self.client_pour("Consultation")
+        self.client_pour("Gestion")
         for url in ("/", "/ecritures/", "/mouvement/1/", "/grand-livre/?compte=512000", "/balance/", "/analytique/",
                     "/controles/", "/modifications/"):
             self.assertEqual(self.client.get(url).status_code, 200, url)
 
-    def test_benevole_refuse(self):
-        self.client_pour("Bénévole")
-        self.assertRedirects(self.client.get("/"), "/fiches/")
-        self.assertEqual(self.client.get("/ecritures/").status_code, 403)
-
     def test_anonyme_redirige(self):
         self.assertEqual(self.client.get("/").status_code, 302)
-
-
-class Reprise(TestCase):
-    def classeur(self):
-        wb = openpyxl.Workbook()
-        wb.remove(wb.active)
-
-        def table(nom, entetes, lignes):
-            ws = wb.create_sheet(nom)
-            ws.append(entetes)
-            for l in lignes:
-                ws.append(l)
-            ws.add_table(Table(displayName=nom, ref=f"A1:{openpyxl.utils.get_column_letter(len(entetes))}{len(lignes) + 1}"))
-            return ws
-
-        table("T_Axe1", ["Code", "Libellé", "Actif"], [["BIL.5", "TRESORERIE", 1], ["COT.2", "COTIS", 1]])
-        table("T_Prefixes", ["Préfixe", "Axe", "Libellé", "Code suivant"], [["GEN.", 2, "General", "GEN.003"]])
-        table("T_PlanComptable", ["Compte", "Libellé compte", "Axe 1 (Anal1)", "Lettrable"],
-              [["512000", "BANQUE", "BIL.5", ""], ["700000", "COTISATIONS", "COT.2", ""]])
-        table("T_Journaux", ["Code", "Intitulé", "Type", "N° de compte", "Actif"], [["B1", "BANQUE 1", "BQ", 512000, 1]])
-        e = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Libellé", "Débit", "Crédit", "Anal2", "Let"]
-        table("T_Ecritures", e, [[dt.datetime(2026, 2, 1), "B1", 1, 1, "512000", "COT", 50.5, 0, "GEN.002", None],
-                                 [dt.datetime(2026, 2, 1), "B1", 1, 1, "700000", "COT", 0, 50.5, "GEN.002", None],
-                                 [dt.datetime(2025, 11, 1), "B1", 2, 2, "512000", "COT", 10, 0, "GEN.002", None],
-                                 [dt.datetime(2025, 11, 1), "B1", 2, 2, "700000", "COT", 0, 10, "GEN.002", None]])
-        p = wb.create_sheet("Paramètres")
-        for r, (n, v) in enumerate((("P_DebutExercice", dt.datetime(2026, 1, 1)), ("P_FinExercice", dt.datetime(2026, 12, 31)),
-                                    ("P_DateCloture", dt.datetime(2025, 12, 31)), ("P_CompteVirement", "580000")), start=1):
-            p.cell(r, 2, v)
-            wb.defined_names[n] = DefinedName(n, attr_text=f"Paramètres!$B${r}")
-        chemin = Path(tempfile.mkdtemp()) / "test.xlsx"
-        wb.save(chemin)
-        return chemin
-
-    def test_reprise(self):
-        call_command("importer_classeur", str(self.classeur()), stdout=open("/dev/null", "w"))
-        self.assertEqual(Mouvement.objects.count(), 2)
-        self.assertEqual(soldes(Ligne.objects.all())[:2], (D("60.50"), D("60.50")))
-        self.assertEqual(Journal.objects.get(code="B1").compte_id, "512000")
-        self.assertEqual(list(Exercice.objects.values_list("clos", flat=True)), [True, False])
-        self.assertEqual(Reglage.lire("compte_virement"), "580000")
-        self.assertEqual(controles.etat_general()[0], "OK")
 
 
 # ---------------------------------------------------------------- W1 : saisie guidée (scénarios de la recette Excel du Lot 1)
@@ -214,10 +167,10 @@ def operation(date=dt.date(2026, 10, 15), modele=None, tiers=None, montant=400, 
 
 
 SCENARIOS = {
-    "cotisation_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT"),
+    "cotisation_reglee": (dict(modele="Facture client", tiers="411TAIEB001", paiement="BIT", compte="700000"),
                           [("B3", 1, "411TAIEB001", 400, 0), ("B3", 1, "700000", 0, 400), ("B3", 1, "512200", 400, 0),
                            ("B3", 1, "411TAIEB001", 0, 400)], set()),
-    "cotisation_non_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="Non réglé"),
+    "cotisation_non_reglee": (dict(modele="Facture client", tiers="411TAIEB001", paiement="Non réglé", compte="700000"),
                               [("VT", 1, "411TAIEB001", 400, 0), ("VT", 1, "700000", 0, 400)], set()),
     "frais_bancaires": (dict(modele="Frais bancaires", montant=25, paiement="Mizrahi compte courant"),
                         [("B1", 1, "600100", 25, 0), ("B1", 1, "512000", 0, 25)], set()),
@@ -227,7 +180,7 @@ SCENARIOS = {
     "isracard": (dict(modele="Paiement carte Isracard", montant=500, paiement="Mizrahi compte courant"),
                  [("OD", 1, "600000", 500, 0), ("OD", 1, "580000", 0, 500), ("B1", 2, "580000", 500, 0),
                   ("B1", 2, "512000", 0, 500)], set()),
-    "remboursement": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT", remboursement=True),
+    "remboursement": (dict(modele="Facture client", tiers="411TAIEB001", paiement="BIT", remboursement=True, compte="700000"),
                       [("B3", 1, "411TAIEB001", 0, 400), ("B3", 1, "700000", 400, 0), ("B3", 1, "512200", 0, 400),
                        ("B3", 1, "411TAIEB001", 400, 0)], set()),
     "facture_fournisseur_caisse": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)",
@@ -236,11 +189,11 @@ SCENARIOS = {
                                     ("CA", 1, "530000", 0, 400)], set()),
     "fournisseur_sans_compte": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)"),
                                 None, {"Compte"}),
-    "date_close_et_mauvais_tiers": (dict(date=dt.date(2025, 12, 15), modele="Cotisation membre", tiers="401000", paiement="BIT"), None, {"Date", "Tiers"}),
+    "date_close_et_mauvais_tiers": (dict(date=dt.date(2025, 12, 15), modele="Facture client", tiers="401000", paiement="BIT", compte="700000"), None, {"Date", "Tiers"}),
     "depense_classe_7": (dict(modele="Dépense directe", paiement="BIT", compte="700000"), None, {"Compte"}),
     "paiement_manquant": (dict(modele="Frais bancaires"), None, {"Moyen de paiement"}),
     "virement_meme_compte": (dict(modele="Virement interne", paiement="BIT", vers="BIT"), None, {"Virement"}),
-    "deja_enregistree": (dict(date=dt.date(2026, 9, 24), modele="Facture manifestation (membre)", tiers="411TAIEB001",
+    "deja_enregistree": (dict(date=dt.date(2026, 9, 24), modele="Facture client", tiers="411TAIEB001", compte="710000",
                               paiement="Mizrahi compte courant", libelle="FACTURE 40013 - TAIEB JEANNE"),
                          None, {"Déjà enregistrée ?"}),
 }
@@ -272,7 +225,7 @@ class Saisie(TestCase):
     def test_initialiser_idempotent(self):
         n = ModeleOperation.objects.count()
         moteur.initialiser_parametres()
-        self.assertEqual((n, ModeleOperation.objects.count()), (14, 14))
+        self.assertEqual((n, ModeleOperation.objects.count()), (11, 11))
 
 
 
@@ -294,16 +247,13 @@ class ReglagesAssociation(TestCase):
     def test_nouvelle_association_sans_mizrahi_bit_ni_isracard(self):
         from unittest import mock
 
-        from .models import LigneReleve, ModeFiche
+        from .models import LigneReleve
         with mock.patch.dict(reglages.NEUTRES, NEUTRES):
             referentiels_saisie()
             self.assertFalse(ModeleOperation.objects.filter(type__icontains="carte").exists())
-            self.assertEqual(ModeleOperation.objects.count(), 13)
+            self.assertEqual(ModeleOperation.objects.count(), 10)
             moyens = set(MoyenPaiement.objects.values_list("libelle", flat=True))
             self.assertEqual(moyens, {"B1", "B2", "Caisse (espèces)", "Non réglé"})      # nom du journal, pas « Mizrahi »
-            modes = set(ModeFiche.objects.values_list("libelle", flat=True))
-            self.assertIn("Virement bancaire", modes)
-            self.assertFalse({"Bit", "Virement BIT", "Virement Mizrahi"} & modes or any("Carte" in m for m in modes))
             self.assertEqual(reglages.montant(D("1234.5")), "1 234,50 €")
             l = LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 1, 5), rang=1, operation="VIREMENT RECU",
                                            montant=D(10), solde=D(10))
@@ -353,7 +303,7 @@ class PremierDemarrage(TestCase):
         self.assertEqual(self.client.get("/base/").status_code, 200)   # recharger une sauvegarde reste possible
 
     def test_plan_de_base(self):
-        from .models import ModeFiche, MoyenPaiement
+        from .models import MoyenPaiement
         self.administrateur()
         r = self.client.post("/demarrage/", {"nom": "Amis du musée", "devise": "€", "plan": "base", "debut": "2027-01-01",
                                              "fin": "2027-12-31", "banque1": "Banque Leumi", "format1": "excel",
@@ -367,18 +317,17 @@ class PremierDemarrage(TestCase):
         self.assertEqual(Exercice.objects.get().libelle, "2027")
         self.assertEqual(set(MoyenPaiement.objects.values_list("libelle", flat=True)),
                          {"Banque Leumi", "BIT", "Caisse (espèces)", "Non réglé"})
-        self.assertEqual(ModeleOperation.objects.count(), 13)                      # pas de carte
-        self.assertEqual(ModeFiche.objects.get(libelle="Bit").compte_id, "512100")  # compte du journal Bit
+        self.assertEqual(ModeleOperation.objects.count(), 10)                      # pas de carte
         r = self.client.get("/")
         self.assertContains(r, "Amis du musée")
         self.assertContains(r, " €</div>")
         self.assertRedirects(self.client.get("/demarrage/"), "/", fetch_redirect_response=False)   # une seule fois
         self.assertEqual(controles.etat_general(controles.executer())[0], "OK")
-        from .membres import creer_tiers                                         # comptes de tiers : axe 1 du plan
-        for libelle, numero in (("Membre", "411COHEN001"), ("Fournisseur", "401COHEN001")):
+        from .tiers import creer_tiers                                         # comptes de tiers : axe 1 du plan
+        for libelle, numero in (("Client", "411COHEN001"), ("Fournisseur", "401COHEN001")):
             c = creer_tiers(TypeTiers.objects.get(libelle=libelle), "Cohen", "David")
             self.assertEqual((c.numero, c.anal1_id, c.lettrable), (numero, "BIL", True))
-        self.assertFalse(Membre.objects.filter(compte_id="411000").exists())     # compte collectif : pas de fiche
+        self.assertFalse(Tiers.objects.filter(compte_id="411000").exists())     # compte collectif : pas de fiche
 
     def test_mes_propres_fichiers(self):
         self.administrateur()
@@ -388,9 +337,9 @@ class PremierDemarrage(TestCase):
         self.assertFalse(Journal.objects.exists() or Compte.objects.exists())
         self.assertEqual((reglages.lire("devise"), Reglage.lire("demarrage")), ("$", "fait"))
         self.assertEqual(sorted(TypeTiers.objects.values_list("prefixe", flat=True)), ["401", "411"])
-        from .membres import importer_tableau
+        from .tiers import importer_tableau
         Compte.objects.create(numero="411000", libelle="MEMBRES", anal1=CodeAnalytique.objects.create(code="BIL.4", libelle="TIERS"))
-        r = importer_tableau([["Type", "Nom", "Prénom"], ["Membre", "Levy", "Sarah"]])
+        r = importer_tableau([["Type", "Nom", "Prénom"], ["Client", "Levy", "Sarah"]])
         self.assertEqual((r.erreurs, Compte.objects.get(numero="411LEVY001").anal1_id), ([], "BIL.4"))
         self.assertEqual(self.client.get("/").status_code, 200)
 
@@ -489,7 +438,7 @@ class Ecrans(TestCase):
     def formulaire(self, **k):
         e = SCENARIOS["cotisation_reglee"][0]
         data = {"date": "2026-10-15", "modele": ModeleOperation.objects.get(type=e["modele"]).pk, "tiers": e["tiers"], "montant": "400",
-                "paiement": MoyenPaiement.objects.get(libelle=e["paiement"]).pk}
+                "paiement": MoyenPaiement.objects.get(libelle=e["paiement"]).pk, "compte": e["compte"]}
         data.update(k)
         return data
 
@@ -512,282 +461,23 @@ class Ecrans(TestCase):
         self.assertContains(r, "Déjà enregistrée ?")
         self.assertRedirects(self.client.post("/saisie/", self.formulaire(enregistrer="1", forcer="on")), "/mouvement/423/")
 
-    def test_saisie_refusee_au_bureau(self):
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        self.assertEqual(self.client.get("/saisie/").status_code, 403)
-        self.assertEqual(self.client.get("/codes/").status_code, 403)
-
     def test_codes(self):
         Prefixe.objects.create(prefixe="SOC.", libelle="Social")
         r = self.client.post("/codes/", {"code-prefixe": "SOC.", "code-libelle": "aide aux familles",
                                          "creer_code": "1"})
         self.assertRedirects(r, "/codes/")
         self.assertEqual(CodeAnalytique.objects.get(code="SOC.007").libelle, "AIDE AUX FAMILLES")
-        membre, fournisseur = TypeTiers.objects.get(libelle="Membre"), TypeTiers.objects.get(libelle="Fournisseur")
-        self.client.post("/codes/", {"membre-type": membre.pk, "membre-nom": "Taïeb", "membre-prenom": "Paul", "membre-ville": "Netanya",
-                                     "creer_membre": "1"})
-        self.client.post("/codes/", {"membre-type": fournisseur.pk, "membre-nom": "Partner", "membre-adresse": "8 rue Ha-Barzel",
-                                     "membre-code_postal": "6971005", "membre-ville": "Tel Aviv", "creer_membre": "1"})
-        from .models import Membre
-        f = Membre.objects.get(compte_id="401PARTN001")
+        from .models import TypeTiers
+        membre, fournisseur = TypeTiers.objects.get(libelle="Client"), TypeTiers.objects.get(libelle="Fournisseur")
+        self.client.post("/codes/", {"tiers-type": membre.pk, "tiers-nom": "Taïeb", "tiers-prenom": "Paul", "tiers-ville": "Netanya",
+                                     "creer_tiers": "1"})
+        self.client.post("/codes/", {"tiers-type": fournisseur.pk, "tiers-nom": "Partner", "tiers-adresse": "8 rue Ha-Barzel",
+                                     "tiers-code_postal": "6971005", "tiers-ville": "Tel Aviv", "creer_tiers": "1"})
+        from .models import Tiers
+        f = Tiers.objects.get(compte_id="401PARTN001")
         self.assertEqual((f.type, f.adresse_complete), (fournisseur, "8 rue Ha-Barzel, 6971005 Tel Aviv"))
-        self.assertEqual(Membre.objects.get(compte_id="411TAIEB002").ville, "Netanya")
+        self.assertEqual(Tiers.objects.get(compte_id="411TAIEB002").ville, "Netanya")
         self.assertTrue(Compte.objects.filter(numero="411TAIEB002", libelle="TAÏEB PAUL").exists())
-
-
-# ---------------------------------------------------------------- W2 : fiches bénévoles (cas de la recette du fichier de liaison)
-
-from . import fiches as fiches_moteur  # noqa: E402
-from .forms import BenevoleForm  # noqa: E402
-from .models import Fiche, LigneFiche, ModeFiche, NatureFiche, TiersProvisoire, TypeTiers  # noqa: E402
-
-
-def referentiels_fiches():
-    referentiels_saisie()
-    for n, lib in (("600200", "LOCATION DE SALLE"), ("625000", "DONS EMIS"), ("630000", "DEPENSES SOCIALES")):
-        Compte.objects.create(numero=n, libelle=lib, anal1_id="FON.1")
-    moteur.initialiser_parametres()
-
-
-def ligne_fiche(fiche, sens, nature, montant, mode=None, tiers=None, autre="", personnes=None, date=dt.date(2026, 10, 15), **k):
-    return LigneFiche.objects.create(
-        fiche=fiche, sens=sens, date=date, nature=NatureFiche.objects.get(type_fiche=fiche.type, sens=sens, libelle=nature),
-        montant=D(montant), mode=ModeFiche.objects.get(type_fiche=fiche.type, libelle=mode) if mode else None,
-        tiers=Compte.objects.get(numero=tiers) if tiers else None, autre=autre, personnes=personnes, **k)
-
-
-def ecritures(l):
-    journal, lignes = fiches_moteur.generer(l)
-    return journal.code, [(x.compte.numero, x.debit, x.credit) for x in lignes]
-
-
-class Fiches(TestCase):
-    def setUp(self):
-        referentiels_fiches()
-        self.act = Fiche.objects.create(type="activite", titre="Rallye")
-        self.ges = Fiche.objects.create(type="gestion", titre="Dons 2026")
-
-    def remplir(self):
-        a = self.act
-        return [ligne_fiche(a, "R", "Participation", 200, "Bit", tiers="411TAIEB001", personnes=2),
-                ligne_fiche(a, "R", "Don", 50, "Espèces", autre="M. Levy", personnes=1),
-                ligne_fiche(a, "R", "Participation", 200, "Non payé", tiers="411TAIEB001"),
-                ligne_fiche(a, "D", "Location de salle", 150, "Carte Isracard", autre="Salle Beit Ha'am"),
-                ligne_fiche(a, "D", "Frais divers", 140, "Avance d'un membre", tiers="411TAIEB001"),
-                ligne_fiche(self.ges, "R", "Don reçu", 1000, "Virement BIT", autre="Fondation X"),
-                ligne_fiche(self.ges, "D", "Aide versée", 300, "Espèces", autre="Famille Y"
-                            if CodeAnalytique.objects.filter(code="SOC.007").exists() else "SOC.006")]
-
-    def test_parametres(self):
-        self.assertEqual((NatureFiche.objects.count(), ModeFiche.objects.count()), (13, 10))
-        self.assertEqual(ModeFiche.objects.get(libelle="Carte Isracard").compte_id, "580000")
-
-    def test_ecritures(self):
-        ls = self.remplir()
-        attendu = [
-            ("B3", [("411TAIEB001", 200, 0), ("710000", 0, 200), ("512200", 200, 0), ("411TAIEB001", 0, 200)]),
-            ("CA", [("530000", 50, 0), ("725000", 0, 50)]),
-            ("VT", [("411TAIEB001", 200, 0), ("710000", 0, 200)]),
-            ("OD", [("600200", 150, 0), ("580000", 0, 150)]),
-            ("OD", [("600000", 140, 0), ("411TAIEB001", 0, 140)]),
-            ("B3", [("512200", 1000, 0), ("725000", 0, 1000)]),
-            ("CA", [("630000", 300, 0), ("530000", 0, 300)]),
-        ]
-        for l, (j, e) in zip(ls, attendu):
-            with self.subTest(l.nature.libelle):
-                self.assertEqual(fiches_moteur.controler(l).erreurs, {})
-                self.assertEqual(ecritures(l), (j, [(c, D(d), D(cr)) for c, d, cr in e]))
-        self.assertEqual(fiches_moteur.totaux(self.act),
-                         {"participants": 3, "recettes": D(450), "depenses": D(290), "resultat": D(160)})
-        self.assertEqual(fiches_moteur.controler(ls[0]).libelle, "PARTICIPATION - TAIEB JEANNE")
-
-    def test_controles(self):
-        l = ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")
-        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Mode de paiement"})
-        l = ligne_fiche(self.act, "R", "Participation", 100, "Non payé", autre="Inconnu")
-        self.assertIn("demande un membre", fiches_moteur.controler(l).erreurs["Mode de paiement"])
-        p = TiersProvisoire.objects.create(nom="Nouveau")
-        l = ligne_fiche(self.act, "R", "Participation", 100, "Bit", provisoire=p)
-        self.assertIn("Tiers", fiches_moteur.controler(l).erreurs)
-        sans_code = Fiche.objects.create(type="activite", titre="Sans code")
-        l = ligne_fiche(sans_code, "D", "Frais divers", 10, "Espèces", date=dt.date(2025, 11, 2))
-        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Date"})
-
-    def test_report(self):
-        self.remplir()
-        u = User.objects.create_user("t")
-        crees = fiches_moteur.reporter(self.act, u)
-        self.assertEqual([m.numero for m in crees], [422, 423, 424, 425, 426])
-        self.assertEqual(Ligne.objects.filter(mouvement__origine="liaison").count(), 12)
-        self.assertEqual(self.act.statut, "reportee")
-        self.assertEqual(fiches_moteur.reporter(self.act, u), [])     # rien de nouveau
-        ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")         # gestion : colonnes du trésorier vides
-        with self.assertRaises(ValueError):
-            fiches_moteur.reporter(self.ges, u)
-        self.assertFalse(Mouvement.objects.filter(numero=427).exists())
-
-
-class DocumentsFichesExport(TransactionTestCase):
-    """Export complet puis réinjection avec des reçus de bénévoles (sauvegarde de la base : hors transaction de test)."""
-
-    def setUp(self):
-        EcransFiches.setUp(self)
-
-    def ligne_post(self, **k):
-        return EcransFiches.ligne_post(self, **k)
-
-    @override_settings(DATA_DIR=Path(tempfile.mkdtemp()), EXPORTS_DIR=Path(tempfile.mkdtemp()))
-    def test_documents_de_fiche_dans_l_export_complet(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile as F
-        from . import export_complet
-        self.client.force_login(self.benevole)
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
-        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": self.act.lignes.get().pk,
-                                                     "documents": [F("recu.pdf", b"%PDF-1.4 recu")]})
-        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": "", "documents": [F("tout.pdf", b"%PDF t")]})
-        chemin = export_complet.exporter()
-        export_complet.reinjecter(chemin)                                            # contrôle : base identique à l'export
-        f = Fiche.objects.get(titre="Rallye")
-        docs = {d.nom: d for d in f.documents.all()}
-        self.assertEqual(set(docs), {"recu.pdf", "tout.pdf"})
-        self.assertEqual(docs["recu.pdf"].ligne, f.lignes.get())
-        self.assertIsNone(docs["tout.pdf"].ligne)
-        from . import justificatifs as just
-        self.assertEqual((just.dossier() / docs["recu.pdf"].chemin).read_bytes(), b"%PDF-1.4 recu")
-
-
-class EcransFiches(TestCase):
-    def setUp(self):
-        referentiels_fiches()
-        call_command("migrate", verbosity=0)
-        self.tresorier = User.objects.create_user("tresorier")
-        self.tresorier.groups.add(Group.objects.get(name="Gestion"))
-        self.benevole = User.objects.create_user("rachel")
-        self.benevole.groups.add(Group.objects.get(name="Bénévole"))
-        self.act = Fiche.objects.create(type="activite", titre="Rallye")
-        self.act.benevoles.add(self.benevole)
-        self.autre = Fiche.objects.create(type="gestion", titre="Pas à elle")
-
-    def ligne_post(self, **k):
-        data = {"ajouter": "1", "sens": "R", "date": "2026-10-15", "nature": NatureFiche.objects.get(type_fiche="activite", libelle="Participation").pk,
-                "montant": "120", "mode": ModeFiche.objects.get(type_fiche="activite", libelle="Bit").pk, "personnes": "2"}
-        data.update(k)
-        return data
-
-    def test_suppression_par_cases_et_fiche_papier(self):
-        self.client.force_login(self.benevole)
-        for _ in range(3):
-            self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post())
-        a, b, c = self.act.lignes.order_by("pk")
-        r = self.client.get(f"/fiches/{self.act.pk}/")
-        self.assertContains(r, 'name="cochees"')
-        self.client.post(f"/fiches/{self.act.pk}/", {"supprimer_lignes": "1", "cochees": [a.pk, c.pk]})
-        self.assertEqual(list(self.act.lignes.all()), [b])
-        r = self.client.get(f"/fiches/{self.act.pk}/papier/")                       # PDF remplissable, pour tous les utilisateurs de la fiche
-        self.assertEqual((r.status_code, r["Content-Type"]), (200, "application/pdf"))
-        self.assertTrue(r.content.startswith(b"%PDF") and b"AcroForm" in r.content)
-        self.assertEqual(self.client.get(f"/fiches/{self.autre.pk}/papier/").status_code, 403)
-
-    def test_benevole(self):
-        self.client.force_login(self.benevole)
-        self.assertRedirects(self.client.get("/"), "/fiches/")
-        r = self.client.get("/fiches/")
-        self.assertContains(r, "Rallye")
-        self.assertNotContains(r, "Pas à elle")
-        self.assertNotContains(r, "Nouvelle fiche")
-        self.assertEqual(self.client.get(f"/fiches/{self.autre.pk}/").status_code, 403)
-        for url in ("/ecritures/", "/saisie/", "/tiers-provisoires/"):
-            self.assertEqual(self.client.get(url).status_code, 403, url)
-        r = self.client.get(f"/fiches/{self.act.pk}/")
-        self.assertContains(r, "411TAIEB001")         # recherche des membres existants
-        self.assertNotContains(r, "Compte de contrepartie")
-        # membre existant, puis nouveau tiers provisoire
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(nouveau_nom="Cohen", nouveau_prenom="Dan"))
-        self.assertEqual(self.act.lignes.count(), 2)
-        p = TiersProvisoire.objects.get()
-        self.assertEqual((str(p), p.cree_par), ("COHEN DAN (provisoire)", self.benevole))
-        self.assertContains(self.client.get(f"/fiches/{self.act.pk}/"), "compte à attribuer par le trésorier")
-        # transmission : plus de saisie
-        self.client.post(f"/fiches/{self.act.pk}/", {"transmettre": "1"})
-        self.act.refresh_from_db()
-        self.assertEqual(self.act.statut, "transmise")
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
-        self.assertEqual(self.act.lignes.count(), 2)
-        self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.first().pk}/").status_code, 403)
-
-    @override_settings(DATA_DIR=Path(tempfile.mkdtemp()))
-    def test_documents_du_benevole_deviennent_justificatifs(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile as F
-        self.client.force_login(self.benevole)
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(qui="c:411TAIEB001"))
-        l = self.act.lignes.get()
-        page = self.client.get(f"/fiches/{self.act.pk}/")
-        self.assertContains(page, "Documents (reçus, factures)")
-        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": l.pk, "description": "reçu Bit",
-                                                     "documents": [F("recu.pdf", b"%PDF-1.4 recu")]})
-        self.client.post(f"/fiches/{self.act.pk}/", {"joindre_document": "1", "ligne": "",
-                                                     "documents": [F("affiche.jpg", b"\xff\xd8x"), F("virus.exe", b"MZ")]})
-        self.assertEqual(sorted(self.act.documents.values_list("nom", flat=True)), ["affiche.jpg", "recu.pdf"])
-        d = self.act.documents.get(nom="recu.pdf")
-        self.assertEqual(b"".join(self.client.get(f"/fiches/document/{d.pk}/").streaming_content), b"%PDF-1.4 recu")
-        autre = User.objects.create_user("autre")
-        autre.groups.add(Group.objects.get(name="Bénévole"))
-        self.client.force_login(autre)                                           # pas sa fiche
-        self.assertEqual(self.client.get(f"/fiches/document/{d.pk}/").status_code, 403)
-        self.client.force_login(self.tresorier)
-        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
-        m = Mouvement.objects.get(origine="liaison")
-        self.assertEqual(sorted(m.justificatifs.values_list("nom", flat=True)), ["affiche.jpg", "recu.pdf"])
-        self.assertEqual(m.justificatifs.get(nom="recu.pdf").description, "reçu Bit")
-
-    def test_tresorier(self):
-        self.client.force_login(self.benevole)
-        self.client.post(f"/fiches/{self.act.pk}/", self.ligne_post(nouveau_nom="Cohen", nouveau_prenom="Dan"))
-        self.client.force_login(self.tresorier)
-        for url in ("/fiches/", f"/fiches/{self.act.pk}/", "/tiers-provisoires/", f"/fiches/ligne/{self.act.lignes.get().pk}/"):
-            r = self.client.get(url)
-            self.assertEqual(r.status_code, 200, url)
-            self.assertContains(r, "data-cherchable", msg_prefix=url)
-        # report refusé tant que le tiers est provisoire
-        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
-        self.assertFalse(Mouvement.objects.filter(origine="liaison").exists())
-        p = TiersProvisoire.objects.get()
-        self.assertRedirects(self.client.post("/tiers-provisoires/", {"provisoire": p.pk, f"p{p.pk}-compte": "",
-                                                                  f"p{p.pk}-type": TypeTiers.objects.get(libelle="Membre").pk}), "/tiers-provisoires/")
-        p.refresh_from_db()
-        self.assertEqual((p.compte_id, p.compte.libelle), ("411COHEN001", "COHEN DAN"))
-        self.client.post(f"/fiches/{self.act.pk}/", {"reporter": "1"})
-        m = Mouvement.objects.get(origine="liaison")
-        self.assertEqual(list(m.lignes.values_list("compte_id", flat=True)), ["411COHEN001", "710000", "512200", "411COHEN001"])
-        self.assertEqual(m.cree_par, self.tresorier)
-        self.assertEqual(self.client.get(f"/fiches/ligne/{self.act.lignes.get().pk}/").status_code, 403)   # verrouillée
-
-    def test_creations_par_le_tresorier(self):
-        from .membres import creer_manquants
-        from .models import Membre
-        creer_manquants()
-        Membre.objects.filter(compte_id="411TAIEB001").update(nom="Taieb", prenom="Jeanne")
-        self.client.force_login(self.tresorier)
-        r = self.client.post("/fiches/", {"benevole-identifiant": "jeanne", "benevole-membre": "9999",
-                                          "benevole-mot_de_passe": "motdepasse-8", "creer_benevole": "1"})
-        self.assertFalse(User.objects.filter(username="jeanne").exists())          # le bénévole doit être un membre
-        r = self.client.post("/fiches/", {"benevole-identifiant": "jeanne", "benevole-membre": "411TAIEB001",
-                                          "benevole-mot_de_passe": "motdepasse-8", "creer_benevole": "1"})
-        self.assertRedirects(r, "/fiches/")
-        jeanne = User.objects.get(username="jeanne")
-        self.assertTrue(jeanne.groups.filter(name="Bénévole").exists())
-        self.assertEqual((jeanne.first_name, jeanne.last_name, jeanne.membre.compte_id), ("Jeanne", "Taieb", "411TAIEB001"))
-        self.assertNotIn("411TAIEB001", [m.pk for m in BenevoleForm().fields["membre"].queryset])  # déjà bénévole
-        r = self.client.post("/fiches/", {"fiche-type": "gestion", "fiche-titre": "Aides", "fiche-benevoles": [jeanne.pk],
-                                          "creer_fiche": "1"})
-        f = Fiche.objects.get(titre="Aides")
-        self.assertRedirects(r, f"/fiches/{f.pk}/")
-        self.assertEqual(list(f.benevoles.all()), [jeanne])
-        r = self.client.post("/fiches/", {"fiche-type": "gestion", "creer_fiche": "1"})
-        self.assertContains(r, "obligatoire")
 
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
@@ -1137,17 +827,6 @@ class EcransRapprochement(TestCase):
         l.refresh_from_db()
         self.assertIsNotNone(l.rapprochement_id)
 
-    def test_droits(self):
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
-        r = self.client.get("/rapprochement/B1/")
-        self.assertContains(r, "<b>1</b> ligne à passer")
-        self.assertNotContains(r, f'name="compte_{l.pk}"')
-        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", "creer": "1"})
-        l.refresh_from_db()
-        self.assertIsNone(l.rapprochement_id)
 
 
 # ---------------------------------------------------------------- W4 : états annuels et clôture
@@ -1259,22 +938,15 @@ class EcransEtats(TestCase):
         self.assertTrue(self.e25.clos)
         self.assertEqual(self.client.get(f"/cloture/archive/{self.e25.pk}/").status_code, 200)
 
-    def test_droits(self):
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        self.assertEqual(self.client.get("/etats/").status_code, 200)
-        self.assertNotContains(self.client.get("/etats/"), "Ajouter une ligne de budget")
-        self.assertEqual(self.client.get("/cloture/").status_code, 403)
 
 
 # ---------------------------------------------------------------- W5 : suivi des membres
 
-from . import membres as mbr  # noqa: E402
-from .models import Membre  # noqa: E402
+from . import tiers as mbr  # noqa: E402
+from .models import Tiers  # noqa: E402
 
 
-class Membres(TestCase):
+class SuiviTiers(TestCase):
     def setUp(self):
         referentiels_saisie()           # crée la fiche de 411TAIEB001 (et la facture 421 du 24/09/2026, 400 à 710000)
         Compte.objects.create(numero="411000", libelle="ADHERENTS", anal1_id="BIL.4")
@@ -1292,8 +964,8 @@ class Membres(TestCase):
             n += 1
 
     def test_fiches_creees(self):
-        self.assertEqual(list(Membre.objects.order_by("compte").values_list("compte_id", "nom", "prenom", "type__libelle")),
-                         [("401000", "FOURNIS DIVERS", "", "Fournisseur"), ("411TAIEB001", "TAIEB", "Jeanne", "Membre")])
+        self.assertEqual(list(Tiers.objects.order_by("compte").values_list("compte_id", "nom", "prenom", "type__libelle")),
+                         [("411TAIEB001", "TAIEB JEANNE", "", "Client")])
         self.assertEqual(mbr.creer_manquants(), 0)
 
     def test_situation(self):
@@ -1314,49 +986,36 @@ class Membres(TestCase):
         self.assertEqual(mbr.delettrer(self.c, "AAA"), 2)
         self.assertEqual(mbr.code_suivant(self.c), "AAA")
 
-    def test_cotisations_et_import(self):
-        self.assertEqual(Reglage.lire("compte_cotisations"), "700000")      # créé par l'initialisation
-        ex = Exercice.objects.get(libelle="2026")
-        r = mbr.importer_tableau([["Compte", "Nom", "Prénom", "Téléphone", "E-mail", "Date d'adhésion", "Statut", "Cotisation annuelle"],
-                                  ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org", "01/09/2020", "honoraire", "500,00"],
-                                  ["999XXX", "Inconnu", "", "", "", "", "actif", ""]])
+    def test_import(self):
+        r = mbr.importer_tableau([["Compte", "Nom", "Prénom", "Téléphone", "E-mail"],
+                                  ["411TAIEB001", "Taieb", "Jeanne", "050", "j@example.org"],
+                                  ["999XXX", "Inconnu", "", "", ""]])
         self.assertEqual((len(r.crees), len(r.mis_a_jour), len(r.erreurs)), (0, 1, 1))
-        m = Membre.objects.get(compte_id="411TAIEB001")
-        self.assertEqual((m.nom, m.statut, m.cotisation, m.date_adhesion), ("TAIEB", "honoraire", D(500), dt.date(2020, 9, 1)))
-        lignes, tot = mbr.cotisations(ex)
-        self.assertEqual((lignes[0]["attendue"], lignes[0]["facturee"], lignes[0]["recue"], lignes[0]["du"]), (D(0), D(500), D(500), D(0)))
-        self.assertEqual(tot["taux"], D("100.0"))
+        m = Tiers.objects.get(compte_id="411TAIEB001")
+        self.assertEqual((m.nom, m.telephone, m.email), ("TAIEB", "050", "j@example.org"))
 
 
-class EcransMembres(TestCase):
+class EcransTiers(TestCase):
     def setUp(self):
-        Membres.setUp(self)
+        SuiviTiers.setUp(self)
         call_command("migrate", verbosity=0)
         self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def test_pages_et_lettrage_manuel(self):
-        for url in ("/membres/", "/membres/cotisations/", "/membres/411TAIEB001/", "/favicon.ico"):
+        for url in ("/tiers/", "/tiers/411TAIEB001/", "/favicon.ico"):
             self.assertIn(self.client.get(url).status_code, (200, 301), url)
-        self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "relance")
+        self.assertNotContains(self.client.get("/tiers/411TAIEB001/"), "relance")
         cot, acompte = Ligne.objects.get(compte=self.c, debit=500), Ligne.objects.get(compte=self.c, credit=300)
         cr = Ligne.objects.get(compte=self.c, credit=200)
-        self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [cot.pk, acompte.pk]})
+        self.client.post("/tiers/411TAIEB001/", {"lettrer": "1", "ligne": [cot.pk, acompte.pk]})
         self.assertEqual(Ligne.objects.filter(compte=self.c).exclude(lettrage="").count(), 0)   # refusé : déséquilibré
-        self.client.post("/membres/411TAIEB001/", {"lettrer": "1", "ligne": [Ligne.objects.get(compte=self.c, debit=200).pk, cr.pk]})
+        self.client.post("/tiers/411TAIEB001/", {"lettrer": "1", "ligne": [Ligne.objects.get(compte=self.c, debit=200).pk, cr.pk]})
         self.assertEqual(Ligne.objects.get(pk=cr.pk).lettrage, "AAA")
-        self.client.post("/membres/411TAIEB001/", {"enregistrer": "1", "nom": "TAIEB", "prenom": "Jeanne", "statut": "actif",
-                                                    "email": "jeanne@example.org", "cotisation": "450"})
-        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").cotisation, D(450))
+        self.client.post("/tiers/411TAIEB001/", {"enregistrer": "1", "nom": "TAIEB", "prenom": "Jeanne",
+                                                    "email": "jeanne@example.org"})
+        self.assertEqual(Tiers.objects.get(compte_id="411TAIEB001").email, "jeanne@example.org")
 
-    def test_droits(self):
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        self.assertEqual(self.client.get("/membres/411TAIEB001/").status_code, 200)
-        self.assertNotContains(self.client.get("/membres/411TAIEB001/"), "Lettrer la sélection")
-        self.client.post("/membres/", {"lettrage_auto": "1"})
-        self.assertFalse(Ligne.objects.exclude(lettrage="").exists())
 
 
 # ---------------------------------------------------------------- W6 : corrections d'écritures, tri
@@ -1511,26 +1170,20 @@ class EcransCorrections(TestCase):
         r = self.client.get("/ecritures/?tri=debit&ordre=desc")
         self.assertEqual(r.context["page"][0].debit, D(400))          # plus gros débit en tête
         self.assertContains(r, 'data-sens="desc"')
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        self.assertNotContains(self.client.get("/mouvement/500/"), "Modifier")
-        self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 403)
-        self.assertEqual(self.client.post("/mouvement/500/supprimer/").status_code, 403)
 
 
 class ImportTiers(TestCase):
     def setUp(self):
         referentiels_saisie()
         mbr.creer_manquants()
-        Membre.objects.filter(compte_id="411TAIEB001").update(telephone="050-111", ville="Netanya")
+        Tiers.objects.filter(compte_id="411TAIEB001").update(nom="TAIEB", prenom="Jeanne", telephone="050-111", ville="Netanya")
 
     def classeur(self, lignes):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Feuil1"
         ws.append(["Liste des tiers 2026"])                      # une ligne de titre avant les en-têtes
-        ws.append(["Nom", "Prénom", "Type", "Adresse", "CP", "Ville", "Tél", "Mail", "Cotisation"])
+        ws.append(["Nom", "Prénom", "Type", "Adresse", "CP", "Ville", "Tél", "Mail"])
         for l in lignes:
             ws.append(l)
         tampon = __import__("io").BytesIO()
@@ -1539,19 +1192,19 @@ class ImportTiers(TestCase):
 
     def test_import_xlsx(self):
         contenu = self.classeur([
-            ["Taieb", "Jeanne", "Membre", "3 rue Weizmann", 4250000, None, None, "jeanne@example.org", 450],   # mise à jour
-            ["Levy", "Rachel", None, None, None, "Haïfa", "054-222", None, None],                                # nouveau membre
-            ["Partner", None, "Fournisseur", "8 Ha-Barzel", "6971005", "Tel Aviv", None, "pas-un-mail", None],   # nouveau fournisseur
-            ["Inconnu", None, "Sponsor", None, None, None, None, None, None],                                  # type inconnu
+            ["Taieb", "Jeanne", "Client", "3 rue Weizmann", 4250000, None, None, "jeanne@example.org"],   # mise à jour
+            ["Levy", "Rachel", None, None, None, "Haïfa", "054-222", None],                                # nouveau client
+            ["Partner", None, "Fournisseur", "8 Ha-Barzel", "6971005", "Tel Aviv", None, "pas-un-mail"],   # nouveau fournisseur
+            ["Inconnu", None, "Sponsor", None, None, None, None, None],                                  # type inconnu
             [None, None, None, None, None, None, None, None, None]])
         r = mbr.importer_tableau(mbr.lire_tableau("Tiers.xlsx", contenu))
         self.assertEqual((len(r.crees), len(r.mis_a_jour), len(r.erreurs)), (2, 1, 2))
-        t = Membre.objects.get(compte_id="411TAIEB001")
-        self.assertEqual((t.adresse, t.code_postal, t.ville, t.telephone, t.email, t.cotisation),
-                         ("3 rue Weizmann", "4250000", "Netanya", "050-111", "jeanne@example.org", D(450)))   # cellules vides : rien d'effacé
-        levy = Membre.objects.get(nom="LEVY")
-        self.assertEqual((levy.compte_id, levy.type.libelle, levy.ville), ("411LEVY001", "Membre", "Haïfa"))
-        p = Membre.objects.get(nom="PARTNER")
+        t = Tiers.objects.get(compte_id="411TAIEB001")
+        self.assertEqual((t.adresse, t.code_postal, t.ville, t.telephone, t.email),
+                         ("3 rue Weizmann", "4250000", "Netanya", "050-111", "jeanne@example.org"))   # cellules vides : rien d'effacé
+        levy = Tiers.objects.get(nom="LEVY")
+        self.assertEqual((levy.compte_id, levy.type.libelle, levy.ville), ("411LEVY001", "Client", "Haïfa"))
+        p = Tiers.objects.get(nom="PARTNER")
         self.assertEqual((p.compte_id, p.email, p.code_postal), ("401PARTN001", "", "6971005"))
         # réimport : plus de création, que des mises à jour
         r = mbr.importer_tableau(mbr.lire_tableau("Tiers.xlsx", contenu))
@@ -1562,33 +1215,33 @@ class ImportTiers(TestCase):
         u = User.objects.create_user("t")
         u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
-        r = self.client.get("/membres/modele-tiers.xlsx")
+        r = self.client.get("/tiers/modele-tiers.xlsx")
         self.assertEqual(r["Content-Disposition"], 'attachment; filename="Tiers.xlsx"')
         from django.core.files.uploadedfile import SimpleUploadedFile as Fichier
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
+        b.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(b)
-        self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # rôle Bureau : pas d'import
-        self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
+        self.client.post("/tiers/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # rôle Bureau : pas d'import
+        self.assertFalse(Tiers.objects.filter(compte_id="411COHEN001").exists())
         self.client.force_login(u)
-        self.client.post("/membres/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # trésorier : pas d'import non plus
-        self.assertFalse(Membre.objects.filter(compte_id="411COHEN001").exists())
+        self.client.post("/tiers/", {"fichier": Fichier("Tiers.xlsx", r.content)})          # trésorier : pas d'import non plus
+        self.assertFalse(Tiers.objects.filter(compte_id="411COHEN001").exists())
         a = User.objects.create_user("admin")
         a.groups.add(Group.objects.get(name="Administration"))
         self.client.force_login(a)                                                       # import : administrateur
         from django.core.files.uploadedfile import SimpleUploadedFile
         modele = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(modele["Tiers"]["C1"].value, "Nom")
-        self.client.post("/membres/", {"fichier": SimpleUploadedFile("Tiers.xlsx", r.content)})
-        self.assertTrue(Membre.objects.filter(compte_id="411COHEN001", ville="Netanya").exists())
-        self.assertTrue(Membre.objects.filter(compte__numero__startswith="401TRAIT", type__libelle="Fournisseur").exists())
+        self.client.post("/tiers/", {"fichier": SimpleUploadedFile("Tiers.xlsx", r.content)})
+        self.assertTrue(Tiers.objects.filter(compte_id="411COHEN001", ville="Netanya").exists())
+        self.assertTrue(Tiers.objects.filter(compte__numero__startswith="401TRAIT", type__libelle="Fournisseur").exists())
 
 
 class Journaux(TestCase):
     def setUp(self):
         Corrections.setUp(self)                   # Mvt 500 : frais 10 sur B1 (512000), + facture 421 en B1
         call_command("migrate", verbosity=0)
-        self.u.groups.add(Group.objects.get(name="Consultation"))
+        self.u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(self.u)
 
     def test_journal_banque(self):
@@ -1653,21 +1306,11 @@ class BaseDonnees(TransactionTestCase):
         with self.assertRaises(ValueError):
             bd.restaurer(faux)
 
-    def test_page_et_reprise_du_classeur(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
+    def test_page_base(self):
         self.assertContains(self.client.get("/base/"), "Remettre à zéro")
         self.client.post("/base/", {"sauvegarder": "1"})
         self.assertEqual(len(bd.liste()), 1)
         self.assertEqual(self.client.get("/base/telecharger/").status_code, 200)
-        classeur = Reprise.classeur(self)
-        refuse = self.client.post("/base/", {"remplacer": "1", "confirmation": "non",
-                                             "fichier": SimpleUploadedFile("ComptaJLC.xlsx", classeur.read_bytes())})
-        self.assertEqual(refuse.status_code, 200)                       # confirmation manquante : rien ne change
-        self.client.post("/base/", {"remplacer": "1", "confirmation": "REMPLACER",
-                                    "fichier": SimpleUploadedFile("ComptaJLC.xlsx", classeur.read_bytes())})
-        self.assertEqual(Mouvement.objects.count(), 2)
-        self.assertTrue(User.objects.filter(username="admin").exists())      # utilisateurs gardés
-        self.assertTrue(Modification.objects.filter(action="Remise à zéro et reprise").exists())
 
     def test_reserve_a_l_administrateur(self):
         u = User.objects.create_user("tresorier")
@@ -1800,14 +1443,12 @@ class EcranParametres(TransactionTestCase):
     octets = ImportParametres.octets
 
     def test_plan_et_codes_ouverts_a_la_gestion(self):
-        """Plan comptable et codes d'axe : administrateur et gestion (ajout, modification, suppression) ; pas bénévole ni consultation."""
-        for role, ok in (("Gestion", True), ("Bénévole", False), ("Consultation", False)):
-            u = User.objects.create_user(role)
-            u.groups.add(Group.objects.get(name=role))
-            self.client.force_login(u)
-            for url in ("/plan/", "/parametrage/axes/"):
-                self.assertEqual(self.client.get(url).status_code, 200 if ok else 403, (role, url))
-        self.client.force_login(User.objects.get(username="Gestion"))
+        """Plan comptable et codes Anal : administration et gestion (ajout, modification, suppression)."""
+        u = User.objects.create_user("Gestion")
+        u.groups.add(Group.objects.get(name="Gestion"))
+        self.client.force_login(u)
+        for url in ("/plan/", "/parametrage/axes/"):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
         r = self.client.post("/plan/nouveau/", {"numero": "999777", "libelle": "NOUVEAU", "anal1": "BIL.5", "actif": "on"})
         self.assertRedirects(r, "/plan/")
         self.assertTrue(Compte.objects.filter(numero="999777").exists())
@@ -1821,8 +1462,8 @@ class EcranParametres(TransactionTestCase):
     def test_droits_et_dossier_imports(self):
         from django.conf import settings
         from django.core.files.uploadedfile import SimpleUploadedFile
-        self.assertEqual(set(Group.objects.values_list("name", flat=True)), {"Administration", "Gestion", "Consultation", "Bénévole"})
-        for role in ("Consultation", "Gestion", "Bénévole"):
+        self.assertEqual(set(Group.objects.values_list("name", flat=True)), {"Administration", "Gestion"})      # deux modes
+        for role in ("Gestion",):
             self.assertFalse(Group.objects.get(name=role).permissions.filter(codename="parametrer").exists())
             u = User.objects.create_user(role)
             u.groups.add(Group.objects.get(name=role))
@@ -1887,7 +1528,6 @@ class ExportComplet(TransactionTestCase):
         referentiels_saisie()
         moteur.initialiser_parametres()
         self.u = User.objects.create_user("tresorier", is_superuser=True, is_staff=True)
-        benevole = User.objects.create_user("rachel")
         ex = Exercice.objects.create(libelle="2026", debut=dt.date(2026, 1, 1), fin=dt.date(2026, 12, 31))
         m = Mouvement.objects.create(numero=1, date=dt.date(2026, 2, 1), journal_id="B1", origine="saisie",
                                      commentaire="Cotisation", cree_par=self.u)
@@ -1897,14 +1537,7 @@ class ExportComplet(TransactionTestCase):
         LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 2, 2), rang=0, operation="העברה", montant=D(400),
                                    solde=D(1400), rapprochement=p)
         Budget.objects.create(exercice=ex, nature="P", compte_id="700000", montant=D(5000))
-        t = TiersProvisoire.objects.create(nom="Lévy", prenom="Rachel", cree_par=benevole)
-        f = Fiche.objects.create(type="activite", titre="Rallye")
-        f.benevoles.add(benevole)
-        nature = NatureFiche.objects.filter(type_fiche="activite", sens="R").first()
-        mode = ModeFiche.objects.filter(type_fiche="activite").first()
-        LigneFiche.objects.create(fiche=f, sens="R", date=dt.date(2026, 3, 1), provisoire=t, nature=nature, montant=D(80),
-                                  mode=mode, cree_par=benevole)
-        Membre.objects.filter(compte_id="411TAIEB001").update(ville="Netanya", cotisation=D(400), utilisateur=benevole)
+        Tiers.objects.filter(compte_id="411TAIEB001").update(ville="Netanya")
         Modification.objects.create(auteur="tresorier", action="Essai", objet="avant export")
 
     def test_aller_retour_identique(self):
@@ -1927,10 +1560,7 @@ class ExportComplet(TransactionTestCase):
         self.assertEqual(LigneReleve.objects.get().rang, 0)
         l = Ligne.objects.get(compte_id="512000")
         self.assertEqual(l.rapprochement.releves.get().montant, D(400))
-        self.assertEqual(Fiche.objects.get().benevoles.get().username, "rachel")
-        self.assertEqual(LigneFiche.objects.get().provisoire.nom, "Lévy")
-        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").ville, "Netanya")
-        self.assertEqual(Membre.objects.get(compte_id="411TAIEB001").utilisateur.username, "rachel")
+        self.assertEqual(Tiers.objects.get(compte_id="411TAIEB001").ville, "Netanya")
         self.assertEqual(Mouvement.objects.get(numero=1).cree_par, self.u)
 
     def modifier(self, chemin, nom, changer, dossier="", retirer=()):
@@ -1979,7 +1609,6 @@ class ExportComplet(TransactionTestCase):
         self.assertEqual(sorted(Mouvement.objects.values_list("numero", flat=True)), numeros)
         self.assertEqual(set(Ligne.objects.filter(mouvement__numero=1).values_list("libelle", "debit", "credit")),
                          {("COTISATION 2026", D(450), D(0)), ("COTISATION 2026", D(0), D(450))})
-        self.assertEqual(Fiche.objects.get().titre, "Rallye")                                   # le reste est rechargé
         self.assertEqual(Ligne.objects.get(compte_id="512000", mouvement__numero=1).rapprochement.releves.count(), 1)
         # déséquilibré ou compte inconnu : refusé, rien n'est modifié
         for cellule, valeur in (("K2", 999), ("I2", "999999")):
@@ -2021,7 +1650,7 @@ class ExportComplet(TransactionTestCase):
         self.client.post("/base/", {"remplacer": "1", "fichier": SimpleUploadedFile(nom, contenu), "confirmation": "REMPLACER"})
         self.assertFalse(Mouvement.objects.filter(numero=9).exists())
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
+        b.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(b)
         self.assertEqual(self.client.get(f"/base/export/{nom}").status_code, 403)
 
@@ -2077,11 +1706,11 @@ class Utilisateurs(TestCase):
     def test_administrateur_gere_les_utilisateurs(self):
         self.client.force_login(self.admin)
         self.client.post("/utilisateurs/", {"n-identifiant": "bureau@exemple.org", "n-email": "bureau@exemple.org",
-                                            "n-role": "Consultation", "n-mot_de_passe": "Bureau-mdp-2026!", "creer": "1"})
+                                            "n-role": "Gestion", "n-mot_de_passe": "Bureau-mdp-2026!", "creer": "1"})
         b = User.objects.get(username="bureau@exemple.org")
-        self.assertEqual(list(b.groups.values_list("name", flat=True)), ["Consultation"])
-        self.assertFalse(b.has_perm("compta.add_mouvement"))
-        self.assertTrue(b.has_perm("compta.view_mouvement"))
+        self.assertEqual(list(b.groups.values_list("name", flat=True)), ["Gestion"])
+        self.assertTrue(b.has_perm("compta.add_mouvement"))
+        self.assertFalse(b.has_perm("compta.parametrer"))
         self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "email": "", "role": "Administration",
                                                                  "actif": "on", "mot_de_passe": "", "prenom": "Jean-Luc",
                                                                  "nom": "CHABBAT"})
@@ -2098,7 +1727,7 @@ class Utilisateurs(TestCase):
         self.assertFalse(User.objects.filter(pk=b.pk).exists())
         # toujours au moins un administrateur actif
         self.client.post(f"/utilisateurs/{self.tresorier.pk}/", {"identifiant": "tresorier", "role": "Gestion", "actif": "on"})
-        r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Consultation", "actif": "on"})
+        r = self.client.post(f"/utilisateurs/{self.admin.pk}/", {"identifiant": "admin", "role": "Gestion", "actif": "on"})
         self.assertContains(r, "au moins un administrateur")
         self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)
 
@@ -2142,7 +1771,7 @@ class Echanges(TransactionTestCase):
         self.client.post("/echanges/", {"exporter": "tout"})
         exportes = sorted(p.name for p in ech.exports().iterdir() if not p.name.startswith("Lexique"))
         self.assertEqual(len(exportes), len(ech.FORMATS))
-        avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count())
+        avant = (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Tiers.objects.count())
         for f in ech.FORMATS:
             if f.nom in ("Ecritures", "Banque", "Budget", "Traductions", "Liens", "AxesComptes", "Ecrt"):
                 continue                        # écritures : Mvt déjà présents ; relevés, budget et liens vides
@@ -2150,7 +1779,7 @@ class Echanges(TransactionTestCase):
             (ech.imports() / source.name).write_bytes(source.read_bytes())
             r = self.importer(source.name)
             self.assertContains(r, f"{source.name} importé (", msg_prefix=f.nom)
-        self.assertEqual(avant, (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count()))
+        self.assertEqual(avant, (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Tiers.objects.count()))
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
         self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 8)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
@@ -2225,7 +1854,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(Compte.objects.get(numero="611000").anal1_id, "NEW.1")
         self.assertEqual(CodeAnalytique.objects.get(code="NEW.1").libelle, "Nouvelle nature")
         self.assertTrue(Compte.objects.get(numero="401DUPON001").lettrable)
-        self.assertTrue(Membre.objects.filter(compte_id="401DUPON001").exists())               # fiche tiers créée
+        self.assertTrue(Tiers.objects.filter(compte_id="401DUPON001").exists())               # fiche tiers créée
 
     def test_axes_de_comptes(self):
         """AxesComptes.xlsx : une colonne par axe ; analyse croisée avec filtres ; export complet et réinjection."""
@@ -2475,7 +2104,7 @@ class Echanges(TransactionTestCase):
 
     def test_droits(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
+        b.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(b)
         self.assertEqual(self.client.get("/echanges/").status_code, 403)
 
@@ -2681,7 +2310,7 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertTrue(list((self.racine / "Exports").glob("Exports_*.zip")))
         self.assertEqual(self.client.get("/referentiels/Utilisateurs.xlsx").status_code, 200)             # administrateur
         b = User.objects.create_user("bureau")
-        donner_role(b, "Consultation")
+        donner_role(b, "Gestion")
         self.client.force_login(b)
         self.assertEqual(self.client.get("/referentiels/").status_code, 403)
 
@@ -2691,7 +2320,7 @@ class ReferentielsEtPages(TransactionTestCase):
         donner_role(a, "Administration")
         self.client.force_login(a)
         pages = ["/", "/saisie/", "/mouvement/421/", "/mouvement/421/modifier/", "/mouvement/nouveau/", "/mouvement/rappel/",
-                 "/codes/", "/fiches/", "/membres/", "/membres/411TAIEB001/", "/membres/cotisations/", "/tiers-provisoires/",
+                 "/codes/", "/tiers/", "/tiers/411TAIEB001/",
                  "/ecritures/", "/journaux/", "/grand-livre/", "/balance/", "/analytique/", "/rapprochement/B1/",
                  "/rapprochement/traductions/", "/etats/", "/cloture/", "/controles/", "/modifications/", "/mon-compte/",
                  "/utilisateurs/", f"/utilisateurs/{a.pk}/", "/parametres/", "/echanges/", "/base/", "/referentiels/"]
@@ -2722,7 +2351,7 @@ class RapportsAnalytiques(TestCase):
         Ligne.objects.create(mouvement=m, ordre=1, compte_id="630000", libelle="AIDE", debit=D(50))
         Ligne.objects.create(mouvement=m, ordre=2, compte_id="530000", libelle="LOCATION", credit=D(200))
         u = User.objects.create_user("bureau")
-        u.groups.add(Group.objects.get(name="Consultation"))                          # consultation seule suffit
+        u.groups.add(Group.objects.get(name="Gestion"))                          # consultation seule suffit
         self.client.force_login(u)
 
     def test_synthese_gestion_avec_totaux(self):
@@ -2781,8 +2410,8 @@ class ExcelDeToutesLesPages(TestCase):
         self.client.force_login(u)
 
     def test_pages_en_excel(self):
-        for url in ("/balance/", "/grand-livre/?compte=512000", "/ecritures/", "/controles/", "/modifications/", "/membres/",
-                    "/membres/cotisations/", "/", "/analytique/", "/etats/", "/rapprochement/"):
+        for url in ("/balance/", "/grand-livre/?compte=512000", "/ecritures/", "/controles/", "/modifications/", "/tiers/",
+                    "/", "/analytique/", "/etats/", "/rapprochement/"):
             page = self.client.get(url)
             self.assertContains(page, "Imprimer / PDF", msg_prefix=url)
             self.assertContains(page, 'id="vers-excel"', msg_prefix=url)
@@ -2877,15 +2506,7 @@ class Justificatifs(TransactionTestCase):
         self.assertEqual(Justificatif.objects.count(), 0)
         with self.assertRaises(ValueError):
             just.ajouter(self.m, self.fichier("gros.pdf", b"x" * (just.TAILLE_MAXI + 1)))
-        # bureau (consultation) : consulte mais ne joint ni ne supprime
         j = just.ajouter(self.m, self.fichier(), auteur="tresorier")
-        v = User.objects.create_user("verif")
-        v.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(v)
-        self.assertEqual(self.client.get(f"/justificatif/{j.pk}/").status_code, 200)
-        self.assertEqual(self.client.post("/mouvement/1/justificatifs/", {"fichiers": [self.fichier()]}).status_code, 403)
-        self.assertEqual(self.client.post(f"/justificatif/{j.pk}/supprimer/").status_code, 403)
-        self.assertNotContains(self.client.get("/mouvement/1/"), "Joindre")
         # exercice clos : on peut encore joindre, plus supprimer
         Exercice.objects.filter(libelle="2026").update(clos=True)
         with self.assertRaises(ValueError):
@@ -3032,10 +2653,6 @@ class JustificatifsExistants(TransactionTestCase):
         self.assertEqual(sorted(Mouvement.objects.get(numero=5).justificatifs.values_list("nom", flat=True)),
                          ["recu.jpg", "scan traiteur.pdf"])
         self.assertEqual(just.liste_a_classer(), [])
-        b = User.objects.create_user("bureau")                 # consultation seulement : ni liste ni rattachement
-        donner_role(b, "Consultation")
-        self.client.force_login(b)
-        self.assertEqual(self.client.post("/mouvement/5/justificatifs/", {"a_classer": ["x"]}).status_code, 403)
 
     def test_numero_en_tete_et_plusieurs_mouvements(self):
         import io
@@ -3108,10 +2725,6 @@ class JustificatifsExistants(TransactionTestCase):
         just.deposer("inutile.pdf", b"%PDF")
         self.client.post("/justificatifs/a-classer/", {"ecarter": just.a_classer()[0]["nom"]})
         self.assertEqual(just.a_classer(), [])
-        b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
-        self.client.force_login(b)
-        self.assertEqual(self.client.get("/justificatifs/a-classer/").status_code, 403)
 
     def test_page_justificatifs_ouverte_au_tresorier(self):
         t = User.objects.create_user("tresorier_j")
@@ -3303,10 +2916,11 @@ class EcransParametrage(TestCase):
 
     def test_reserve_a_l_administrateur(self):
         b = User.objects.create_user("bureau")
-        b.groups.add(Group.objects.get(name="Consultation"))
+        b.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(b)
-        for adresse in ("/plan/", "/parametrage/journaux/", "/parametrage/axes/"):
-            self.assertEqual(self.client.get(adresse).status_code, 403)
+        self.assertEqual(self.client.get("/parametrage/journaux/").status_code, 403)       # réservé à l'administration
+        for adresse in ("/plan/", "/parametrage/axes/"):
+            self.assertEqual(self.client.get(adresse).status_code, 200)
 
 
 class UnSeulAxe(TestCase):

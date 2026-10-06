@@ -19,8 +19,8 @@ import openpyxl
 from django.db import transaction
 
 from . import dossiers, export, releves
-from .membres import ENTETES_MODELE, importer_tableau
-from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, Membre,
+from .tiers import ENTETES_MODELE, importer_tableau
+from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneReleve, Tiers,
                      Modification, Mouvement, Prefixe, Rapprochement, Reglage, Traduction)
 
 IMPORTES = "Importés"
@@ -335,7 +335,7 @@ def creer_codes(nouveaux):
 def creer_comptes(nouveaux):
     """Crée les comptes inconnus {numéro: (libellé, code Anal ou None)} ; un compte de tiers (401…, 411…) devient lettrable
     et reçoit sa fiche tiers. Renvoie le texte à ajouter au compte rendu (vide si rien n'a été créé)."""
-    from .membres import creer_manquants, type_du_compte
+    from .tiers import creer_manquants, type_du_compte
     if not nouveaux:
         return ""
     codes = set(CodeAnalytique.objects.values_list("code", flat=True))
@@ -365,7 +365,7 @@ def imp_plan(lignes, fichier, utilisateur=None):
     c = defaultdict(int)
     for numero, valeurs in a_faire:
         maj_ou_cree(Compte, {"numero": numero}, valeurs, c)
-    from .membres import creer_manquants
+    from .tiers import creer_manquants
     fiches = creer_manquants()                            # une fiche pour chaque nouveau compte de tiers (401…, 411…)
     return resume(c) + codes_crees + (f" ; {fiches} fiche(s) tiers créée(s)" if fiches else "")
 
@@ -397,8 +397,8 @@ def imp_journaux(lignes, fichier, utilisateur=None):
 
 def exp_tiers():
     return [[m.compte_id, m.type.libelle if m.type_id else "", m.nom, m.prenom, m.adresse, m.code_postal, m.ville, m.telephone,
-             m.email, m.date_adhesion, m.get_statut_display() if m.type_id and m.type.libelle == "Membre" else "", m.cotisation]
-            for m in Membre.objects.select_related("type").order_by("compte")]
+             m.email]
+            for m in Tiers.objects.select_related("type").order_by("compte")]
 
 
 def imp_tiers(lignes, fichier, utilisateur=None):
@@ -873,7 +873,7 @@ FORMATS = [
            exp_axes_comptes, imp_axes_comptes, libres=True),
     Format("Journaux", "Journaux", ["Code", "Intitulé", "Type", "Compte de trésorerie", "Actif"], exp_journaux,
            imp_journaux),
-    Format("Tiers", "Tiers : membres, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers, (12,)),
+    Format("Tiers", "Tiers : clients, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers),
     Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions,
            synonymes=(("Libellé hébreu", "Traduction"),)),
     Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Anal", "Montant"], exp_budget, imp_budget, (6,)),
@@ -927,10 +927,9 @@ AIDE = {
         "Actif": (F, OUI, "Utilisable (oui par défaut)")}),
     "Tiers": ("Tiers retrouvé par compte, sinon par type + nom + prénom ; une cellule vide ne remplace rien ; rien n'est supprimé.", {
         "Compte": (F, CODE, "Compte du tiers ; vide = créé d'après le type (411 + 5 lettres du nom + rang)"),
-        "Type": (F, TEXTE, "Membre (par défaut), Fournisseur…"), "Nom": (O, TEXTE, "Nom ou raison sociale"), "Prénom": (F, TEXTE, ""),
+        "Type": (F, TEXTE, "Client (par défaut), Fournisseur…"), "Nom": (O, TEXTE, "Nom ou raison sociale"), "Prénom": (F, TEXTE, ""),
         "Adresse": (F, TEXTE, ""), "Code postal": (F, TEXTE, ""), "Ville": (F, TEXTE, ""), "Téléphone": (F, TEXTE, ""),
-        "E-mail": (F, TEXTE, "Adresse e-mail valide"), "Date d'adhésion": (F, DATE, "Membres"),
-        "Statut": (F, "Actif / Honoraire / Démissionnaire", "Membres"), "Cotisation annuelle": (F, MONTANT, "Cotisation attendue")}),
+        "E-mail": (F, TEXTE, "Adresse e-mail valide")}),
     "Traductions": ("Mise à jour par opération.", {"Opération (hébreu)": (O, TEXTE, "Libellé du relevé bancaire"),
                                                    "Traduction": (O, TEXTE, "Traduction française")}),
     "Budget": ("Mise à jour par exercice + nature + cible.", {
@@ -1319,7 +1318,6 @@ def _memoriser():
     return {
         "mvts": {m.numero: (m.origine, m.commentaire, m.cree_par_id) for m in Mouvement.objects.all()},
         "an": {e.pk: e.mouvement_an.numero for e in Exercice.objects.filter(mouvement_an__isnull=False).select_related("mouvement_an")},
-        "fiches": {l.pk: l.mouvement.numero for l in LigneFiche.objects.filter(mouvement__isnull=False).select_related("mouvement")},
         "pointages": [(r.journal_id, r.mode, r.cree_par_id, [cles[l.pk] for l in r.releves.all()],
                        [(l.mouvement.numero, l.ordre) for l in r.ecritures.select_related("mouvement")])
                       for r in Rapprochement.objects.prefetch_related("releves", "ecritures")],
@@ -1335,11 +1333,6 @@ def _retablir(memo):
     for pk, numero in memo["an"].items():
         if numero in mvts:
             Exercice.objects.filter(pk=pk).update(mouvement_an_id=mvts[numero])
-        else:
-            perdus += 1
-    for pk, numero in memo["fiches"].items():
-        if numero in mvts:
-            LigneFiche.objects.filter(pk=pk).update(mouvement_id=mvts[numero])
         else:
             perdus += 1
     lignes_releve = {cle: pk for pk, cle in _cles_releves().items()}
@@ -1382,7 +1375,6 @@ def reinjecter(utilisateur=None):
         Rapprochement.objects.all().delete()
         if "Ecritures" in noms:
             Exercice.objects.update(mouvement_an=None)
-            LigneFiche.objects.update(mouvement=None)
             Mouvement.objects.all().delete()
         for f, _, lignes in lus:
             if f.nom == "Banque":                      # le relevé de chaque journal du fichier est remplacé
@@ -1397,7 +1389,7 @@ def reinjecter(utilisateur=None):
             comptes_rendus.append(f"{chemin.name} : {texte}")
         perdus = _retablir(memo)
         if perdus:
-            comptes_rendus.append(f"{perdus} lien(s) non recollé(s) (pointage, à-nouveau ou fiche dont l'écriture a changé)")
+            comptes_rendus.append(f"{perdus} lien(s) non recollé(s) (pointage ou à-nouveau dont l'écriture a changé)")
         Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Échanges",
                                     action="Réinjection", objet=", ".join(f.nom for f, _, _ in lus)[:200],
                                     avant=sauvegarde.name[:300], apres=" ; ".join(comptes_rendus)[:300])

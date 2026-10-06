@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 
-from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_fiches, vues_membres, vues_utilisateurs, vues_rapprochement as rap
+from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_tiers, vues_utilisateurs, vues_rapprochement as rap
 from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_plan, vues_referentiels, vues_situation
 
 admin.site.site_header = "ComptaJLC – administration"
@@ -43,27 +43,19 @@ urlpatterns = [
     path("journaux/", vues_journaux.journaux, name="journaux"),
     path("saisie/", views.saisie, name="saisie"),
     path("codes/", views.codes, name="codes"),
-    path("fiches/", vues_fiches.liste, name="fiches"),
-    path("fiches/<int:pk>/", vues_fiches.fiche, name="fiche"),
-    path("fiches/<int:pk>/papier/", vues_fiches.papier, name="fiche_papier"),
-    path("fiches/<int:pk>/modifier/", vues_fiches.fiche_modifier, name="fiche_modifier"),
-    path("fiches/ligne/<int:pk>/", vues_fiches.ligne, name="ligne_fiche"),
-    path("fiches/document/<int:pk>/", vues_fiches.document, name="document_fiche"),
     path("rapprochement/", rap.accueil, name="rapprochement"),
     path("rapprochement/traductions/", rap.traductions, name="traductions"),
     path("rapprochement/historique/", rap.historique, name="releves_historique"),
     path("rapprochement/<str:code>/", rap.accueil, name="rapprochement_journal"),
     path("rapprochement/<str:code>/parametres/", rap.parametres, name="releve_parametres"),
     path("rapprochement/<str:code>/import/", rap.importer, name="releve_import"),
-    path("membres/", vues_membres.liste, name="membres"),
-    path("membres/modele-tiers.xlsx", vues_membres.modele_tiers, name="modele_tiers"),
-    path("membres/cotisations/", vues_membres.cotisations, name="cotisations"),
-    path("membres/<str:numero>/", vues_membres.fiche, name="membre"),
+    path("tiers/", vues_tiers.liste, name="tiers"),
+    path("tiers/modele-tiers.xlsx", vues_tiers.modele_tiers, name="modele_tiers"),
+    path("tiers/<str:numero>/", vues_tiers.fiche, name="tiers_fiche"),
     path("etats/", vues_etats.etats_annuels, name="etats"),
     path("etats/export/", vues_etats.export_etats, name="export_etats"),
     path("cloture/", vues_etats.cloture, name="cloture"),
     path("cloture/archive/<int:pk>/", vues_etats.archive, name="archive"),
-    path("tiers-provisoires/", vues_fiches.provisoires, name="provisoires"),
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
     path("mon-compte/", vues_utilisateurs.mon_compte, name="mon_compte"),

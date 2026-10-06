@@ -26,7 +26,7 @@ ANAL = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
 PREFIXES = [("ACT.", "Activités"), ("COT.", "Cotisations"), ("DON.", "Dons et subventions")]
 COMPTES = [
     ("110000", "REPORT A NOUVEAU", "BIL", False), ("401000", "FOURNISSEURS DIVERS", "BIL", True),
-    ("411000", "MEMBRES DIVERS", "BIL", True),
+    ("411000", "CLIENTS DIVERS", "BIL", True),
     ("470000", "COMPTE D'ATTENTE", "BIL", False), ("580000", "VIREMENTS INTERNES", "BIL", False),
     ("600000", "ACHATS ET FRAIS DIVERS", "FON.1", False), ("600100", "FRAIS BANCAIRES", "FON.1", False),
     ("600200", "LOCATION DE SALLES", "ACT.1", False), ("610000", "MANIFESTATIONS", "ACT.1", False),
@@ -93,7 +93,7 @@ def demarrer(d, auteur=""):
     _reglage("hebergeur_liens", d.get("hebergeur", ""))
     _reglage("traductions_releve", "oui" if d.get("traductions") else "non")
     fait.append("réglages de l'association")
-    from .saisie import TYPES_TIERS                       # types de tiers (411 membres, 401 fournisseurs) : dans les deux cas
+    from .saisie import TYPES_TIERS                       # types de tiers (411 clients, 401 fournisseurs) : dans les deux cas
     for lib, pref in TYPES_TIERS:
         TypeTiers.objects.get_or_create(libelle=lib, defaults={"prefixe": pref})
     if d["plan"] == "base":

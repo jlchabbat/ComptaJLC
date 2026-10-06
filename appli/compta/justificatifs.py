@@ -200,54 +200,6 @@ def numeros(texte):
     return vus
 
 
-# ---------------------------------------------------------------- documents des fiches bénévoles
-
-def ajouter_document_fiche(fiche, fichier, ligne=None, description="", auteur=""):
-    """Range le reçu d'un bénévole avec sa fiche (Justificatifs/Fiches/<n° de fiche>/) ; ValueError si refusé."""
-    from .models import DocumentFiche
-    erreur = verifier(fichier)
-    if erreur:
-        raise ValueError(erreur)
-    rang = fiche.documents.count() + 1
-    relatif = f"Fiches/{fiche.pk}/{rang}_{_nom_sur(fichier.name)}"
-    while DocumentFiche.objects.filter(chemin=relatif).exists() or (dossier() / relatif).exists():
-        rang += 1
-        relatif = f"Fiches/{fiche.pk}/{rang}_{_nom_sur(fichier.name)}"
-    cible = dossier() / relatif
-    cible.parent.mkdir(parents=True, exist_ok=True)
-    with open(cible, "wb") as sortie:
-        for morceau in fichier.chunks():
-            sortie.write(morceau)
-    d = DocumentFiche.objects.create(fiche=fiche, ligne=ligne, chemin=relatif, nom=fichier.name[:150],
-                                     description=description[:150], taille=cible.stat().st_size, ajoute_par=auteur)
-    Modification.objects.create(auteur=auteur, lot="Fiches", action="Document joint à une fiche", objet=f"fiche {fiche.pk} {fiche.titre}"[:200],
-                                apres=f"{d.nom} ({d.taille // 1024} Ko) {description}"[:300])
-    return d
-
-
-def supprimer_document_fiche(d, auteur=""):
-    fichier = dossier() / d.chemin
-    Modification.objects.create(auteur=auteur, lot="Fiches", action="Document retiré d'une fiche", objet=f"fiche {d.fiche_id}",
-                                avant=d.nom)
-    d.delete()
-    if fichier.exists():
-        fichier.unlink()
-
-
-def documents_vers_justificatifs(l, mouvement, auteur=""):
-    """Au report d'une ligne de fiche : ses documents, et ceux de toute la fiche, deviennent justificatifs du mouvement."""
-    from django.core.files import File
-    from django.db.models import Q
-    n = 0
-    for d in l.fiche.documents.filter(Q(ligne=l) | Q(ligne__isnull=True)):
-        source = dossier() / d.chemin
-        if source.exists():
-            with open(source, "rb") as flux:
-                ajouter(mouvement, File(flux, name=d.nom), d.description or f"fiche bénévole « {l.fiche.titre} »", auteur)
-            n += 1
-    return n
-
-
 def refus_suppression(j):
     if Exercice.date_close(j.mouvement.date):
         return "Mouvement dans un exercice clos : ses justificatifs ne se suppriment plus."
