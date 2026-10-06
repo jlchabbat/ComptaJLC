@@ -1,122 +1,50 @@
 # ComptaJLC — contexte pour Claude Code
 
-Comptabilité d'une association israélienne (Loge Bnei Brith, ₪) tenue
-dans un classeur Excel Microsoft 365. Utilisateurs non comptables :
-trésorier, bureau, vérificateur. Interface en français ; relevés bancaires
-en hébreu. Référence : `docs/cahier-des-charges.md` (la feuille « CDC
-ComptaJLC » du classeur fait foi).
+Comptabilité d'une association, en ligne (application Django, base SQLite, hébergée
+sur PythonAnywhere). Dépôt indépendant, issu de ComptaBB (copie renommée) : les
+deux applications évoluent séparément. Utilisateurs non comptables : trésorier,
+bureau, vérificateur. Interface en français ; relevés bancaires possibles en hébreu.
 
-## Application en ligne
+## Un seul axe analytique : Anal
 
-Seule la version en ligne existe (https://comptajlc.pythonanywhere.com, mise à
-jour par `appli/deploiement/maj.sh`). Le programme du PC (`ComptaJLC.exe`) est
-abandonné et retiré du dépôt : ne pas le réintroduire. Distribution prévue :
-un site par association (étape 1 : application générique, réglages par site).
+- Il n'y a **qu'un axe**, appelé **Anal**. Chaque compte du plan porte un code Anal
+  (obligatoire) ; une écriture n'a **aucun** code analytique propre : son Anal est
+  celui de son compte.
+- Pas d'axe 2, pas de statut sur les codes (« En cours », « Terminé »… n'existent plus).
+- Nom interne : `CodeAnalytique` (table des codes), `Compte.anal1` (lien du compte vers
+  son code Anal — le nom `anal1` est conservé en interne), `Prefixe` (préfixes proposés
+  pour numéroter les codes : préfixe + plus grand numéro + 1, ex. `COT.4`).
+- Affichage : « Anal » partout (colonnes, menus, fichiers d'échange `Anal.xlsx`).
 
-## Architecture
+## Application
 
-- `ComptaJLC.xlsm` (nom dans `config.json`, hors Git) : tout le métier est en
-  **formules** (réponse Q5 : ni VBA ni Office Scripts). Tables structurées
-  T_* ; noms P_* pour les hypothèses ; onglet Contrôles = référence.
-- Depuis le Lot 0, les tables T_* sont de simples tables : plus aucune
-  n'est rechargée depuis l'ancien logiciel. Seule requête : `Requête1`
-  (relevé Banque 1, chemin `CheminReleveB1` = `P_Dossier` + `P_ReleveB1`).
-- `src/powerquery/*.pq` : code M des requêtes, à tenir identique au classeur
-  (`docs/historique/` : requêtes supprimées).
-- `src/lot0_preparation.py` : exemple d'édition directe du XML (tables,
-  commentaires à thread, DataMashup, chaînes partagées).
-- `src/lot1_saisie.py` : onglets Saisie, Codes, Modèles (appliqué après le Lot 0).
-  Paramètres de saisie dans T_ModelesOperation / T_Schemas / T_Paiements /
-  T_TypesTiers ; calculs intermédiaires nommés `SA_*` (Saisie!Q:R masquées).
-- `src/lot1_distance.py` : onglet Transmission (T_Recu), Libellé Axe1 du plan,
-  protection sans mot de passe des onglets de consultation (pas des onglets
-  dont les tables s'agrandissent). `src/classeur_saisie.py` : classeur du
-  saisisseur à distance (T_Envoi, référentiels en valeurs, sans grand livre).
-- `src/classeur_liaison.py` : fichier de liaison bénévole (Activité, Gestion, Tiers,
-  Export vers Transmission), formules simples testées par `tests/recette_liaison.py`.
-- `src/controles.py` : contrôles et photographie des totaux, lecture seule.
-- Fichiers d'échange : structure définie dans `docs/specification-fichiers.md` ; les fichiers venus d'une autre
-  application de comptabilité sont adaptés à cette structure par l'administrateur (aucun format tiers n'est lu), dans Excel
-  (Power Query, VBA) : l'appli importe .xlsx, .xlsm (valeurs seulement, feuille nommée comme le format) et .csv.
-- `tests/recette_lot1.py` : scénarios de saisie recalculés par LibreOffice
-  (formules sans LET/FILTER seulement : LibreOffice 24.2 ne les connaît pas ;
-  AGGREGATE en mode tableau non plus). `tests/recette_lot1_distance.py` : idem pour
-  la saisie à distance.
-- Relevés bancaires : **une seule structure** `Banque.xlsx` (Jnl, Date, Libelle, Debit, Credit, Solde facultatif), préparée en amont ;
-  aucun lecteur par banque ni PDF (`docs/banques.md`). Axe 2 : comptes 6 et 7 seulement ; bilan = axe 1 `BIL`.
-- `Imports/` et `Exports/` : échanges de l'application web par fichiers .xlsx
-  (`appli/compta/echanges.py`) ; `Imports/modeles/` : modèles vides et
-  Lexique.xlsx, versionnés ; le reste est hors Git (données réelles).
-- État détaillé du classeur : `docs/inventaire.md`. Plan : `docs/plan-lots.md`.
-
-## Commandes
-
-```
-python src/controles.py [classeur] [--photo f.json] [--compare f.json]
-python -m unittest discover tests
-```
-
-## Interdits (cahier §0, §8)
-
-- Une écriture existante se corrige ou se supprime depuis l'application
-  (trésorier, jamais dans un exercice clos, historique conservé) ; pas de
-  modification en masse hors application sans accord explicite.
-- Pas de valeur métier en dur dans une formule : cellule nommée ou table.
-- Ne pas casser les tables T_* ni la requête « Requête1 » (T_Banque1).
-- **Ne jamais enregistrer le classeur avec openpyxl** ou une autre
-  bibliothèque qui le réécrit : Power Query, commentaires à thread,
-  validations étendues et graphiques seraient perdus. Le modifier dans
-  Excel, ou par édition directe et vérifiée du XML.
-- Aucun chemin absolu (`D:\…`, nom d'utilisateur) : tout est relatif au
-  dossier du projet.
-- Ne pas versionner classeurs, exports réels, fichiers `~$*`, secrets.
-
-## Conventions
-
+- Code : `appli/compta/` (modèles, vues, imports/exports, tests), projet Django
+  `appli/comptajlc/`, déploiement `appli/deploiement/`.
+- Tests : `cd appli && python manage.py test compta`.
+- Montants : `Decimal`, formats `₪ #,##0.00` (devise par réglage), dates `jj/mm/aaaa`.
+- Ce qui est propre à l'association (nom, devise, journaux de banque, carte, traductions)
+  passe par `appli/compta/reglages.py` : jamais en dur dans le code.
+- Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`) ; la base est
+  créée vide (plan comptable de base facultatif).
+- Fichiers d'échange : structure dans `docs/specification-fichiers.md`, modèles vides dans
+  `Imports/modeles/`. Les données réelles (Imports/, Exports/, bases, classeurs) ne vont
+  **jamais** dans Git.
+- Une écriture existante se corrige ou se supprime depuis l'application (trésorier,
+  jamais dans un exercice clos, historique conservé).
 - Un Mvt = une opération équilibrée ; une ligne = débit **ou** crédit.
-- Nouveau Mvt = `MAX(T_Ecritures[Mvt])+1`, Pièce = `MAX(Pièce)+1`.
-- Une opération avec tiers = un Mvt de 4 lignes dans le journal du paiement
-  (facture puis règlement) ; sans règlement : 2 lignes en VT (recette) ou HA.
-- Pas de code de format de date dans TEXT (dépend de la langue d'Excel) :
-  `TEXT(DAY(d),"00")&"/"&TEXT(MONTH(d),"00")&"/"&YEAR(d)`.
-- Comptes membres `411` + 5 lettres du nom + rang (`411TAIEB001`).
-- Codes analytiques **proposés par l'application** : préfixe choisi +
-  T_Prefixes[Code suivant] (plus grand numéro + 1 ; 1 chiffre axe 1 `ACT.4`,
-  3 chiffres axe 2 `MAN.008`) ; l'utilisateur ne saisit que le libellé.
-  T_Prefixes[Axe] : 1 = axe 1, 2 = axe 2. Statut T_Axe2[Actif] : 0 Non
-  affecté, 1 En cours, 2 Terminé.
-- Application web : ce qui est propre à l'association (nom, devise, journaux Mizrahi/Bit,
-  carte Isracard, traductions) passe par `appli/compta/reglages.py`
-  (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
-  Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).
-  Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptajlc-licence`) ne va jamais dans le dépôt.
-- Axes (application web) : chaque compte porte un code d'axe 1 ; une écriture ne reçoit un code d'axe 2 que sur un compte 6 ou 7,
-  jamais un code d'axe 1 (contrôlé par `Ligne.save`, les formulaires, les imports et les Contrôles RG-02). Compte 6/7 « de projet »
-  (`Compte.projet`, ex. 600001) : code axe 2 obligatoire ; compte de fonctionnement (600000) : facultatif.
 - Situation financière : colonnes « Solde » seulement, le mot « résultat » n'y figure pas.
-- Documentation PDF : `docs/*.html` → `python appli/deploiement/documentation.py --sans-captures [--seul principes.html]`.
-- Paramètres nommés dans Paramètres!D3:F16 (P_DebutExercice, P_FinExercice,
-  P_DateCloture, P_DernierMvtClos, P_CompteVirement 580000, P_CompteAttente
-  470000, P_Dossier, P_ReleveB1).
-- Toute modification est inscrite dans l'onglet Journal des modifications
-  (T_Journal).
-- Colonnes « Libellé Axe1/Axe2 » à côté de tout code affiché ; « Code
-  introuvable » si le code est inconnu.
-- Saisie : cellules jaunes, texte bleu ; formats `₪ #,##0.00`, `jj/mm/aaaa` ;
-  messages en français.
-- Écriture ajoutée hors saisie guidée : fond coloré + commentaire (date,
-  origine, motif), comme les lignes Isracard (Mvt 412 à 421).
+- Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur ne va jamais dans le dépôt.
+- Documentation PDF : `docs/*.html` → `python appli/deploiement/documentation.py --sans-captures`.
+
+## À reprendre (héritage de ComptaBB)
+
+- `src/`, `tests/recette_*.py`, `docs/cahier-des-charges.md`, `docs/plan-lots.md` et
+  `docs/inventaire.md` décrivent le classeur Excel de ComptaBB et ses « lots » ; ils sont
+  conservés pour mémoire et ne reflètent pas encore ComptaJLC (axes 1 et 2, Loge Bnei Brith).
+- Les PDF de `docs/` et de `appli/compta/documentation/` portent encore le texte de
+  ComptaBB : à régénérer après adaptation des `docs/*.html`.
 
 ## Git
 
-Branche `main` protégée ; un lot = une branche (`lot-1-saisie`,
-`lot-2-membres`, `lot-3-rapprochement`, `lot-4-cloture`) et une pull
-request. Commits courts, en français.
-
-## Critères d'acceptation d'un lot
-
-Aucune erreur de formule ; Contrôles = OK ; `src/controles.py` sans
-anomalie et totaux identiques à la photographie précédente, hors
-écritures nouvelles ; saisie testée pour chaque type d'opération ;
-rapprochement Banque 1 inchangé ; Accueil, Compte rendu, README et
-journal des modifications à jour.
+Branche `main` protégée ; une évolution = une branche et une pull request.
+Commits courts, en français.
