@@ -20,12 +20,12 @@ TYPES_JOURNAL = [("AN", "AN – à-nouveaux"), ("BQ", "BQ – banque"), ("CA", "
 class CompteForm(forms.ModelForm):
     class Meta:
         model = Compte
-        fields = ["numero", "libelle", "anal1", "projet", "lettrable", "actif"]
-        labels = {"numero": "Compte", "anal1": "Axe 1 (nature) – obligatoire", "projet": "Compte de projet (charges et produits)", "lettrable": "Compte de tiers (lettrable)", "actif": "Proposé en saisie"}
+        fields = ["numero", "libelle", "anal1", "lettrable", "actif"]
+        labels = {"numero": "Compte", "anal1": "Anal – obligatoire", "lettrable": "Compte de tiers (lettrable)", "actif": "Proposé en saisie"}
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.fields["anal1"].queryset = CodeAnalytique.objects.filter(axe=1)
+        self.fields["anal1"].queryset = CodeAnalytique.objects.all()
         self.fields["anal1"].required = True
         self.fields["anal1"].empty_label = "— choisir —"
         if self.instance.pk:
@@ -33,13 +33,6 @@ class CompteForm(forms.ModelForm):
 
     def clean_numero(self):
         return self.cleaned_data["numero"].strip()
-
-    def clean(self):
-        c = super().clean()
-        numero = c.get("numero") or self.instance.pk or ""
-        if c.get("projet") and numero[:1] not in ("6", "7"):
-            self.add_error("projet", "Seuls les comptes de charges (6) et de produits (7) peuvent être affectés à un projet.")
-        return c
 
 
 class JournalForm(forms.ModelForm):
@@ -66,8 +59,8 @@ class JournalForm(forms.ModelForm):
 class CodeForm(forms.ModelForm):
     class Meta:
         model = CodeAnalytique
-        fields = ["libelle", "statut"]
-        labels = {"libelle": "Libellé", "statut": "Statut"}
+        fields = ["libelle"]
+        labels = {"libelle": "Libellé"}
 
 
 def _trace(request, action, objet, avant="", apres=""):
@@ -132,7 +125,7 @@ def journal(request, code=None):
 @login_required
 @gerer_codes
 def axes_param(request):
-    return render(request, "compta/axes_param.html", {"codes": CodeAnalytique.objects.order_by("axe", "code")})
+    return render(request, "compta/axes_param.html", {"codes": CodeAnalytique.objects.order_by("code")})
 
 
 @login_required

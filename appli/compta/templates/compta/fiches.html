@@ -3,24 +3,16 @@
 <div class="barre"><a class="bouton" href="{% url 'document' 'benevoles' %}" target="_blank">Guide des bénévoles (PDF)</a>{% if fiche_form %}<button form="f-fiche" class="principal" name="creer_fiche" value="1">Créer la fiche</button><button form="f-benevole" class="principal" name="creer_benevole" value="1">Créer le bénévole</button>{% endif %}</div>
 {% if provisoires %}<p class="carte message">{{ provisoires }} nouveau(x) tiers attend(ent) un compte :
 <a href="{% url 'provisoires' %}">Tiers provisoires</a>.</p>{% endif %}
-<table class="triable"><tr><th>Fiche</th><th>Type</th><th>Axe 2</th><th>Bénévoles</th><th>Statut</th><th class="n">Participants</th><th class="n">Recettes</th><th class="n">Dépenses</th><th class="n">Résultat</th></tr>
-{% for f, t in fiches %}<tr><td><a href="{% url 'fiche' f.pk %}">{{ f.titre }}</a></td><td>{{ f.get_type_display }}</td><td>{{ f.anal2|default:"—" }}</td>
+<table class="triable"><tr><th>Fiche</th><th>Type</th><th>Bénévoles</th><th>Statut</th><th class="n">Participants</th><th class="n">Recettes</th><th class="n">Dépenses</th><th class="n">Résultat</th></tr>
+{% for f, t in fiches %}<tr><td><a href="{% url 'fiche' f.pk %}">{{ f.titre }}</a></td><td>{{ f.get_type_display }}</td>
 <td>{% for u in f.benevoles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
 <td>{{ f.get_statut_display }}</td><td class="n">{% if f.type == "activite" %}{{ t.participants }}{% endif %}</td><td class="n">{{ t.recettes|zero_vide }}</td>
 <td class="n">{{ t.depenses|zero_vide }}</td><td class="n {% if t.resultat < 0 %}neg{% endif %}">{{ t.resultat|shekel }}</td></tr>
 {% empty %}<tr><td colspan="9">Aucune fiche{% if not fiche_form %} ne vous est confiée pour l'instant{% endif %}.</td></tr>{% endfor %}</table>
 {% if fiche_form %}<div class="deux" style="margin-top:16px">
 <form method="post" class="carte" id="f-fiche">{% csrf_token %}<h2>Nouvelle fiche</h2>
-<p class="aide">Activité : choisissez le code axe 2 actif, créé au préalable dans <a href="{% url 'codes' %}">Codes</a>. Gestion : le code et le mode de paiement se choisissent ligne par ligne.</p>
+<p class="aide">Donnez un titre à la fiche et choisissez les bénévoles ; le mode de paiement se choisit ligne par ligne.</p>
 <div class="formulaire">{% for f in fiche_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-<script>
-(function () {   // activité : le titre est le libellé du code axe 2, inutile de le saisir
-  var t = document.getElementById("id_fiche-type"), ti = document.getElementById("id_fiche-titre");
-  if (!t || !ti) return;
-  function maj() { var c = ti.closest("div"); [c, c.previousElementSibling].forEach(function (e) { if (e) e.style.display = t.value === "activite" ? "none" : ""; }); }
-  t.addEventListener("change", maj); maj();
-})();
-</script>
 </form>
 <form method="post" class="carte" id="f-benevole">{% csrf_token %}<h2>Nouveau bénévole</h2>
 <p class="aide">Le bénévole est choisi parmi les membres (fiches tiers). Il se connecte avec cet identifiant et ce mot de passe ;

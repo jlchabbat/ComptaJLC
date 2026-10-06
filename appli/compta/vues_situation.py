@@ -9,7 +9,7 @@ from django.shortcuts import render
 from . import controles as ctrl
 from . import etats
 from .models import ZERO, Journal, Mouvement, Reglage, arrondi, soldes
-from .views import lignes_periode, periode, resultat_par_axe
+from .views import lignes_periode, periode, resultat_par_anal
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
 
@@ -26,8 +26,7 @@ def donnees(debut, fin):
     ls = lignes_periode(debut, fin)
     _, _, charges = soldes(ls.filter(compte__numero__startswith="6"))
     _, _, produits = soldes(ls.filter(compte__numero__startswith="7"))
-    axe1 = resultat_par_axe(ls, 1)
-    axe2 = [a for a in resultat_par_axe(ls, 2) if a["produits"] or a["charges"]]
+    anal = resultat_par_anal(ls)
     tresorerie = [{"journal": j, "solde": etats.solde_cumule(j.compte, fin)}
                   for j in Journal.objects.filter(compte__isnull=False).select_related("compte")]
     etat, a_verifier = ctrl.etat_general(ctrl.executer())
@@ -36,8 +35,7 @@ def donnees(debut, fin):
         "association": Reglage.lire("nom_association", "") or Reglage.lire("association", ""),
         "produits": -produits, "charges": charges, "solde": -(produits + charges),
         "tresorerie": tresorerie, "total_tresorerie": sum((t["solde"] for t in tresorerie), ZERO),
-        "axe1": axe1, "axe2": axe2, "total_axe1": sum((a["resultat"] for a in axe1), ZERO),
-        "total_axe2": sum((a["resultat"] for a in axe2), ZERO),
+        "anal": anal, "total_anal": sum((a["resultat"] for a in anal), ZERO),
         "charges_par_compte": par_compte(ls, "6"), "produits_par_compte": par_compte(ls, "7"),
         "nb_mouvements": Mouvement.objects.filter(date__range=(debut, fin)).count(), "etat": etat, "a_verifier": a_verifier,
     }
@@ -73,11 +71,9 @@ def classeur(d):
     p.tableau(["Journal", "Compte", "Solde"],
               [[t["journal"].code, f"{t['journal'].compte_id} – {t['journal'].compte.libelle}", t["solde"]] for t in d["tresorerie"]],
               montants=(3,), total=["Total", "", d["total_tresorerie"]])
-    for titre, cle in (("Solde par nature (axe 1)", "axe1"), ("Solde par événement / projet (axe 2)", "axe2")):
-        p.section(titre)
-        ls = d[cle]
-        p.tableau(["Code", "Libellé", "Solde"], [[a["code"] or "(sans code)", a["libelle"] or "", a["resultat"]] for a in ls],
-                  montants=(3,), total=["Total", "", d["total_" + cle]])
+    p.section("Solde par code Anal")
+    p.tableau(["Code", "Libellé", "Solde"], [[a["code"] or "(sans code)", a["libelle"] or "", a["resultat"]] for a in d["anal"]],
+              montants=(3,), total=["Total", "", d["total_anal"]])
     for titre, cle, total in (("Produits par compte", "produits_par_compte", d["produits"]),
                               ("Charges par compte", "charges_par_compte", d["charges"])):
         p.section(titre)

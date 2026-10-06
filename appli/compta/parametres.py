@@ -174,11 +174,6 @@ def _verifier_modele(m):
         raise Refus(f"schéma « {m.schema} » inconnu (schémas : {', '.join(sorted(set(LigneSchema.objects.values_list('schema', flat=True))))})")
 
 
-def _verifier_compte(c):
-    if c.projet and c.numero[:1] not in ("6", "7"):
-        raise Refus("seuls les comptes de charges (6) et de produits (7) peuvent être « Projet »")
-
-
 def _verifier_mode(m):
     if m.genre == "TRESO" and not m.compte_id:
         raise Refus("un mode « banque, caisse ou carte » demande un compte de trésorerie")
@@ -190,8 +185,7 @@ def _preparer_traduction(t):
         raise Refus("opération (hébreu) vide")
 
 
-STATUTS_ANALYTIQUES = Choix(CodeAnalytique.STATUTS)
-AXE1 = Reference(CodeAnalytique, "code", "code axe 1", {"axe": 1})
+ANAL = Reference(CodeAnalytique, "code", "code Anal")
 COMPTE = Reference(Compte, "numero", "compte")
 JOURNAL = Reference(Journal, "code", "journal")
 
@@ -201,31 +195,22 @@ FEUILLES = [
         Colonne("Valeur", "valeur", Texte(200), True, 22),
         Colonne("Description", "description", Texte(200), False, 60),
     ], "Hypothèses nommées : compte de virement interne, compte d'attente, compte des cotisations…"),
-    Feuille("Axe 1", CodeAnalytique, ["code"], [
+    Feuille("Anal", CodeAnalytique, ["code"], [
         Colonne("Code", "code", Texte(20), True, 14),
         Colonne("Libellé", "libelle", Texte(100), False, 40),
-        Colonne("Statut", "statut", STATUTS_ANALYTIQUES, False, 14, "Non affecté, En cours ou Terminé"),
-    ], "Codes de nature (axe 1).", requete=lambda: CodeAnalytique.objects.filter(axe=1), fixe={"axe": 1}),
-    Feuille("Axe 2", CodeAnalytique, ["code"], [
-        Colonne("Code", "code", Texte(20), True, 14),
-        Colonne("Libellé", "libelle", Texte(100), False, 40),
-        Colonne("Statut", "statut", STATUTS_ANALYTIQUES, False, 14, "Non affecté, En cours ou Terminé"),
-    ], "Codes d'événement ou de projet (axe 2).", requete=lambda: CodeAnalytique.objects.filter(axe=2), fixe={"axe": 2}),
+    ], "Codes Anal (analytique) : chaque compte du plan en porte un."),
     Feuille("Préfixes", Prefixe, ["prefixe"], [
         Colonne("Préfixe", "prefixe", Texte(10), True, 12),
-        Colonne("Axe", "axe", Choix([(1, "1"), (2, "2")]), True, 8, "1 ou 2"),
         Colonne("Libellé", "libelle", Texte(60), False, 40),
-    ], "Préfixes des codes analytiques proposés par l'application (ACT, MAN…)."),
+    ], "Préfixes des codes Anal proposés par l'application (ACT, COT…)."),
     Feuille("Plan comptable", Compte, ["numero"], [
         Colonne("Compte", "numero", Texte(20), True, 14),
         Colonne("Libellé", "libelle", Texte(100), True, 42),
-        Colonne("Axe 1", "anal1", AXE1, True, 12, "code de la feuille Axe 1 : obligatoire pour chaque compte"),
-        Colonne("Projet", "projet", Booleen(), False, 9, "Oui : charges ou produits d'un projet (code axe 2 obligatoire) ; Non : fonctionnement"),
+        Colonne("Anal", "anal1", ANAL, True, 12, "code de la feuille Anal : obligatoire pour chaque compte"),
         Colonne("Lettrable", "lettrable", Booleen(), False, 11, "Oui ou Non"),
         Colonne("Actif", "actif", Booleen(), False, 9, "Oui ou Non"),
-    ], "Comptes généraux. Les comptes de tiers (membres, fournisseurs…) sont dans Tiers.xlsx. Un compte 6 ou 7 de projet "
-       "(ex. 600001) se distingue du compte de fonctionnement (600000).",
-        requete=_comptes_hors_tiers, verifier=_verifier_compte),
+    ], "Comptes généraux. Les comptes de tiers (membres, fournisseurs…) sont dans Tiers.xlsx.",
+        requete=_comptes_hors_tiers),
     Feuille("Journaux", Journal, ["code"], [
         Colonne("Code", "code", Texte(10), True, 10),
         Colonne("Intitulé", "intitule", Texte(60), True, 30),

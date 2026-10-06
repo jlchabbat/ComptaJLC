@@ -19,12 +19,11 @@ from .models import CodeAnalytique, Compte, Exercice, Journal, Modification, Mou
 FICHIER_CODE = "code_installation.txt"
 FORMATS_RELEVE = [("excel", "Autre banque"), ("mizrahi", "Banque Mizrahi-Tefahot"), ("bit", "Bit")]
 
-# plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable) ; 401000 et 411000 donnent
-# leur code axe 1 aux comptes de tiers créés ensuite (401…, 411…)
-AXE1 = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
+# plan de base : codes Anal, préfixes, comptes (numéro, libellé, code Anal, lettrable) ; 401000 et 411000 donnent
+# leur code Anal aux comptes de tiers créés ensuite (401…, 411…)
+ANAL = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
         ("ACT.1", "ACTIVITES"), ("COT.1", "COTISATIONS"), ("DON.1", "DONS ET SUBVENTIONS")]
-AXE2 = [("GEN.001", "GENERAL")]
-PREFIXES = [("ACT.", 1, "Activités"), ("GEN.", 2, "Général"), ("MAN.", 2, "Manifestations"), ("PRO.", 2, "Projets")]
+PREFIXES = [("ACT.", "Activités"), ("COT.", "Cotisations"), ("DON.", "Dons et subventions")]
 COMPTES = [
     ("110000", "REPORT A NOUVEAU", "BIL", False), ("401000", "FOURNISSEURS DIVERS", "BIL", True),
     ("411000", "MEMBRES DIVERS", "BIL", True),
@@ -101,12 +100,10 @@ def demarrer(d, auteur=""):
         debut, fin = d["debut"], d["fin"]
         libelle = str(debut.year) if debut.year == fin.year else f"{debut.year}-{fin.year}"
         Exercice.objects.get_or_create(debut=debut, defaults={"libelle": libelle, "fin": fin})
-        for code, lib in AXE1:
-            CodeAnalytique.objects.get_or_create(code=code, defaults={"axe": 1, "libelle": lib})
-        for code, lib in AXE2:
-            CodeAnalytique.objects.get_or_create(code=code, defaults={"axe": 2, "libelle": lib})
-        for p, axe, lib in PREFIXES:
-            Prefixe.objects.get_or_create(prefixe=p, defaults={"axe": axe, "libelle": lib})
+        for code, lib in ANAL:
+            CodeAnalytique.objects.get_or_create(code=code, defaults={"libelle": lib})
+        for p, lib in PREFIXES:
+            Prefixe.objects.get_or_create(prefixe=p, defaults={"libelle": lib})
         for numero, lib, a1, lettrable in COMPTES:
             Compte.objects.get_or_create(numero=numero, defaults={"libelle": lib, "anal1_id": a1, "lettrable": lettrable})
         mizrahi, bit = [], ""

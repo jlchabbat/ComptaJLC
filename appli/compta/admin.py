@@ -8,14 +8,13 @@ from .models import (
 
 @admin.register(CodeAnalytique)
 class CodeAnalytiqueAdmin(admin.ModelAdmin):
-    list_display = ("code", "axe", "libelle", "statut")
-    list_filter = ("axe", "statut")
+    list_display = ("code", "libelle")
     search_fields = ("code", "libelle")
 
 
 @admin.register(Prefixe)
 class PrefixeAdmin(admin.ModelAdmin):
-    list_display = ("prefixe", "axe", "libelle", "code_suivant")
+    list_display = ("prefixe", "libelle", "code_suivant")
 
 
 class ValeurCompteInline(admin.TabularInline):
@@ -57,7 +56,7 @@ class ReglageAdmin(admin.ModelAdmin):
 class LigneInline(admin.TabularInline):
     model = Ligne
     extra = 0
-    autocomplete_fields = ("compte", "anal2")
+    autocomplete_fields = ("compte",)
 
 
 @admin.register(Mouvement)
@@ -127,9 +126,8 @@ class ModeFicheAdmin(admin.ModelAdmin):
 
 @admin.register(Fiche)
 class FicheAdmin(admin.ModelAdmin):
-    list_display = ("titre", "type", "anal2", "statut", "cree_le")
+    list_display = ("titre", "type", "statut", "cree_le")
     list_filter = ("type", "statut")
-    autocomplete_fields = ("anal2",)
 
 
 @admin.register(TiersProvisoire)

@@ -20,7 +20,8 @@ from .vues_journaux import reponse_excel
 
 consulter = permission_required("compta.view_mouvement", raise_exception=True)
 SANS_CODE = "(sans code)"
-AXES = {1: "Nature (axe 1)", 2: "Objet (axe 2 : événement, projet)"}
+TITRE = "Anal"
+CHAMP = "compte__anal1"
 NATURES = {
     "gestion": {"titre": "Gestion (comptes 6 et 7)", "colonnes": ("Produits", "Charges", "Résultat"), "classes": "67"},
     "bilan": {"titre": "Bilan (comptes 1 à 5)", "colonnes": ("Débit", "Crédit", "Solde"), "classes": "12345"},
@@ -54,47 +55,40 @@ def _total(lignes):
 
 
 def synthese(debut, fin, nature):
-    res = []
-    for axe in (1, 2):
-        champ = "compte__anal1" if axe == 1 else "anal2"
-        rows = (lignes_periode(debut, fin).filter(filtre_classes(nature))
-                .values(champ, f"{champ}__libelle", "compte__numero").annotate(d=Sum("debit"), c=Sum("credit")))
-        codes = OrderedDict()
-        for r in sorted(rows, key=lambda r: (r[champ] is not None, r[champ] or "")):
-            code = r[champ] or SANS_CODE
-            x = codes.setdefault(code, {"code": code, "libelle": r[f"{champ}__libelle"] or "", "a": ZERO, "b": ZERO})
-            a, b = montants(nature, r["compte__numero"], r["d"] or ZERO, r["c"] or ZERO)
-            x["a"] += a
-            x["b"] += b
-        lignes = list(codes.values())
-        for x in lignes:
-            x["s"] = x["a"] - x["b"]
-        res.append({"axe": axe, "titre": AXES[axe], "lignes": lignes, "total": _total(lignes)})
-    return res
+    rows = (lignes_periode(debut, fin).filter(filtre_classes(nature))
+            .values(CHAMP, f"{CHAMP}__libelle", "compte__numero").annotate(d=Sum("debit"), c=Sum("credit")))
+    codes = OrderedDict()
+    for r in sorted(rows, key=lambda r: (r[CHAMP] is not None, r[CHAMP] or "")):
+        code = r[CHAMP] or SANS_CODE
+        x = codes.setdefault(code, {"code": code, "libelle": r[f"{CHAMP}__libelle"] or "", "a": ZERO, "b": ZERO})
+        a, b = montants(nature, r["compte__numero"], r["d"] or ZERO, r["c"] or ZERO)
+        x["a"] += a
+        x["b"] += b
+    lignes = list(codes.values())
+    for x in lignes:
+        x["s"] = x["a"] - x["b"]
+    return {"titre": TITRE, "lignes": lignes, "total": _total(lignes)}
 
 
-def detail(debut, fin, axe, nature, code=None):
-    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], ecritures: [...], total}] pour un axe."""
-    champ = "compte__anal1" if axe == 1 else "anal2"
+def detail(debut, fin, nature, code=None):
+    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], ecritures: [...], total}] par code Anal."""
     qs = (lignes_periode(debut, fin).filter(filtre_classes(nature))
-          .select_related("mouvement", "compte", "compte__anal1", "anal2")
-          .order_by(champ, "mouvement__date", "mouvement__numero", "ordre"))
+          .select_related("mouvement", "compte", "compte__anal1")
+          .order_by(CHAMP, "mouvement__date", "mouvement__numero", "ordre"))
     if code == SANS_CODE:
-        qs = qs.filter(**{f"{champ}__isnull": True})
+        qs = qs.filter(**{f"{CHAMP}__isnull": True})
     elif code:
-        qs = qs.filter(**{champ: code})
-    libelles_autre = dict(CodeAnalytique.objects.filter(axe=2 if axe == 1 else 1).values_list("code", "libelle"))
+        qs = qs.filter(**{CHAMP: code})
     sections = OrderedDict()
     for l in qs:
-        c = l.compte.anal1 if axe == 1 else l.anal2
+        c = l.compte.anal1
         cle = c.code if c else SANS_CODE
         s = sections.setdefault(cle, {"code": cle, "libelle": c.libelle if c else "", "comptes": OrderedDict(), "ecritures": []})
         a, b = montants(nature, l.compte_id, l.debit, l.credit)
         cpt = s["comptes"].setdefault(l.compte_id, {"numero": l.compte_id, "libelle": l.compte.libelle, "a": ZERO, "b": ZERO})
         cpt["a"] += a
         cpt["b"] += b
-        autre = (l.anal2_id if axe == 1 else (l.compte.anal1_id or "")) or ""
-        s["ecritures"].append({"ligne": l, "autre_axe": autre, "autre_libelle": libelles_autre.get(autre, ""), "a": a, "b": b})
+        s["ecritures"].append({"ligne": l, "a": a, "b": b})
     res = []
     for s in sections.values():
         s["comptes"] = sorted(s["comptes"].values(), key=lambda x: x["numero"])
@@ -103,15 +97,6 @@ def detail(debut, fin, axe, nature, code=None):
             x["ecritures"] = [e for e in s["ecritures"] if e["ligne"].compte_id == x["numero"]]      # détail par compte
         s["total"] = _total(s["comptes"])
         s["nb_mouvements"] = len({e["ligne"].mouvement_id for e in s["ecritures"]})
-        autres = OrderedDict()                                  # répartition par l'autre axe
-        for e in s["ecritures"]:
-            k = e["autre_axe"] or SANS_CODE
-            x = autres.setdefault(k, {"code": k, "libelle": libelles_autre.get(k, ""), "a": ZERO, "b": ZERO})
-            x["a"] += e["a"]
-            x["b"] += e["b"]
-        s["autres"] = sorted(autres.values(), key=lambda x: (x["code"] == SANS_CODE, x["code"]))
-        for x in s["autres"]:
-            x["s"] = x["a"] - x["b"]
         res.append(s)
     res.sort(key=lambda s: (s["code"] != SANS_CODE, s["code"]))
     return res
@@ -129,53 +114,46 @@ def _contexte(debut, fin, nature):
 def analytique(request):
     debut, fin = periode(request)
     nature = nature_choisie(request)
-    axes = synthese(debut, fin, nature)
+    a = synthese(debut, fin, nature)
     ctx = _contexte(debut, fin, nature)
     if request.GET.get("format") == "xlsx":
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
-        for a in axes:
-            lignes = [[l["code"], l["libelle"], l["a"], l["b"], l["s"]] for l in a["lignes"]]
-            t = a["total"]
-            lignes.append(["TOTAL", "", t["a"], t["b"], t["s"]])
-            feuille(wb, f"Axe {a['axe']}", ["Code", "Libellé", ctx["col_a"], ctx["col_b"], ctx["col_s"]], lignes, (3, 4, 5))
+        lignes = [[l["code"], l["libelle"], l["a"], l["b"], l["s"]] for l in a["lignes"]]
+        t = a["total"]
+        lignes.append(["TOTAL", "", t["a"], t["b"], t["s"]])
+        feuille(wb, "Anal", ["Code", "Libellé", ctx["col_a"], ctx["col_b"], ctx["col_s"]], lignes, (3, 4, 5))
         return reponse_excel(wb, f"Analytique_{nature}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx")
-    axe = 2 if request.GET.get("axe") == "2" else 1               # une page par axe : Nature (1), Objet (2)
-    a = next(x for x in axes if x["axe"] == axe)
     return render(request, "compta/analytique.html", {
-        **ctx, "axes": axes, "axe": axe, "a": dict(a, codes=CodeAnalytique.objects.filter(axe=axe).order_by("libelle", "code"))})
+        **ctx, "a": dict(a, codes=CodeAnalytique.objects.order_by("libelle", "code"))})
 
 
-def classeur_detail(sections, axe, ctx):
-    """État détaillé en Excel : pour chaque code, chiffres clés, répartition par l'autre axe, puis comptes et opérations."""
+def classeur_detail(sections, ctx):
+    """État détaillé en Excel : pour chaque code Anal, chiffres clés puis comptes et opérations."""
     import datetime as dt
     from .presentation import Presentation
     a, b, s_ = ctx["col_a"], ctx["col_b"], ctx["col_s"]
-    autre = "Axe 2" if axe == 1 else "Axe 1"
-    p = Presentation(f"Axe {axe}", "", (11, 8, 9, 44, 16, 16, 16), pied=f"État détaillé {AXES[axe]} · {ctx['periode_texte']}")
+    p = Presentation("Anal", "", (11, 8, 9, 44, 16, 16, 16), pied=f"État détaillé {TITRE} · {ctx['periode_texte']}")
     for n, sec in enumerate(sections):
         if n:
             p.ligne += 2
         p.titre(f"État détaillé – {sec['code']}" + (f" – {sec['libelle']}" if sec["libelle"] else ""),
-                [f"{AXES[axe]} · {ctx['titre_nature']} · période {ctx['periode_texte']}",
+                [f"{TITRE} · {ctx['titre_nature']} · période {ctx['periode_texte']}",
                  f"Édité le {dt.datetime.now():%d/%m/%Y à %H:%M}"])
         t = sec["total"]
         p.section("Chiffres clés")
         p.tableau(["", "", "", "Indicateur", "Montant"], [["", "", "", a, t["a"]], ["", "", "", b, t["b"]], ["", "", "", s_, t["s"]]],
                   montants=(5,))
         p.note(f"{sec['nb_mouvements']} mouvement(s), {len(sec['ecritures'])} ligne(s) d'écriture")
-        p.section(f"Répartition par {autre.lower()}")
-        p.tableau([autre, "", "", "Libellé", a, b, s_], [[x["code"], "", "", x["libelle"], x["a"], x["b"], x["s"]] for x in sec["autres"]],
-                  montants=(5, 6, 7), total=["Total", "", "", "", t["a"], t["b"], t["s"]])
         p.section("Détail par compte")
         for x in sec["comptes"]:
             p.ecrire([f"{x['numero']} – {x['libelle']}"], police=p.police["gras"])
-            p.tableau(["Date", "Mvt", "Libellé", "Libellé " + autre.lower(), a, b],
+            p.tableau(["Date", "Mvt", "Libellé", a, b],
                       [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].libelle,
-                        e["autre_libelle"] or e["autre_axe"], e["a"] or None, e["b"] or None] for e in x["ecritures"]],
-                      montants=(5, 6), formats={1: "DD/MM/YYYY"})
-            p.sous_total(["", "", f"Sous-total {x['numero']}", "", x["a"], x["b"]], montants=(5, 6))
-        p.ecrire(["Total " + sec["code"], "", "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(5, 6))
+                        e["a"] or None, e["b"] or None] for e in x["ecritures"]],
+                      montants=(4, 5), formats={1: "DD/MM/YYYY"})
+            p.sous_total(["", "", f"Sous-total {x['numero']}", x["a"], x["b"]], montants=(4, 5))
+        p.ecrire(["Total " + sec["code"], "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(4, 5))
     return p
 
 
@@ -184,16 +162,15 @@ def classeur_detail(sections, axe, ctx):
 def analytique_detail(request):
     debut, fin = periode(request)
     nature = nature_choisie(request)
-    axe = 1 if request.GET.get("axe") == "1" else 2
     code = request.GET.get("code") or None
-    sections = detail(debut, fin, axe, nature, code)
+    sections = detail(debut, fin, nature, code)
     ctx = _contexte(debut, fin, nature)
     if request.GET.get("format") == "xlsx":
-        nom = f"Analytique_{nature}_axe{axe}_{(code or 'tous').replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
-        return classeur_detail(sections, axe, ctx).reponse(nom)
+        nom = f"Analytique_{nature}_anal_{(code or 'tous').replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
+        return classeur_detail(sections, ctx).reponse(nom)
     return render(request, "compta/analytique_detail.html", {
-        **ctx, "axe": axe, "titre_axe": AXES[axe], "code": code or "", "sections": sections, "sans_code": SANS_CODE,
-        "codes": CodeAnalytique.objects.filter(axe=axe).order_by("libelle", "code"),
+        **ctx, "titre_axe": TITRE, "code": code or "", "sections": sections, "sans_code": SANS_CODE,
+        "codes": CodeAnalytique.objects.order_by("libelle", "code"),
         "total": _total([{"a": s["total"]["a"], "b": s["total"]["b"]} for s in sections])})
 
 

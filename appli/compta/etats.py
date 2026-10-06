@@ -64,9 +64,9 @@ def compte_de_resultat(ex, ex_prec=None):
             "resultat_n1": produits["total_n1"] - charges["total_n1"]}
 
 
-def par_axe(ex, ex_prec, axe):
-    """Produits, charges et résultat par code d'axe, N et N-1."""
-    champ = "compte__anal1" if axe == 1 else "anal2"
+def par_anal(ex, ex_prec):
+    """Produits, charges et résultat par code Anal, N et N-1."""
+    champ = "compte__anal1"
     c7, c6 = Q(compte__numero__startswith="7"), Q(compte__numero__startswith="6")
 
     def calc(e):
@@ -77,7 +77,7 @@ def par_axe(ex, ex_prec, axe):
                           ch=Sum(Case(When(c6, then=F("debit") - F("credit")), default=Value(ZERO)))))
         return {r[champ]: (arrondi(r["p"]), arrondi(r["ch"])) for r in rows}
     n, n1 = calc(ex), calc(ex_prec)
-    libelles = dict(CodeAnalytique.objects.filter(axe=axe).values_list("code", "libelle"))
+    libelles = dict(CodeAnalytique.objects.values_list("code", "libelle"))
     res = []
     for code in sorted(set(n) | set(n1), key=lambda c: c or ""):
         p, ch = n.get(code, (ZERO, ZERO))
@@ -137,15 +137,13 @@ def budget(ex):
         return []
     ls = Ligne.objects.filter(mouvement__date__range=(ex.debut, ex.fin))
     res = []
-    for b in Budget.objects.filter(exercice=ex).select_related("compte", "anal1", "anal2"):
+    for b in Budget.objects.filter(exercice=ex).select_related("compte", "anal1"):
         classe = "6" if b.nature == "C" else "7"
         qs = ls.filter(compte__numero__startswith=classe)
         if b.compte_id:
             qs = qs.filter(compte=b.compte)
-        elif b.anal1_id:
-            qs = qs.filter(compte__anal1=b.anal1)
         else:
-            qs = qs.filter(anal2=b.anal2)
+            qs = qs.filter(compte__anal1=b.anal1)
         s = qs.aggregate(d=Sum("debit"), c=Sum("credit"))
         realise = arrondi(((s["d"] or ZERO) - (s["c"] or ZERO)) * (1 if b.nature == "C" else -1))
         ecart = realise - b.montant

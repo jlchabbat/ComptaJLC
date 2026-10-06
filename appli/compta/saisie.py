@@ -28,7 +28,6 @@ class Operation:
     montant: Decimal | None = None
     paiement: MoyenPaiement | None = None
     vers: MoyenPaiement | None = None
-    anal2: CodeAnalytique | None = None
     compte: Compte | None = None
     remboursement: bool = False
     libelle: str = ""
@@ -125,11 +124,6 @@ def controler(op):
             e["Virement"] = "Les deux comptes du virement doivent être différents."
     elif op.vers:
         e["Virement"] = "La case « Vers » ne sert qu'aux virements internes : la vider."
-    if not op.anal2:                                      # axe 2 facultatif (comptes 6 et 7 seulement quand il est donné)
-        from .reglages import code_axe2_defaut
-        defaut = code_axe2_defaut()                       # un seul axe : code d'office
-        if defaut:
-            op.anal2 = CodeAnalytique.objects.get(code=defaut)
     utilise_contrepartie = LigneSchema.objects.filter(schema=m.schema, role="CONTREPARTIE").exists()
     contrepartie = op.compte or m.compte
     if not utilise_contrepartie:
@@ -139,8 +133,6 @@ def controler(op):
         e["Compte"] = f"Choisir le compte (classe {m.classe})."
     elif m.classe and not contrepartie.numero.startswith(m.classe):
         e["Compte"] = f"Ce type d'opération attend un compte de classe {m.classe}."
-    if contrepartie and contrepartie.projet and not op.anal2 and "Compte" not in e:
-        e["Événement / projet (axe 2)"] = f"Le compte {contrepartie.numero} est affecté à un projet : choisir le code axe 2."
     if r.lignes and not e:
         if any(l.compte is None for l in r.lignes):
             e["Écritures générées"] = "Un compte généré est manquant (vérifier les réglages et les moyens de paiement)."
@@ -168,8 +160,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
         ls = [l for l in r.lignes if l.mvt == rang]
         mv = Mouvement.objects.create(numero=numero + rang - 1, date=op.date, journal=ls[0].journal,
                                       origine="saisie", cree_par=utilisateur)
-        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit,
-                                         anal2=op.anal2 if l.compte.porte_axe2 else None) for i, l in enumerate(ls)])
+        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit) for i, l in enumerate(ls)])
         crees.append(mv)
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", action="Saisie",
                                 objet=", ".join(f"Mvt {m.numero}" for m in crees),

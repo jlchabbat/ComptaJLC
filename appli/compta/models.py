@@ -2,7 +2,7 @@
 
 Un mouvement (Mvt) = une opération équilibrée : une date, un journal, une
 pièce, et des lignes qui portent chacune un débit OU un crédit, un compte et
-un code analytique d'axe 2. L'axe 1 découle du compte (plan comptable).
+un compte. Le code Anal (analytique) découle du compte (plan comptable).
 """
 
 from decimal import Decimal
@@ -18,16 +18,13 @@ ZERO = Decimal("0.00")
 
 
 class CodeAnalytique(models.Model):
-    """Axe 1 (nature) ou axe 2 (événement, projet)."""
+    """Code Anal : l'unique axe analytique, rattaché à chaque compte du plan."""
 
-    STATUTS = [(0, "Non affecté"), (1, "En cours"), (2, "Terminé")]
     code = models.CharField(max_length=20, primary_key=True)
-    axe = models.PositiveSmallIntegerField(choices=[(1, "Axe 1"), (2, "Axe 2")])
     libelle = models.CharField("libellé", max_length=100, blank=True)
-    statut = models.PositiveSmallIntegerField(choices=STATUTS, default=1)
 
     class Meta:
-        ordering = ["axe", "code"]
+        ordering = ["code"]
         verbose_name = "code analytique"
         verbose_name_plural = "codes analytiques"
 
@@ -37,35 +34,31 @@ class CodeAnalytique(models.Model):
 
 class Prefixe(models.Model):
     prefixe = models.CharField("préfixe", max_length=10, primary_key=True)
-    axe = models.PositiveSmallIntegerField(choices=[(1, "Axe 1"), (2, "Axe 2")])
     libelle = models.CharField("libellé", max_length=60, blank=True)
 
     class Meta:
-        ordering = ["axe", "prefixe"]
+        ordering = ["prefixe"]
         verbose_name = "préfixe"
 
     def __str__(self):
-        return f"{self.prefixe} – {self.libelle} (axe {self.axe})" if self.libelle else f"{self.prefixe} (axe {self.axe})"
+        return f"{self.prefixe} – {self.libelle}" if self.libelle else self.prefixe
 
     def code_suivant(self):
-        """Plus grand numéro existant + 1 ; 1 chiffre pour l'axe 1, 3 pour l'axe 2."""
+        """Plus grand numéro existant + 1 (au moins 1 chiffre)."""
         suffixes = [c[len(self.prefixe):] for c in CodeAnalytique.objects.filter(code__startswith=self.prefixe)
                     .values_list("code", flat=True)]
         nums = [s for s in suffixes if s.isdigit()]
-        largeur = max([3 if self.axe == 2 else 1] + [len(s) for s in nums])
+        largeur = max([1] + [len(s) for s in nums])
         return self.prefixe + str(max([int(s) for s in nums], default=0) + 1).zfill(largeur)
 
 
 class Compte(models.Model):
     numero = models.CharField("compte", max_length=20, primary_key=True)
     libelle = models.CharField("libellé", max_length=100)
-    anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 1},
-                              related_name="comptes", verbose_name="axe 1")
+    anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True,
+                              related_name="comptes", verbose_name="Anal")
     lettrable = models.BooleanField(default=False)
     actif = models.BooleanField(default=True)
-    projet = models.BooleanField("compte de projet", default=False,
-                                 help_text="Charges et produits d'un projet (activité ponctuelle, opération durable) : "
-                                           "toute écriture porte un code axe 2. Sinon : frais de fonctionnement (ex. 600000 / 600001).")
 
     class Meta:
         ordering = ["numero"]
@@ -73,24 +66,12 @@ class Compte(models.Model):
     def __str__(self):
         return f"{self.numero} – {self.libelle}"
 
-    def clean(self):
-        if self.anal1_id and self.anal1.axe != 1:
-            raise ValidationError({"anal1": "Un compte ne reçoit qu'un code d'axe 1 (nature)."})
-        if self.projet and not self.porte_axe2:
-            raise ValidationError({"projet": "Seuls les comptes de charges (6) et de produits (7) peuvent être affectés à un projet."})
-
     def save(self, *a, **k):
-        self.clean()
         super().save(*a, **k)
 
     @property
     def classe(self):
         return self.numero[:1]
-
-    @property
-    def porte_axe2(self):
-        """L'axe 2 (activité, événement) n'affecte que les dépenses et recettes : comptes de classe 6 ou 7."""
-        return self.numero[:1] in ("6", "7")
 
 
 class Journal(models.Model):
@@ -196,8 +177,6 @@ class Ligne(models.Model):
     libelle = models.CharField("libellé", max_length=200)
     debit = models.DecimalField("débit", max_digits=14, decimal_places=2, default=ZERO)
     credit = models.DecimalField("crédit", max_digits=14, decimal_places=2, default=ZERO)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              related_name="lignes", verbose_name="axe 2", help_text="Comptes de classe 6 et 7 seulement.")
     lettrage = models.CharField(max_length=10, blank=True)
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
@@ -214,20 +193,6 @@ class Ligne(models.Model):
     def clean(self):
         if (self.debit > 0) == (self.credit > 0):
             raise ValidationError("Une ligne porte soit un débit, soit un crédit (RG-03).")
-        self.verifier_axes()
-
-    def verifier_axes(self):
-        """Axe 2 : codes d'axe 2 seulement, comptes de charges et de produits seulement (jamais un code d'axe 1)."""
-        if not self.anal2_id:
-            return
-        if self.anal2.axe != 2:
-            raise ValidationError({"anal2": f"Le code {self.anal2_id} est un code d'axe 1 : une écriture ne reçoit qu'un code d'axe 2."})
-        if not self.compte.porte_axe2:
-            self.anal2 = None                       # comptes de bilan : pas d'axe 2
-
-    def save(self, *a, **k):
-        self.verifier_axes()
-        super().save(*a, **k)
 
     @property
     def montant(self):
@@ -449,8 +414,6 @@ class Fiche(models.Model):
                ("reportee", "Reportée en comptabilité")]
     type = models.CharField(max_length=10, choices=FICHE_TYPES)
     titre = models.CharField(max_length=100)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              verbose_name="code axe 2", help_text="Activité : fixé d'avance par le trésorier.")
     benevoles = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="fiches", verbose_name="bénévoles")
     statut = models.CharField(max_length=10, choices=STATUTS, default="ouverte")
     cree_le = models.DateTimeField(auto_now_add=True)
@@ -502,8 +465,6 @@ class LigneFiche(models.Model):
     # colonnes du trésorier
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
                                verbose_name="compte de contrepartie", help_text="Vide = compte de la nature.")
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              related_name="+", verbose_name="code axe 2", help_text="Gestion : choisi par le trésorier.")
     mouvement = models.ForeignKey(Mouvement, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes_fiche")
     cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     cree_le = models.DateTimeField(auto_now_add=True)
@@ -690,30 +651,27 @@ class ValeurCompte(models.Model):
 # ---------------------------------------------------------------- budget (Lot 4)
 
 class Budget(models.Model):
-    """Prévision d'un exercice, par compte, par code d'axe 1 ou par code d'axe 2."""
+    """Prévision d'un exercice, par compte ou par code Anal."""
 
     exercice = models.ForeignKey(Exercice, on_delete=models.CASCADE, related_name="budgets")
     nature = models.CharField(max_length=1, choices=[("C", "Charges"), ("P", "Produits")])
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
     anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
-                              limit_choices_to={"axe": 1}, verbose_name="axe 1")
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
-                              limit_choices_to={"axe": 2}, verbose_name="axe 2")
+                              verbose_name="Anal")
     montant = models.DecimalField(max_digits=14, decimal_places=2)
 
     class Meta:
-        ordering = ["exercice", "nature", "compte", "anal1", "anal2"]
+        ordering = ["exercice", "nature", "compte", "anal1"]
         constraints = [models.CheckConstraint(
-            condition=(Q(compte__isnull=False, anal1__isnull=True, anal2__isnull=True)
-                       | Q(compte__isnull=True, anal1__isnull=False, anal2__isnull=True)
-                       | Q(compte__isnull=True, anal1__isnull=True, anal2__isnull=False)), name="budget_une_cible")]
+            condition=(Q(compte__isnull=False, anal1__isnull=True) | Q(compte__isnull=True, anal1__isnull=False)),
+            name="budget_une_cible")]
 
     def __str__(self):
         return f"{self.exercice} {self.cible} {self.montant}"
 
     @property
     def cible(self):
-        return self.compte or self.anal1 or self.anal2
+        return self.compte or self.anal1
 
 
 # ---------------------------------------------------------------- suivi des membres (Lot 2)

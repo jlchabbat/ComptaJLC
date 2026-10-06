@@ -48,38 +48,30 @@ def _trouver(modele, texte, **filtre):
 
 
 def _garder_saisies(request):
-    """Compte, axe 2 et libellé déjà tapés sur les autres lignes : gardés pour le réaffichage après écarter / relier."""
+    """Compte et libellé déjà tapés sur les autres lignes : gardés pour le réaffichage après écarter / relier."""
     s = {}
     for cle, valeur in request.POST.items():
-        for prefixe in ("compte_", "anal2_", "libelle_"):
+        for prefixe in ("compte_", "libelle_"):
             if cle.startswith(prefixe) and cle[len(prefixe):].isdigit() and valeur.strip():
                 s.setdefault(cle[len(prefixe):], {})[prefixe[:-1]] = valeur.strip()
     request.session["rapprochement_saisies"] = s
 
 
 def _affecter(request, journal, lignes):
-    """Crée les écritures des lignes affectées ; renvoie (créées, erreurs {pk: message}, saisies {pk: (compte, axe2)})."""
+    """Crée les écritures des lignes affectées ; renvoie (créées, erreurs {pk: message}, saisies {pk: compte})."""
     crees, erreurs, saisies = [], {}, {}
     for l in lignes:
-        c, a = request.POST.get(f"compte_{l.pk}", "").strip(), request.POST.get(f"anal2_{l.pk}", "").strip()
-        if not c and not a:
+        c = request.POST.get(f"compte_{l.pk}", "").strip()
+        if not c:
             continue
-        saisies[l.pk] = (c, a)
+        saisies[l.pk] = c
         compte = _trouver(Compte, c, actif=True)
-        anal2 = _trouver(CodeAnalytique, a, axe=2)
-        if not anal2 and not a:
-            from .reglages import code_axe2_defaut
-            defaut = code_axe2_defaut()                   # un seul axe : code d'office
-            anal2 = CodeAnalytique.objects.filter(code=defaut).first() if defaut else None
-        if a and not anal2:
-            erreurs[l.pk] = "Code axe 2 introuvable."
-            continue
         if not compte:
             erreurs[l.pk] = "Compte introuvable."
-            continue                                      # axe 2 facultatif ; seuls les comptes 6 et 7 le portent
+            continue
         try:
             libelle = request.POST.get(f"libelle_{l.pk}", "").strip()
-            crees.append(moteur.creer_ecriture(l, compte, anal2, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}")),
+            crees.append(moteur.creer_ecriture(l, compte, request.user, forcer=bool(request.POST.get(f"nouvelle_{l.pk}")),
                                                libelle=libelle))
             if libelle and request.POST.get(f"lexique_{l.pk}") and Traduction.cle_de(l.operation):
                 Traduction.objects.update_or_create(cle=Traduction.cle_de(l.operation)[:120],      # lexique : libellé retenu
@@ -173,21 +165,21 @@ def accueil(request, code=None):
         if erreurs:
             messages.error(request, f"{len(erreurs)} ligne(s) non enregistrée(s) : voir le motif sur chaque ligne.")
         elif not crees:
-            messages.warning(request, "Aucune ligne affectée : choisir un compte (le code axe 2 est facultatif).")
+            messages.warning(request, "Aucune ligne affectée : choisir un compte.")
         if not erreurs:
             return redirect("rapprochement_journal", journal.code)
     for pk, d in request.session.pop("rapprochement_saisies", {}).items():        # saisies gardées après écarter / relier
-        saisies.setdefault(int(pk), (d.get("compte", ""), d.get("anal2", "")))
+        saisies.setdefault(int(pk), d.get("compte", ""))
         if d.get("libelle"):
             libelles_saisis[int(pk)] = d["libelle"]
     lignes = []
     memo = moteur.memoire_affectations() if peut else {}
     ctx = moteur.Contexte(journal) if peut else None                  # lu une fois : page rapide même avec beaucoup de lignes
     for l in (ctx.a_affecter if ctx else moteur.a_affecter(journal)):
-        c, a = saisies.get(l.pk, ("", ""))
+        c = saisies.get(l.pk, "")
         propose = moteur.proposition(l, memo) if peut and not c else None
         deja = moteur.deja_en_compta(l, ctx) if peut else []
-        lignes.append({"l": l, "compte": c, "anal2": a, "libelle": libelles_saisis.get(l.pk) or moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
+        lignes.append({"l": l, "compte": c, "libelle": libelles_saisis.get(l.pk) or moteur.libelle_releve(l), "erreur": erreurs.get(l.pk, ""), "deja": deja,
                        "propose": f"{propose.numero} – {propose.libelle}" if propose and not deja else "",
                        "groupes": moteur.groupes(l, ctx=ctx) if peut and not deja else [],
                        "lignes_groupees": moteur.lignes_groupees(l, ctx=ctx) if peut and not deja else [],
@@ -197,7 +189,6 @@ def accueil(request, code=None):
     return render(request, "compta/rapprochement.html", {
         "journaux": js, "journal": journal, "lignes": lignes, "ecartees": list(moteur.ecartees(journal)), "parametres": parametres, "peut": peut, "tolerance": moteur.tolerance(),
         "comptes": Compte.objects.filter(actif=True).exclude(pk=journal.compte_id).order_by("numero") if peut else [],
-        "codes": CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code") if peut else [],
         "a_traduire": sum(1 for x in lignes if x["l"].traduction == "À traduire"),
         "import_form": ImportForm() if peut else None,
         "parametres_form": (ParametresForm(instance=parametres or ParametreReleve(journal=journal))

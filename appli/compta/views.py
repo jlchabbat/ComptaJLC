@@ -38,9 +38,9 @@ def lignes_periode(debut, fin):
     return Ligne.objects.filter(mouvement__date__range=(debut, fin))
 
 
-def resultat_par_axe(lignes, axe):
-    """Produits (7), charges (6) et résultat par code d'axe 1 ou 2, en une requête."""
-    champ = "compte__anal1" if axe == 1 else "anal2"
+def resultat_par_anal(lignes):
+    """Produits (7), charges (6) et résultat par code Anal, en une requête."""
+    champ = "compte__anal1"
     classe7 = Q(compte__numero__startswith="7")
     classe6 = Q(compte__numero__startswith="6")
     rows = (lignes.filter(classe6 | classe7).values(champ, f"{champ}__libelle").order_by(champ)
@@ -69,7 +69,7 @@ def tableau_de_bord(request):
     return render(request, "compta/tableau_de_bord.html", {
         "debut": debut, "fin": fin, "produits": -produits, "charges": charges, "resultat": -(produits + charges),
         "tresorerie": tresorerie, "total_tresorerie": sum((t["solde"] for t in tresorerie), ZERO),
-        "axe1": resultat_par_axe(ls, 1), "axe2": resultat_par_axe(ls, 2), "etat": etat, "a_verifier": a_verifier,
+        "anal": resultat_par_anal(ls), "etat": etat, "a_verifier": a_verifier,
         "nb_mouvements": Mouvement.objects.filter(date__range=(debut, fin)).count(),
     })
 
@@ -77,19 +77,16 @@ def tableau_de_bord(request):
 TRIS_ECRITURES = {
     "date": ("Date", "mouvement__date"), "jnl": ("Jnl", "mouvement__journal_id"), "mvt": ("Mvt", "mouvement__numero"),
     "compte": ("Compte", "compte_id"), "libelle": ("Libellé", "libelle"),
-    "debit": ("Débit", "debit"), "credit": ("Crédit", "credit"), "anal1": ("Axe 1", "compte__anal1_id"),
-    "anal2": ("Axe 2", "anal2_id"),
+    "debit": ("Débit", "debit"), "credit": ("Crédit", "credit"), "anal": ("Anal", "compte__anal1_id"),
 }
 
 
-COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1",
-                      "Anal2", "LibelAnal2", "Lien", "Let"]
+COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal", "LibelAnal", "Lien", "Let"]
 
 
 def export_csv(lignes):
     """Écritures (période et filtres de la page) au format d'échange de ComptaJLC : un fichier .csv (point-virgule, UTF-8 avec
-    BOM), une ligne par ligne d'écriture, nommé avec la date et l'heure de l'export. Anal1 / LibelAnal1 = axe 1 du compte,
-    Anal2 / LibelAnal2 = axe 2 de la ligne, Lien = adresse ou fichier du premier justificatif, Let = lettrage."""
+    BOM), une ligne par ligne d'écriture, nommé avec la date et l'heure de l'export. Anal / LibelAnal = code Anal du compte, Lien = adresse ou fichier du premier justificatif, Let = lettrage."""
     import csv
     import io
 
@@ -103,11 +100,11 @@ def export_csv(lignes):
     w = csv.writer(tampon, delimiter=";", lineterminator="\r\n")
     w.writerow(COLONNES_ECRITURES)
     for l in lignes.prefetch_related("mouvement__justificatifs").order_by("mouvement__date", "mouvement__numero", "ordre"):
-        a1, a2 = l.compte.anal1, l.anal2
+        a1 = l.compte.anal1
         piece = next(iter(l.mouvement.justificatifs.all()), None)
         w.writerow([l.mouvement.numero, l.mouvement.journal_id, f"{l.mouvement.date:%d/%m/%Y}", l.compte_id, l.compte.libelle,
                     l.libelle, montant(l.debit), montant(l.credit), a1.code if a1 else "", a1.libelle if a1 else "",
-                    a2.code if a2 else "", a2.libelle if a2 else "", (piece.lien or piece.chemin or "") if piece else "",
+                    (piece.lien or piece.chemin or "") if piece else "",
                     l.lettrage or ""])
     r = HttpResponse(("\ufeff" + tampon.getvalue()).encode("utf-8"), content_type="text/csv; charset=utf-8")
     r["Content-Disposition"] = f'attachment; filename="Ecritures_{timezone.localtime():%Y-%m-%d_%H%M}.csv"'
@@ -118,7 +115,7 @@ def export_csv(lignes):
 @consulter
 def ecritures(request):
     debut, fin = periode(request)
-    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal2", "q", "montant", "just")}
+    f = {k: request.GET.get(k, "").strip() for k in ("journal", "compte", "anal", "q", "montant", "just")}
     f["montant_erreur"] = ""
     m = None
     if f["montant"]:                                    # montant exact, au débit ou au crédit (virgule ou point, espaces ignorés)
@@ -128,14 +125,14 @@ def ecritures(request):
             f["montant_erreur"] = "Montant non reconnu."
 
     def filtrer(debut, fin):
-        qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1", "anal2")
+        qs = (lignes_periode(debut, fin).select_related("mouvement", "mouvement__journal", "compte", "compte__anal1")
               .order_by("-mouvement__date", "-mouvement__numero", "ordre"))
         if f["journal"]:
             qs = qs.filter(mouvement__journal_id=f["journal"])
         if f["compte"]:
             qs = qs.filter(compte__numero__startswith=f["compte"])
-        if f["anal2"]:
-            qs = qs.filter(anal2_id=f["anal2"])
+        if f["anal"]:
+            qs = qs.filter(compte__anal1_id=f["anal"])
         if f["q"]:
             qs = qs.filter(Q(libelle__icontains=f["q"]) | Q(compte__libelle__icontains=f["q"]))
         if m is not None:
@@ -172,7 +169,7 @@ def ecritures(request):
         pieces[mvt] = pieces.get(mvt, 0) + 1
     return render(request, "compta/ecritures.html", {
         "page": page, "pieces": pieces, "filtres": f, "entetes": entetes, "debut": debut, "fin": fin, "total_debit": d, "total_credit": c,
-        "journaux": Journal.objects.all(), "codes2": CodeAnalytique.objects.filter(axe=2), "comptes": Compte.objects.all(),
+        "journaux": Journal.objects.all(), "codes": CodeAnalytique.objects.all(), "comptes": Compte.objects.all(),
     })
 
 
@@ -185,7 +182,7 @@ def mouvement(request, numero):
     from .vues_justificatifs import peut_ajouter
     pieces = list(m.justificatifs.all())
     joindre = peut_ajouter(request.user)
-    return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte", "anal2"),
+    return render(request, "compta/mouvement.html", {"m": m, "lignes": m.lignes.select_related("compte"),
                                                      "verrou": verrou(m), "justificatifs": pieces,
                                                      "peut_joindre": joindre,
                                                      "a_classer": liste_a_classer() if joindre else [],
@@ -215,7 +212,7 @@ def grand_livre(request):
         if o_fin and o_fin > debut:          # la période enjambe une clôture : l'historique continue, sans les à-nouveaux
             periode_ls = periode_ls.exclude(mouvement__origine="cloture")
         for l in (periode_ls
-                  .select_related("mouvement", "anal2").order_by("mouvement__date", "mouvement__numero", "ordre")):
+                  .select_related("mouvement").order_by("mouvement__date", "mouvement__numero", "ordre")):
             cumul += l.debit - l.credit
             lignes.append((l, cumul))
     return render(request, "compta/grand_livre.html", {
@@ -263,7 +260,7 @@ from django.contrib import messages  # noqa: E402
 from django.db import transaction  # noqa: E402
 
 from . import saisie as moteur  # noqa: E402
-from .forms import CodeForm, MembreForm, SaisieForm, StatutForm  # noqa: E402
+from .forms import CodeForm, MembreForm, SaisieForm  # noqa: E402
 from .models import ModeleOperation, Prefixe  # noqa: E402
 
 
@@ -278,7 +275,7 @@ def saisie(request):
     if request.method == "POST" and form.is_valid():
         c = form.cleaned_data
         op = moteur.Operation(date=c["date"], modele=c["modele"], tiers=c["tiers"], montant=c["montant"], paiement=c["paiement"],
-                              vers=c["vers"], anal2=c["anal2"], compte=c["compte"], remboursement=c["remboursement"],
+                              vers=c["vers"], compte=c["compte"], remboursement=c["remboursement"],
                               libelle=c["libelle"])
         resultat = moteur.controler(op)
         doublon_seul = list(resultat.erreurs) == ["Déjà enregistrée ?"] and c["forcer"]
@@ -307,19 +304,18 @@ def _journaliser(request, action, objet, avant="", apres=""):
 @login_required
 @permission_required("compta.add_codeanalytique", raise_exception=True)
 def codes(request):
-    code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code", axe1=True)
+    code_form = CodeForm(request.POST if "creer_code" in request.POST else None, prefix="code")
     membre_form = MembreForm(request.POST if "creer_membre" in request.POST else None, prefix="membre")
-    statut_form = StatutForm(request.POST if "changer_statut" in request.POST else None, prefix="statut")
     if request.method == "POST":
         with transaction.atomic():
             if "creer_code" in request.POST and code_form.is_valid():
                 c = code_form.cleaned_data
                 p, lib = c["prefixe"], c["libelle"].strip().upper()
-                if CodeAnalytique.objects.filter(axe=p.axe, libelle=lib).exists():
-                    code_form.add_error("libelle", "Ce libellé existe déjà dans cet axe.")
+                if CodeAnalytique.objects.filter(libelle=lib).exists():
+                    code_form.add_error("libelle", "Ce libellé existe déjà.")
                 else:
-                    nouveau = CodeAnalytique.objects.create(code=p.code_suivant(), axe=p.axe, libelle=lib, statut=1)
-                    _journaliser(request, "Création", f"code axe {p.axe} {nouveau.code}", apres=lib)
+                    nouveau = CodeAnalytique.objects.create(code=p.code_suivant(), libelle=lib)
+                    _journaliser(request, "Création", f"code Anal {nouveau.code}", apres=lib)
                     messages.success(request, f"Code {nouveau.code} créé : {lib}.")
                     return redirect("codes")
             if "creer_membre" in request.POST and membre_form.is_valid():
@@ -335,22 +331,7 @@ def codes(request):
                     _journaliser(request, "Création", f"compte {compte.numero}", apres=f"{c['type']} {libelle}")
                     messages.success(request, f"{c['type']} créé : {compte.numero} – {libelle}.")
                     return redirect("codes")
-            if "changer_statut" in request.POST and statut_form.is_valid():
-                c = statut_form.cleaned_data
-                code, nouveau = c["code"], c["statut"]
-                utilise = code.lignes.count()
-                if nouveau == code.statut:
-                    statut_form.add_error("statut", "C'est déjà le statut de ce code.")
-                elif utilise and not c["confirmation"]:
-                    statut_form.add_error("confirmation", f"Code utilisé dans {utilise} ligne(s) : cocher la confirmation.")
-                else:
-                    avant = code.get_statut_display()
-                    code.statut = nouveau
-                    code.save()
-                    _journaliser(request, "Statut", f"code {code.code}", avant=avant, apres=code.get_statut_display())
-                    messages.success(request, f"{code.code} : {avant} → {code.get_statut_display()}.")
-                    return redirect("codes")
     prefixes = [(p, p.code_suivant()) for p in Prefixe.objects.all()]
-    return render(request, "compta/codes.html", {"code_form": code_form, "membre_form": membre_form, "statut_form": statut_form,
+    return render(request, "compta/codes.html", {"code_form": code_form, "membre_form": membre_form,
                                                  "prefixes": prefixes,
-                                                 "prochains": {p.prefixe: {"code": c, "axe": p.axe} for p, c in prefixes}})
+                                                 "prochains": {p.prefixe: {"code": c} for p, c in prefixes}})

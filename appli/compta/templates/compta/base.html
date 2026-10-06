@@ -15,7 +15,7 @@ function aides() { var on = document.documentElement.classList.toggle("avec-aide
   var b = document.getElementById("bascule-aides"); if (b) b.setAttribute("aria-pressed", on); }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
   document.documentElement.style.zoom = z; try { localStorage.setItem("comptajlc-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/tableau.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
-<body{% if not deux_axes %} class="un-seul-axe"{% endif %}>
+<body>
 {% if user.is_authenticated %}
 <header><span class="marque">ComptaJLC</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
 <nav class="menus">
@@ -25,7 +25,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
 {% if perms.compta.add_mouvement or perms.compta.change_mouvement %}{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs (dépôt et classement)</a>{% endif %}
 {% if perms.compta.change_compte and perms.compta.delete_compte %}{% url 'plan' as u %}<a href="{{ u }}" {% if request.path|slice:":6" == "/plan/" %}class="actif"{% endif %}>Plan comptable</a>{% endif %}
-{% if perms.compta.change_codeanalytique and perms.compta.delete_codeanalytique %}{% url 'axes_param' as u %}<a href="{{ u }}" {% if request.path|slice:":18" == "/parametrage/axes/" %}class="actif"{% endif %}>Codes des axes 1 et 2</a>{% endif %}
+{% if perms.compta.change_codeanalytique and perms.compta.delete_codeanalytique %}{% url 'axes_param' as u %}<a href="{{ u }}" {% if request.path|slice:":18" == "/parametrage/axes/" %}class="actif"{% endif %}>Codes Anal</a>{% endif %}
 {% if perms.compta.add_codeanalytique %}{% url 'codes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Codes et nouveaux tiers</a>{% endif %}
 {% if perms.compta.view_fiche %}{% url 'fiches' as u %}<a href="{{ u }}" {% if request.path|slice:":8" == "/fiches/" %}class="actif"{% endif %}>Fiches bénévoles</a>{% endif %}
 </div></div>{% endif %}
@@ -41,8 +41,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% url 'grand_livre' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Grand livre</a>
 {% url 'balance' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Balance</a>
 {% url 'axes_comptes' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analyse par axes de comptes</a>
-{% url 'analytique' as u %}<a href="{{ u }}?axe=1" {% if request.path == u and request.GET.axe != "2" %}class="actif"{% endif %}>Analytique – Nature (axe 1)</a>
-{% if deux_axes %}<a href="{{ u }}?axe=2" {% if request.path == u and request.GET.axe == "2" %}class="actif"{% endif %}>Analytique – Objet (axe 2)</a>{% endif %}
+{% url 'analytique' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Analytique (Anal)</a>
 </div></div>
 <div class="menu m-banque"><button type="button">Banque ▾</button><div class="sous">
 {% url 'rapprochement' as u %}<a href="{{ u }}" {% if request.path|slice:":15" == "/rapprochement/" and request.path != "/rapprochement/traductions/" and request.path != "/rapprochement/historique/" %}class="actif"{% endif %}>Relevés à passer en compta</a>
@@ -55,7 +54,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 </div></div>{% endif %}
 <div class="menu m-editions"><button type="button">Éditions ▾</button><div class="sous">
 {% if perms.compta.view_mouvement %}{% url 'situation' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Situation financière</a>
-{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code{% if deux_axes %} (axe 1 / axe 2){% endif %}</a>
+{% url 'analytique_detail' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>État détaillé par code Anal</a>
 {% url 'etats' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>États annuels et budget</a>
 {% if perms.compta.change_exercice %}{% url 'cloture' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Clôture de l'exercice</a>{% endif %}{% endif %}
 {% if perms.compta.echanger_fichiers %}{% url 'referentiels' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Exporter des données (Excel)</a>{% endif %}

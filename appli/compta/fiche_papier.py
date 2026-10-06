@@ -40,8 +40,7 @@ def pdf(fiche):
         c.setFont("Helvetica-Bold", 13)
         c.drawString(30, H - 34, f"{fiche.titre} — {titre}")
         c.setFont("Helvetica", 8)
-        axe = f" · code axe 2 : {fiche.anal2_id}" if activite and fiche.anal2_id else ""
-        c.drawString(30, H - 48, f"{fiche.get_type_display()}{axe} · bénévoles : "
+        c.drawString(30, H - 48, f"{fiche.get_type_display()} · bénévoles : "
                      + (", ".join(u.get_full_name() or u.username for u in fiche.benevoles.all()) or "—")
                      + " · à remettre au trésorier avec les justificatifs.")
         x, haut = 30, 22

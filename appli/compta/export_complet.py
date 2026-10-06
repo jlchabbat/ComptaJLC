@@ -184,19 +184,19 @@ def ecarts(attendu, obtenu):
 # ---------------------------------------------------------------- Donnees.xlsx
 
 FEUILLES = {
-    "Comptes de tiers": ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"],
+    "Comptes de tiers": ["Compte", "Libellé", "Anal", "Lettrable", "Actif"],
     "Exercices": ["Libellé", "Début", "Fin", "Clos", "Mvt à-nouveaux", "Résultat affecté", "Clôturé le", "Clôturé par",
                   "Archive"],
     "Écritures": ["Mvt", "Date", "Journal", "Origine", "Commentaire", "Créé le", "Créé par", "Ordre", "Compte",
-                  "Libellé", "Débit", "Crédit", "Axe 2", "Lettrage", "Pointage"],
+                  "Libellé", "Débit", "Crédit", "Lettrage", "Pointage"],
     "Pointages": ["N°", "Journal", "Mode", "Créé le", "Créé par"],
     "Relevés": ["Journal", "Date", "Rang", "Référence", "Opération", "Montant", "Solde", "Ouverture", "Source",
                 "Importé le", "Pointage"],
-    "Budget": ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"],
+    "Budget": ["Exercice", "Nature", "Compte", "Anal", "Montant"],
     "Tiers provisoires": ["N°", "Nom", "Prénom", "Téléphone", "E-mail", "Remarque", "Compte", "Créé par", "Créé le"],
-    "Fiches": ["N°", "Type", "Titre", "Axe 2", "Bénévoles", "Statut", "Créée le"],
+    "Fiches": ["N°", "Type", "Titre", "Bénévoles", "Statut", "Créée le"],
     "Lignes de fiches": ["Fiche", "Sens", "Date", "Tiers", "Tiers provisoire", "Autre", "Personnes", "Nature", "Montant",
-                         "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Axe 2", "Mvt", "Créé par",
+                         "Mode", "Sens du mode", "Justificatif", "Remarque", "Compte", "Mvt", "Créé par",
                          "Créé le"],
     "Historique": ["Date", "Auteur", "Lot", "Action", "Objet", "Avant", "Après"],
     "Bénévoles": ["Compte", "Identifiant"],
@@ -216,7 +216,7 @@ def _lignes_donnees():
                         for e in Exercice.objects.select_related("mouvement_an"))
     yield "Écritures", ([m.numero, m.date, m.journal_id, m.origine, m.commentaire, _heure(m.cree_le),
                          _nom_utilisateur(m.cree_par), l.ordre, l.compte_id, l.libelle, _montant(l.debit) or None,
-                         _montant(l.credit) or None, l.anal2_id, l.lettrage, l.rapprochement_id]
+                         _montant(l.credit) or None, l.lettrage, l.rapprochement_id]
                         for m in Mouvement.objects.select_related("cree_par").prefetch_related("lignes").order_by("numero")
                         for l in m.lignes.all())
     yield "Pointages", ([r.pk, r.journal_id, r.mode, _heure(r.cree_le), _nom_utilisateur(r.cree_par)]
@@ -224,15 +224,15 @@ def _lignes_donnees():
     yield "Relevés", ([l.journal_id, l.date, l.rang, l.reference, l.operation, _montant(l.montant), _montant(l.solde),
                        _oui(l.ouverture), l.source, _heure(l.importe_le), l.rapprochement_id]
                       for l in LigneReleve.objects.order_by("journal", "date", "rang", "pk"))
-    yield "Budget", ([b.exercice.libelle, b.nature, b.compte_id, b.anal1_id, b.anal2_id, _montant(b.montant)]
+    yield "Budget", ([b.exercice.libelle, b.nature, b.compte_id, b.anal1_id, _montant(b.montant)]
                      for b in Budget.objects.select_related("exercice"))
     yield "Tiers provisoires", ([t.pk, t.nom, t.prenom, t.telephone, t.email, t.remarque, t.compte_id, _nom_utilisateur(t.cree_par),
                                  _heure(t.cree_le)] for t in TiersProvisoire.objects.select_related("cree_par").order_by("pk"))
-    yield "Fiches", ([f.pk, f.type, f.titre, f.anal2_id, ";".join(sorted(u.get_username() for u in f.benevoles.all())),
+    yield "Fiches", ([f.pk, f.type, f.titre, ";".join(sorted(u.get_username() for u in f.benevoles.all())),
                       f.statut, _heure(f.cree_le)] for f in Fiche.objects.prefetch_related("benevoles").order_by("pk"))
     yield "Lignes de fiches", ([l.fiche_id, l.sens, l.date, l.tiers_id, l.provisoire_id, l.autre, l.personnes, l.nature.libelle,
                                 _montant(l.montant), l.mode.libelle if l.mode else "", l.mode.sens if l.mode else "",
-                                l.justificatif, l.remarque, l.compte_id, l.anal2_id,
+                                l.justificatif, l.remarque, l.compte_id,
                                 l.mouvement.numero if l.mouvement else None, _nom_utilisateur(l.cree_par), _heure(l.cree_le)]
                                for l in LigneFiche.objects.select_related("nature", "mode", "mouvement", "cree_par")
                                .order_by("pk"))
@@ -382,7 +382,7 @@ def _rangees(wb, nom, fichier="Donnees.xlsx"):
 
 def _charger_comptes_tiers(wb):
     for r in _rangees(wb, "Comptes de tiers"):
-        Compte.objects.create(numero=_texte(r["Compte"]), libelle=_texte(r["Libellé"]), anal1_id=_texte(r["Axe 1"]) or None,
+        Compte.objects.create(numero=_texte(r["Compte"]), libelle=_texte(r["Libellé"]), anal1_id=_texte(r["Anal"]) or None,
                               lettrable=_lire_oui(r["Lettrable"]), actif=_lire_oui(r["Actif"]))
 
 
@@ -414,7 +414,7 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
             dates[n] = _lire_heure(r["Créé le"])
         lignes.append((n, Ligne(ordre=_entier(r["Ordre"]) or 0, compte_id=_texte(r["Compte"]), libelle=_texte(r["Libellé"]),
                                 debit=_lire_montant(r["Débit"]), credit=_lire_montant(r["Crédit"]),
-                                anal2_id=_texte(r["Axe 2"]) or None, lettrage=_texte(r["Lettrage"]),
+                                lettrage=_texte(r["Lettrage"]),
                                 rapprochement=pointages.get(_entier(r["Pointage"])))))
     Mouvement.objects.bulk_create(mouvements.values())
     ids = dict(Mouvement.objects.values_list("numero", "pk"))
@@ -441,8 +441,8 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
     exercices = {e.libelle: e for e in Exercice.objects.all()}
     for r in _rangees(wb, "Budget"):
         Budget.objects.create(exercice=exercices[_texte(r["Exercice"])], nature=_texte(r["Nature"]),
-                              compte_id=_texte(r["Compte"]) or None, anal1_id=_texte(r["Axe 1"]) or None,
-                              anal2_id=_texte(r["Axe 2"]) or None, montant=_lire_montant(r["Montant"]))
+                              compte_id=_texte(r["Compte"]) or None, anal1_id=_texte(r["Anal"]) or None,
+                              montant=_lire_montant(r["Montant"]))
     provisoires = {}
     for r in _rangees(wb, "Tiers provisoires"):
         t = TiersProvisoire.objects.create(nom=_texte(r["Nom"]), prenom=_texte(r["Prénom"]), remarque=_texte(r["Remarque"]),
@@ -452,7 +452,7 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
         provisoires[_entier(r["N°"])] = t
     fiches = {}
     for r in _rangees(wb, "Fiches"):
-        f = Fiche.objects.create(type=_texte(r["Type"]), titre=_texte(r["Titre"]), anal2_id=_texte(r["Axe 2"]) or None,
+        f = Fiche.objects.create(type=_texte(r["Type"]), titre=_texte(r["Titre"]),
                                  statut=_texte(r["Statut"]))
         Fiche.objects.filter(pk=f.pk).update(cree_le=_lire_heure(r["Créée le"]) or f.cree_le)
         f.benevoles.set([u for u in (qui(n) for n in _texte(r["Bénévoles"]).split(";")) if u])
@@ -470,7 +470,7 @@ def _charger_donnees(wb, ecritures=None, pieces=None, ecrits=None):
             personnes=_entier(r["Personnes"]), montant=_lire_montant(r["Montant"]), mode=mode,
             nature=NatureFiche.objects.get(type_fiche=f.type, sens=sens, libelle=_texte(r["Nature"])),
             justificatif=_texte(r["Justificatif"]), remarque=_texte(r["Remarque"]), compte_id=_texte(r["Compte"]) or None,
-            anal2_id=_texte(r["Axe 2"]) or None, mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
+            mouvement_id=ids.get(_entier(r["Mvt"])), cree_par=qui(r["Créé par"]))
         LigneFiche.objects.filter(pk=l.pk).update(cree_le=_lire_heure(r["Créé le"]) or l.cree_le)
         lignes_fiches.append(l)
     from .models import AxeCompte, ValeurCompte

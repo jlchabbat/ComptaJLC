@@ -21,7 +21,6 @@ class SaisieForm(forms.Form):
     montant = forms.DecimalField(required=False, max_digits=12, decimal_places=2, min_value=0, label="Montant")
     paiement = forms.ModelChoiceField(MoyenPaiement.objects.none(), required=False, label="Moyen de paiement")
     vers = forms.ModelChoiceField(MoyenPaiement.objects.none(), required=False, label="Vers (virement interne)")
-    anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Événement / projet (axe 2)")
     compte = forms.ModelChoiceField(Compte.objects.none(), required=False, label="Compte (si différent du modèle)")
     remboursement = forms.BooleanField(required=False, label="Remboursement (écritures inversées)")
     libelle = forms.CharField(required=False, max_length=60, label="Libellé (facultatif)")
@@ -36,7 +35,6 @@ class SaisieForm(forms.Form):
         self.fields["tiers"].queryset = Compte.objects.filter(prefixes, actif=True).order_by("libelle") if prefixes else Compte.objects.none()
         self.fields["paiement"].queryset = MoyenPaiement.objects.all()
         self.fields["vers"].queryset = MoyenPaiement.objects.filter(journal__isnull=False)
-        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).order_by("code")
         self.fields["compte"].queryset = Compte.objects.filter(Q(numero__startswith="6") | Q(numero__startswith="7"), actif=True)
         cherchable(self)
 
@@ -45,11 +43,8 @@ class CodeForm(forms.Form):
     prefixe = forms.ModelChoiceField(Prefixe.objects.all(), label="1. Préfixe")
     libelle = forms.CharField(max_length=100, label="2. Libellé")
 
-    def __init__(self, *a, axe1=False, **k):
+    def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        if not axe1:                                     # axe 1 : paramétrage de base (administrateur)
-            self.fields["prefixe"].queryset = Prefixe.objects.filter(axe=2)
-            self.fields["prefixe"].help_text = "Axe 2 seulement ; les codes d'axe 1 sont créés par l'administrateur."
         cherchable(self)
 
 
@@ -65,17 +60,6 @@ class MembreForm(forms.Form):
     adresse = forms.CharField(max_length=150, required=False)
     code_postal = forms.CharField(max_length=12, required=False, label="Code postal, ville", widget=forms.TextInput(attrs={"placeholder": "Code postal"}))
     ville = forms.CharField(max_length=60, required=False, widget=forms.TextInput(attrs={"data-avec": "code_postal", "placeholder": "Ville"}))
-
-
-class StatutForm(forms.Form):
-    code = forms.ModelChoiceField(CodeAnalytique.objects.filter(axe=2), label="Code")
-    statut = forms.TypedChoiceField(choices=CodeAnalytique.STATUTS, coerce=int, label="Nouveau statut")
-    confirmation = forms.BooleanField(required=False, label="Je confirme : ce code est déjà utilisé dans des écritures")
-
-    def __init__(self, *a, **k):
-        super().__init__(*a, **k)
-        self.fields["code"].queryset = CodeAnalytique.objects.filter(axe=2).order_by("code")
-        cherchable(self)
 
 
 # ---------------------------------------------------------------- fiches bénévoles
@@ -109,41 +93,23 @@ class ChoixBenevoles(forms.ModelMultipleChoiceField):
 
 
 class FicheForm(forms.ModelForm):
-    """Fiche : le code axe 2 d'une activité doit déjà exister et être actif (créé dans Codes, préfixe puis libellé)."""
+    """Fiche bénévole : activité ou gestion, avec son titre et ses bénévoles."""
 
     benevoles = ChoixBenevoles(User.objects.none(), required=False, widget=forms.CheckboxSelectMultiple(attrs={"class": "radios"}),
                                 label="Bénévoles")
 
     class Meta:
         model = Fiche
-        fields = ["type", "titre", "anal2", "benevoles"]
+        fields = ["type", "titre", "benevoles"]
 
-    field_order = ["type", "titre", "anal2", "benevoles"]
+    field_order = ["type", "titre", "benevoles"]
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
-        self.fields["anal2"].help_text = "Code actif créé au préalable dans Codes (activité seulement)."
         self.fields["benevoles"].queryset = User.objects.filter(groups__name="Bénévole", is_active=True).order_by("username")
-        self.fields["titre"].required = False
-        self.fields["titre"].help_text = "Fiche de gestion seulement : une activité prend le libellé de son code axe 2."
         if self.instance.pk:
             del self.fields["type"]
-            if self.instance.type == "activite":
-                del self.fields["titre"]
         cherchable(self)
-
-    def clean(self):
-        c = super().clean()
-        t = c.get("type") or self.instance.type
-        if t == "activite":
-            if not c.get("anal2"):
-                self.add_error("anal2", "Une fiche d'activité demande un code axe 2 actif : le créer d'abord dans Codes.")
-            else:
-                c["titre"] = self.instance.titre = c["anal2"].libelle      # le titre est le libellé déjà défini du code axe 2
-        elif not (c.get("titre") or "").strip():
-            self.add_error("titre", "Titre obligatoire pour une fiche de gestion.")
-        return c
 
 
 class BenevoleForm(forms.Form):
@@ -165,7 +131,7 @@ class BenevoleForm(forms.Form):
 
 
 class LigneFicheForm(forms.ModelForm):
-    """Ligne saisie par le bénévole ; le trésorier voit en plus ses colonnes (mode en gestion, compte, axe 2)."""
+    """Ligne saisie par le bénévole ; le trésorier voit en plus ses colonnes (mode en gestion, compte)."""
 
     sens = forms.ChoiceField(choices=[("R", "Recette"), ("D", "Dépense")], widget=forms.RadioSelect(attrs={"class": "radios"}))
     qui = forms.ChoiceField(required=False, label="Tiers connu",
@@ -180,11 +146,11 @@ class LigneFicheForm(forms.ModelForm):
 
     class Meta:
         model = LigneFiche
-        fields = ["sens", "date", "personnes", "nature", "montant", "mode", "justificatif", "remarque", "anal2"]
+        fields = ["sens", "date", "personnes", "nature", "montant", "mode", "justificatif", "remarque"]
         widgets = {"date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
     field_order = ["sens", "date", "qui", "nouveau_nom", "nouveau_prenom", "nouveau_tel", "nouveau_email", "personnes", "nature", "montant", "mode",
-                   "justificatif", "remarque", "anal2"]
+                   "justificatif", "remarque"]
 
     def __init__(self, *a, fiche, tresorier, **k):
         super().__init__(*a, **k)
@@ -206,12 +172,6 @@ class LigneFicheForm(forms.ModelForm):
                 del f[n]
             if not tresorier:
                 del f["mode"]
-        if tresorier:
-            f["anal2"].queryset = CodeAnalytique.objects.filter(axe=2).exclude(statut=2).order_by("code")
-            if t == "activite":
-                del f["anal2"]
-        else:
-            del f["anal2"]
         if fiche.type == "gestion":
             f["sens"].choices = [("R", "Reçu"), ("D", "Versé")]
         cherchable(self)
@@ -274,12 +234,10 @@ class LigneMouvementForm(forms.Form):
     libelle = forms.CharField(max_length=200, required=False, label="Libellé")
     debit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Débit")
     credit = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, label="Crédit")
-    anal2 = forms.ModelChoiceField(CodeAnalytique.objects.none(), required=False, label="Axe 2")
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["compte"].queryset = Compte.objects.filter(actif=True)
-        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
         cherchable(self)
         self.fields["libelle"].widget.attrs["size"] = 30
         for n in ("debit", "credit"):
@@ -295,16 +253,6 @@ class LigneMouvementForm(forms.Form):
             return c
         if not c.get("compte"):
             self.add_error("compte", "Choisir le compte.")
-        if not c.get("anal2") and c.get("compte") and c["compte"].porte_axe2:       # axe 2 facultatif ; un seul axe : code d'office
-            from .reglages import code_axe2_defaut
-            defaut = code_axe2_defaut()
-            if defaut:
-                c["anal2"] = CodeAnalytique.objects.get(code=defaut)
-        compte = c.get("compte")
-        if compte and c.get("anal2") and not compte.porte_axe2:
-            self.add_error("anal2", "Le code axe 2 ne s'applique qu'aux comptes de charges (6) et de produits (7).")
-        if compte and compte.projet and not c.get("anal2"):
-            self.add_error("anal2", f"Le compte {compte.numero} est affecté à un projet : choisir le code axe 2.")
         return c
 
 

@@ -10,7 +10,7 @@
 <a class="bouton" href="{% url 'fiche_papier' fiche.pk %}">Fiche papier (PDF)</a>
 {% if form %}<button form="f-ajout" class="principal" name="ajouter" value="1">Ajouter la ligne</button>{% endif %}{% if fiche_form %}<button form="f-modif">Enregistrer la fiche</button>{% endif %}</form>
 {% if peut_supprimer %}<form method="post" id="f-suppr">{% csrf_token %}</form>{% endif %}
-<p>{{ fiche.get_type_display }}{% if fiche.type == "activite" %} · code axe 2 : <b>{{ fiche.anal2|default:"à fixer par le trésorier" }}</b>{% endif %}
+<p>{{ fiche.get_type_display }}
 · bénévoles : {% for u in fiche.benevoles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}aucun{% endfor %}</p>
 <div class="chiffres">{% if fiche.type == "activite" %}<div class="chiffre"><div class="lib">Participants</div><div class="val">{{ totaux.participants }}</div></div>{% endif %}
 <div class="chiffre"><div class="lib">Recettes</div><div class="val">{{ totaux.recettes|shekel }}</div></div>
@@ -46,7 +46,7 @@ Au report en comptabilité, chaque document devient le justificatif du mouvement
 
 
 
-{% if fiche_form %}<details class="carte"><summary>Modifier la fiche (titre, code axe 2, bénévoles)</summary>
+{% if fiche_form %}<details class="carte"><summary>Modifier la fiche (titre, bénévoles)</summary>
 <form method="post" action="{% url 'fiche_modifier' fiche.pk %}" id="f-modif">{% csrf_token %}<div class="formulaire" style="margin-top:12px">{% for f in fiche_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form></details>{% endif %}
 {% endblock %}

@@ -64,7 +64,7 @@ def liste(request):
             journaliser(request, "Création", f"bénévole {u.username}", apres=f"{u.get_full_name()} ({m.compte_id})")
             messages.success(request, f"Bénévole créé : {u.get_full_name()} (identifiant {u.username}).")
             return redirect("fiches")
-    fiches = fiches_visibles(request.user).prefetch_related("benevoles", "lignes").select_related("anal2")
+    fiches = fiches_visibles(request.user).prefetch_related("benevoles", "lignes")
     return render(request, "compta/fiches.html", {
         "fiches": [(f, moteur.totaux(f)) for f in fiches], "fiche_form": fiche_form, "benevole_form": benevole_form,
         "provisoires": TiersProvisoire.objects.filter(compte__isnull=True).count() if tresorier(request.user) else 0,
@@ -158,7 +158,7 @@ def fiche(request, pk):
                                  (f" : Mvt {crees[0].numero} à {crees[-1].numero}." if crees else "."))
             return redirect("fiche", fiche.pk)
     lignes = [(l, moteur.controler(l)) for l in fiche.lignes.select_related("nature", "mode", "tiers", "provisoire", "mouvement",
-                                                                             "compte", "anal2")]
+                                                                             "compte")]
     return render(request, "compta/fiche.html", {
         "fiche": fiche, "form": form, "tresorier": est_tresorier, "saisie": saisie, "totaux": moteur.totaux(fiche),
         "recettes": [x for x in lignes if x[0].sens == "R"], "depenses": [x for x in lignes if x[0].sens == "D"],
@@ -206,7 +206,7 @@ def fiche_modifier(request, pk):
     if form.is_valid():
         form.save()
         journaliser(request, "Modification", f"fiche {fiche.pk} {fiche.titre}",
-                    apres=f"axe 2 {fiche.anal2_id or '—'} ; bénévoles {', '.join(u.username for u in fiche.benevoles.all())}")
+                    apres=f"bénévoles {', '.join(u.username for u in fiche.benevoles.all())}")
         messages.success(request, "Fiche mise à jour.")
     else:
         messages.error(request, "Fiche non modifiée : " + "; ".join(f"{k} : {' '.join(v)}" for k, v in form.errors.items()))

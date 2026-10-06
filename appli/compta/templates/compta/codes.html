@@ -1,6 +1,6 @@
 {% extends "compta/base.html" %}{% block titre %}Codes{% endblock %}{% block contenu %}
 <h1>Codes analytiques et membres</h1>
-<div class="barre"><button form="f-code0" class="principal" name="creer_code" value="1">Créer le code</button><button form="f-code1" class="principal" name="creer_membre" value="1">Créer le tiers</button><button form="f-code2" name="changer_statut" value="1">Changer le statut</button></div>
+<div class="barre"><button form="f-code0" class="principal" name="creer_code" value="1">Créer le code</button><button form="f-code1" class="principal" name="creer_membre" value="1">Créer le tiers</button></div>
 <div class="deux">
 <form method="post" class="carte" id="f-code0">{% csrf_token %}<h2>Nouveau code analytique</h2>
 <div class="formulaire">{% for f in code_form %}{% include "compta/_champ.html" %}{% endfor %}
@@ -9,10 +9,8 @@
 <script>
 (function () {
   var p = JSON.parse(document.getElementById("prochains-codes").textContent), sel = document.getElementById("id_code-prefixe"), out = document.getElementById("code-propose");
-  var statut = document.getElementById("id_code-statut");
   function maj() {
     var x = p[sel.value]; out.textContent = x ? x.code : "—";
-    if (statut) { var l = statut.closest("div"); [l, l.previousElementSibling].forEach(function (e) { e.style.display = !x || x.axe === 2 ? "" : "none"; }); }
   }
   sel.addEventListener("change", maj); window.addEventListener("DOMContentLoaded", maj); maj();
 })();
@@ -24,9 +22,6 @@
 <div class="formulaire">{% for f in membre_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form>
 
-<form method="post" class="carte" id="f-code2">{% csrf_token %}<h2>Statut d'un code (axe 2)</h2>
-<div class="formulaire">{% for f in statut_form %}{% include "compta/_champ.html" %}{% endfor %}</div>
-</form>
 
 <details class="carte"><summary>Préfixes et prochain code</summary><table><tr><th>Préfixe</th><th>Axe</th><th>Libellé</th><th>Prochain</th></tr>
 {% for p, suivant in prefixes %}<tr><td>{{ p.prefixe }}</td><td>{{ p.axe }}</td><td>{{ p.libelle }}</td><td>{{ suivant }}</td></tr>{% endfor %}</table></details>

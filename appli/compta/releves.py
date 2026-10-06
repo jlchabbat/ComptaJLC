@@ -418,9 +418,8 @@ def libelle_releve(l):
 
 
 @transaction.atomic
-def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle=""):
+def creer_ecriture(l, compte, utilisateur=None, forcer=False, libelle=""):
     """Un Mvt à deux lignes (banque / contrepartie), aussitôt relié à la ligne du relevé.
-    Le code axe 2 n'est porté que par la contrepartie, et seulement si c'est un compte 6 ou 7.
 
     Refus si la ligne est déjà reliée (pas de double écriture) ou si une écriture identique existe déjà en compta
     (sauf forcer=True)."""
@@ -428,7 +427,6 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle="")
     if l.rapprochement_id or l.ouverture:
         raise ValueError("Cette ligne a déjà son écriture.")
     banque = l.journal.compte
-    anal2 = anal2 if compte.porte_axe2 else None
     if compte.pk == banque.pk:
         raise ValueError("La contrepartie ne peut pas être le compte de la banque elle-même.")
     if not forcer and deja_en_compta(l):
@@ -441,12 +439,12 @@ def creer_ecriture(l, compte, anal2, utilisateur=None, forcer=False, libelle="")
     entree = l.montant > 0
     ligne_banque = Ligne.objects.create(mouvement=mv, ordre=1, compte=banque, libelle=lib,
                                         debit=m if entree else ZERO, credit=ZERO if entree else m)
-    Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib, anal2=anal2,
+    Ligne.objects.create(mouvement=mv, ordre=2, compte=compte, libelle=lib,
                          debit=ZERO if entree else m, credit=m if entree else ZERO)
     pointer(l.journal, [l], [ligne_banque], utilisateur, "saisie")
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Banque",
                                 action="Écriture depuis le relevé", objet=f"Mvt {mv.numero}",
-                                apres=f"{l.journal.code} {l.date:%d/%m/%Y} {l.montant} ; {compte.pk} ; {anal2.pk if anal2 else '—'}")
+                                apres=f"{l.journal.code} {l.date:%d/%m/%Y} {l.montant} ; {compte.pk}")
     return mv
 
 

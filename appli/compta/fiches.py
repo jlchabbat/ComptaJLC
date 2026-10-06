@@ -46,10 +46,6 @@ def libelle(l):
     return texte.upper()[:200]
 
 
-def anal2(l):
-    return l.fiche.anal2 if l.fiche.type == "activite" else l.anal2
-
-
 def generer(l):
     """Écritures d'une ligne de fiche (sans contrôle) : [(compte, sens)] puis montants."""
     if not (l.nature_id and l.mode_id):
@@ -103,9 +99,6 @@ def controler(l):
         e["Mode de paiement"] = f"« {l.mode.libelle} » demande un membre."
     if l.provisoire_id and not l.provisoire.compte_id:
         e["Tiers"] = "Tiers provisoire : compte à attribuer par le trésorier."
-    if not anal2(l):
-        e["Axe 2"] = ("Le trésorier doit fixer le code axe 2 de la fiche." if l.fiche.type == "activite"
-                      else "Code axe 2 à choisir par le trésorier.")
     if not e and (not lignes or any(x.compte is None for x in lignes)):
         e["Écritures générées"] = "Un compte généré est manquant (vérifier les modes de paiement)."
     return r
@@ -132,8 +125,7 @@ def reporter(fiche, utilisateur):
     for i, (l, r) in enumerate(resultats):
         mv = Mouvement.objects.create(numero=numero + i, date=l.date, journal=r.journal, origine="liaison",
                                       cree_par=utilisateur, commentaire=f"Fiche bénévole « {fiche.titre} » (ligne {l.pk})")
-        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=k, compte=x.compte, libelle=r.libelle, debit=x.debit, credit=x.credit,
-                                         anal2=anal2(l) if x.compte.porte_axe2 else None) for k, x in enumerate(r.lignes)])
+        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=k, compte=x.compte, libelle=r.libelle, debit=x.debit, credit=x.credit) for k, x in enumerate(r.lignes)])
         l.mouvement = mv
         l.save(update_fields=["mouvement"])
         from .justificatifs import documents_vers_justificatifs

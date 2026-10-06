@@ -30,12 +30,12 @@ reglages.NEUTRES.update({cle: loge for cle, _, _, loge in reglages.REGLAGES})
 
 
 def referentiels():
-    CodeAnalytique.objects.create(code="BIL.5", axe=1, libelle="TRESORERIE")
-    CodeAnalytique.objects.create(code="COT.2", axe=1, libelle="COTISATIONS")
-    CodeAnalytique.objects.create(code="BIL.4", axe=1, libelle="TIERS")
-    CodeAnalytique.objects.create(code="GEN.002", axe=2, libelle="COTISATIONS")
-    CodeAnalytique.objects.create(code="MAN.001", axe=2, libelle="RALLYE")
-    CodeAnalytique.objects.create(code="MAN.007", axe=2, libelle="")
+    CodeAnalytique.objects.create(code="BIL.5", libelle="TRESORERIE")
+    CodeAnalytique.objects.create(code="COT.2", libelle="COTISATIONS")
+    CodeAnalytique.objects.create(code="BIL.4", libelle="TIERS")
+    CodeAnalytique.objects.create(code="GEN.002", libelle="COTISATIONS")
+    CodeAnalytique.objects.create(code="MAN.001", libelle="RALLYE")
+    CodeAnalytique.objects.create(code="MAN.007", libelle="")
     Compte.objects.create(numero="512000", libelle="BANQUE", anal1_id="BIL.5")
     Compte.objects.create(numero="700000", libelle="COTISATIONS", anal1_id="COT.2")
     Compte.objects.create(numero="411TEST001", libelle="MEMBRE TEST", anal1_id="BIL.4")
@@ -47,8 +47,7 @@ def referentiels():
 def mouvement(numero, date, lignes, origine="saisie"):
     m = Mouvement.objects.create(numero=numero, date=date, journal_id="B1", origine=origine)
     for i, (compte, d, c) in enumerate(lignes):
-        Ligne.objects.create(mouvement=m, ordre=i, compte_id=compte, libelle="TEST", debit=D(d), credit=D(c),
-                              anal2_id="GEN.002" if compte[:1] in "67" else None)
+        Ligne.objects.create(mouvement=m, ordre=i, compte_id=compte, libelle="TEST", debit=D(d), credit=D(c))
     return m
 
 
@@ -65,15 +64,15 @@ class Modele(TestCase):
     def test_debit_et_credit_refuses(self):
         m = mouvement(1, dt.date(2026, 2, 1), [])
         with self.assertRaises(IntegrityError):
-            Ligne.objects.create(mouvement=m, compte_id="512000", libelle="X", debit=D(1), credit=D(1), anal2_id="GEN.002")
+            Ligne.objects.create(mouvement=m, compte_id="512000", libelle="X", debit=D(1), credit=D(1))
 
     def test_code_suivant(self):
-        Prefixe.objects.create(prefixe="MAN.", axe=2)
-        Prefixe.objects.create(prefixe="COT.", axe=1)
-        Prefixe.objects.create(prefixe="PJT.", axe=2)
+        Prefixe.objects.create(prefixe="MAN.")
+        Prefixe.objects.create(prefixe="COT.")
+        Prefixe.objects.create(prefixe="PJT.")
         self.assertEqual(Prefixe.objects.get(prefixe="MAN.").code_suivant(), "MAN.008")
         self.assertEqual(Prefixe.objects.get(prefixe="COT.").code_suivant(), "COT.3")
-        self.assertEqual(Prefixe.objects.get(prefixe="PJT.").code_suivant(), "PJT.001")
+        self.assertEqual(Prefixe.objects.get(prefixe="PJT.").code_suivant(), "PJT.1")
 
     def test_numerotation(self):
         mouvement(41, dt.date(2026, 2, 1), [("512000", 1, 0), ("700000", 0, 1)])
@@ -146,7 +145,6 @@ class Reprise(TestCase):
             return ws
 
         table("T_Axe1", ["Code", "Libellé", "Actif"], [["BIL.5", "TRESORERIE", 1], ["COT.2", "COTIS", 1]])
-        table("T_Axe2", ["Code", "Libellé", "Actif"], [["GEN.002", "COTISATIONS", 1]])
         table("T_Prefixes", ["Préfixe", "Axe", "Libellé", "Code suivant"], [["GEN.", 2, "General", "GEN.003"]])
         table("T_PlanComptable", ["Compte", "Libellé compte", "Axe 1 (Anal1)", "Lettrable"],
               [["512000", "BANQUE", "BIL.5", ""], ["700000", "COTISATIONS", "COT.2", ""]])
@@ -183,10 +181,10 @@ from .models import ModeleOperation, MoyenPaiement  # noqa: E402
 
 def referentiels_saisie():
     for code, lib in (("BIL.5", "TRESORERIE"), ("BIL.4", "TIERS"), ("COT.2", "COTISATIONS"), ("FON.1", "FONCTIONNEMENT")):
-        CodeAnalytique.objects.create(code=code, axe=1, libelle=lib)
+        CodeAnalytique.objects.create(code=code, libelle=lib)
     for code, lib in (("GEN.001", "GENERAL"), ("GEN.002", "COTISATIONS"), ("GEN.004", "BANQUE"), ("MAN.001", "RALLYE"),
                       ("SOC.006", "BOURSES")):
-        CodeAnalytique.objects.create(code=code, axe=2, libelle=lib)
+        CodeAnalytique.objects.create(code=code, libelle=lib)
     comptes = [("512000", "MIZRAHI", "BIL.5"), ("512100", "MIZRAHI EPARGNE", "BIL.5"), ("512200", "BIT", "BIL.5"),
                ("530000", "CAISSE", "BIL.5"), ("580000", "VIREMENTS INTERNES", "BIL.5"), ("411TAIEB001", "TAIEB JEANNE", "BIL.4"),
                ("401000", "FOURNIS DIVERS", "BIL.4"), ("600000", "ACHATS", "FON.1"), ("600100", "FRAIS BANCAIRES", "FON.1"),
@@ -202,50 +200,48 @@ def referentiels_saisie():
     moteur.initialiser_parametres()
     m = Mouvement.objects.create(numero=421, date=dt.date(2026, 9, 24), journal_id="B1", origine="import")
     Ligne.objects.create(mouvement=m, ordre=0, compte_id="411TAIEB001", libelle="FACTURE 40013 - TAIEB JEANNE", debit=D(400))
-    Ligne.objects.create(mouvement=m, ordre=1, compte_id="710000", libelle="FACTURE 40013 - TAIEB JEANNE", credit=D(400),
-                         anal2_id="MAN.001")
+    Ligne.objects.create(mouvement=m, ordre=1, compte_id="710000", libelle="FACTURE 40013 - TAIEB JEANNE", credit=D(400))
 
 
-def operation(date=dt.date(2026, 10, 15), modele=None, tiers=None, montant=400, paiement=None, vers=None, anal2=None, compte=None,
+def operation(date=dt.date(2026, 10, 15), modele=None, tiers=None, montant=400, paiement=None, vers=None, compte=None,
               remboursement=False, libelle=""):
     mp = lambda lib: MoyenPaiement.objects.get(libelle=lib) if lib else None  # noqa: E731
     return moteur.Operation(date=date, modele=ModeleOperation.objects.get(type=modele) if modele else None,
                             tiers=Compte.objects.get(numero=tiers) if tiers else None, montant=D(montant), paiement=mp(paiement),
-                            vers=mp(vers), anal2=CodeAnalytique.objects.get(code=anal2) if anal2 else None,
+                            vers=mp(vers),
                             compte=Compte.objects.get(numero=compte) if compte else None, remboursement=remboursement,
                             libelle=libelle)
 
 
 SCENARIOS = {
-    "cotisation_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT", anal2="GEN.002"),
+    "cotisation_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT"),
                           [("B3", 1, "411TAIEB001", 400, 0), ("B3", 1, "700000", 0, 400), ("B3", 1, "512200", 400, 0),
                            ("B3", 1, "411TAIEB001", 0, 400)], set()),
-    "cotisation_non_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="Non réglé", anal2="GEN.002"),
+    "cotisation_non_reglee": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="Non réglé"),
                               [("VT", 1, "411TAIEB001", 400, 0), ("VT", 1, "700000", 0, 400)], set()),
-    "frais_bancaires": (dict(modele="Frais bancaires", montant=25, paiement="Mizrahi compte courant", anal2="GEN.004"),
+    "frais_bancaires": (dict(modele="Frais bancaires", montant=25, paiement="Mizrahi compte courant"),
                         [("B1", 1, "600100", 25, 0), ("B1", 1, "512000", 0, 25)], set()),
-    "virement_interne": (dict(modele="Virement interne", montant=1000, paiement="Mizrahi compte courant", vers="BIT", anal2="GEN.001"),
+    "virement_interne": (dict(modele="Virement interne", montant=1000, paiement="Mizrahi compte courant", vers="BIT"),
                          [("B1", 1, "580000", 1000, 0), ("B1", 1, "512000", 0, 1000), ("B3", 2, "512200", 1000, 0),
                           ("B3", 2, "580000", 0, 1000)], set()),
-    "isracard": (dict(modele="Paiement carte Isracard", montant=500, paiement="Mizrahi compte courant", anal2="GEN.004"),
+    "isracard": (dict(modele="Paiement carte Isracard", montant=500, paiement="Mizrahi compte courant"),
                  [("OD", 1, "600000", 500, 0), ("OD", 1, "580000", 0, 500), ("B1", 2, "580000", 500, 0),
                   ("B1", 2, "512000", 0, 500)], set()),
-    "remboursement": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT", anal2="GEN.002", remboursement=True),
+    "remboursement": (dict(modele="Cotisation membre", tiers="411TAIEB001", paiement="BIT", remboursement=True),
                       [("B3", 1, "411TAIEB001", 0, 400), ("B3", 1, "700000", 400, 0), ("B3", 1, "512200", 0, 400),
                        ("B3", 1, "411TAIEB001", 400, 0)], set()),
-    "facture_fournisseur_caisse": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)", anal2="MAN.001",
+    "facture_fournisseur_caisse": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)",
                                         compte="610000"),
                                    [("CA", 1, "610000", 400, 0), ("CA", 1, "401000", 0, 400), ("CA", 1, "401000", 400, 0),
                                     ("CA", 1, "530000", 0, 400)], set()),
-    "fournisseur_sans_compte": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)", anal2="MAN.001"),
+    "fournisseur_sans_compte": (dict(modele="Facture fournisseur", tiers="401000", paiement="Caisse (espèces)"),
                                 None, {"Compte"}),
-    "date_close_et_mauvais_tiers": (dict(date=dt.date(2025, 12, 15), modele="Cotisation membre", tiers="401000", paiement="BIT",
-                                         anal2="GEN.002"), None, {"Date", "Tiers"}),
-    "depense_classe_7": (dict(modele="Dépense directe", paiement="BIT", anal2="GEN.001", compte="700000"), None, {"Compte"}),
-    "paiement_manquant": (dict(modele="Frais bancaires", anal2="GEN.004"), None, {"Moyen de paiement"}),
-    "virement_meme_compte": (dict(modele="Virement interne", paiement="BIT", vers="BIT", anal2="GEN.001"), None, {"Virement"}),
+    "date_close_et_mauvais_tiers": (dict(date=dt.date(2025, 12, 15), modele="Cotisation membre", tiers="401000", paiement="BIT"), None, {"Date", "Tiers"}),
+    "depense_classe_7": (dict(modele="Dépense directe", paiement="BIT", compte="700000"), None, {"Compte"}),
+    "paiement_manquant": (dict(modele="Frais bancaires"), None, {"Moyen de paiement"}),
+    "virement_meme_compte": (dict(modele="Virement interne", paiement="BIT", vers="BIT"), None, {"Virement"}),
     "deja_enregistree": (dict(date=dt.date(2026, 9, 24), modele="Facture manifestation (membre)", tiers="411TAIEB001",
-                              paiement="Mizrahi compte courant", anal2="MAN.001", libelle="FACTURE 40013 - TAIEB JEANNE"),
+                              paiement="Mizrahi compte courant", libelle="FACTURE 40013 - TAIEB JEANNE"),
                          None, {"Déjà enregistrée ?"}),
 }
 
@@ -393,7 +389,7 @@ class PremierDemarrage(TestCase):
         self.assertEqual((reglages.lire("devise"), Reglage.lire("demarrage")), ("$", "fait"))
         self.assertEqual(sorted(TypeTiers.objects.values_list("prefixe", flat=True)), ["401", "411"])
         from .membres import importer_tableau
-        Compte.objects.create(numero="411000", libelle="MEMBRES", anal1=CodeAnalytique.objects.create(code="BIL.4", axe=1, libelle="TIERS"))
+        Compte.objects.create(numero="411000", libelle="MEMBRES", anal1=CodeAnalytique.objects.create(code="BIL.4", libelle="TIERS"))
         r = importer_tableau([["Type", "Nom", "Prénom"], ["Membre", "Levy", "Sarah"]])
         self.assertEqual((r.erreurs, Compte.objects.get(numero="411LEVY001").anal1_id), ([], "BIL.4"))
         self.assertEqual(self.client.get("/").status_code, 200)
@@ -493,7 +489,7 @@ class Ecrans(TestCase):
     def formulaire(self, **k):
         e = SCENARIOS["cotisation_reglee"][0]
         data = {"date": "2026-10-15", "modele": ModeleOperation.objects.get(type=e["modele"]).pk, "tiers": e["tiers"], "montant": "400",
-                "paiement": MoyenPaiement.objects.get(libelle=e["paiement"]).pk, "anal2": e["anal2"]}
+                "paiement": MoyenPaiement.objects.get(libelle=e["paiement"]).pk}
         data.update(k)
         return data
 
@@ -504,7 +500,6 @@ class Ecrans(TestCase):
             self.assertContains(r, "data-cherchable", msg_prefix=url)
             self.assertContains(r, "compta/liste.js", msg_prefix=url)
         self.assertContains(self.client.get("/saisie/"), "411TAIEB001 – TAIEB JEANNE")
-        self.assertContains(self.client.get("/codes/"), "SOC.006 – BOURSES")
 
     def test_apercu_puis_enregistrement(self):
         r = self.client.post("/saisie/", self.formulaire(apercu="1"))
@@ -525,8 +520,8 @@ class Ecrans(TestCase):
         self.assertEqual(self.client.get("/codes/").status_code, 403)
 
     def test_codes(self):
-        Prefixe.objects.create(prefixe="SOC.", axe=2, libelle="Social")
-        r = self.client.post("/codes/", {"code-prefixe": "SOC.", "code-libelle": "aide aux familles", "code-statut": "1",
+        Prefixe.objects.create(prefixe="SOC.", libelle="Social")
+        r = self.client.post("/codes/", {"code-prefixe": "SOC.", "code-libelle": "aide aux familles",
                                          "creer_code": "1"})
         self.assertRedirects(r, "/codes/")
         self.assertEqual(CodeAnalytique.objects.get(code="SOC.007").libelle, "AIDE AUX FAMILLES")
@@ -540,10 +535,6 @@ class Ecrans(TestCase):
         self.assertEqual((f.type, f.adresse_complete), (fournisseur, "8 rue Ha-Barzel, 6971005 Tel Aviv"))
         self.assertEqual(Membre.objects.get(compte_id="411TAIEB002").ville, "Netanya")
         self.assertTrue(Compte.objects.filter(numero="411TAIEB002", libelle="TAÏEB PAUL").exists())
-        r = self.client.post("/codes/", {"statut-code": "MAN.001", "statut-statut": "2", "changer_statut": "1"})
-        self.assertContains(r, "cocher la confirmation")
-        self.client.post("/codes/", {"statut-code": "MAN.001", "statut-statut": "2", "statut-confirmation": "on", "changer_statut": "1"})
-        self.assertEqual(CodeAnalytique.objects.get(code="MAN.001").statut, 2)
 
 
 # ---------------------------------------------------------------- W2 : fiches bénévoles (cas de la recette du fichier de liaison)
@@ -575,7 +566,7 @@ def ecritures(l):
 class Fiches(TestCase):
     def setUp(self):
         referentiels_fiches()
-        self.act = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        self.act = Fiche.objects.create(type="activite", titre="Rallye")
         self.ges = Fiche.objects.create(type="gestion", titre="Dons 2026")
 
     def remplir(self):
@@ -585,8 +576,8 @@ class Fiches(TestCase):
                 ligne_fiche(a, "R", "Participation", 200, "Non payé", tiers="411TAIEB001"),
                 ligne_fiche(a, "D", "Location de salle", 150, "Carte Isracard", autre="Salle Beit Ha'am"),
                 ligne_fiche(a, "D", "Frais divers", 140, "Avance d'un membre", tiers="411TAIEB001"),
-                ligne_fiche(self.ges, "R", "Don reçu", 1000, "Virement BIT", autre="Fondation X", anal2_id="SOC.006"),
-                ligne_fiche(self.ges, "D", "Aide versée", 300, "Espèces", autre="Famille Y", anal2_id="SOC.007"
+                ligne_fiche(self.ges, "R", "Don reçu", 1000, "Virement BIT", autre="Fondation X"),
+                ligne_fiche(self.ges, "D", "Aide versée", 300, "Espèces", autre="Famille Y"
                             if CodeAnalytique.objects.filter(code="SOC.007").exists() else "SOC.006")]
 
     def test_parametres(self):
@@ -614,7 +605,7 @@ class Fiches(TestCase):
 
     def test_controles(self):
         l = ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")
-        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Mode de paiement", "Axe 2"})
+        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Mode de paiement"})
         l = ligne_fiche(self.act, "R", "Participation", 100, "Non payé", autre="Inconnu")
         self.assertIn("demande un membre", fiches_moteur.controler(l).erreurs["Mode de paiement"])
         p = TiersProvisoire.objects.create(nom="Nouveau")
@@ -622,7 +613,7 @@ class Fiches(TestCase):
         self.assertIn("Tiers", fiches_moteur.controler(l).erreurs)
         sans_code = Fiche.objects.create(type="activite", titre="Sans code")
         l = ligne_fiche(sans_code, "D", "Frais divers", 10, "Espèces", date=dt.date(2025, 11, 2))
-        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Axe 2", "Date"})
+        self.assertEqual(set(fiches_moteur.controler(l).erreurs), {"Date"})
 
     def test_report(self):
         self.remplir()
@@ -630,9 +621,6 @@ class Fiches(TestCase):
         crees = fiches_moteur.reporter(self.act, u)
         self.assertEqual([m.numero for m in crees], [422, 423, 424, 425, 426])
         self.assertEqual(Ligne.objects.filter(mouvement__origine="liaison").count(), 12)
-        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison").values_list("anal2_id", flat=True)), {"MAN.001", None})
-        self.assertEqual(set(Ligne.objects.filter(mouvement__origine="liaison", compte__numero__regex=r"^[67]").values_list("anal2_id", flat=True)),
-                         {"MAN.001"})                                                  # axe 2 : comptes 6 et 7 seulement
         self.assertEqual(self.act.statut, "reportee")
         self.assertEqual(fiches_moteur.reporter(self.act, u), [])     # rien de nouveau
         ligne_fiche(self.ges, "R", "Don reçu", 100, autre="Z")         # gestion : colonnes du trésorier vides
@@ -678,7 +666,7 @@ class EcransFiches(TestCase):
         self.tresorier.groups.add(Group.objects.get(name="Gestion"))
         self.benevole = User.objects.create_user("rachel")
         self.benevole.groups.add(Group.objects.get(name="Bénévole"))
-        self.act = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        self.act = Fiche.objects.create(type="activite", titre="Rallye")
         self.act.benevoles.add(self.benevole)
         self.autre = Fiche.objects.create(type="gestion", titre="Pas à elle")
 
@@ -798,19 +786,8 @@ class EcransFiches(TestCase):
         f = Fiche.objects.get(titre="Aides")
         self.assertRedirects(r, f"/fiches/{f.pk}/")
         self.assertEqual(list(f.benevoles.all()), [jeanne])
-        # code axe 2 : choisi parmi les codes actifs déjà créés
-        Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
-        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Rallye 2", "fiche-anal2": "MAN.001",
-                                      "creer_fiche": "1"})
-        self.assertEqual(Fiche.objects.filter(anal2_id="MAN.001").latest("pk").anal2_id, "MAN.001")
-        r = self.client.post("/fiches/", {"fiche-type": "activite", "fiche-titre": "Gala", "creer_fiche": "1"})
-        self.assertContains(r, "code axe 2 actif")                    # sans code axe 2 : pas de fiche d'activité
-        self.assertFalse(Fiche.objects.filter(titre="Gala").exists())
-        # activité : pas de titre saisi, il est repris du libellé du code axe 2
-        self.client.post("/fiches/", {"fiche-type": "activite", "fiche-anal2": "MAN.001", "creer_fiche": "1"})
-        self.assertEqual(Fiche.objects.filter(type="activite").latest("pk").titre, CodeAnalytique.objects.get(code="MAN.001").libelle)
         r = self.client.post("/fiches/", {"fiche-type": "gestion", "creer_fiche": "1"})
-        self.assertContains(r, "Titre obligatoire")
+        self.assertContains(r, "obligatoire")
 
 
 # ---------------------------------------------------------------- W3 : rapprochement bancaire
@@ -842,7 +819,7 @@ class Rapprochements(TestCase):
                           (dt.date(2026, 1, 30), [("600000", 55, 0), ("512000", 0, 55)])):
             m = Mouvement.objects.create(numero=n, date=d, journal=self.b1, origine="saisie")
             for i, (c, db, cr) in enumerate(lignes):
-                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
+                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr))
             n += 1
 
     def importer(self, contenu=CSV_MODELE, nom="releve.csv", **options):
@@ -947,7 +924,7 @@ class EcransRapprochement(TestCase):
         Mouvement.objects.all().delete()
         frais = LigneReleve.objects.filter(ouverture=False).order_by("date").first()
         self.assertContains(self.client.get("/rapprochement/B1/"), f'name="libelle_{frais.pk}"')
-        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", f"anal2_{frais.pk}": "GEN.004",
+        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100",
                                                 f"libelle_{frais.pk}": "Frais de tenue de compte", f"lexique_{frais.pk}": "on", "creer": "1"})
         m = Mouvement.objects.get(lignes__compte_id="600100")
         self.assertEqual({l.libelle for l in m.lignes.all()}, {"Frais de tenue de compte"})
@@ -979,15 +956,6 @@ class EcransRapprochement(TestCase):
         self.assertContains(page, 'value="600100"')                                          # la saisie de la 3e ligne est gardée
         self.assertContains(page, "MON LIBELLE")
         self.assertNotContains(self.client.get("/rapprochement/B1/"), "MON LIBELLE")        # une seule fois
-
-    def test_axe_2_facultatif_au_rapprochement(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        self.client.post("/rapprochement/B1/import/", {"fichier": SimpleUploadedFile("releve.csv", CSV_MODELE)})
-        Mouvement.objects.all().delete()
-        frais = LigneReleve.objects.filter(ouverture=False).order_by("date").first()
-        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", "creer": "1"})       # compte de charge, sans axe 2
-        m = Mouvement.objects.get(lignes__compte_id="600100")
-        self.assertEqual({l.anal2_id for l in m.lignes.all()}, {None})
 
     def test_ecarter_en_masse(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1036,16 +1004,15 @@ class EcransRapprochement(TestCase):
         frais, remise, virement = LigneReleve.objects.filter(ouverture=False).order_by("date")
         page = self.client.get("/rapprochement/B1/")
         self.assertContains(page, '<option value="600100 – FRAIS BANCAIRES">')
-        self.assertContains(page, '<option value="GEN.004 – BANQUE">')
         self.assertNotContains(page, '<option value="512000')                     # pas la banque elle-même
         # frais : code choisi dans la liste ; virement : libellé tapé ; remise laissée vide ; code inconnu refusé
         r = self.client.post("/rapprochement/B1/", {
-            f"compte_{frais.pk}": "600100 – FRAIS BANCAIRES", f"anal2_{frais.pk}": "GEN.004 – BANQUE",
-            f"compte_{virement.pk}": "taieb jeanne", f"anal2_{virement.pk}": "GEN.002", "creer": "1"})
+            f"compte_{frais.pk}": "600100 – FRAIS BANCAIRES",
+            f"compte_{virement.pk}": "taieb jeanne", "creer": "1"})
         self.assertRedirects(r, "/rapprochement/B1/")
         m = Mouvement.objects.get(lignes__compte_id="600100")
-        self.assertEqual([(x.compte_id, x.debit, x.credit, x.anal2_id, x.libelle) for x in m.lignes.order_by("ordre")],
-                         [("512000", D(0), D(10), None, "FRAIS DE FORFAIT"), ("600100", D(10), D(0), "GEN.004", "FRAIS DE FORFAIT")])
+        self.assertEqual([(x.compte_id, x.debit, x.credit, x.libelle) for x in m.lignes.order_by("ordre")],
+                         [("512000", D(0), D(10), "FRAIS DE FORFAIT"), ("600100", D(10), D(0), "FRAIS DE FORFAIT")])
         self.assertEqual((m.date, m.journal_id), (frais.date, "B1"))
         v = Mouvement.objects.get(lignes__compte_id="411TAIEB001", lignes__debit=400)
         self.assertEqual(v.lignes.get(compte_id="512000").credit, D(400))
@@ -1055,17 +1022,17 @@ class EcransRapprochement(TestCase):
         self.assertNotContains(page, f'name="compte_{frais.pk}"')                   # traitée : sortie de la liste
         self.assertContains(page, f'name="compte_{remise.pk}"')
         n = Mouvement.objects.count()
-        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", f"anal2_{frais.pk}": "GEN.004", "creer": "1"})
+        self.client.post("/rapprochement/B1/", {f"compte_{frais.pk}": "600100", "creer": "1"})
         self.assertEqual(Mouvement.objects.count(), n)                              # double envoi : rien de plus
-        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "600100", f"anal2_{remise.pk}": "ZZZ", "creer": "1"})
-        self.assertContains(r, "Code axe 2 introuvable")
-        self.assertContains(r, 'value="600100"')                                    # saisie gardée
+        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "999999", "creer": "1"})
+        self.assertContains(r, "Compte introuvable")
+        self.assertContains(r, 'value="999999"')                                    # saisie gardée
         # déjà en compta (même montant, date proche) : relier plutôt que créer
         mv = Mouvement.objects.create(numero=900, date=remise.date, journal_id="B1")
-        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="REMISE", debit=D(1550), anal2_id="GEN.001")
-        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="411TAIEB001", libelle="REMISE", credit=D(1550), anal2_id="GEN.001")
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="REMISE", debit=D(1550))
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="411TAIEB001", libelle="REMISE", credit=D(1550))
         self.assertContains(self.client.get("/rapprochement/B1/"), f'value="{remise.pk}:{e.pk}"')
-        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "411TAIEB001", f"anal2_{remise.pk}": "GEN.001", "creer": "1"})
+        r = self.client.post("/rapprochement/B1/", {f"compte_{remise.pk}": "411TAIEB001", "creer": "1"})
         self.assertContains(r, "existe déjà")
         self.assertEqual(Mouvement.objects.count(), n + 1)
         self.client.post("/rapprochement/B1/", {"relier": f"{remise.pk}:{e.pk}"})
@@ -1077,11 +1044,11 @@ class EcransRapprochement(TestCase):
     def test_situation_financiere_pdf_et_excel(self):
         mv = Mouvement.objects.create(numero=907, date=dt.date(2026, 3, 1), journal_id="B1")
         Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D(50))
-        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D(50), anal2_id="GEN.004")
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D(50))
         self.assertContains(self.client.get("/?du=2026-01-01&au=2026-12-31"), "Situation (PDF)")
         page = self.client.get("/situation/?du=2026-01-01&au=2026-12-31")
         for texte in ("Situation financière", "Période du <b>01/01/2026</b> au <b>31/12/2026</b>", "Charges par compte", "600100",
-                      "Solde par nature (axe 1)"):
+                      "Solde par code Anal"):
             self.assertContains(page, texte)
         self.assertNotContains(page, "Résultat")
         r = self.client.get("/situation/excel/?du=2026-01-01&au=2026-12-31")
@@ -1089,7 +1056,7 @@ class EcransRapprochement(TestCase):
         ws = openpyxl.load_workbook(io.BytesIO(r.content))["Situation"]
         valeurs = [c.value for row in ws.iter_rows() for c in row if c.value is not None]
         self.assertIn("Charges par compte", valeurs)
-        self.assertIn(-50, valeurs)
+        self.assertIn(-115, valeurs)
         self.assertNotIn("Résultat", valeurs)
 
     def test_une_ligne_du_releve_pour_plusieurs_ecritures(self):
@@ -1098,8 +1065,8 @@ class EcransRapprochement(TestCase):
         es = []
         for n, m in ((903, 160), (904, 600), (905, 45)):
             mv = Mouvement.objects.create(numero=n, date=dt.date(2026, 2, 10), journal_id="B1")
-            es.append(Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="CARTE", credit=D(m), anal2_id="GEN.004"))
-            Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="CARTE", debit=D(m), anal2_id="GEN.004")
+            es.append(Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="CARTE", credit=D(m)))
+            Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="CARTE", debit=D(m))
         page = self.client.get("/rapprochement/B1/")
         self.assertContains(page, "Plusieurs écritures")
         self.assertContains(page, f'value="{l.pk}:{es[0].pk},{es[1].pk}"')
@@ -1116,8 +1083,8 @@ class EcransRapprochement(TestCase):
         forfait = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 1), rang=1, operation="FORFAIT", montant=D(-10))
         guichet = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 1), rang=2, operation="GUICHET", montant=D("-13.60"))
         mv = Mouvement.objects.create(numero=906, date=dt.date(2026, 2, 1), journal_id="B1")
-        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("23.60"), anal2_id="GEN.004")
-        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("23.60"), anal2_id="GEN.004")
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("23.60"))
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("23.60"))
         page = self.client.get("/rapprochement/B1/")
         self.assertContains(page, "Les relier ensemble")
         self.assertContains(page, f'value="{forfait.pk},{guichet.pk}:{e.pk}"')
@@ -1144,8 +1111,8 @@ class EcransRapprochement(TestCase):
     def test_pistes_quand_rien_n_est_propose(self):
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 3, 20), rang=1, operation="x", montant=D(-71.93))
         mv = Mouvement.objects.create(numero=902, date=dt.date(2026, 2, 20), journal_id="B1")     # 28 jours avant
-        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("71.93"), anal2_id="GEN.004")
-        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("71.93"), anal2_id="GEN.004")
+        e = Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="FRAIS", credit=D("71.93"))
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="FRAIS", debit=D("71.93"))
         page = self.client.get("/rapprochement/B1/")
         self.assertContains(page, "Même montant, date plus éloignée")
         self.assertContains(page, f'value="{l.pk}:{e.pk}"')                       # reliable malgré la date
@@ -1163,9 +1130,9 @@ class EcransRapprochement(TestCase):
     def test_nouvelle_ecriture_malgre_un_montant_proche(self):
         l = LigneReleve.objects.create(journal=self.b1, date=dt.date(2026, 2, 3), rang=1, operation="x", montant=D(-10))
         mv = Mouvement.objects.create(numero=901, date=dt.date(2026, 2, 1), journal_id="B1")
-        Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="AUTRE", credit=D(10), anal2_id="GEN.004")
-        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="AUTRE", debit=D(10), anal2_id="GEN.004")
-        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"anal2_{l.pk}": "GEN.004", f"nouvelle_{l.pk}": "on",
+        Ligne.objects.create(mouvement=mv, ordre=1, compte_id="512000", libelle="AUTRE", credit=D(10))
+        Ligne.objects.create(mouvement=mv, ordre=2, compte_id="600100", libelle="AUTRE", debit=D(10))
+        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"nouvelle_{l.pk}": "on",
                                                 "creer": "1"})
         l.refresh_from_db()
         self.assertIsNotNone(l.rapprochement_id)
@@ -1178,7 +1145,7 @@ class EcransRapprochement(TestCase):
         r = self.client.get("/rapprochement/B1/")
         self.assertContains(r, "<b>1</b> ligne à passer")
         self.assertNotContains(r, f'name="compte_{l.pk}"')
-        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", f"anal2_{l.pk}": "GEN.004", "creer": "1"})
+        self.client.post("/rapprochement/B1/", {f"compte_{l.pk}": "600100", "creer": "1"})
         l.refresh_from_db()
         self.assertIsNone(l.rapprochement_id)
 
@@ -1218,7 +1185,7 @@ class Cloture(TestCase):
     def mvt(self, date, lignes):
         m = Mouvement.objects.create(numero=self.n, date=date, journal_id="B1")
         for i, (c, d, cr) in enumerate(lignes):
-            Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle="T", debit=D(d), credit=D(cr), anal2_id="GEN.001")
+            Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle="T", debit=D(d), credit=D(cr))
         self.n += 1
 
     def test_etats(self):
@@ -1227,7 +1194,7 @@ class Cloture(TestCase):
         b = etats.bilan(self.e25.fin, self.e25.debut)
         self.assertEqual((b["total_actif"], b["resultat"], b["equilibre"]), (D(750), D(750), True))
         Budget.objects.create(exercice=self.e25, nature="C", compte_id="600000", montant=D(500))
-        Budget.objects.create(exercice=self.e25, nature="P", anal2_id="GEN.001", montant=D(1000))
+        Budget.objects.create(exercice=self.e25, nature="P", anal1_id="COT.2", montant=D(1000))
         self.assertEqual([(x["realise"], x["ecart"], x["pourcent"]) for x in etats.budget(self.e25)],
                          [(D(300), D(-200), D("-40.0")), (D(1050), D(50), D("5.0"))])
 
@@ -1239,7 +1206,7 @@ class Cloture(TestCase):
         p = clot.preparer(self.e25)
         self.assertEqual(p.bloquants, [])
         self.assertEqual(p.lignes, [("110000", D(0), D(750)), ("411TAIEB001", D(50), D(0)), ("512000", D(700), D(0))])
-        clot.cloturer(self.e25, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+        clot.cloturer(self.e25, self.u)
         self.e25.refresh_from_db()
         an = self.e25.mouvement_an
         self.assertEqual((self.e25.clos, self.e25.resultat, an.date, an.journal_id), (True, D(750), dt.date(2026, 1, 1), "AN"))
@@ -1249,15 +1216,15 @@ class Cloture(TestCase):
         b = etats.bilan(self.e26.fin, self.e26.debut)
         self.assertEqual((b["total_actif"], b["resultat"], b["resultats_anterieurs"], b["equilibre"]), (D(1350), D(600), D(0), True))
         # 2025 verrouillé pour la saisie
-        op = operation(date=dt.date(2025, 12, 1), modele="Frais bancaires", montant=5, paiement="Mizrahi compte courant", anal2="GEN.004")
+        op = operation(date=dt.date(2025, 12, 1), modele="Frais bancaires", montant=5, paiement="Mizrahi compte courant")
         self.assertIn("Date", moteur.controler(op).erreurs)
         # le rapprochement ignore les à-nouveaux de clôture
         self.assertFalse(rap.ecritures(Journal.objects.get(code="B1")).filter(mouvement=an).exists())
         # deuxième clôture impossible
         with self.assertRaises(ValueError):
-            clot.cloturer(self.e25, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+            clot.cloturer(self.e25, self.u)
         # clôture de 2026 : crée l'exercice 2027
-        clot.cloturer(self.e26, self.u, CodeAnalytique.objects.get(code="GEN.001"))
+        clot.cloturer(self.e26, self.u)
         self.assertTrue(Exercice.objects.filter(debut=dt.date(2027, 1, 1), fin=dt.date(2027, 12, 31), clos=False).exists())
         self.assertEqual(etats.solde_cumule(Compte.objects.get(numero="110000"), dt.date(2027, 1, 1)), D(-1350))
 
@@ -1284,7 +1251,7 @@ class EcransEtats(TestCase):
         self.assertTrue(list(dos.exports().glob("ComptaJLC_etats_*.xlsx")))                        # copie dans Exports
         self.assertEqual(r["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
-        self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget",
+        self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat Anal", "Bilan", "Balance", "Grand livre", "Budget",
                                          "Historique"])
         self.assertContains(self.client.get("/cloture/"), "À-nouveaux qui seront créés")
         self.client.post("/cloture/", {"confirmation": "on"})
@@ -1321,7 +1288,7 @@ class Membres(TestCase):
                                                  ("512000", 200, 0), ("411TAIEB001", 0, 200)])):
             m = Mouvement.objects.create(numero=n, date=d, journal_id="B1")
             for i, (c, db, cr) in enumerate(lignes):
-                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr), anal2_id="GEN.001")
+                Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle=f"MVT {n}", debit=D(db), credit=D(cr))
             n += 1
 
     def test_fiches_creees(self):
@@ -1403,13 +1370,13 @@ class Corrections(TestCase):
         referentiels_saisie()
         self.u = User.objects.create_user("t")
         self.m = Mouvement.objects.create(numero=500, date=dt.date(2026, 3, 1), journal_id="B1")
-        self.l1 = Ligne.objects.create(mouvement=self.m, ordre=0, compte_id="600100", libelle="FRAIS", debit=D(10), anal2_id="GEN.004")
-        self.l2 = Ligne.objects.create(mouvement=self.m, ordre=1, compte_id="512000", libelle="FRAIS", credit=D(10), anal2_id="GEN.004")
+        self.l1 = Ligne.objects.create(mouvement=self.m, ordre=0, compte_id="600100", libelle="FRAIS", debit=D(10))
+        self.l2 = Ligne.objects.create(mouvement=self.m, ordre=1, compte_id="512000", libelle="FRAIS", credit=D(10))
         self.g = CodeAnalytique.objects.get(code="GEN.004")
 
     def saisie(self, l, compte=None, d=None, c=None, id=True):
         return corr.LigneSaisie(l.pk if id else None, Compte.objects.get(numero=compte or l.compte_id), l.libelle,
-                                D(d if d is not None else l.debit), D(c if c is not None else l.credit), self.g)
+                                D(d if d is not None else l.debit), D(c if c is not None else l.credit))
 
     def test_modifier(self):
         b1 = Journal.objects.get(code="B1")
@@ -1455,8 +1422,8 @@ class Corrections(TestCase):
     def test_ecriture_libre(self):
         m = corr.creer(dt.date(2026, 4, 1), Journal.objects.get(code="OD"),
                        [corr.LigneSaisie(None, Compte.objects.get(numero="470000") if Compte.objects.filter(numero="470000").exists()
-                                         else Compte.objects.get(numero="600000"), "RECLASSEMENT", D(5), D(0), self.g),
-                        corr.LigneSaisie(None, Compte.objects.get(numero="600100"), "RECLASSEMENT", D(0), D(5), self.g)],
+                                         else Compte.objects.get(numero="600000"), "RECLASSEMENT", D(5), D(0)),
+                        corr.LigneSaisie(None, Compte.objects.get(numero="600100"), "RECLASSEMENT", D(0), D(5))],
                        "reclassement", self.u)
         self.assertEqual((m.journal_id, m.lignes.count()), ("OD", 2))
 
@@ -1473,7 +1440,7 @@ class EcransCorrections(TestCase):
         self.assertEqual(self.client.get("/mouvement/500/modifier/").status_code, 200)
         data = {"date": "2026-03-01", "journal": "B1", "motif": "montant", "l-TOTAL_FORMS": "3", "l-INITIAL_FORMS": "2",
                 "l-MIN_NUM_FORMS": "0", "l-MAX_NUM_FORMS": "1000",
-                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15", "l-0-anal2": "GEN.004",
+                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15",
                 "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15"}
         self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
         self.assertEqual(Ligne.objects.get(pk=self.l1.pk).debit, D(15))
@@ -1481,21 +1448,6 @@ class EcransCorrections(TestCase):
         self.assertContains(self.client.get("/mouvement/rappel/?numero=9999"), "Aucun mouvement n° 9999")
         self.assertEqual(self.client.get("/mouvement/500/contrepasser/").status_code, 404)
         self.assertEqual(self.client.get("/mouvement/nouveau/").status_code, 200)
-
-    def test_un_seul_axe(self):
-        """Réglage un_seul_axe : l'axe 2 disparaît des menus et des écrans ; une ligne sans axe 2 reçoit le code d'office."""
-        self.assertContains(self.client.get("/"), "Analytique – Objet (axe 2)")
-        Reglage.objects.create(cle="un_seul_axe", valeur="oui")
-        r = self.client.get("/")
-        self.assertNotContains(r, "Analytique – Objet (axe 2)")
-        self.assertContains(r, '<body class="un-seul-axe">')
-        data = {"date": "2026-03-01", "journal": "B1", "motif": "", "l-TOTAL_FORMS": "2", "l-INITIAL_FORMS": "2",
-                "l-MIN_NUM_FORMS": "0", "l-MAX_NUM_FORMS": "1000",
-                "l-0-id": self.l1.pk, "l-0-compte": "600100", "l-0-libelle": "FRAIS", "l-0-debit": "15",
-                "l-1-id": self.l2.pk, "l-1-compte": "512000", "l-1-libelle": "FRAIS", "l-1-credit": "15"}
-        self.assertRedirects(self.client.post("/mouvement/500/modifier/", data), "/mouvement/500/")
-        self.assertEqual({l.compte_id: l.anal2_id for l in Mouvement.objects.get(numero=500).lignes.all()},
-                         {"600100": "GEN", "512000": None})                         # axe 2 : comptes 6 et 7 seulement
 
     def test_bouton_supprimer(self):
         self.client.get("/ecritures/?tri=debit&ordre=desc")
@@ -1801,11 +1753,11 @@ class ImportParametres(TestCase):
         pc = wb["Plan comptable"]
         for row in pc.iter_rows(min_row=2):
             if row[0].value == "600100":
-                row[1].value, row[5].value = "FRAIS DE BANQUE", "Non"
+                row[1].value, row[4].value = "FRAIS DE BANQUE", "Non"
             if row[0].value == "610000":
                 row[1].value = None                               # cellule vide : rien ne change
-        pc.append([622000, "HONORAIRES", "FON.1", "Non", "Non", "Oui"])    # nombre lu par Excel
-        wb["Axe 2"].append(["MAN.002", "GALA", "En cours"])
+        pc.append([622000, "HONORAIRES", "FON.1", "Non", "Oui"])    # nombre lu par Excel
+        wb["Anal"].append(["MAN.002", "GALA"])
         wb["Traductions"].append(["עמלה", "COMMISSION"])
         r = prm.importer(self.octets(wb), auteur="t")
         self.assertEqual(r.erreurs, [])
@@ -1814,7 +1766,7 @@ class ImportParametres(TestCase):
         self.assertEqual((c.libelle, c.actif), ("FRAIS DE BANQUE", False))
         self.assertEqual(Compte.objects.get(numero="610000").libelle, "SERVICES")
         self.assertEqual(Compte.objects.get(numero="622000").anal1_id, "FON.1")
-        self.assertEqual(CodeAnalytique.objects.get(code="MAN.002").axe, 2)
+        self.assertEqual(CodeAnalytique.objects.get(code="MAN.002").libelle, "GALA")
         self.assertEqual(Traduction.traduire("עמלה"), "COMMISSION")
         m = Modification.objects.get(action="Modification (import)")
         self.assertIn("SERVICES", Compte.objects.get(numero="610000").libelle)
@@ -1823,8 +1775,8 @@ class ImportParametres(TestCase):
 
     def test_erreur_rien_n_est_enregistre(self):
         wb = self.classeur()
-        wb["Plan comptable"].append(["623000", "PUBLICITE", "ZZZ.9", None, None, None])   # code axe 1 inconnu
-        wb["Axe 1"].append(["GEN.001", "DOUBLON", None])                            # code déjà sur l'axe 2
+        wb["Plan comptable"].append(["623000", "PUBLICITE", "ZZZ.9", None, None])   # code Anal inconnu
+        wb["Anal"].append([None, "SANS CODE"])                                      # code manquant
         wb["Journaux"].append(["BQ", None, None, None, None])                       # intitulé manquant
         wb["Réglages"].append(["compte_attente", "470000", "Compte d'attente"])     # ligne correcte
         r = prm.importer(self.octets(wb))
@@ -1861,7 +1813,7 @@ class EcranParametres(TransactionTestCase):
         self.assertTrue(Compte.objects.filter(numero="999777").exists())
         self.client.post("/plan/999777/", {"supprimer": "1"})
         self.assertFalse(Compte.objects.filter(numero="999777").exists())
-        CodeAnalytique.objects.create(code="TMP.1", axe=1, libelle="TEMP")
+        CodeAnalytique.objects.create(code="TMP.1", libelle="TEMP")
         self.client.post("/parametrage/axes/TMP.1/", {"supprimer": "1"})
         self.assertFalse(CodeAnalytique.objects.filter(code="TMP.1").exists())
         self.assertEqual(self.client.get("/parametrage/journaux/").status_code, 403)          # journaux : administrateur seulement
@@ -1940,15 +1892,13 @@ class ExportComplet(TransactionTestCase):
         m = Mouvement.objects.create(numero=1, date=dt.date(2026, 2, 1), journal_id="B1", origine="saisie",
                                      commentaire="Cotisation", cree_par=self.u)
         p = Rapprochement.objects.create(journal_id="B1", mode="manuel", cree_par=self.u)
-        Ligne.objects.create(mouvement=m, ordre=1, compte_id="411TAIEB001", libelle="COTISATION", credit=D(400), lettrage="A",
-                             anal2_id="GEN.002")
-        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="COTISATION", debit=D(400), rapprochement=p,
-                             anal2_id="GEN.002")
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="411TAIEB001", libelle="COTISATION", credit=D(400), lettrage="A")
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="COTISATION", debit=D(400), rapprochement=p)
         LigneReleve.objects.create(journal_id="B1", date=dt.date(2026, 2, 2), rang=0, operation="העברה", montant=D(400),
                                    solde=D(1400), rapprochement=p)
         Budget.objects.create(exercice=ex, nature="P", compte_id="700000", montant=D(5000))
         t = TiersProvisoire.objects.create(nom="Lévy", prenom="Rachel", cree_par=benevole)
-        f = Fiche.objects.create(type="activite", titre="Rallye", anal2_id="MAN.001")
+        f = Fiche.objects.create(type="activite", titre="Rallye")
         f.benevoles.add(benevole)
         nature = NatureFiche.objects.filter(type_fiche="activite", sens="R").first()
         mode = ModeFiche.objects.filter(type_fiche="activite").first()
@@ -2084,8 +2034,8 @@ from .vues_utilisateurs import donner_role  # noqa: E402
 class Utilisateurs(TestCase):
     def setUp(self):
         referentiels_saisie()
-        Prefixe.objects.create(prefixe="MAN.", axe=2)
-        Prefixe.objects.create(prefixe="COT.", axe=1)
+        Prefixe.objects.create(prefixe="MAN.")
+        Prefixe.objects.create(prefixe="COT.")
         self.admin = User.objects.create_user("admin", password="ancien-mot-de-passe-1")
         donner_role(self.admin, "Administration")
         self.tresorier = User.objects.create_user("tresorier", password="ancien-mot-de-passe-1")
@@ -2098,10 +2048,10 @@ class Utilisateurs(TestCase):
         self.assertEqual(self.client.post("/rapprochement/B1/parametres/", {"date_reprise": "2026-01-01"}).status_code, 403)
         r = self.client.get("/codes/")
         self.assertContains(r, '<option value="COT."')                        # axe 1 : trésorier aussi
-        self.client.post("/codes/", {"code-prefixe": "COT.", "code-libelle": "X", "code-statut": 1, "creer_code": "1"})
-        self.assertTrue(CodeAnalytique.objects.filter(libelle="X", axe=1).exists())
-        self.client.post("/codes/", {"code-prefixe": "MAN.", "code-libelle": "Gala", "code-statut": 1, "creer_code": "1"})
-        self.assertTrue(CodeAnalytique.objects.filter(code="MAN.002").exists())       # axe 2 : trésorier
+        self.client.post("/codes/", {"code-prefixe": "COT.", "code-libelle": "X", "creer_code": "1"})
+        self.assertTrue(CodeAnalytique.objects.filter(libelle="X").exists())
+        self.client.post("/codes/", {"code-prefixe": "MAN.", "code-libelle": "Gala", "creer_code": "1"})
+        self.assertTrue(CodeAnalytique.objects.filter(libelle="GALA").exists())
         self.assertEqual(self.client.get("/saisie/").status_code, 200)
         self.client.force_login(self.admin)
         self.assertContains(self.client.get("/codes/"), '<option value="COT."')
@@ -2167,7 +2117,7 @@ class Echanges(TransactionTestCase):
         call_command("migrate", verbosity=0)
         referentiels_saisie()
         mbr.creer_manquants()
-        Prefixe.objects.create(prefixe="MAN.", axe=2, libelle="Manifestations")
+        Prefixe.objects.create(prefixe="MAN.", libelle="Manifestations")
         u = User.objects.create_user("admin")
         donner_role(u, "Administration")                    # page réservée : elle importe le paramétrage de base
         self.client.force_login(u)
@@ -2178,7 +2128,7 @@ class Echanges(TransactionTestCase):
     def fichier(self, nom, lignes, colonnes=None):
         f = ech.format_de(nom)
         if f.nom in ("Ecritures", "Libelles"):               # lignes écrites à l'ancienne mode (Date, Jnl, Mvt, Compte, Libellé, Débit, Crédit, Anal2, Let)
-            lignes = [[r[2], r[1], r[0], r[3], "", r[4], r[5], r[6], "", "", r[7], "", "", r[8]] if len(r) == 9 else r for r in lignes]
+            lignes = [[r[2], r[1], r[0], r[3], "", r[4], r[5], r[6], "", "", "", r[8]] if len(r) == 9 else r for r in lignes]
         wb = ech.classeur(f, lignes)
         if colonnes:
             for i, c in enumerate(colonnes, 1):
@@ -2202,7 +2152,7 @@ class Echanges(TransactionTestCase):
             self.assertContains(r, f"{source.name} importé (", msg_prefix=f.nom)
         self.assertEqual(avant, (Compte.objects.count(), Journal.objects.count(), CodeAnalytique.objects.count(), Membre.objects.count()))
         self.assertEqual(ech.a_importer(), [])                                    # rangés dans Importés
-        self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 9)
+        self.assertEqual(len(list((ech.imports() / "Importés").iterdir())), 8)
         wb = openpyxl.load_workbook(next(p for p in ech.exports().iterdir() if p.name.startswith("Ecritures")))
         self.assertEqual([c.value for c in wb.active[1]], ech.COLONNES_ECRITURES)
         self.assertEqual(wb.active["A2"].value, 421)
@@ -2212,8 +2162,8 @@ class Echanges(TransactionTestCase):
         r = self.importer("PlanComptable.xlsx")
         self.assertContains(r, "En-têtes de la ligne 1 non conformes")
         self.assertTrue((ech.imports() / "PlanComptable.xlsx").exists())            # reste dans Imports
-        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "BIL.5", "non", "oui"], ["999001", "AUTRE", "GEN.004", "non", "oui"]])
-        self.assertContains(self.importer("PlanComptable.xlsx"), "Ligne 3 : le code GEN.004 existe déjà sur")
+        self.fichier("PlanComptable.xlsx", [["999000", "NOUVEAU", "BIL.5", "non", "oui"], ["999001", "AUTRE", "", "non", "oui"]])
+        self.assertContains(self.importer("PlanComptable.xlsx"), "Ligne 3")
         self.assertFalse(Compte.objects.filter(numero="999000").exists())          # rien d'enregistré
         openpyxl.Workbook().save(ech.imports() / "Inconnu.xlsx")
         self.assertContains(self.client.get("/echanges/"), "structure non reconnue")
@@ -2228,7 +2178,7 @@ class Echanges(TransactionTestCase):
                 wb.active.append(l)
             wb.save(ech.imports() / nom)
 
-        classeur("Mes donnees 2026.xlsx", ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], [["999000", "NOUVEAU", "BIL.5", "non", "oui"]])
+        classeur("Mes donnees 2026.xlsx", ["Compte", "Libellé", "Anal", "Lettrable", "Actif"], [["999000", "NOUVEAU", "BIL.5", "non", "oui"]])
         self.assertEqual(ech.format_de(ech.imports() / "Mes donnees 2026.xlsx").nom, "PlanComptable")
         self.assertContains(self.importer("Mes donnees 2026.xlsx"), "Mes donnees 2026.xlsx importé (")
         self.assertTrue(Compte.objects.filter(numero="999000").exists())
@@ -2261,12 +2211,12 @@ class Echanges(TransactionTestCase):
         self.assertEqual((m.origine, m.total_debit, m.total_credit), ("import", D(10), D(10)))
 
     def test_comptes_tiers_et_codes_inconnus_crees(self):
-        """Compte, tiers, code axe 1 ou axe 2 inconnus : créés à l'import (avec les libellés du fichier)."""
+        """Compte, tiers, code Anal inconnus : créés à l'import (avec les libellés du fichier)."""
         d = dt.datetime(2026, 3, 1)
-        ligne = lambda mvt, jnl, compte, lc, deb, cre, a1, la1, a2, la2: [mvt, jnl, d, compte, lc, "FRAIS", deb, cre, a1, la1, a2, la2, None, None]
+        ligne = lambda mvt, jnl, compte, lc, deb, cre, a1, la1: [mvt, jnl, d, compte, lc, "FRAIS", deb, cre, a1, la1, None, None]
         f = ech.format_de("Ecritures.xlsx")
-        wb = ech.classeur(f, [ligne(901, "B1", "611000", "HONORAIRES", 10, None, "NEW.1", "Nouvelle nature", "NEW.007", "Nouvel événement"),
-                              ligne(901, "B1", "401DUPON001", "DUPONT FOURNISSEUR", None, 10, "NEW.1", "", "", "")])
+        wb = ech.classeur(f, [ligne(901, "B1", "611000", "HONORAIRES", 10, None, "NEW.1", "Nouvelle nature"),
+                              ligne(901, "B1", "401DUPON001", "DUPONT FOURNISSEUR", None, 10, "NEW.1", "")])
         wb.save(ech.imports() / "Ecritures.xlsx")
         r = self.importer("Ecritures.xlsx")
         self.assertContains(r, "1 mouvement(s) ajouté(s)")
@@ -2274,23 +2224,8 @@ class Echanges(TransactionTestCase):
         self.assertEqual(Compte.objects.get(numero="611000").libelle, "HONORAIRES")
         self.assertEqual(Compte.objects.get(numero="611000").anal1_id, "NEW.1")
         self.assertEqual(CodeAnalytique.objects.get(code="NEW.1").libelle, "Nouvelle nature")
-        a2 = CodeAnalytique.objects.get(code="NEW.007")
-        self.assertEqual((a2.axe, a2.statut, a2.libelle), (2, 1, "Nouvel événement"))
         self.assertTrue(Compte.objects.get(numero="401DUPON001").lettrable)
         self.assertTrue(Membre.objects.filter(compte_id="401DUPON001").exists())               # fiche tiers créée
-
-    def test_un_seul_axe(self):
-        """Un seul axe : Anal2 facultatif dans les écritures, code d'office."""
-        Reglage.objects.update_or_create(cle="un_seul_axe", defaults={"valeur": "oui"})
-        self.fichier("Journaux.xlsx", [["M1", "MIZRAHI NIS", "BQ", "512000", "oui"]])
-        self.assertContains(self.importer("Journaux.xlsx"), "Journaux.xlsx importé (")
-        d = dt.datetime(2026, 3, 2)
-        self.fichier("Ecritures.xlsx", [[d, "M1", 950, "600100", "FRAIS", 2.35, None, None, ""],
-                                        [d, "M1", 950, "512000", "FRAIS", None, 2.35, None, ""]])
-        self.assertContains(self.importer("Ecritures.xlsx"), "1 mouvement(s) ajouté(s)")
-        m = Mouvement.objects.get(numero=950)
-        self.assertEqual([l.anal2_id for l in m.lignes.all()], ["GEN", None])             # code d'office : compte 6 seulement
-        self.assertContains(self.client.get("/mouvement/950/"), "2,35")
 
     def test_axes_de_comptes(self):
         """AxesComptes.xlsx : une colonne par axe ; analyse croisée avec filtres ; export complet et réinjection."""
@@ -2341,7 +2276,7 @@ class Echanges(TransactionTestCase):
         wb.active.title = "Notes"
         wb.active.append(["rien", "d'utile"])
         ws = wb.create_sheet("PlanComptable")
-        for r in (["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], ["600955", "VENU D'AILLEURS", "BIL.5", "non", "oui"]):
+        for r in (["Compte", "Libellé", "Anal", "Lettrable", "Actif"], ["600955", "VENU D'AILLEURS", "BIL.5", "non", "oui"]):
             ws.append(r)
         wb.save(ech.imports() / "Plan_adapte.xlsm")
         self.assertEqual(ech.format_de(ech.imports() / "Plan_adapte.xlsm").nom, "PlanComptable")
@@ -2461,12 +2396,12 @@ class Echanges(TransactionTestCase):
             self.assertEqual((ws.max_row, ws["C1"].value), (1, "Nom"))                      # vierge : les colonnes seulement
 
     def test_supprimer_un_fichier_du_dossier_imports(self):
-        self.fichier("Axe1.xlsx", [["ZZZ.1", "Essai"]])
+        self.fichier("Anal.xlsx", [["ZZZ.1", "Essai"]])
         page = self.client.get("/echanges/")
-        self.assertContains(page, 'name="retirer" value="Axe1.xlsx"')
-        r = self.client.post("/echanges/", {"retirer": "Axe1.xlsx"}, follow=True)
+        self.assertContains(page, 'name="retirer" value="Anal.xlsx"')
+        r = self.client.post("/echanges/", {"retirer": "Anal.xlsx"}, follow=True)
         self.assertContains(r, "supprimé du dossier Imports")
-        self.assertFalse((ech.imports() / "Axe1.xlsx").exists())
+        self.assertFalse((ech.imports() / "Anal.xlsx").exists())
         self.assertFalse(CodeAnalytique.objects.filter(code="ZZZ.1").exists())               # rien d'importé
         self.assertContains(self.client.post("/echanges/", {"retirer": "../secret.txt"}, follow=True), "pas (ou plus)")
 
@@ -2482,13 +2417,13 @@ class Echanges(TransactionTestCase):
             if ws.cell(r, 1).value == premier:
                 ws.cell(r, 1).value = premier + 7000                      # autre numérotation
                 ws.cell(r, 6).value = f"LIBELLE BANQUE {r}"
-        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "600100", "", "INCONNU", 1, None, "", "", ws["K2"].value, "", "", None])
-        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "512000", "", "INCONNU", None, 1, "", "", ws["K2"].value, "", "", None])
+        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "600100", "", "INCONNU", 1, None, "", "", None, None])
+        ws.append([8888, "OD", dt.datetime(2020, 5, 5), "512000", "", "INCONNU", None, 1, "", "", None, None])
         # Mvt dont le montant diffère sur le site : le rapport propose le Mvt du site et la différence
         m2 = m                                                            # seul Mvt de la base d'essai
         for i, l in enumerate(m2.lignes.order_by("ordre")):
             ws.append([9999, m2.journal_id, m2.date, l.compte_id, "", "LIBELLE MODIFIE",
-                       (l.debit + 1) if l.debit else None, (l.credit + 1) if l.credit else None, "", "", l.anal2_id, "", "", None])
+                       (l.debit + 1) if l.debit else None, (l.credit + 1) if l.credit else None, "", "", None, None])
         wb.save(ech.imports() / "Libelles_2026-09-27.xlsx")
         self.assertEqual(ech.format_de("Libellés_2026-09-27.xlsx").nom, "Libelles")          # accent et majuscule admis
         self.assertEqual(ech.format_de("LIBELLES.xlsx").nom, "Libelles")
@@ -2776,15 +2711,15 @@ class ReferentielsEtPages(TransactionTestCase):
         self.assertEqual(self.client.get("/documentation/autre.pdf").status_code, 404)
 
 
-# ---------------------------------------------------------------- rapports analytiques (axe 1, axe 2)
+# ---------------------------------------------------------------- rapports analytiques (code Anal)
 
 class RapportsAnalytiques(TestCase):
     def setUp(self):
-        referentiels_saisie()                   # Mvt 421 : 400 de produit (710000, COT.2) sur MAN.001, contre 411TAIEB001
-        Compte.objects.create(numero="630000", libelle="AIDES")                                   # compte sans code d'axe 1
+        referentiels_saisie()                   # Mvt 421 : 400 de produit (710000, COT.2), contre 411TAIEB001
+        Compte.objects.create(numero="630000", libelle="AIDES")                                   # compte sans code Anal
         m = Mouvement.objects.create(numero=500, date=dt.date(2026, 3, 1), journal_id="CA")
-        Ligne.objects.create(mouvement=m, ordre=0, compte_id="600000", libelle="LOCATION", debit=D(150), anal2_id="MAN.001")
-        Ligne.objects.create(mouvement=m, ordre=1, compte_id="630000", libelle="AIDE", debit=D(50), anal2_id="SOC.006")
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="600000", libelle="LOCATION", debit=D(150))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="630000", libelle="AIDE", debit=D(50))
         Ligne.objects.create(mouvement=m, ordre=2, compte_id="530000", libelle="LOCATION", credit=D(200))
         u = User.objects.create_user("bureau")
         u.groups.add(Group.objects.get(name="Consultation"))                          # consultation seule suffit
@@ -2792,54 +2727,46 @@ class RapportsAnalytiques(TestCase):
 
     def test_synthese_gestion_avec_totaux(self):
         r = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31")
-        axe1, axe2 = r.context["axes"]
-        self.assertEqual({l["code"]: l["s"] for l in axe2["lignes"]}, {"MAN.001": D(250), "SOC.006": D(-50)})
-        self.assertEqual(axe2["total"], {"a": D(400), "b": D(200), "s": D(200)})
-        self.assertEqual([l["code"] for l in axe1["lignes"]], ["(sans code)", "COT.2", "FON.1"])
+        a = r.context["a"]
+        self.assertEqual({l["code"]: l["s"] for l in a["lignes"]}, {"(sans code)": D(-50), "COT.2": D(400), "FON.1": D(-150)})
+        self.assertEqual(a["total"], {"a": D(400), "b": D(200), "s": D(200)})
         self.assertContains(r, "Imprimer")
         self.assertContains(r, "Résultat")
-        self.assertContains(r, "<h1>Analytique – Nature (axe 1)</h1>")                        # une page par axe
-        self.assertNotContains(r, "RALLYE")
-        r = self.client.get("/analytique/?axe=2&du=2026-01-01&au=2026-12-31")
-        self.assertContains(r, "<h1>Analytique – Objet (axe 2 : événement, projet)</h1>")
-        self.assertContains(r, "/analytique/detail/?comptes=gestion&amp;axe=2&amp;code=MAN.001")
-        self.assertContains(r, '<option value="MAN.001">RALLYE (MAN.001)</option>')             # choix par le libellé
+        self.assertContains(r, "<h1>Analytique – Anal</h1>")
+        self.assertContains(r, "/analytique/detail/?comptes=gestion&amp;code=COT.2")
+        self.assertNotContains(r, "axe 2")
+        self.assertContains(r, '<option value="COT.2">COTISATIONS (COT.2)</option>')             # choix par le libellé
         x = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31&format=xlsx")
         wb = openpyxl.load_workbook(io.BytesIO(x.content))
-        self.assertEqual(wb.sheetnames, ["Axe 1", "Axe 2"])
-        self.assertEqual([c.value for c in wb["Axe 2"][wb["Axe 2"].max_row]], ["TOTAL", None, 400, 200, 200])
+        self.assertEqual(wb.sheetnames, ["Anal"])
+        self.assertEqual([c.value for c in wb["Anal"][wb["Anal"].max_row]], ["TOTAL", None, 400, 200, 200])
 
     def test_synthese_bilan_comptes_1_a_5(self):
         r = self.client.get("/analytique/?comptes=bilan&du=2026-01-01&au=2026-12-31")
-        axe1, axe2 = r.context["axes"]
-        self.assertEqual([l["code"] for l in axe2["lignes"]], ["(sans code)"])           # axe 2 : comptes 6 et 7 seulement
-        self.assertEqual({l["code"]: l["s"] for l in axe1["lignes"]}, {"BIL.4": D(400), "BIL.5": D(-200)})
+        a = r.context["a"]
+        self.assertEqual({l["code"]: l["s"] for l in a["lignes"]}, {"BIL.4": D(400), "BIL.5": D(-200)})
         self.assertContains(r, "Solde")
         self.assertNotContains(r, "Résultat")
 
     def test_detail_par_code(self):
-        r = self.client.get("/analytique/detail/?axe=2&code=MAN.001&du=2026-01-01&au=2026-12-31")
+        r = self.client.get("/analytique/detail/?code=FON.1&du=2026-01-01&au=2026-12-31")
         (s,) = r.context["sections"]
-        self.assertEqual([(c["numero"], c["a"], c["b"]) for c in s["comptes"]], [("600000", D(0), D(150)), ("710000", D(400), D(0))])
-        self.assertEqual(s["total"]["s"], D(250))
-        self.assertEqual(len(s["ecritures"]), 2)                                   # classes 6 et 7 seulement
-        self.assertContains(r, "Total MAN.001")
-        tous = self.client.get("/analytique/detail/?axe=1&du=2026-01-01&au=2026-12-31").context["sections"]
+        self.assertEqual([(c["numero"], c["a"], c["b"]) for c in s["comptes"]], [("600000", D(0), D(150))])
+        self.assertEqual(s["total"]["s"], D(-150))
+        self.assertEqual(len(s["ecritures"]), 1)                                   # classes 6 et 7 seulement
+        self.assertContains(r, "Total FON.1")
+        tous = self.client.get("/analytique/detail/?du=2026-01-01&au=2026-12-31").context["sections"]
         self.assertEqual([s["code"] for s in tous], ["(sans code)", "COT.2", "FON.1"])
-        sans = self.client.get("/analytique/detail/?axe=1&code=(sans code)&du=2026-01-01&au=2026-12-31").context["sections"]
+        sans = self.client.get("/analytique/detail/?code=(sans code)&du=2026-01-01&au=2026-12-31").context["sections"]
         self.assertEqual(sans[0]["comptes"][0]["numero"], "630000")
-        bilan = self.client.get("/analytique/detail/?comptes=bilan&axe=2&code=MAN.001&du=2026-01-01&au=2026-12-31")
-        self.assertEqual(bilan.context["sections"], [])                            # pas d'axe 2 sur les comptes de bilan
-        x = self.client.get("/analytique/detail/?axe=2&du=2026-01-01&au=2026-12-31&format=xlsx")
+        bilan = self.client.get("/analytique/detail/?comptes=bilan&code=FON.1&du=2026-01-01&au=2026-12-31")
+        self.assertEqual(bilan.context["sections"], [])                            # pas de compte de gestion en bilan
+        x = self.client.get("/analytique/detail/?code=FON.1&du=2026-01-01&au=2026-12-31&format=xlsx")
         ws = openpyxl.load_workbook(io.BytesIO(x.content)).active
         valeurs = [c.value for row in ws.iter_rows() for c in row if c.value is not None]
-        self.assertIn("État détaillé – MAN.001 – " + s["libelle"], valeurs)           # présentation soignée, un bloc par code
+        self.assertIn("État détaillé – FON.1 – " + s["libelle"], valeurs)           # présentation soignée, un bloc par code
         self.assertIn("Sous-total 600000", valeurs)
-        self.assertIn("Répartition par axe 1", valeurs)
-        # présentation : chiffres clés, répartition par l'autre axe, détail par compte avec sous-totaux
-        self.assertEqual(s["nb_mouvements"], 2)
-        self.assertEqual([(x["code"], x["s"]) for x in s["autres"]], [("COT.2", D(400)), ("FON.1", D(-150))])
-        self.assertContains(r, "Répartition par nature (axe 1)")
+        self.assertEqual(s["nb_mouvements"], 1)
         self.assertContains(r, "Sous-total 600000")
         self.assertContains(r, 'data-cherchable')
 
@@ -2881,8 +2808,8 @@ class ExcelDeToutesLesPages(TestCase):
         self.assertRegex(r["Content-Disposition"], r'Ecritures_\d{4}-\d{2}-\d{2}_\d{4}\.csv')
         self.assertTrue(r.content.startswith(b"\xef\xbb\xbf"))
         lignes = list(csv.reader(io.StringIO(r.content.decode("utf-8-sig")), delimiter=";"))
-        self.assertEqual(lignes[0], ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1",
-                                    "LibelAnal1", "Anal2", "LibelAnal2", "Lien", "Let"])
+        self.assertEqual(lignes[0], ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal",
+                                    "LibelAnal", "Lien", "Let"])
         charge = next(l for l in lignes[1:] if l[3] == "600000")
         self.assertEqual((charge[0], charge[6], charge[7]), ("600", "1234,50", ""))
         self.assertRegex(charge[2], r"^\d{2}/\d{2}/\d{4}$")
@@ -2995,8 +2922,8 @@ class JustificatifsExistants(TransactionTestCase):
         import shutil
         shutil.rmtree(just.dossier())                     # dossier partagé par les tests de la classe
         m = Mouvement.objects.create(numero=5, date=dt.date(2026, 3, 15), journal_id="OD")
-        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600000", libelle="TRAITEUR", debit=D("450.00"), anal2_id="MAN.001")
-        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="TRAITEUR", credit=D("450.00"), anal2_id="MAN.001")
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="600000", libelle="TRAITEUR", debit=D("450.00"))
+        Ligne.objects.create(mouvement=m, ordre=2, compte_id="512000", libelle="TRAITEUR", credit=D("450.00"))
 
     def test_document_depose_remplace_le_lien_du_meme_mouvement(self):
         m = Mouvement.objects.get(numero=5)
@@ -3362,7 +3289,7 @@ class EcransParametrage(TestCase):
         self.client.post("/parametrage/journaux/B4/", {"code": "B4", "intitule": "DEPOT GARANTIE", "type": "BQ", "compte": "512000", "actif": "on"})
         self.assertEqual(Journal.objects.get(code="B4").intitule, "DEPOT GARANTIE")
         self.assertContains(self.client.get("/parametrage/axes/"), "GEN.002")
-        self.client.post("/parametrage/axes/GEN.002/", {"libelle": "Divers", "statut": "1"})
+        self.client.post("/parametrage/axes/GEN.002/", {"libelle": "Divers"})
         self.assertEqual(CodeAnalytique.objects.get(code="GEN.002").libelle, "Divers")
 
     def test_fermer_ramene_a_la_liste(self):
@@ -3382,8 +3309,8 @@ class EcransParametrage(TestCase):
             self.assertEqual(self.client.get(adresse).status_code, 403)
 
 
-class AxesStricts(TestCase):
-    """Axe 2 : jamais un code d'axe 1, comptes 6 et 7 seulement ; chaque compte porte un code d'axe 1."""
+class UnSeulAxe(TestCase):
+    """Un seul axe, Anal : chaque compte porte un code Anal ; une écriture n'en porte aucun."""
 
     def setUp(self):
         referentiels_saisie()
@@ -3391,39 +3318,23 @@ class AxesStricts(TestCase):
         self.admin = User.objects.create_superuser("adm", password="x" * 12)
         self.client.force_login(self.admin)
 
-    def test_ligne_refuse_un_code_axe_1(self):
-        m = Mouvement.objects.create(numero=800, date=dt.date(2026, 3, 1), journal_id="B1")
-        with self.assertRaises(ValidationError):
-            Ligne.objects.create(mouvement=m, compte_id="600000", libelle="X", debit=D(5), anal2_id="FON.1")
+    def test_la_ligne_n_a_plus_de_code_d_axe(self):
+        self.assertNotIn("anal2", [f.name for f in Ligne._meta.get_fields()])
+        self.assertNotIn("axe", [f.name for f in CodeAnalytique._meta.get_fields()])
+        self.assertNotIn("statut", [f.name for f in CodeAnalytique._meta.get_fields()])
 
-    def test_axe_2_ignore_sur_un_compte_de_bilan(self):
-        m = Mouvement.objects.create(numero=800, date=dt.date(2026, 3, 1), journal_id="B1")
-        l = Ligne.objects.create(mouvement=m, compte_id="512000", libelle="X", debit=D(5), anal2_id="MAN.001")
-        self.assertIsNone(l.anal2_id)
-
-    def test_compte_refuse_un_code_axe_2(self):
-        with self.assertRaises(ValidationError):
-            Compte.objects.create(numero="601999", libelle="X", anal1_id="MAN.001")
-
-    def test_compte_sans_axe_1_refuse_dans_le_plan(self):
+    def test_compte_sans_anal_refuse_dans_le_plan(self):
         r = self.client.post("/plan/nouveau/", {"numero": "601999", "libelle": "X", "anal1": "", "actif": "on"})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(Compte.objects.filter(numero="601999").exists())
 
-    def test_compte_de_projet(self):
-        r = self.client.post("/plan/nouveau/", {"numero": "512999", "libelle": "X", "anal1": "BIL.5", "projet": "on", "actif": "on"})
-        self.assertEqual(r.status_code, 200)                                     # classes 6 et 7 seulement
-        self.client.post("/plan/nouveau/", {"numero": "600001", "libelle": "ACHATS PROJET", "anal1": "FON.1", "projet": "on",
-                                            "actif": "on"})
-        self.assertTrue(Compte.objects.get(numero="600001").projet)
-        e = moteur.controler(operation(modele="Dépense directe", paiement="BIT", compte="600001")).erreurs
-        self.assertIn("Événement / projet (axe 2)", e)
+    def test_compte_avec_anal(self):
+        self.client.post("/plan/nouveau/", {"numero": "601999", "libelle": "X", "anal1": "COT.2", "actif": "on"})
+        self.assertEqual(Compte.objects.get(numero="601999").anal1_id, "COT.2")
 
-    def test_controles_axes(self):
+    def test_controle_comptes_sans_anal(self):
         res = {r.libelle: r for r in controles.executer()}
-        for libelle in ("Comptes sans code d'axe 1 (chaque compte en porte un)", "Écritures dont l'axe 2 est un code d'axe 1",
-                        "Écritures d'un compte de bilan portant un code axe 2", "Écritures d'un compte de projet sans code axe 2"):
-            self.assertEqual(res[libelle].statut, "OK", libelle)
+        self.assertEqual(res["Comptes sans code Anal (chaque compte en porte un)"].statut, "OK")
 
 
 class BanqueConfort(TestCase):
@@ -3454,20 +3365,6 @@ class BanqueConfort(TestCase):
         self.assertContains(self.client.get("/rapprochement/historique/"), "ne retire <b>aucune ligne de relevé")
         self.client.post("/rapprochement/historique/", {"coche": [i.pk]})
         self.assertFalse(ImportReleve.objects.filter(pk=i.pk).exists())
-
-
-class CorrigerAxes(TestCase):
-    def test_commande(self):
-        referentiels_saisie()
-        call_command("migrate", verbosity=0)
-        Compte.objects.create(numero="600200", libelle="SANS AXE")
-        from io import StringIO
-        out = StringIO()
-        call_command("corriger_axes", stdout=out)
-        self.assertIn("600200", out.getvalue())
-        self.assertIsNone(Compte.objects.get(numero="600200").anal1_id)
-        call_command("corriger_axes", "--appliquer", stdout=StringIO())
-        self.assertEqual(Compte.objects.get(numero="600200").anal1_id, "FON.1")
 
 
 class TraductionClaude(TestCase):

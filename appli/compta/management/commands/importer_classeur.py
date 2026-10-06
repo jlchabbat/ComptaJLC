@@ -74,15 +74,12 @@ class Command(BaseCommand):
         wb = openpyxl.load_workbook(classeur, data_only=True)
         t = tables(wb)
 
-        for axe, table in ((1, "T_Axe1"), (2, "T_Axe2")):
-            for r in t[table]:
-                if texte(r["Code"]):
-                    statut = r.get("Actif")
-                    CodeAnalytique.objects.create(code=texte(r["Code"]), axe=axe, libelle=texte(r["Libellé"]),
-                                                  statut=int(statut) if isinstance(statut, (int, float)) else 1)
+        for r in t["T_Axe1"]:
+            if texte(r["Code"]):
+                CodeAnalytique.objects.create(code=texte(r["Code"]), libelle=texte(r["Libellé"]))
         for r in t["T_Prefixes"]:
             if texte(r["Préfixe"]):
-                Prefixe.objects.create(prefixe=texte(r["Préfixe"]), axe=int(r["Axe"]), libelle=texte(r["Libellé"]))
+                Prefixe.objects.create(prefixe=texte(r["Préfixe"]), libelle=texte(r["Libellé"]))
         for r in t["T_PlanComptable"]:
             if texte(r["Compte"]):
                 Compte.objects.create(numero=texte(r["Compte"]), libelle=texte(r["Libellé compte"]),
@@ -105,7 +102,7 @@ class Command(BaseCommand):
                                          origine="import")
             Ligne.objects.bulk_create([
                 Ligne(mouvement=m, ordre=i, compte_id=texte(r["Compte"]), libelle=texte(r["Libellé"]),
-                      debit=montant(r["Débit"]), credit=montant(r["Crédit"]), anal2_id=(texte(r["Anal2"]) if texte(r["Compte"])[:1] in ("6", "7") else None), lettrage=texte(r.get("Let")))
+                      debit=montant(r["Débit"]), credit=montant(r["Crédit"]), lettrage=texte(r.get("Let")))
                 for i, r in enumerate(ls)])
 
         # exercices et réglages

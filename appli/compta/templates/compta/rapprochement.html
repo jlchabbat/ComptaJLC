@@ -12,20 +12,19 @@
 <button type="button" onclick="var d=document.getElementById('outils-releve'); d.open=true; d.scrollIntoView({behavior:'smooth'})">Télécharger un relevé…</button>
 <span class="sommaire">{{ journal.compte }}{% if parametres.date_reprise %} · depuis le {{ parametres.date_reprise|date:"d/m/Y" }}{% endif %} · <b>{{ lignes|length }}</b> ligne{{ lignes|length|pluralize }} à passer</span></div>{% else %}<p class="aide">{{ journal.compte }} · <b>{{ lignes|length }}</b> ligne{{ lignes|length|pluralize }} à passer</p>{% endif %}
 {% if a_traduire and peut %}<p class="carte message warning">{{ a_traduire }} ligne(s) « À traduire » : <a href="{% url 'traductions' %}">Traductions</a>.</p>{% endif %}
-{% if peut %}<details class="aide-bloc"><summary>Comment faire ?</summary><p class="aide">Pour chaque ligne du relevé, choisir le <b>compte de contrepartie</b>{% if deux_axes %} et le <b>code axe 2</b>{% endif %}
+{% if peut %}<details class="aide-bloc"><summary>Comment faire ?</summary><p class="aide">Pour chaque ligne du relevé, choisir le <b>compte de contrepartie</b>
 (taper une partie du numéro, du code ou du libellé), puis <b>Créer les écritures</b>. Chaque écriture créée est reliée à sa ligne, qui disparaît de la liste : pas de double écriture possible.
 Les lignes laissées vides restent à faire. Une ligne déjà passée autrement s'<b>écarte</b> (elle pourra être remise) ; cocher la case de la colonne Date pour agir sur plusieurs lignes.</p></details>{% endif %}
 <form method="post" id="affectation">{% csrf_token %}
-<table class="rap-table"><tr><th>{% if peut and lignes %}<input type="checkbox" title="Tout cocher" onclick="document.querySelectorAll('#affectation input[name=coche]').forEach(function (c) { c.checked = this.checked; }, this)"> {% endif %}Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>{% if deux_axes %}Code axe 2{% endif %}</th><th>Libellé de l'écriture</th><th></th>{% endif %}</tr>
+<table class="rap-table"><tr><th>{% if peut and lignes %}<input type="checkbox" title="Tout cocher" onclick="document.querySelectorAll('#affectation input[name=coche]').forEach(function (c) { c.checked = this.checked; }, this)"> {% endif %}Date</th><th>Opération</th><th class="n">Montant</th>{% if peut %}<th>Compte de contrepartie</th><th>Libellé de l'écriture</th><th></th>{% endif %}</tr>
 {% for x in lignes %}<tr><td>{% if peut %}<input type="checkbox" name="coche" value="{{ x.l.pk|stringformat:'d' }}" title="Cocher pour écarter cette ligne">{% endif %} {{ x.l.date|date:"d/m/Y" }}</td><td><span dir="auto" class="libelle-banque" {% if x.l.traduction != "À traduire" and x.l.traduction != x.l.operation %}title="{{ x.l.traduction }}"{% endif %}>{{ x.l.operation }}</span>{% if x.l.traduction == "À traduire" %} <span class="aide">(à traduire)</span>{% endif %}{% if x.l.reference %} <span class="aide">réf. {{ x.l.reference }}</span>{% endif %}</td>
 <td class="n {% if x.l.montant < 0 %}neg{% endif %}">{{ x.l.montant|shekel }}</td>
 {% if peut %}<td><input name="compte_{{ x.l.pk|stringformat:'d' }}" list="comptes" value="{{ x.compte }}" autocomplete="off" placeholder="Compte ou libellé…" style="min-width:16em">
-{% if x.propose %}<div class="aide proposition">Proposé : {{ x.propose }} <a href="#" data-propose="{{ x.propose }}" onclick="var i=this.closest('td').querySelector('input');i.value=this.dataset.propose;return false">reprendre</a></div>{% endif %}</td>
-<td>{% if deux_axes %}<input name="anal2_{{ x.l.pk|stringformat:'d' }}" list="codes" value="{{ x.anal2 }}" autocomplete="off" placeholder="Code ou libellé…" style="min-width:12em">{% endif %}
+{% if x.propose %}<div class="aide proposition">Proposé : {{ x.propose }} <a href="#" data-propose="{{ x.propose }}" onclick="var i=this.closest('td').querySelector('input');i.value=this.dataset.propose;return false">reprendre</a></div>{% endif %}
 {% if x.erreur %}<ul class="erreurs"><li>{{ x.erreur }}</li></ul>{% endif %}</td>
 <td><input name="libelle_{{ x.l.pk|stringformat:'d' }}" value="{{ x.libelle }}" maxlength="200" style="min-width:14em" title="Libellé enregistré dans l'écriture : modifiable"><label class="aide" title="Retient ce libellé comme traduction de l'opération de la banque"><input type="checkbox" name="lexique_{{ x.l.pk|stringformat:'d' }}"> lexique</label></td>
 <td><button name="ecarter" value="{{ x.l.pk|stringformat:'d' }}" title="Laisser cette ligne sans écriture ni lien (écriture déjà passée autrement, doublon, lexique incomplet…) ; elle pourra être remise" onclick="return confirm('Écarter cette ligne du relevé ? Aucune écriture ne sera créée (elle pourra être remise).')">Écarter</button></td>{% endif %}</tr>
-{% if peut %}{% if x.deja or x.groupes or x.lignes_groupees or x.nulles or x.pistes %}<tr class="remarques"><td colspan="7">{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
+{% if peut %}{% if x.deja or x.groupes or x.lignes_groupees or x.nulles or x.pistes %}<tr class="remarques"><td colspan="6">{% for e in x.deja %}<div>Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }} « {{ e.libelle|truncatechars:30 }} »
 <button name="relier" value="{{ x.l.pk|stringformat:'d' }}:{{ e.pk|stringformat:'d' }}" title="Même opération : relier sans créer d'écriture">C'est la même</button></div>{% endfor %}
 {% if x.deja %}<label class="aide"><input type="checkbox" name="nouvelle_{{ x.l.pk|stringformat:'d' }}"> non, nouvelle écriture</label>{% endif %}
 {% for g in x.groupes %}<div>Plusieurs écritures : {% for e in g %}{% if not forloop.first %} + {% endif %}Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> ({{ e.debit|default:e.credit|shekel }}){% endfor %}
@@ -42,9 +41,9 @@ Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}<
 {% for e in p.ailleurs %}<div class="piste">Même montant sur un autre compte : Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}</a> du {{ e.mouvement.date|date:"d/m/Y" }}, compte {{ e.compte_id }} (journal {{ e.mouvement.journal_id }}) : mauvaise banque ?</div>{% endfor %}
 {% if not p.loin and not p.reliees and not p.ailleurs %}<div class="piste">Aucune écriture de ce montant à 60 jours près : absente de la comptabilité, ou montant différent (plusieurs frais regroupés ?).</div>{% endif %}
 {% endif %}{% endwith %}{% endif %}</td></tr>{% endif %}{% endif %}
-{% empty %}<tr><td colspan="7">Tout le relevé téléchargé est en comptabilité.</td></tr>{% endfor %}</table>
+{% empty %}<tr><td colspan="6">Tout le relevé téléchargé est en comptabilité.</td></tr>{% endfor %}</table>
 {% if peut %}<datalist id="comptes">{% for c in comptes %}<option value="{{ c.numero }} – {{ c.libelle }}">{% endfor %}</datalist>
-<datalist id="codes">{% for c in codes %}<option value="{{ c.code }} – {{ c.libelle }}">{% endfor %}</datalist>{% endif %}
+{% endif %}
 </form>
 {% if peut and ecartees %}<details class="carte"><summary>Lignes écartées ({{ ecartees|length }})</summary>
 <form method="post">{% csrf_token %}<table><tr><th>Date</th><th>Opération</th><th class="n">Montant</th><th></th></tr>
