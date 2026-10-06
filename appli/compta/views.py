@@ -87,7 +87,7 @@ COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", 
 
 
 def export_csv(lignes):
-    """Écritures (période et filtres de la page) au format d'échange de ComptaBB : un fichier .csv (point-virgule, UTF-8 avec
+    """Écritures (période et filtres de la page) au format d'échange de ComptaJLC : un fichier .csv (point-virgule, UTF-8 avec
     BOM), une ligne par ligne d'écriture, nommé avec la date et l'heure de l'export. Anal1 / LibelAnal1 = axe 1 du compte,
     Anal2 / LibelAnal2 = axe 2 de la ligne, Lien = adresse ou fichier du premier justificatif, Let = lettrage."""
     import csv

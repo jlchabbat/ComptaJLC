@@ -46,7 +46,7 @@ Sur un téléphone, le bouton propose aussi de prendre une photo.</p>
 {% if hebergeur_liens %}<form method="post" action="{% url 'justificatif_ajouter' m.numero %}" class="carte">{% csrf_token %}
 <h3 style="margin-top:0">Ou joindre un lien (document resté dans {{ hebergeur_liens }})</h3>
 <div class="barre"><button class="principal">Joindre le lien</button></div>
-<p class="aide">Coller l'adresse du document : ComptaBB garde le lien 🔗, le document reste dans {{ hebergeur_liens }}.
+<p class="aide">Coller l'adresse du document : ComptaJLC garde le lien 🔗, le document reste dans {{ hebergeur_liens }}.
 Pour beaucoup de liens d'un coup : Saisie › Justificatifs, avec l'extrait Excel de {{ hebergeur_liens }}.</p>
 <div class="formulaire"><label for="id_lien">Lien</label>
 <div><input type="url" id="id_lien" name="lien" maxlength="500" required placeholder="https://…" style="width:100%"></div>

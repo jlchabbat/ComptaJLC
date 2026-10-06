@@ -18,7 +18,7 @@ class Command(BaseCommand):
         from compta.saisie import initialiser_parametres
         initialiser_parametres()
         from compta.models import Mouvement
-        self.stdout.write(self.style.SUCCESS(f"ComptaBB prêt : {Mouvement.objects.count()} mouvements dans la base."))
+        self.stdout.write(self.style.SUCCESS(f"ComptaJLC prêt : {Mouvement.objects.count()} mouvements dans la base."))
         from compta.demarrage import code_installation
         code = code_installation()                      # site neuf : premier administrateur à créer dans le navigateur
         if code:

@@ -1,8 +1,8 @@
 # Livraison du Lot 1 (1re partie) — saisie guidée, codes, statuts (26/09/2026)
 
-Classeur livré : `ComptaBB.xlsm`, produit par
+Classeur livré : `ComptaJLC.xlsm`, produit par
 `python src/lot0_preparation.py Fusion.xlsm lot0.xlsm` puis
-`python src/lot1_saisie.py lot0.xlsm ComptaBB.xlsm`. 100 % formules : rien
+`python src/lot1_saisie.py lot0.xlsm ComptaJLC.xlsm`. 100 % formules : rien
 n'est écrit dans les écritures tant que le trésorier ne colle pas.
 
 ## Trois onglets nouveaux
@@ -75,17 +75,17 @@ libellé et montant).
 
 ## 2e partie — saisie à distance, libellés, protection
 
-Produite par `python src/lot1_distance.py lot1.xlsm ComptaBB.xlsm`, puis
-`python src/classeur_saisie.py ComptaBB.xlsm ComptaBB_Saisie.xlsx`.
+Produite par `python src/lot1_distance.py lot1.xlsm ComptaJLC.xlsm`, puis
+`python src/classeur_saisie.py ComptaJLC.xlsm ComptaJLC_Saisie.xlsx`.
 
 | Élément | Rôle |
 |---|---|
-| **ComptaBB_Saisie.xlsx** | Classeur léger pour un bénévole : l'onglet Saisie du maître (mêmes contrôles), les modèles, les référentiels en valeurs, **sans grand livre**. Les opérations s'accumulent dans l'onglet Envoi (table T_Envoi, Mvt numérotés à partir de 1). À régénérer quand un membre ou un code est ajouté au maître. |
+| **ComptaJLC_Saisie.xlsx** | Classeur léger pour un bénévole : l'onglet Saisie du maître (mêmes contrôles), les modèles, les référentiels en valeurs, **sans grand livre**. Les opérations s'accumulent dans l'onglet Envoi (table T_Envoi, Mvt numérotés à partir de 1). À régénérer quand un membre ou un code est ajouté au maître. |
 | **Onglet Transmission** (maître) | Le trésorier colle en A7 les lignes de T_Envoi. Chaque ligne est contrôlée : date, journal, compte, Anal2, débit ou crédit, Mvt équilibré, déjà dans Écritures. Les Mvt et pièces reçoivent leur numéro définitif, et les lignes à reporter s'affichent en vert. La ligne de Journal « Transmission » est préparée. |
 | **Libellé Axe1** | Nouvelle colonne calculée de T_PlanComptable ; aperçu de Saisie complété. |
 | **Protection** | 14 onglets de consultation et de saisie protégés **sans mot de passe** (Révision › Ôter la protection) : seules les cases jaunes et le solde d'ouverture de Banque1 restent modifiables. Écritures, référentiels, Paramètres, Modèles, Journal, Transmission et ImportBanque ne sont pas protégés : leurs tables doivent pouvoir s'agrandir, et la requête se rafraîchir. |
 
-Circuit : le bénévole saisit dans ComptaBB_Saisie.xlsx (dossier OneDrive
+Circuit : le bénévole saisit dans ComptaJLC_Saisie.xlsx (dossier OneDrive
 Transmissions, droit « Peut modifier ») et colle ses lignes dans Envoi. Le
 trésorier copie les lignes de T_Envoi, les colle dans Transmission, puis les
 reporte sous Écritures, vide T_Recu et remet T_Envoi à zéro.
@@ -97,6 +97,6 @@ Vérifications :
   423, pièces 833 et 834 ; Mvt déséquilibré et doublon signalés) ;
 - les 15 scénarios de saisie restent conformes.
 
-Recette dans Excel : ouvrir `ComptaBB_Saisie.xlsx`, saisir une opération, la
+Recette dans Excel : ouvrir `ComptaJLC_Saisie.xlsx`, saisir une opération, la
 coller dans Envoi, puis faire le circuit complet dans le maître. Vérifier
 aussi qu'on ne peut modifier que les cases jaunes des onglets protégés.

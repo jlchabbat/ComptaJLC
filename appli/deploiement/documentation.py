@@ -25,17 +25,17 @@ APPLI = Path(__file__).resolve().parent.parent
 DOCS = APPLI.parent / "docs"
 IMAGES = DOCS / "images"
 SORTIE = APPLI / "compta" / "documentation"
-MOT_DE_PASSE = "Demo-ComptaBB-2026"
-DOCUMENTS = {"presentation.html": ("Présentation", "ComptaBB_presentation.pdf"),
-             "mode-emploi.html": ("Mode d'emploi", "ComptaBB_mode_emploi.pdf"),
-             "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaBB_guide_benevoles.pdf"),
-             "installation.html": ("Installation et mises à jour", "ComptaBB_installation.pdf"),
-             "principes.html": ("Principes de fonctionnement", "ComptaBB_principes.pdf")}
+MOT_DE_PASSE = "Demo-ComptaJLC-2026"
+DOCUMENTS = {"presentation.html": ("Présentation", "ComptaJLC_presentation.pdf"),
+             "mode-emploi.html": ("Mode d'emploi", "ComptaJLC_mode_emploi.pdf"),
+             "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaJLC_guide_benevoles.pdf"),
+             "installation.html": ("Installation et mises à jour", "ComptaJLC_installation.pdf"),
+             "principes.html": ("Principes de fonctionnement", "ComptaJLC_principes.pdf")}
 
 
 def preparer_django(dossier):
-    os.environ["COMPTABB_DATA"] = str(dossier)
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "comptabb.settings")
+    os.environ["COMPTAJLC_DATA"] = str(dossier)
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "comptajlc.settings")
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"          # lectures de la base pendant les captures (Playwright)
     sys.path.insert(0, str(APPLI))
     import django
@@ -281,7 +281,7 @@ def imprimer():
     from playwright.sync_api import sync_playwright
     SORTIE.mkdir(parents=True, exist_ok=True)
     pied = ('<div style="font-size:7.5pt;color:#777;width:100%;padding:0 14mm;display:flex;justify-content:space-between">'
-            '<span>ComptaBB – {titre} – version du {date}</span><span><span class="pageNumber"></span> / '
+            '<span>ComptaJLC – {titre} – version du {date}</span><span><span class="pageNumber"></span> / '
             '<span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
         navigateur = p.chromium.launch(**chromium())
@@ -299,13 +299,13 @@ def imprimer():
 
 
 def main():
-    dossier = Path(tempfile.mkdtemp(prefix="comptabb-doc-"))
+    dossier = Path(tempfile.mkdtemp(prefix="comptajlc-doc-"))
     preparer_django(dossier)
     if "--sans-captures" not in sys.argv:
         demonstration()
         port = port_libre()
-        env = dict(os.environ, COMPTABB_DATA=str(dossier), COMPTABB_IMPORTS=str(dossier / "Imports"),
-                   COMPTABB_EXPORTS=str(dossier / "Exports"))
+        env = dict(os.environ, COMPTAJLC_DATA=str(dossier), COMPTAJLC_IMPORTS=str(dossier / "Imports"),
+                   COMPTAJLC_EXPORTS=str(dossier / "Exports"))
         serveur = subprocess.Popen([sys.executable, "manage.py", "runserver", "--noreload", f"127.0.0.1:{port}"], cwd=APPLI,
                                    env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:

@@ -1,6 +1,6 @@
 """Lot 1 (2e partie) — transmission des saisies à distance, libellés d'axes, protection.
 
-    python src/lot1_distance.py ComptaBB_lot1.xlsm ComptaBB.xlsm
+    python src/lot1_distance.py ComptaJLC_lot1.xlsm ComptaJLC.xlsm
 
 S'applique au classeur produit par `lot1_saisie.py`.
 
@@ -29,7 +29,7 @@ from lot1_saisie import (  # noqa: E402
 NB_RECU = 60             # lignes reçues reportables en une fois
 L_RECU = 7               # première ligne de données de T_Recu
 COLONNES = ["Date", "Jnl", "Mvt", "Pièce", "Compte", "Intitulé", "Libellé", "Débit", "Crédit", "Solde", "Anal1", "Anal2", "Let"]
-ONGLETS_PROTEGES = ["Accueil", "Saisie", "Codes", "Compte rendu", "CDC ComptaBB", "Tableau de bord", "Synthèse", "Contrôles",
+ONGLETS_PROTEGES = ["Accueil", "Saisie", "Codes", "Compte rendu", "CDC ComptaJLC", "Tableau de bord", "Synthèse", "Contrôles",
                     "Consultation", "Jnl Banque B1", "Jnl Banque B2", "Jnl Banque B3", "Jnl Caisse", "Banque1"]
 A_DEVERROUILLER = {"Banque1": ["B6"]}   # saisies sans le style jaune
 
@@ -224,7 +224,7 @@ def menu_et_journal(cl):
     fe.remplacer('<dimension ref="A1:E36"/>', '<dimension ref="A1:E37"/>')
     fe.enregistrer()
     fe = Feuille(p, f["Compte rendu"])
-    lignes = [("B61", "Saisie à distance", "Classeur de saisie ComptaBB_Saisie.xlsx (sans grand livre) ; le trésorier colle les lignes "
+    lignes = [("B61", "Saisie à distance", "Classeur de saisie ComptaJLC_Saisie.xlsx (sans grand livre) ; le trésorier colle les lignes "
                                            "reçues dans l'onglet Transmission, qui les contrôle et leur donne leur numéro définitif."),
               ("B62", "Protection", "Onglets de consultation et de saisie protégés sans mot de passe : seules les cases jaunes sont modifiables.")]
     for ref, lib, texte in lignes:

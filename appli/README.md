@@ -1,13 +1,13 @@
-# ComptaBB — application web
+# ComptaJLC — application web
 
 Application web (Django) de la comptabilité de l'association.
 
 L'application est utilisée **en ligne** sur PythonAnywhere
-(https://comptabb.pythonanywhere.com ; mise à jour :
-`docs/ComptaBB_protocole_mise_a_jour.pdf`, script `deploiement/maj.sh`).
-L'ancien programme du PC (`ComptaBB.exe`) est abandonné et retiré du dépôt.
+(https://comptajlc.pythonanywhere.com ; mise à jour :
+`docs/ComptaJLC_protocole_mise_a_jour.pdf`, script `deploiement/maj.sh`).
+L'ancien programme du PC (`ComptaJLC.exe`) est abandonné et retiré du dépôt.
 
-Données (hors Git) : dossier `comptabb-data` du site (`comptabb.sqlite3`,
+Données (hors Git) : dossier `comptajlc-data` du site (`comptajlc.sqlite3`,
 `secret.txt`, justificatifs, Imports, Exports, sauvegardes).
 
 ## Rôles
@@ -142,7 +142,7 @@ fictive, captures dans `docs/images`, PDF dans `compta/documentation` et `docs/`
 
 Menu **Base** (compte administrateur, créé par `creer_administrateur`) : créer et télécharger des sauvegardes ; **remettre à zéro
 et recharger** depuis une sauvegarde `.sqlite3` (tout, utilisateurs compris)
-ou depuis le classeur `ComptaBB.xlsm` (plan, journaux, codes, écritures,
+ou depuis le classeur `ComptaJLC.xlsm` (plan, journaux, codes, écritures,
 exercices, relevé ; utilisateurs gardés ; tiers recréés d'après les comptes,
 coordonnées à réimporter avec Tiers.xlsx). Confirmation « REMPLACER » et
 sauvegarde automatique juste avant ; journalisé.
@@ -186,7 +186,7 @@ Essai sur PythonAnywhere : `docs/hebergement-pythonanywhere.md`
 cd appli
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py importer_classeur ../ComptaBB.xlsm
+python manage.py importer_classeur ../ComptaJLC.xlsm
 python manage.py createsuperuser
 python manage.py runserver
 python manage.py test compta

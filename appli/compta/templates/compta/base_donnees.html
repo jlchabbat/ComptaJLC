@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% block titre %}Base de données{% endblock %}{% block contenu %}
 <h1>Base de données</h1>
 <div class="barre"><button form="f-export" class="principal" name="export_complet" value="1">Tout exporter</button><button form="f-sauver" class="principal" name="sauvegarder" value="1">Créer une sauvegarde</button><a class="bouton" href="{% url 'base_telecharger' %}">Télécharger la base maintenant</a><button form="f-remplacer" class="principal" name="remplacer" value="1" style="background:var(--ko);border-color:var(--ko)"
- onclick="return confirm('Remplacer TOUTES les données de ComptaBB ?')">Remettre à zéro et recharger</button></div>
+ onclick="return confirm('Remplacer TOUTES les données de ComptaJLC ?')">Remettre à zéro et recharger</button></div>
 <p>La base contient <b>{{ mouvements }}</b> mouvements et <b>{{ lignes }}</b> lignes d'écritures.</p>
 
 
@@ -22,7 +22,7 @@
 <ul><li><b>une sauvegarde</b> (.sqlite3) : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris ;</li>
 <li><b>un export complet</b> (.zip) : la comptabilité est vidée puis rechargée depuis ses fichiers Excel (paramètres, tiers, écritures,
 données), et comparée à l'export ; les comptes utilisateurs sont gardés. Export modifié dans Excel : cocher « Fichiers modifiés » ;</li>
-<li><b>le classeur ComptaBB.xlsm</b> : la comptabilité est vidée puis reprise du classeur (plan, journaux, codes, écritures, relevé) ;
+<li><b>le classeur ComptaJLC.xlsm</b> : la comptabilité est vidée puis reprise du classeur (plan, journaux, codes, écritures, relevé) ;
 les comptes utilisateurs sont gardés, les fiches bénévoles, budgets et pointages sont effacés.</li></ul>
 <p class="aide">Une sauvegarde de la base actuelle est faite juste avant : en cas d'erreur, choisissez-la ici pour tout remettre comme avant.</p>
 <div class="formulaire">{{ form.non_field_errors }}{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>

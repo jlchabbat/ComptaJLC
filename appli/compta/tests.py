@@ -1281,7 +1281,7 @@ class EcransEtats(TestCase):
         self.assertEqual(Budget.objects.count(), 1)
         r = self.client.get(f"/etats/export/?exercice={self.e25.pk}")
         from . import dossiers as dos
-        self.assertTrue(list(dos.exports().glob("ComptaBB_etats_*.xlsx")))                        # copie dans Exports
+        self.assertTrue(list(dos.exports().glob("ComptaJLC_etats_*.xlsx")))                        # copie dans Exports
         self.assertEqual(r["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat axe 1", "Résultat axe 2", "Bilan", "Balance", "Grand livre", "Budget",
@@ -1525,7 +1525,7 @@ class EcransCorrections(TestCase):
         from pathlib import Path
         page = self.client.get("/ecritures/")
         self.assertContains(page, 'id="bascule-aides"')
-        self.assertContains(page, "comptabb-aides")
+        self.assertContains(page, "comptajlc-aides")
         css = (Path(__file__).parent / "static" / "compta" / "style.css").read_text(encoding="utf-8")
         self.assertIn("html:not(.avec-aides) main p.aide", css)
 
@@ -1534,7 +1534,7 @@ class EcransCorrections(TestCase):
         self.assertContains(self.client.get("/ecritures/"), "compta/tableau.js")
         from pathlib import Path
         js = (Path(__file__).parent / "static" / "compta" / "tableau.js").read_text(encoding="utf-8")
-        for mot in ("barre-selection", "choix-colonnes", "comptabb-masquees"):
+        for mot in ("barre-selection", "choix-colonnes", "comptajlc-masquees"):
             self.assertIn(mot, js)
 
     def test_recherche_par_montant(self):
@@ -1709,10 +1709,10 @@ class BaseDonnees(TransactionTestCase):
         self.assertEqual(self.client.get("/base/telecharger/").status_code, 200)
         classeur = Reprise.classeur(self)
         refuse = self.client.post("/base/", {"remplacer": "1", "confirmation": "non",
-                                             "fichier": SimpleUploadedFile("ComptaBB.xlsx", classeur.read_bytes())})
+                                             "fichier": SimpleUploadedFile("ComptaJLC.xlsx", classeur.read_bytes())})
         self.assertEqual(refuse.status_code, 200)                       # confirmation manquante : rien ne change
         self.client.post("/base/", {"remplacer": "1", "confirmation": "REMPLACER",
-                                    "fichier": SimpleUploadedFile("ComptaBB.xlsx", classeur.read_bytes())})
+                                    "fichier": SimpleUploadedFile("ComptaJLC.xlsx", classeur.read_bytes())})
         self.assertEqual(Mouvement.objects.count(), 2)
         self.assertTrue(User.objects.filter(username="admin").exists())      # utilisateurs gardés
         self.assertTrue(Modification.objects.filter(action="Remise à zéro et reprise").exists())
@@ -1759,7 +1759,7 @@ class CommandeSauvegarder(TransactionTestCase):
         Mouvement.objects.all().delete()
         sortie = __import__("io").StringIO()
         call_command("restaurer", stdout=sortie)
-        self.assertIn("1. comptabb_", sortie.getvalue())
+        self.assertIn("1. comptajlc_", sortie.getvalue())
         call_command("restaurer", "1", oui=True, stdout=sortie)
         self.assertTrue(Mouvement.objects.filter(numero=421).exists())
         self.assertTrue(Modification.objects.filter(action="Restauration").exists())
@@ -1909,8 +1909,8 @@ class EcranParametres(TransactionTestCase):
         from django.conf import settings
         ancien = settings.DATA_DIR / "sauvegardes"
         ancien.mkdir(parents=True, exist_ok=True)
-        (ancien / "comptabb_ancienne.sqlite3").write_bytes(b"x")
-        self.assertIn("comptabb_ancienne.sqlite3", [p.name for p in bd.liste()])
+        (ancien / "comptajlc_ancienne.sqlite3").write_bytes(b"x")
+        self.assertIn("comptajlc_ancienne.sqlite3", [p.name for p in bd.liste()])
         self.assertFalse(ancien.exists())
 
     def test_commande(self):
@@ -1961,7 +1961,7 @@ class ExportComplet(TransactionTestCase):
         avant = ec.empreinte()
         chemin = ec.exporter(auteur="tresorier")
         with zipfile.ZipFile(chemin) as z:
-            self.assertTrue({"comptabb.sqlite3", "Parametres.xlsx", "Tiers.xlsx", "Ecritures.xlsx", "Donnees.xlsx",
+            self.assertTrue({"comptajlc.sqlite3", "Parametres.xlsx", "Tiers.xlsx", "Ecritures.xlsx", "Donnees.xlsx",
                              "Etats_2026.xlsx", "controle.json"} <= set(z.namelist()))
             self.assertEqual(openpyxl.load_workbook(io.BytesIO(z.read("Ecritures.xlsx"))).sheetnames, ["Écritures"])
             self.assertNotIn("Écritures", openpyxl.load_workbook(io.BytesIO(z.read("Donnees.xlsx"))).sheetnames)
@@ -2638,7 +2638,7 @@ class DossiersEtExportComplet(TransactionTestCase):
     def test_chemins_windows_effaces_et_refuses(self):
         from django.apps import apps
         __import__("importlib").import_module("compta.migrations.0012_dossiers_pc").dossiers_pc(apps, None)
-        self.assertEqual(Reglage.lire("dossier_exports"), r"D:\OneDrive\Applications\ComptaBB\Exports")   # ancien programme du PC
+        self.assertEqual(Reglage.lire("dossier_exports"), r"D:\OneDrive\Applications\ComptaJLC\Exports")   # ancien programme du PC
         __import__("importlib").import_module("compta.migrations.0015_sans_programme_pc").effacer_chemins_pc(apps, None)
         self.assertEqual((Reglage.lire("dossier_exports"), Reglage.lire("dossier_sauvegardes")), ("", ""))
         self.assertEqual(dossiers.sauvegardes(), self.racine / "Exports" / "Sauvegardes")
@@ -2872,7 +2872,7 @@ class ExcelDeToutesLesPages(TestCase):
         self.assertTrue(list(dos.exports().glob("Balance_*.xlsx")))            # copie dans Exports
 
     def test_export_csv(self):
-        """Export .csv des écritures affichées : structure d'échange de ComptaBB, daté, UTF-8 avec BOM, point-virgule."""
+        """Export .csv des écritures affichées : structure d'échange de ComptaJLC, daté, UTF-8 avec BOM, point-virgule."""
         import csv
         page = self.client.get("/ecritures/?du=2026-01-01&au=2026-12-31&journal=OD")
         self.assertContains(page, "Exporter en .csv")
@@ -3272,7 +3272,7 @@ class LiensEnLigne(TransactionTestCase):
 
         def faux(lien):
             if lien[-4:-1] not in reponses:
-                raise ValueError("site du document injoignable depuis ComptaBB")
+                raise ValueError("site du document injoignable depuis ComptaJLC")
             return reponses[lien[-4:-1]]
         self.client.force_login(self.u)
         self.assertContains(self.client.get("/justificatifs/a-classer/"), "Documents encore en ligne (3)")

@@ -1,6 +1,6 @@
 """Recette du fichier de liaison par recalcul LibreOffice.
 
-    python tests/recette_liaison.py ComptaBB.xlsm [dossier_de_travail]
+    python tests/recette_liaison.py ComptaJLC.xlsm [dossier_de_travail]
 
 1. Fichier de liaison rempli (activité MAN.001 + gestion) : l'export doit
    contenir les écritures attendues, et les totaux de l'activité doivent être

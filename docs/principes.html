@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Principes de fonctionnement</title>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaJLC – Principes de fonctionnement</title>
 <style>
 @page { size: A4; margin: 14mm 14mm 16mm; }
 body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
@@ -21,7 +21,7 @@ code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; backg
 .menu { font-weight: bold; color: #1f3864; }
 .saut { break-before: page; }
 </style></head><body>
-<div class="bandeau"><h1>ComptaBB – Principes de fonctionnement</h1>
+<div class="bandeau"><h1>ComptaJLC – Principes de fonctionnement</h1>
 <p>Référentiels · Paramètres Excel · Imports et exports · Base de données · Installation · Contrôles · Banque</p></div>
 
 <p>Ce document explique <b>comment l'application tient ensemble</b>. Cinq mécanismes en sont la base : les référentiels (ce que l'on peut choisir
@@ -103,7 +103,7 @@ plus dans le fichier est supprimé) ; il faut taper REMPLACER pour confirmer. L'
 
 <h2 class="saut">4. Administration › Base de données : exports complets et sauvegardes</h2>
 <h3>Le principe</h3>
-<p>Toute la comptabilité est dans <b>une seule base de données</b> (un fichier <code>comptabb.sqlite3</code> dans le dossier de données du site). Elle est protégée de
+<p>Toute la comptabilité est dans <b>une seule base de données</b> (un fichier <code>comptajlc.sqlite3</code> dans le dossier de données du site). Elle est protégée de
 trois façons complémentaires, toutes visibles sur la page <span class="menu">Administration › Base de données</span> :</p>
 <table><tr><th style="width:23%">Protection</th><th>Ce que c'est</th><th style="width:25%">Où est-ce rangé</th></tr>
 <tr><td>Sauvegarde</td><td>Copie datée et cohérente de la base (même pendant que le site tourne), faite à la demande, avant chaque import, chaque remise à zéro et chaque mise à jour.
@@ -115,7 +115,7 @@ Il est lisible dans Excel, donc <b>indépendant du logiciel</b>.</td><td>Exports
 <ul><li><b>Chaque mois, et avant une clôture</b> : « Créer une sauvegarde », puis « Tout exporter » et télécharger le .zip sur le PC.</li>
 <li><b>Une sauvegarde sur le site ne suffit pas</b> : elle disparaît avec le site. Seul l'export téléchargé hors du site protège d'une perte de l'hébergement.</li>
 <li><b>Restaurer ou recharger</b> : « Remettre à zéro et recharger » accepte une sauvegarde (.sqlite3 : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris),
-un export complet (.zip : la comptabilité est vidée puis rechargée depuis ses fichiers Excel, puis comparée au fichier de contrôle ; au moindre écart, rien n'est modifié) ou, pour une reprise, le classeur ComptaBB.xlsm.
+un export complet (.zip : la comptabilité est vidée puis rechargée depuis ses fichiers Excel, puis comparée au fichier de contrôle ; au moindre écart, rien n'est modifié) ou, pour une reprise, le classeur ComptaJLC.xlsm.
 Pour un export dont les fichiers Excel ont été modifiés, cocher « Fichiers modifiés » : la base est alors vérifiée par les contrôles de cohérence.</li>
 <li><b>Sécurité de l'opération</b> : il faut taper REMPLACER pour confirmer ; une sauvegarde de la base actuelle est faite juste avant, on peut donc tout annuler en la rechargeant.</li></ul>
 <div class="cadre">Les écritures ne se modifient ni ne se suppriment « en douce » : une correction passe par l'application (trésorier), jamais dans un exercice clos, avec l'avant / après
@@ -123,21 +123,21 @@ conservé dans l'Historique. Les contrôles (Contrôle › Contrôles) vérifien
 
 <h2>5. Installation et mise à jour</h2>
 <h3>Le principe : un site par association</h3>
-<p>ComptaBB est un site hébergé chez PythonAnywhere : rien à installer sur les ordinateurs, on s'y connecte par internet (connexion chiffrée). Le <b>code</b> (dossier <code>ComptaBB</code>)
-et les <b>données</b> (dossier <code>comptabb-data</code> : base, Imports, Exports, justificatifs) sont séparés : une mise à jour remplace le code et ne touche jamais aux données.
+<p>ComptaJLC est un site hébergé chez PythonAnywhere : rien à installer sur les ordinateurs, on s'y connecte par internet (connexion chiffrée). Le <b>code</b> (dossier <code>ComptaJLC</code>)
+et les <b>données</b> (dossier <code>comptajlc-data</code> : base, Imports, Exports, justificatifs) sont séparés : une mise à jour remplace le code et ne touche jamais aux données.
 Chaque association a son propre site, son propre compte d'hébergement, sa licence ; ce qui lui est propre (nom, devise, journaux, traductions) est dans les réglages, pas dans le code.</p>
 <h3>Installer un site neuf (une seule fois)</h3>
 <ol><li>Sur PythonAnywhere : onglet <b>Web › Add a new web app › Manual configuration</b>.</li>
-<li>Envoyer le ZIP de ComptaBB (téléchargé depuis GitHub) dans <b>Files</b>.</li>
-<li>Dans une console Bash : <span class="cmd">unzip -qo ComptaBB-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh</span>
+<li>Envoyer le ZIP de ComptaJLC (téléchargé depuis GitHub) dans <b>Files</b>.</li>
+<li>Dans une console Bash : <span class="cmd">unzip -qo ComptaJLC-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh</span>
 Le script installe le code, l'environnement Python, la base vide et le fichier WSGI, puis affiche un <b>code d'installation</b>.</li>
 <li>Régler l'onglet Web (version de Python, virtualenv, fichiers statiques <code>/static/</code>, HTTPS forcé), cliquer <b>Reload</b>.</li>
-<li>Ouvrir le site : l'assistant « Bienvenue dans ComptaBB » demande le code, crée l'administrateur, puis guide le paramétrage de base.</li></ol>
+<li>Ouvrir le site : l'assistant « Bienvenue dans ComptaJLC » demande le code, crée l'administrateur, puis guide le paramétrage de base.</li></ol>
 <h3>Mettre à jour</h3>
 <ol><li><b>Télécharger le ZIP</b> de la branche indiquée sur GitHub (<b>&lt;&gt; Code › Download ZIP</b>).</li>
-<li>L'envoyer dans <b>Files</b>, dossier de l'utilisateur (le nom doit commencer par <code>ComptaBB-</code>).</li>
+<li>L'envoyer dans <b>Files</b>, dossier de l'utilisateur (le nom doit commencer par <code>ComptaJLC-</code>).</li>
 <li>Dans une console Bash : <span class="cmd">bash ~/maj.sh</span></li>
-<li>Le script enchaîne <b>5 étapes</b> : (1) sauvegarde de la base et copie des justificatifs, (2) installation du nouveau code (l'ancien est gardé dans <code>ComptaBB-ancien</code>),
+<li>Le script enchaîne <b>5 étapes</b> : (1) sauvegarde de la base et copie des justificatifs, (2) installation du nouveau code (l'ancien est gardé dans <code>ComptaJLC-ancien</code>),
 (3) bibliothèques Python, (4) migration de la base et des paramètres, (5) rechargement du site. Il se termine par « MISE À JOUR TERMINÉE ».</li>
 <li>Ouvrir le site et appuyer sur <b>Ctrl+F5</b>.</li></ol>
 <div class="cadre attention"><b>En cas de problème</b> : <span class="cmd">bash ~/maj.sh --retour</span> remet le code précédent ; les données n'ont jamais été touchées, et les 3 dernières sauvegardes
@@ -200,7 +200,7 @@ hébreux restent. On lit, on corrige, puis <b>Valider et enregistrer</b> ; une c
 <p>Si une clé d'API est installée, le bouton <b>Proposer par traduction automatique</b> apparaît : il envoie les libellés hébreux (40 au plus à la fois, <b>sans montant ni date</b>)
 à l'API de Claude et inscrit les traductions proposées dans les cases, <b>sans rien enregistrer</b> : on valide comme d'habitude. Sans clé, ou si le service est injoignable, le glossaire reste utilisé.</p>
 <ol><li>Créer une clé sur <b>console.anthropic.com</b> (menu API keys), avec un peu de crédit sur le compte.</li>
-<li>Sur PythonAnywhere, onglet <b>Files</b>, dossier <code>comptabb-data</code> : créer un fichier <code>cle-claude.txt</code> contenant seulement la clé.
+<li>Sur PythonAnywhere, onglet <b>Files</b>, dossier <code>comptajlc-data</code> : créer un fichier <code>cle-claude.txt</code> contenant seulement la clé.
 Ce fichier n'est ni dans la base, ni dans les exports, ni touché par les mises à jour. (Variante : variable d'environnement <code>ANTHROPIC_API_KEY</code> dans le fichier WSGI.)</li>
 <li>Recharger le site (onglet Web › Reload). L'accès sortant vers <code>api.anthropic.com</code> doit être autorisé par l'hébergement (liste blanche des comptes gratuits : à vérifier ; sinon, formule payante).</li></ol>
 <div class="cadre attention">Les libellés de relevé quittent le site pour être traduits (noms de personnes compris). Ne pas activer si cela n'est pas acceptable pour l'association.</div>

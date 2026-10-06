@@ -52,7 +52,7 @@
       });
     };
     var groupes = table.querySelector("tr.sit-compte, tr.sit-sous-total");      // tableau à sous-totaux : ni tri ni filtre
-    var cle = "comptabb-colonnes:" + location.pathname + ":" + rang;
+    var cle = "comptajlc-colonnes:" + location.pathname + ":" + rang;
     var largeurs = lire(cle) || {};
     var choix = {};                                                              // colonne -> valeurs gardées
     var champGlobal = null, compte = null;

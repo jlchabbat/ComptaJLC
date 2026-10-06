@@ -1,6 +1,6 @@
-"""Lot 0 — préparation du classeur ComptaBB, par édition directe du XML.
+"""Lot 0 — préparation du classeur ComptaJLC, par édition directe du XML.
 
-    python src/lot0_preparation.py Fusion.xlsm ComptaBB.xlsm
+    python src/lot0_preparation.py Fusion.xlsm ComptaJLC.xlsm
 
 Le classeur d'entrée n'est jamais modifié. Le XML est édité pièce par pièce :
 aucune bibliothèque ne réécrit le classeur (Power Query, commentaires à
@@ -335,7 +335,7 @@ def dissocier(p, journal):
 
 def parametres(p, ch, f, journal):
     fe = Feuille(p, f["Paramètres"])
-    dossier = RACINE_ONEDRIVE + r"\Applications\ComptaBB"
+    dossier = RACINE_ONEDRIVE + r"\Applications\ComptaJLC"
     lignes = [
         (5, "Début de l'exercice ouvert", "date", EXERCICE[0], "P_DebutExercice", "Exercice 2026."),
         (6, "Fin de l'exercice ouvert", "date", EXERCICE[1], "P_FinExercice", ""),
@@ -413,7 +413,7 @@ class Commentaires:
         self.legacy = "xl/" + re.search(r'Target="\.\./(comments\d+\.xml)"', rels).group(1)
         self.fil = "xl/" + re.search(r'Target="\.\./(threadedComments/threadedComment\d+\.xml)"', rels).group(1)
         self.vml = "xl/" + re.search(r'Target="\.\./(drawings/vmlDrawing\d+\.vml)"', rels).group(1)
-        self.personne = "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "comptabb/claude-code")).upper() + "}"
+        self.personne = "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "comptajlc/claude-code")).upper() + "}"
         pers = p.lire("xl/persons/person.xml")
         if self.personne not in pers:
             p.ecrire("xl/persons/person.xml", pers.replace(
@@ -421,7 +421,7 @@ class Commentaires:
 
     @staticmethod
     def guid(graine):
-        return "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "comptabb/" + graine)).upper() + "}"
+        return "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "comptajlc/" + graine)).upper() + "}"
 
     def _heure(self, i):
         return f"{AUJOURDHUI.isoformat()}T12:{i // 60:02d}:{i % 60:02d}.00"

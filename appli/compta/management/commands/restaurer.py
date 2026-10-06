@@ -6,7 +6,7 @@
     python manage.py restaurer chemin.sqlite3    restaure ce fichier
 
 Une sauvegarde de la base actuelle est faite juste avant ; la confirmation REMPLACER est demandée (--oui pour s'en passer).
-Sur PythonAnywhere : précéder la commande de COMPTABB_DATA=~/comptabb-data (voir le mode d'emploi)."""
+Sur PythonAnywhere : précéder la commande de COMPTAJLC_DATA=~/comptajlc-data (voir le mode d'emploi)."""
 
 from pathlib import Path
 

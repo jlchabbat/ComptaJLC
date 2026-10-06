@@ -1,7 +1,7 @@
 {% extends "compta/base.html" %}{% block titre %}Premier démarrage{% endblock %}{% block contenu %}
 <h1>Premier démarrage : votre association</h1>
 <form method="post" id="demarrage">{% csrf_token %}
-<div class="barre"><button class="principal">Démarrer ComptaBB</button>
+<div class="barre"><button class="principal">Démarrer ComptaJLC</button>
 <a class="bouton" href="{% url 'echanges_modeles' %}" title="Un fichier Excel vide par nature de données, le lexique et un mode d'emploi">Modèles vierges (.zip)</a>
 {% if user.is_superuser %}<a class="bouton" href="{% url 'base' %}" title="Réinstallation : recharger une sauvegarde de la base ou un export complet au lieu de partir de zéro">Recharger une sauvegarde</a>{% endif %}</div>
 <p class="aide">Une seule fois, à l'installation. Tout reste modifiable ensuite : Administration › Paramètres (Excel) pour les réglages,

@@ -87,7 +87,7 @@ def export_etats(request):
         raise Http404
     tampon = io.BytesIO()
     classeur_exercice(ex).save(tampon)
-    nom = f"ComptaBB_etats_{ex.libelle}".replace(" ", "_").replace("/", "-").replace("–", "-") + ".xlsx"
+    nom = f"ComptaJLC_etats_{ex.libelle}".replace(" ", "_").replace("/", "-").replace("–", "-") + ".xlsx"
     from .dossiers import copier_export
     copier_export(nom, tampon.getvalue())
     return HttpResponse(tampon.getvalue(), headers={

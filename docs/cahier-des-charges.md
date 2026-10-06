@@ -1,14 +1,14 @@
-# Cahier des charges – application « ComptaBB »
+# Cahier des charges – application « ComptaJLC »
 
 Version 1.1 – 26/09/2026 – cahier des charges final pour Claude Code.
-Transcription de la feuille « CDC ComptaBB » du classeur `Fusion.xlsm`.
+Transcription de la feuille « CDC ComptaJLC » du classeur `Fusion.xlsm`.
 En cas de divergence, la feuille Excel fait foi.
 
 ## 0. Consigne pour Claude
 
 | | |
 |---|---|
-| Mission | Concevoir et construire, dans ce classeur Excel, l'application ComptaBB permettant de poursuivre la comptabilité de l'association (Loge Bnei Brith) à partir des données et onglets existants décrits ci-dessous. |
+| Mission | Concevoir et construire, dans ce classeur Excel, l'application ComptaJLC permettant de poursuivre la comptabilité de l'association (Loge Bnei Brith) à partir des données et onglets existants décrits ci-dessous. |
 | Méthode | 1) Lire ce cahier et inventorier le classeur ; 2) présenter un plan par lots et attendre validation ; 3) construire lot par lot en vérifiant chaque étape (formules sans erreur, totaux égaux avant/après) ; 4) mettre à jour les onglets Accueil (menu) et Compte rendu. |
 | Interdits | Ne jamais modifier ni supprimer une écriture existante sans accord ; ne pas coder de valeurs métier en dur dans les formules ; ne pas casser les tables T_* ni la requête Power Query du relevé Banque 1. |
 
@@ -63,7 +63,7 @@ En cas de divergence, la feuille Excel fait foi.
 
 | | |
 |---|---|
-| Import | Généraliser la requête Power Query à B2, B3 et à la caisse (un fichier par banque, chemin dans Paramètres) ; même structure de sortie que T_Banque1. Claude Code doit définir et créer le dossier `Applications/comptaBB/Imports`, destiné à l'initialisation d'une nouvelle comptabilité ou à la reprise de la ComptaBB existante. Ce dossier doit contenir : (1) les modèles d'import documentés pour le plan comptable, les journaux, Axe1, Axe2, les membres/tiers, les écritures, les paramètres et les relevés bancaires ; (2) les exports complets des données existantes dans ces mêmes formats ; (3) un README précisant noms de fichiers, colonnes obligatoires, types, formats de dates et de montants, ordre d'import, règles de mapping, contrôles, gestion des doublons et procédure de reprise/annulation. Les chemins doivent être relatifs au dossier `Applications/comptaBB` et paramétrables, sans chemin utilisateur codé en dur. |
+| Import | Généraliser la requête Power Query à B2, B3 et à la caisse (un fichier par banque, chemin dans Paramètres) ; même structure de sortie que T_Banque1. Claude Code doit définir et créer le dossier `Applications/comptaJLC/Imports`, destiné à l'initialisation d'une nouvelle comptabilité ou à la reprise de la ComptaJLC existante. Ce dossier doit contenir : (1) les modèles d'import documentés pour le plan comptable, les journaux, Axe1, Axe2, les membres/tiers, les écritures, les paramètres et les relevés bancaires ; (2) les exports complets des données existantes dans ces mêmes formats ; (3) un README précisant noms de fichiers, colonnes obligatoires, types, formats de dates et de montants, ordre d'import, règles de mapping, contrôles, gestion des doublons et procédure de reprise/annulation. Les chemins doivent être relatifs au dossier `Applications/comptaJLC` et paramétrables, sans chemin utilisateur codé en dur. |
 | Pointage | Correspondance automatique montant + date (± tolérance paramétrable), puis manuelle ; gestion des regroupements (une remise de chèques = plusieurs règlements ; frais mensuels regroupés) ; identifiant de rapprochement stocké côté relevé et côté écriture. |
 | État de rapprochement | À une date donnée : solde relevé, solde comptable, écritures non pointées, lignes du relevé non pointées, écart expliqué = 0. Écart par mois (déjà dans Banque1). |
 | Création d'écritures | Depuis une ligne du relevé non pointée (frais, carte, intérêts) : proposer l'écriture via les modèles du Lot 1, à valider. |
@@ -123,14 +123,14 @@ Réponses portées dans la feuille au 26/09/2026.
 
 | | |
 |---|---|
-| Dossier projet | Créer le projet dans `Applications/comptaBB`. Le classeur de référence, le présent cahier des charges et le dossier Imports doivent être accessibles depuis cette racine. Utiliser exclusivement des chemins relatifs et paramétrables. |
+| Dossier projet | Créer le projet dans `Applications/comptaJLC`. Le classeur de référence, le présent cahier des charges et le dossier Imports doivent être accessibles depuis cette racine. Utiliser exclusivement des chemins relatifs et paramétrables. |
 | Contexte Claude Code | Créer à la racine un fichier CLAUDE.md concis décrivant le contexte métier, l'architecture, les commandes de test, les conventions, les interdits du présent cahier et les critères d'acceptation. Le versionner avec le projet. |
 | Structure minimale | README.md ; CLAUDE.md ; .gitignore ; docs/ ; Imports/modeles/ ; Imports/reprise/ ; Imports/README.md ; src/ ; tests/. Ne jamais versionner de secrets, jetons, mots de passe, fichiers temporaires Excel ni données personnelles non nécessaires. |
-| Gestion Git | Initialiser un dépôt Git dans `Applications/comptaBB`, branche principale main. Réaliser chaque lot sur une branche dédiée (lot-1-saisie, lot-2-membres, lot-3-rapprochement, lot-4-cloture), avec commits courts et explicites, puis revue et fusion après validation. |
-| Dépôt distant | Créer un dépôt privé GitHub nommé comptaBB, rattacher origin et pousser main. Protéger main : changements par pull request, revue avant fusion et contrôles automatiques obligatoires lorsque disponibles. |
+| Gestion Git | Initialiser un dépôt Git dans `Applications/comptaJLC`, branche principale main. Réaliser chaque lot sur une branche dédiée (lot-1-saisie, lot-2-membres, lot-3-rapprochement, lot-4-cloture), avec commits courts et explicites, puis revue et fusion après validation. |
+| Dépôt distant | Créer un dépôt privé GitHub nommé comptaJLC, rattacher origin et pousser main. Protéger main : changements par pull request, revue avant fusion et contrôles automatiques obligatoires lorsque disponibles. |
 | Sauvegarde des données | Le code, les modèles d'import anonymisés et la documentation sont versionnés. Les exports réels du dossier Imports/reprise ne sont versionnés que dans un dépôt privé autorisé ; sinon les exclure via .gitignore et conserver une sauvegarde chiffrée séparée. |
 | Livraison par lot | Avant chaque fusion : sauvegarde du classeur, Contrôles = OK, tests documentés, comparaison des totaux avant/après, mise à jour du README, du CLAUDE.md si nécessaire, du Compte rendu et du journal des modifications. |
-| Acceptation finale | Le dépôt doit permettre à un poste neuf de reconstruire ou reprendre ComptaBB en suivant uniquement README.md et Imports/README.md, sans chemin absolu ni donnée manquante. Une version Git étiquetée v1.0.0 est créée après recette finale. |
+| Acceptation finale | Le dépôt doit permettre à un poste neuf de reconstruire ou reprendre ComptaJLC en suivant uniquement README.md et Imports/README.md, sans chemin absolu ni donnée manquante. Une version Git étiquetée v1.0.0 est créée après recette finale. |
 
 ## 13. Procédure pratique de démarrage
 
@@ -138,13 +138,13 @@ Réponses portées dans la feuille au 26/09/2026.
 |---|---|
 | Prérequis | Installer Git for Windows et GitHub CLI, disposer d'un compte Claude Code compatible et d'un compte GitHub autorisé à créer un dépôt privé. |
 | Installer Claude Code | Dans PowerShell : `winget install Anthropic.ClaudeCode`, `claude --version`, `claude doctor` |
-| Ouvrir le projet | Dans PowerShell : `cd "D:\OneDrive\Applications\comptaBB"` puis `claude` |
+| Ouvrir le projet | Dans PowerShell : `cd "D:\OneDrive\Applications\comptaJLC"` puis `claude` |
 | Initialiser Claude | Dans la session Claude Code, lancer /init afin de créer ou améliorer CLAUDE.md. Vérifier avec /context que CLAUDE.md est bien chargé. |
 | Consigne initiale | Lis CLAUDE.md, le classeur de référence et le cahier des charges. Inventorie le projet et les données. Présente un plan détaillé par lots sans modifier les écritures existantes, puis attends ma validation avant de commencer le lot 1. Pour chaque lot, crée une branche Git, teste les contrôles et les totaux, documente les changements et prépare une pull request. |
-| Initialiser Git localement | Depuis `Applications/comptaBB` : `git init -b main`, `git add .`, `git commit -m "Initialisation du projet ComptaBB"` |
-| Créer le dépôt GitHub | `gh repo create comptaBB --private --source=. --remote=origin --push`. Ne pas préinitialiser séparément le dépôt distant avec README, licence ou .gitignore si ces fichiers existent déjà localement. |
+| Initialiser Git localement | Depuis `Applications/comptaJLC` : `git init -b main`, `git add .`, `git commit -m "Initialisation du projet ComptaJLC"` |
+| Créer le dépôt GitHub | `gh repo create comptaJLC --private --source=. --remote=origin --push`. Ne pas préinitialiser séparément le dépôt distant avec README, licence ou .gitignore si ces fichiers existent déjà localement. |
 | Travailler par lot | `git switch -c lot-1-saisie` ; réaliser et tester le lot ; `git add .` ; `git commit -m "Lot 1 : saisie guidée"` ; `git push -u origin lot-1-saisie` ; créer ensuite une pull request vers main et ne fusionner qu'après validation. |
 | Protéger main | Dans GitHub, activer une règle de protection de la branche main : pull request obligatoire, revue avant fusion et contrôles automatiques requis lorsque disponibles. |
 | Données sensibles | Conserver le dépôt privé. Ne jamais committer les secrets, jetons, fichiers temporaires Excel ni données personnelles non nécessaires. Si les exports réels de reprise ne sont pas autorisés dans Git, ajouter Imports/reprise/ au .gitignore et les sauvegarder séparément de manière chiffrée. |
-| Clôturer une version | `git switch main` ; `git pull` ; `git tag -a v1.0.0 -m "Version initiale validée de ComptaBB"` ; `git push origin v1.0.0` |
+| Clôturer une version | `git switch main` ; `git pull` ; `git tag -a v1.0.0 -m "Version initiale validée de ComptaJLC"` ; `git push origin v1.0.0` |
 | Références | Claude Code – installation : code.claude.com/docs/en/setup · CLAUDE.md et /init : code.claude.com/docs/en/memory · GitHub – création d'un dépôt : docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository |

@@ -1,6 +1,6 @@
-name: Application ComptaBB
+name: Application ComptaJLC
 
-# Tests à chaque envoi (l'ancien programme du PC, ComptaBB.exe, n'est plus construit).
+# Tests à chaque envoi (l'ancien programme du PC, ComptaJLC.exe, n'est plus construit).
 on:
   push:
   pull_request:
@@ -14,9 +14,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r appli/requirements.txt pyflakes
-      - run: python -m pyflakes appli/compta appli/comptabb src tests
+      - run: python -m pyflakes appli/compta appli/comptajlc src tests
       - run: python manage.py test compta
         working-directory: appli
         env:
-          COMPTABB_DATA: ${{ runner.temp }}/data
+          COMPTAJLC_DATA: ${{ runner.temp }}/data
       - run: python -m unittest discover tests

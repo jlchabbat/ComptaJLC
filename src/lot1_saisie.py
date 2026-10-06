@@ -1,6 +1,6 @@
 """Lot 1 — saisie guidée, création de codes, statut des codes Anal2.
 
-    python src/lot1_saisie.py ComptaBB_lot0.xlsm ComptaBB.xlsm
+    python src/lot1_saisie.py ComptaJLC_lot0.xlsm ComptaJLC.xlsm
 
 S'applique au classeur produit par le Lot 0. Même méthode : édition directe
 du XML, 100 % formules (décision Q5), rien n'est écrit dans les écritures.

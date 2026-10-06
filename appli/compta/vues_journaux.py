@@ -102,7 +102,7 @@ def historique_excel(request):
             [[m.date.replace(tzinfo=None), m.auteur, m.lot, m.action, m.objet, m.avant, m.apres] for m in qs])
     for row in wb["Historique"].iter_rows(min_row=2):
         row[0].number_format = "DD/MM/YYYY HH:MM"
-    return reponse_excel(wb, "ComptaBB_historique.xlsx")
+    return reponse_excel(wb, "ComptaJLC_historique.xlsx")
 
 
 @login_required

@@ -140,7 +140,7 @@
     // en-tête simple (ni colonnes ni lignes fusionnées) ; les lignes de total ou de remarque peuvent fusionner des colonnes
     var simple = !entete.querySelector("th[colspan], td[colspan], th[rowspan], td[rowspan]") && !table.querySelector("td[rowspan]");
     if (!simple || n < 2 || table.querySelector("tr.sit-compte, tr.sit-sous-total")) return;
-    var cle = "comptabb-masquees:" + location.pathname + ":" + rang, masquees = lire(cle) || [];
+    var cle = "comptajlc-masquees:" + location.pathname + ":" + rang, masquees = lire(cle) || [];
     var titre = function (i) { return (entete.cells[i].textContent || "").replace(/[▾▴▲▼]/g, "").trim() || "(colonne " + (i + 1) + ")"; };
 
     function appliquer() {

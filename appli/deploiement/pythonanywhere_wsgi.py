@@ -4,11 +4,11 @@
 import os
 import sys
 
-sys.path.insert(0, "/home/VOTRE_NOM/ComptaBB/appli")
-os.environ["DJANGO_SETTINGS_MODULE"] = "comptabb.settings"
-os.environ["COMPTABB_DATA"] = "/home/VOTRE_NOM/comptabb-data"
-os.environ["COMPTABB_HOTES"] = "VOTRE_NOM.pythonanywhere.com"
-os.environ["COMPTABB_HTTPS"] = "1"
+sys.path.insert(0, "/home/VOTRE_NOM/ComptaJLC/appli")
+os.environ["DJANGO_SETTINGS_MODULE"] = "comptajlc.settings"
+os.environ["COMPTAJLC_DATA"] = "/home/VOTRE_NOM/comptajlc-data"
+os.environ["COMPTAJLC_HOTES"] = "VOTRE_NOM.pythonanywhere.com"
+os.environ["COMPTAJLC_HTTPS"] = "1"
 
 from django.core.wsgi import get_wsgi_application  # noqa: E402
 

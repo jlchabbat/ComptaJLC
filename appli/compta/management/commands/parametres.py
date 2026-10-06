@@ -1,4 +1,4 @@
-"""Paramètres de ComptaBB dans Imports/Parametres.xlsx (modifiable dans Excel, puis réinjecté).
+"""Paramètres de ComptaJLC dans Imports/Parametres.xlsx (modifiable dans Excel, puis réinjecté).
 
     python manage.py parametres exporter [fichier]     écrit le classeur (défaut : Imports/Parametres.xlsx)
     python manage.py parametres importer [fichier]     réinjecte le classeur (sauvegarde de la base d'abord)

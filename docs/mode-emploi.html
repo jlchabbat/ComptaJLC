@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Mode d'emploi</title>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaJLC – Mode d'emploi</title>
 <style>
 @page { size: A4; margin: 15mm 14mm 16mm 14mm; }
 body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
@@ -29,9 +29,9 @@ a { color: #1f5fbf; }
 </style></head><body>
 
 <div class="couverture">
-<h1>ComptaBB</h1>
+<h1>ComptaJLC</h1>
 <div class="st">Mode d'emploi détaillé – comptabilité de la Loge Bnei Brith (₪)</div>
-<div class="bloc">Adresse : <b><a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a></b><br>
+<div class="bloc">Adresse : <b><a href="https://comptajlc.pythonanywhere.com">https://comptajlc.pythonanywhere.com</a></b><br>
 Pour : l'administrateur, le trésorier, les membres du bureau et les bénévoles<br>
 Ce document est livré avec l'application : <b>Éditions › Mode d'emploi (PDF)</b> ouvre toujours la version à jour.<br>
 Version du 27/09/2026</div>
@@ -65,7 +65,7 @@ sur une même ligne qui reste visible quand on fait défiler la page. Il n'y a a
 <h1 id="c1">1. Accès, connexion, Mon compte et rôles</h1>
 <h2>Se connecter</h2>
 <ol>
-<li>Ouvrir <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> (Edge, Chrome, Safari ; ordinateur, tablette ou téléphone).</li>
+<li>Ouvrir <a href="https://comptajlc.pythonanywhere.com">https://comptajlc.pythonanywhere.com</a> (Edge, Chrome, Safari ; ordinateur, tablette ou téléphone).</li>
 <li>Saisir son <b>identifiant ou son adresse e-mail</b> et son <b>mot de passe</b>, puis <b>Se connecter</b>.</li>
 <li>Pour quitter : <b>Se déconnecter</b> en haut à droite (surtout sur un ordinateur partagé).</li>
 </ol>
@@ -190,7 +190,7 @@ peuvent en joindre, et seul le trésorier peut en supprimer.</li>
 <li>Un justificatif peut encore être joint dans un exercice clos, mais plus supprimé. Ajouts et suppressions sont inscrits dans l'Historique.</li>
 <li>Menu <span class="menu">Consulter › Écritures</span> : la colonne 📎 signale les mouvements qui ont des justificatifs, et le filtre
 <b>Justificatif : Sans</b> liste les mouvements à compléter.</li>
-<li>Les fichiers sont rangés sur le site dans <code>comptabb-data/Justificatifs</code> et sont repris dans l'<b>export complet</b>.
+<li>Les fichiers sont rangés sur le site dans <code>comptajlc-data/Justificatifs</code> et sont repris dans l'<b>export complet</b>.
 Offre gratuite PythonAnywhere : 512 Mo d'espace en tout ; préférer des PDF ou photos de taille raisonnable.</li></ul>
 <h2>Documents existants : dépôt en masse</h2>
 <p><span class="menu">Administration › Justificatifs existants</span> (administrateur et trésorier) : pour joindre d'un coup les scans
@@ -210,7 +210,7 @@ cadre <b>Choisir un document déjà déposé</b>, choisir le ou les documents, <
 (« 389 facture.pdf ») rend le rattachement automatique.</p>
 <h2>Documents restés en ligne</h2>
 <p>Sur la même page, déposer un <b>extrait Excel</b> (une ligne par document, avec son lien). Chaque ligne qui a un lien vers un document
-est proposée au mouvement de <b>même date et même montant</b>. Le document reste en ligne : ComptaBB garde son <b>lien</b> 🔗, qui l'ouvre (être connecté au site du document dans le navigateur).
+est proposée au mouvement de <b>même date et même montant</b>. Le document reste en ligne : ComptaJLC garde son <b>lien</b> 🔗, qui l'ouvre (être connecté au site du document dans le navigateur).
 Les lignes dont la date et le montant correspondent à plusieurs mouvements sont « à vérifier » : la raison indique les n° de Mvt
 possibles, saisir le bon. Redéposer un extrait plus récent n'ajoute que les nouveaux liens.</p>
 <p>Un <b>tableau Excel fait à la main</b> convient aussi : une colonne <b>Mvt</b> (ou <b>Pièce</b>) et, sur chaque ligne, le lien
@@ -220,7 +220,7 @@ possibles, saisir le bon. Redéposer un extrait plus récent n'ajoute que les no
 reste noté dans l'Historique). Pour les liens restés en 🔗, <span class="menu">Administration › Justificatifs existants</span> ›
 <b>Les enregistrer sur le site</b> (25 par clic ; en console : <code>python manage.py rapatrier_justificatifs</code>). Si le site du document refuse
 (connexion demandée) ou si l'offre gratuite de PythonAnywhere n'autorise pas ce site, télécharger les PDF sur le PC, les ranger dans un
-dossier (par exemple <code>D:\OneDrive\Applications\ComptaBB\Justificatifs</code>), les nommer avec le n° de Mvt en tête (« 389 facture.pdf »),
+dossier (par exemple <code>D:\OneDrive\Applications\ComptaJLC\Justificatifs</code>), les nommer avec le n° de Mvt en tête (« 389 facture.pdf »),
 compresser le dossier (clic droit › Envoyer vers › Dossier compressé) et déposer le ZIP sur la même page.</p>
 
 <!-- 5 -->
@@ -417,14 +417,14 @@ journal, montant, comptes).</li>
 <li><b>Tout réinjecter</b> (taper REMPLACER) : les fichiers Ecritures, Banque, Bit et Budget remplacent toutes les données de leur nature.</li></ol>
 <h2>Les dossiers Imports, Exports et Sauvegardes</h2>
 <p>Ils se règlent en bas de la page Imports / Exports (ou dans Reglages.xlsx : clés dossier_imports, dossier_exports, dossier_sauvegardes).
-Laissés vides, ce sont les dossiers de <code>comptabb-data</code> (conseillé) ; on télécharge les fichiers depuis l'application. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
+Laissés vides, ce sont les dossiers de <code>comptajlc-data</code> (conseillé) ; on télécharge les fichiers depuis l'application. Le dossier Exports contient aussi <b>Archives</b> (classeurs de clôture, historiques effacés) et les exports complets.</p>
 <h2>Base de données</h2>
 <figure><img src="images/17_base.png"><figcaption>Sauvegardes, export complet et remise à zéro.</figcaption></figure>
 <ul><li><b>Tout exporter</b> : un fichier <b>Export_complet_….zip</b> (base, Parametres.xlsx, Tiers.xlsx, Ecritures.xlsx, Donnees.xlsx, justificatifs, états de chaque exercice, contrôle).
 Toutes les données y sont ; seuls les comptes utilisateurs ne sont que dans la base.</li>
 <li><b>Créer une sauvegarde</b> / <b>Télécharger la base maintenant</b> : copie complète ; à faire chaque mois et avant une clôture.</li>
 <li><b>Remettre à zéro et recharger</b> (taper REMPLACER) depuis une sauvegarde .sqlite3 (tout redevient comme à ce moment-là, utilisateurs compris),
-un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaBB.xlsm. Une sauvegarde est faite juste avant.</li>
+un export complet .zip (rechargé puis contrôlé : au moindre écart, rien n'est modifié) ou le classeur ComptaJLC.xlsm. Une sauvegarde est faite juste avant.</li>
 <li><b>Corriger en masse puis recharger</b> : Tout exporter, télécharger l'export, le décompresser, modifier dans Excel Ecritures.xlsx,
 Tiers.xlsx, Parametres.xlsx ou Donnees.xlsx sans toucher aux en-têtes, recompresser le dossier (clic droit › Envoyer vers › Dossier compressé),
 puis Remettre à zéro et recharger avec ce .zip en cochant <b>Fichiers modifiés</b>. Contrôles : Mvt équilibrés, débit OU crédit, codes existants ;
@@ -434,13 +434,13 @@ au moindre défaut, rien n'est modifié.</li></ul>
 <!-- 14 -->
 <h1 id="c14">14. Mises à jour, commandes, problèmes fréquents, glossaire</h1>
 <h2>Mettre l'application à jour</h2>
-<ol><li>Sur GitHub, dépôt ComptaBB, choisir la branche indiquée, <b>Code › Download ZIP</b> (sans renommer le fichier).</li>
+<ol><li>Sur GitHub, dépôt ComptaJLC, choisir la branche indiquée, <b>Code › Download ZIP</b> (sans renommer le fichier).</li>
 <li>Sur PythonAnywhere, onglet <b>Files</b> › <b>Upload a file</b>.</li>
 <li>Dans une console Bash : <code>bash ~/maj.sh</code> (sauvegarde de la base, nouveau code, bibliothèques, mise à niveau de la base, rechargement).</li>
-<li><b>Ctrl+F5</b> sur une page de ComptaBB. En cas de problème : <code>bash ~/maj.sh --retour</code> remet la version précédente du code.</li></ol>
+<li><b>Ctrl+F5</b> sur une page de ComptaJLC. En cas de problème : <code>bash ~/maj.sh --retour</code> remet la version précédente du code.</li></ol>
 <p>La présentation et ce mode d'emploi sont mis à jour en même temps (menu Éditions).</p>
 <h2>Commandes de la console (PythonAnywhere)</h2>
-<p>Se placer d'abord dans l'application : <code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTABB_DATA=~/comptabb-data</code></p>
+<p>Se placer d'abord dans l'application : <code>cd ~/ComptaJLC/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTAJLC_DATA=~/comptajlc-data</code></p>
 <table><tr><th style="width:40%">Commande</th><th>Effet</th></tr>
 <tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (dossier Sauvegardes ; les 3 dernières sont gardées).</td></tr>
 <tr><td><code>python manage.py restaurer</code></td><td>Liste les sauvegardes, les plus récentes d'abord.</td></tr>
@@ -451,7 +451,7 @@ au moindre défaut, rien n'est modifié.</li></ul>
 <tr><td><code>python manage.py changepassword identifiant</code></td><td>Donne un nouveau mot de passe à un utilisateur.</td></tr></table>
 <h2>Sauvegarde automatique chaque nuit</h2>
 <p>PythonAnywhere, onglet <b>Tasks</b>, tâche quotidienne :<br>
-<code>COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</code></p>
+<code>COMPTAJLC_DATA=/home/ComptaJLC/comptajlc-data /home/ComptaJLC/venv/bin/python /home/ComptaJLC/ComptaJLC/appli/manage.py sauvegarder</code></p>
 <h2>Problèmes fréquents</h2>
 <table><tr><th style="width:36%">Situation</th><th>Que faire</th></tr>
 <tr><td>Mot de passe oublié</td><td>L'administrateur en donne un nouveau (Administration › Utilisateurs) ; ou en console : <code>python manage.py changepassword identifiant</code>.</td></tr>
@@ -462,7 +462,7 @@ au moindre défaut, rien n'est modifié.</li></ul>
 <tr><td>Report d'une fiche refusé</td><td>Lire la colonne Contrôle : tiers provisoire sans compte, mode ou axe 2 manquant (Gestion)…</td></tr>
 <tr><td>Un bénévole n'est pas proposé</td><td>Il doit avoir une fiche tiers de type Membre, non démissionnaire, sans compte de bénévole.</td></tr>
 <tr><td>Je ne trouve pas le bouton</td><td>Il est en haut à gauche de la page, sous le titre.</td></tr>
-<tr><td>La page n'a pas changé après une mise à jour</td><td>Ctrl+F5 sur une page de ComptaBB.</td></tr>
+<tr><td>La page n'a pas changé après une mise à jour</td><td>Ctrl+F5 sur une page de ComptaJLC.</td></tr>
 <tr><td>Le site ne répond plus (offre gratuite)</td><td>PythonAnywhere › Web › <b>Run until 3 months from today</b> (tous les 3 mois).</td></tr>
 </table>
 <h2>Glossaire</h2>

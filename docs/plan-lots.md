@@ -87,7 +87,7 @@ relevé (date + montant + référence + rang), ne bouge pas.
   utilisé, ligne de journal préparée.
 - **Journal des modifications** : table T_Journal, créée au Lot 0 ; lignes
   de journal préparées par l'écran, à coller.
-- **Classeur de saisie externe** `ComptaBB_Saisie.xlsx` et zone
+- **Classeur de saisie externe** `ComptaJLC_Saisie.xlsx` et zone
   « Transmission » du maître (voir « Accès à distance »).
 - Modèle d'opération « Paiement carte Isracard » : 6xx contre 580000, puis
   580000 contre 512000 au prélèvement (décision Q2).
@@ -158,7 +158,7 @@ Points encore ouverts : voir `docs/livraison-lot0.md`.
 
 ## Accès à distance : consultation et transmission
 
-**Principe : le dossier `ComptaBB` n'est jamais partagé en entier**, car il
+**Principe : le dossier `ComptaJLC` n'est jamais partagé en entier**, car il
 contient le classeur maître et les relevés bancaires. On ouvre deux accès
 distincts par OneDrive, chacun limité à ce qu'il faut. La protection des
 onglets (sans mot de passe, §9) évite les erreurs de manipulation. **Ce sont
@@ -168,7 +168,7 @@ les droits OneDrive qui contrôlent réellement l'accès.**
 
 | | Option A : lien vers le classeur maître | Option B : copie de consultation |
 |---|---|---|
-| Quoi | Lien OneDrive « Peut afficher » sur `ComptaBB.xlsm` | `Consultation\ComptaBB_Consultation.xlsx`, copie figée en valeurs, sans les onglets de données personnelles |
+| Quoi | Lien OneDrive « Peut afficher » sur `ComptaJLC.xlsm` | `Consultation\ComptaJLC_Consultation.xlsx`, copie figée en valeurs, sans les onglets de données personnelles |
 | Fraîcheur | Toujours à jour | Mise à jour par le trésorier (après chaque clôture mensuelle, par exemple) |
 | Ouverture | Excel pour le web, dans le navigateur, sans rien installer | Idem |
 | Limite | Le lecteur voit tous les onglets (dont les membres au Lot 2) et peut télécharger une copie | Travail manuel : pas de macro d'export (Q5) |
@@ -189,7 +189,7 @@ Réglages du lien, dans OneDrive › Partager :
 
 1. Un dossier `Transmissions\` est partagé en « Peut modifier » avec le
    seul saisisseur.
-2. Il contient un **classeur de saisie** `ComptaBB_Saisie.xlsx` (livré au
+2. Il contient un **classeur de saisie** `ComptaJLC_Saisie.xlsx` (livré au
    Lot 1). On y trouve l'onglet Saisie, les modèles d'opération et les listes
    de référence (comptes, journaux, codes Anal2) copiées en valeurs, mais
    **aucune écriture** du grand livre.

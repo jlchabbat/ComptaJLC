@@ -9,7 +9,7 @@ Inventaire établi en lecture seule, avant le Lot 0 ; les changements du Lot 0 s
 |---|---|---|
 | Accueil | Menu, période P_Debut / P_Fin (D5:D6), état des contrôles | 20 liens de menu |
 | Compte rendu | Travaux, constats, actions | |
-| CDC ComptaBB | Cahier des charges v1.1 | transcrit dans `docs/cahier-des-charges.md` |
+| CDC ComptaJLC | Cahier des charges v1.1 | transcrit dans `docs/cahier-des-charges.md` |
 | Tableau de bord | Indicateurs et 4 graphiques | 55 formules |
 | Synthèse | Résultat par axe, trésorerie, balance | |
 | Contrôles | 13 contrôles + lignes signalées | État général « OK – 1 point à vérifier » |

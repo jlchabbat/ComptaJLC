@@ -61,7 +61,7 @@ class AssociationForm(forms.Form):
     devise = forms.CharField(label="Devise (symbole)", max_length=10, initial="€",
                              widget=forms.TextInput(attrs={"list": "devises", "size": 6}))
     plan = forms.ChoiceField(label="Plan comptable", widget=forms.RadioSelect, initial="base", choices=[
-        ("base", "Plan de base proposé par ComptaBB (comptes, journaux, codes analytiques), modifiable ensuite"),
+        ("base", "Plan de base proposé par ComptaJLC (comptes, journaux, codes analytiques), modifiable ensuite"),
         ("importer", "J'importerai mes propres fichiers (plan comptable, journaux, codes…) à partir des modèles vierges")])
     debut = forms.DateField(label="Début du premier exercice", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     fin = forms.DateField(label="Fin du premier exercice", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
@@ -103,7 +103,7 @@ def assistant(request):
     form = AssociationForm(request.POST or None, initial={"debut": debut, "fin": fin})
     if request.method == "POST" and form.is_valid():
         fait = moteur.demarrer(form.cleaned_data, request.user.get_username())
-        messages.success(request, "ComptaBB est prêt : " + ", ".join(fait) + ".")
+        messages.success(request, "ComptaJLC est prêt : " + ", ".join(fait) + ".")
         if form.cleaned_data["plan"] == "importer":
             messages.info(request, "Téléchargez les modèles vierges, remplissez-les dans l'ordre de leur numéro, puis déposez-les ici.")
             return redirect("echanges")

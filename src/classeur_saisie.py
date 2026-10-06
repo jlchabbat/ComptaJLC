@@ -1,6 +1,6 @@
 """Classeur de saisie à distance, sans grand livre.
 
-    python src/classeur_saisie.py ComptaBB.xlsm ComptaBB_Saisie.xlsx
+    python src/classeur_saisie.py ComptaJLC.xlsm ComptaJLC_Saisie.xlsx
 
 Construit, à partir du classeur maître, un classeur léger pour un saisisseur
 bénévole. Il contient :
@@ -65,7 +65,7 @@ def base_openpyxl(donnees, chemin):
     par = wb.create_sheet("Paramètres")
 
     textes = [
-        ("B1", "ComptaBB – classeur de saisie à distance"),
+        ("B1", "ComptaJLC – classeur de saisie à distance"),
         ("B3", f"Référentiels extraits du classeur maître le {AUJOURDHUI:%d/%m/%Y}. Ne pas les modifier : demander au trésorier "
                "un nouveau classeur quand un membre ou un événement manque."),
         ("B5", "1. Onglet Saisie : remplir les cases jaunes ; quand tous les contrôles sont OK, les lignes à reporter sont en vert."),

@@ -134,7 +134,7 @@ def classeur(html):
             ws.column_dimensions[get_column_letter(c)].width = l
         if lignes and all(e for _, e in lignes[0]):
             ws.freeze_panes = "A2"
-    page = p.page.split("–")[0].strip() or "ComptaBB"
+    page = p.page.split("–")[0].strip() or "ComptaJLC"
     return wb, page
 
 
@@ -154,5 +154,5 @@ class ExportExcelMiddleware:
         if wb is None:
             return response
         from .vues_journaux import reponse_excel
-        nom = re.sub(r"[^\w-]+", "_", page).strip("_") or "ComptaBB"
+        nom = re.sub(r"[^\w-]+", "_", page).strip("_") or "ComptaJLC"
         return reponse_excel(wb, f"{nom}_{dt.datetime.now():%Y-%m-%d_%H%M%S}.xlsx")

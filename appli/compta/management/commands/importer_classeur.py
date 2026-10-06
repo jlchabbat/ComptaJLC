@@ -1,6 +1,6 @@
-"""Reprise des données du classeur ComptaBB.xlsm (Lot 0 et suivants).
+"""Reprise des données du classeur ComptaJLC.xlsm (Lot 0 et suivants).
 
-    python manage.py importer_classeur chemin/ComptaBB.xlsm [--remplacer]
+    python manage.py importer_classeur chemin/ComptaJLC.xlsm [--remplacer]
 
 Lit les tables du classeur (valeurs calculées par Excel au dernier
 enregistrement) : T_Axe1, T_Axe2, T_Prefixes, T_PlanComptable, T_Journaux,
@@ -54,7 +54,7 @@ def jour(v):
 
 
 class Command(BaseCommand):
-    help = "Reprend les données du classeur ComptaBB.xlsm."
+    help = "Reprend les données du classeur ComptaJLC.xlsm."
 
     def add_arguments(self, parser):
         parser.add_argument("classeur")

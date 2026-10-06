@@ -1,8 +1,8 @@
 from django.db import migrations
 
 DOSSIERS = {
-    "dossier_exports": (r"D:\OneDrive\Applications\ComptaBB\Exports", "Dossier où l'application écrit ses exports"),
-    "dossier_sauvegardes": (r"D:\OneDrive\Applications\ComptaBB\Exports\Sauvegardes",
+    "dossier_exports": (r"D:\OneDrive\Applications\ComptaJLC\Exports", "Dossier où l'application écrit ses exports"),
+    "dossier_sauvegardes": (r"D:\OneDrive\Applications\ComptaJLC\Exports\Sauvegardes",
                             "Dossier des sauvegardes de la base (copies .sqlite3)"),
 }
 

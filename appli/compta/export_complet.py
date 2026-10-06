@@ -1,7 +1,7 @@
 """Export complet en une opération, et réinjection d'un export complet dans une base remise à zéro.
 
 L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
-- comptabb.sqlite3 : sauvegarde de la base (restauration exacte, comptes utilisateurs compris) ;
+- comptajlc.sqlite3 : sauvegarde de la base (restauration exacte, comptes utilisateurs compris) ;
 - Parametres.xlsx : les paramètres (même classeur que la page Paramètres) ;
 - Tiers.xlsx : les fiches tiers (même format que l'import Tiers.xlsx) ;
 - Ecritures.xlsx : toutes les écritures (une ligne par ligne d'écriture, avec pointage, origine et auteur) ;
@@ -10,7 +10,7 @@ L'export (Exports/Export_complet_AAAA-MM-JJ_HHMMSS.zip) contient :
 - Justificatifs/ : les scans et photos joints aux mouvements ;
 - Etats_<exercice>.xlsx : états de chaque exercice (lecture seule) ;
 - controle.json : nombres et totaux, pour vérifier une réinjection.
-Seuls les comptes utilisateurs (identifiants, mots de passe) ne sont que dans comptabb.sqlite3.
+Seuls les comptes utilisateurs (identifiants, mots de passe) ne sont que dans comptajlc.sqlite3.
 
 La réinjection vide la comptabilité (les comptes utilisateurs sont gardés), recharge Parametres, Tiers, Ecritures et
 Donnees, puis compare la base obtenue à controle.json. Tout ou rien : au moindre écart, rien n'est modifié.
@@ -324,7 +324,7 @@ def exporter(auteur=""):
     controle = empreinte()
     controle.update(cree_le=f"{dt.datetime.now():%d/%m/%Y %H:%M}", auteur=auteur)
     with zipfile.ZipFile(chemin, "w", zipfile.ZIP_DEFLATED) as z:
-        z.write(sauvegarde, "comptabb.sqlite3")
+        z.write(sauvegarde, "comptajlc.sqlite3")
         z.writestr("Parametres.xlsx", parametres.contenu_classeur())
         z.writestr("Tiers.xlsx", _octets(classeur_tiers()))
         z.writestr("Ecritures.xlsx", _octets(classeur_donnees([ECRITURES])))

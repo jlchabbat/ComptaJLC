@@ -1,4 +1,4 @@
-# ComptaBB : spécification des fichiers (version de travail du 02/10/2026)
+# ComptaJLC : spécification des fichiers (version de travail du 02/10/2026)
 
 Objet : une gestion d'association **sans TVA**, **mono-devise**, confiée à des **bénévoles néophytes** en informatique et en
 comptabilité. Tous les échanges se font par fichiers **Excel (.xlsx, .xlsm en import) ou .csv**, avec **la même structure à l'import et à l'export**.
@@ -103,7 +103,7 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 ## 6 bis. Compléments du 02/10/2026
 
 ### Fichiers venus d'une autre application
-Aucun format d'une application tierce n'est lu par ComptaBB : les fichiers issus de **n'importe quelle autre application de
+Aucun format d'une application tierce n'est lu par ComptaJLC : les fichiers issus de **n'importe quelle autre application de
 comptabilité** sont **adaptés par l'administrateur** à la structure définie ci-dessus (modèles dans `Imports/modeles/csv/`),
 puis importés. Un message d'erreur en français indique la ligne et la rubrique à corriger.
 

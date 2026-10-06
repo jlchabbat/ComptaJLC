@@ -1,18 +1,18 @@
-# ComptaBB
+# ComptaJLC
 
-> **Application web** : dossier [`appli/`](appli/README.md) (Django). **Application en ligne (PythonAnywhere)** ; l'ancien programme du PC `ComptaBB.exe` est abandonné. Le classeur Excel des Lots 0 et 1 sert de transition jusqu'à sa mise en service.
+> **Application web** : dossier [`appli/`](appli/README.md) (Django). **Application en ligne (PythonAnywhere)** ; l'ancien programme du PC `ComptaJLC.exe` est abandonné. Le classeur Excel des Lots 0 et 1 sert de transition jusqu'à sa mise en service.
 
 Comptabilité de l'association (Loge Bnei Brith, Israël, comptes en ₪),
 tenue directement dans un classeur Excel : saisie guidée pour bénévoles,
 suivi des membres, rapprochement bancaire, clôture et états annuels.
 
-Dépôt privé : https://github.com/jlchabbat/ComptaBB
+Dépôt privé : https://github.com/jlchabbat/ComptaJLC
 
 ## Installation sur le poste
 
 ```
-D:\OneDrive\Applications\ComptaBB\
-    ComptaBB.xlsm          le classeur (hors Git : données de l'association)
+D:\OneDrive\Applications\ComptaJLC\
+    ComptaJLC.xlsm          le classeur (hors Git : données de l'association)
     Releves\               relevés bancaires téléchargés (hors Git), dont tnuot.pdf
     config.json            nom du classeur, dossier Imports
     docs\                  cahier des charges, inventaire, plan par lots
@@ -21,9 +21,9 @@ D:\OneDrive\Applications\ComptaBB\
     tests\                 tests et photographies des totaux
 ```
 
-1. Cloner le dépôt dans `D:\OneDrive\Applications\ComptaBB` :
-   `git clone https://github.com/jlchabbat/ComptaBB "D:\OneDrive\Applications\ComptaBB"`
-2. Y déposer le classeur `ComptaBB.xlsm` (produit du Lot 0) et le relevé
+1. Cloner le dépôt dans `D:\OneDrive\Applications\ComptaJLC` :
+   `git clone https://github.com/jlchabbat/ComptaJLC "D:\OneDrive\Applications\ComptaJLC"`
+2. Y déposer le classeur `ComptaJLC.xlsm` (produit du Lot 0) et le relevé
    Banque 1 sous `Releves\tnuot.pdf`. Le nom du classeur se change dans
    `config.json`.
 3. Pour les outils de contrôle, installer Python 3 puis
@@ -77,10 +77,10 @@ Le classeur est reproductible depuis `Fusion.xlsm` :
 ```
 python src/lot0_preparation.py Fusion.xlsm lot0.xlsm
 python src/lot1_saisie.py lot0.xlsm lot1.xlsm
-python src/lot1_distance.py lot1.xlsm ComptaBB.xlsm
-python src/classeur_saisie.py ComptaBB.xlsm ComptaBB_Saisie.xlsx   classeur du saisisseur
-python src/classeur_liaison.py ComptaBB.xlsm ComptaBB_Liaison.xlsx  fichier de liaison (activité, gestion)
-python tests/recette_liaison.py ComptaBB.xlsm       recette LibreOffice (liaison)
+python src/lot1_distance.py lot1.xlsm ComptaJLC.xlsm
+python src/classeur_saisie.py ComptaJLC.xlsm ComptaJLC_Saisie.xlsx   classeur du saisisseur
+python src/classeur_liaison.py ComptaJLC.xlsm ComptaJLC_Liaison.xlsx  fichier de liaison (activité, gestion)
+python tests/recette_liaison.py ComptaJLC.xlsm       recette LibreOffice (liaison)
 python tests/recette_lot1.py lot0.xlsm              recette LibreOffice (15 scénarios)
 python tests/recette_lot1_distance.py lot1.xlsm     recette LibreOffice (saisie à distance)
 ```

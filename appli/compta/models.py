@@ -1,4 +1,4 @@
-"""Modèle comptable de ComptaBB.
+"""Modèle comptable de ComptaJLC.
 
 Un mouvement (Mvt) = une opération équilibrée : une date, un journal, une
 pièce, et des lignes qui portent chacune un débit OU un crédit, un compte et

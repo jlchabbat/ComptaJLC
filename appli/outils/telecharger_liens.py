@@ -1,9 +1,9 @@
-"""Télécharge, sur votre PC, tous les documents dont un classeur Excel donne le lien, dans un ZIP prêt à déposer dans ComptaBB.
+"""Télécharge, sur votre PC, tous les documents dont un classeur Excel donne le lien, dans un ZIP prêt à déposer dans ComptaJLC.
 
-Usage (rien à installer que Python) :   python telecharger_liens.py "Liens_en_ligne.csv"   (liste exportée par ComptaBB : chaque document
+Usage (rien à installer que Python) :   python telecharger_liens.py "Liens_en_ligne.csv"   (liste exportée par ComptaJLC : chaque document
 porte le n° de son mouvement) ou python telecharger_liens.py "EXTRACT.xlsx" (classeur Excel de liens).
 Résultat : un fichier « Documents_<date>.zip » à côté du classeur. Chaque document est nommé « <date> <montant> <libellé>.pdf » :
-ComptaBB le propose alors au mouvement de même date et même montant (Saisie › Justificatifs › Déposer).
+ComptaJLC le propose alors au mouvement de même date et même montant (Saisie › Justificatifs › Déposer).
 Les liens qui demandent une connexion : être connecté sur le site dans le navigateur ne suffit pas pour ce script ;
 ceux-là sont listés en fin de course pour être téléchargés à la main."""
 
@@ -88,7 +88,7 @@ def lire(chemin):
 
 
 def lire_csv(chemin):
-    """Liste des liens en ligne exportée par ComptaBB (« Liste des liens (CSV) ») : [(Mvt, lien)]."""
+    """Liste des liens en ligne exportée par ComptaJLC (« Liste des liens (CSV) ») : [(Mvt, lien)]."""
     import csv
     resultat = []
     with open(chemin, encoding="utf-8-sig", newline="") as f:

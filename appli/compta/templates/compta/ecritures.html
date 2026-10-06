@@ -2,7 +2,7 @@
 <h1>Écritures</h1>
 <div class="barre"><label>Montant exact <input form="f-filtres" name="montant" value="{{ filtres.montant }}" size="10" inputmode="decimal" placeholder="ex. 140 ou 1 500,00">{% if filtres.montant_erreur %}<span class="ko">{{ filtres.montant_erreur }}</span>{% endif %}</label><button form="f-filtres" class="principal">Chercher</button>{% if perms.compta.add_mouvement %}<a class="bouton principal" href="{% url 'mouvement_nouveau' %}">Écriture libre</a>{% endif %}
 <a class="bouton principal" href="?{% for k, v in request.GET.items %}{% if k != 'page' and k != 'format' and k != 'du' and k != 'au' %}{{ k }}={{ v|urlencode }}&amp;{% endif %}{% endfor %}du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=csv"
- title="Fichier .csv de la période et des filtres affichés, avec la structure d'échange de ComptaBB : Mvt, Jnl, Date, Compte, LibelCompte, Libelle, Debit, Credit, Anal1, LibelAnal1, Anal2, LibelAnal2, Lien, Let">Exporter en .csv</a></div>
+ title="Fichier .csv de la période et des filtres affichés, avec la structure d'échange de ComptaJLC : Mvt, Jnl, Date, Compte, LibelCompte, Libelle, Debit, Credit, Anal1, LibelAnal1, Anal2, LibelAnal2, Lien, Let">Exporter en .csv</a></div>
 {% if perms.compta.add_mouvement %}<p class="aide">Pour modifier une écriture, ouvrir son mouvement (n° Mvt). L'export .csv reprend la période et les filtres affichés.</p>{% endif %}
 <form class="filtres" method="get" id="f-filtres">
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>

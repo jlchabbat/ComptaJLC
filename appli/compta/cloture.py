@@ -127,7 +127,7 @@ def dossier_archives():
 def archiver(ex):
     """Classeur figé en valeurs : états, balance, grand livre et écritures de l'exercice."""
     from .export import classeur_exercice
-    nom = f"ComptaBB_{ex.libelle}".replace("/", "-").replace(" ", "_").replace("–", "-")[:80] + ".xlsx"
+    nom = f"ComptaJLC_{ex.libelle}".replace("/", "-").replace(" ", "_").replace("–", "-")[:80] + ".xlsx"
     classeur_exercice(ex).save(dossier_archives() / nom)
     return nom
 

@@ -1,6 +1,6 @@
 """Recette de la saisie à distance par recalcul LibreOffice.
 
-    python tests/recette_lot1_distance.py ComptaBB_lot1.xlsm [dossier_de_travail]
+    python tests/recette_lot1_distance.py ComptaJLC_lot1.xlsm [dossier_de_travail]
 
 1. Classeur de saisie : une cotisation réglée doit produire 4 lignes, Mvt 1.
 2. Classeur maître, onglet Transmission : des lignes reçues (Mvt 1 et 2)

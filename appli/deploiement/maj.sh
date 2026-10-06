@@ -1,11 +1,11 @@
 #!/bin/bash
-# Mise à jour de ComptaBB sur PythonAnywhere.
+# Mise à jour de ComptaJLC sur PythonAnywhere.
 #   bash ~/maj.sh            installe le dernier ZIP envoyé dans Files (sauvegarde de la base d'abord)
 #   bash ~/maj.sh --retour   remet la version précédente du code
-# Les données (dossier comptabb-data, avec Imports et Exports) ne sont jamais effacées.
+# Les données (dossier comptajlc-data, avec Imports et Exports) ne sont jamais effacées.
 set -e
 cd ~
-DATA=~/comptabb-data
+DATA=~/comptajlc-data
 SAUVEGARDES="$DATA/Exports/Sauvegardes"
 WSGI=$(ls /var/www/*_wsgi.py 2>/dev/null | head -1 || true)
 
@@ -22,10 +22,10 @@ echec() {
 trap echec ERR
 
 if [ "$1" = "--retour" ]; then
-  [ -d ComptaBB-ancien ] || { echo "Aucune version précédente (dossier ComptaBB-ancien absent)."; exit 1; }
-  rm -rf ComptaBB-annule
-  mv ComptaBB ComptaBB-annule
-  mv ComptaBB-ancien ComptaBB
+  [ -d ComptaJLC-ancien ] || { echo "Aucune version précédente (dossier ComptaJLC-ancien absent)."; exit 1; }
+  rm -rf ComptaJLC-annule
+  mv ComptaJLC ComptaJLC-annule
+  mv ComptaJLC-ancien ComptaJLC
   echo "Version précédente du code remise en place."
   recharger
   echo "Les données n'ont pas été touchées. Dernières sauvegardes de la base :"
@@ -33,9 +33,9 @@ if [ "$1" = "--retour" ]; then
   exit 0
 fi
 
-ZIP=$(ls -t ~/ComptaBB-*.zip 2>/dev/null | head -1 || true)
+ZIP=$(ls -t ~/ComptaJLC-*.zip 2>/dev/null | head -1 || true)
 if [ -z "$ZIP" ]; then
-  echo "Aucun fichier ComptaBB-….zip dans votre dossier : envoyez-le d'abord (onglet Files > Upload a file)."
+  echo "Aucun fichier ComptaJLC-….zip dans votre dossier : envoyez-le d'abord (onglet Files > Upload a file)."
   exit 1
 fi
 
@@ -45,9 +45,9 @@ if [ -d "$DATA/sauvegardes" ]; then                              # ancien emplac
   mv -n "$DATA"/sauvegardes/* "$SAUVEGARDES"/ 2>/dev/null || true
   rmdir "$DATA/sauvegardes" 2>/dev/null || true
 fi
-SAUVE="$SAUVEGARDES/comptabb_$(date +%Y-%m-%d_%H%M).sqlite3"
+SAUVE="$SAUVEGARDES/comptajlc_$(date +%Y-%m-%d_%H%M).sqlite3"
 python3 -c "import sqlite3, sys; s = sqlite3.connect(sys.argv[1]); d = sqlite3.connect(sys.argv[2]); s.backup(d); d.close()" \
-  "$DATA/comptabb.sqlite3" "$SAUVE"
+  "$DATA/comptajlc.sqlite3" "$SAUVE"
 ls -t "$SAUVEGARDES"/*.sqlite3 | tail -n +4 | xargs -r -d '\n' rm --       # garde les 3 dernières
 echo "   $SAUVE"
 if [ -d "$DATA/Justificatifs" ]; then                             # documents scannés : copie ZIP (facultative : jamais bloquante)
@@ -84,30 +84,30 @@ rm -rf ~/maj && mkdir ~/maj && unzip -q "$ZIP" -d ~/maj
 NOUVEAU=$(ls -d ~/maj/*/ 2>/dev/null | head -1 || true)
 if [ ! -f "$NOUVEAU/appli/manage.py" ]; then
   rm -rf ~/maj "$ZIP"
-  echo "Ce ZIP ne contient pas ComptaBB : il a été supprimé, rien n'a changé. Retéléchargez-le depuis GitHub."
+  echo "Ce ZIP ne contient pas ComptaJLC : il a été supprimé, rien n'a changé. Retéléchargez-le depuis GitHub."
   exit 1
 fi
-rm -rf ComptaBB-ancien
-[ -d ComptaBB ] && mv ComptaBB ComptaBB-ancien
-mv "$NOUVEAU" ~/ComptaBB
+rm -rf ComptaJLC-ancien
+[ -d ComptaJLC ] && mv ComptaJLC ComptaJLC-ancien
+mv "$NOUVEAU" ~/ComptaJLC
 rm -rf ~/maj
-rm -f ~/ComptaBB-*.zip
+rm -f ~/ComptaJLC-*.zip
 # place sur l'hébergement : seul le dossier appli/ fait tourner le site (documentation, tests et outils du PC restent sur GitHub)
-cd ~/ComptaBB && rm -rf docs tests src Imports .github *.md *.json 2>/dev/null || true
-find ~/ComptaBB -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+cd ~/ComptaJLC && rm -rf docs tests src Imports .github *.md *.json 2>/dev/null || true
+find ~/ComptaJLC -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
 cd ~
 
 echo "3/5 Bibliothèques Python"
 source ~/venv/bin/activate
-pip install -q --disable-pip-version-check -r ~/ComptaBB/appli/requirements.txt
+pip install -q --disable-pip-version-check -r ~/ComptaJLC/appli/requirements.txt
 
 echo "4/5 Base de données et paramètres"
-cd ~/ComptaBB/appli
-COMPTABB_DATA="$DATA" python manage.py preparer
+cd ~/ComptaJLC/appli
+COMPTAJLC_DATA="$DATA" python manage.py preparer
 cd ~
 
 echo "5/5 Rechargement du site"
 recharger
-cp ~/ComptaBB/appli/deploiement/maj.sh ~/maj.sh.nouveau && mv ~/maj.sh.nouveau ~/maj.sh   # le script se met à jour
+cp ~/ComptaJLC/appli/deploiement/maj.sh ~/maj.sh.nouveau && mv ~/maj.sh.nouveau ~/maj.sh   # le script se met à jour
 echo
 echo "MISE À JOUR TERMINÉE. Ouvrez le site et appuyez sur Ctrl+F5."

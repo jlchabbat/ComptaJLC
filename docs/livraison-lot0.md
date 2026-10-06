@@ -1,7 +1,7 @@
 # Livraison du Lot 0 — préparation du classeur (26/09/2026)
 
-Classeur livré : `ComptaBB.xlsm`, produit à partir de `Fusion.xlsm` par
-`python src/lot0_preparation.py Fusion.xlsm ComptaBB.xlsm`. Le script
+Classeur livré : `ComptaJLC.xlsm`, produit à partir de `Fusion.xlsm` par
+`python src/lot0_preparation.py Fusion.xlsm ComptaJLC.xlsm`. Le script
 réédite le XML du classeur pièce par pièce, sans bibliothèque qui le
 réécrive. Il peut être relancé à l'identique sur le classeur d'origine.
 
@@ -36,13 +36,13 @@ fait dans Excel.**
 
 ## À faire à la première ouverture dans Excel
 
-1. Enregistrer le fichier sous `D:\OneDrive\Applications\ComptaBB\ComptaBB.xlsm`.
+1. Enregistrer le fichier sous `D:\OneDrive\Applications\ComptaJLC\ComptaJLC.xlsm`.
 2. Déplacer le relevé : `D:\OneDrive\Compta Bnei Brith\tnuot.pdf` →
-   `D:\OneDrive\Applications\ComptaBB\Releves\tnuot.pdf`.
+   `D:\OneDrive\Applications\ComptaJLC\Releves\tnuot.pdf`.
 3. Ouvrir, activer les données externes si Excel le demande, laisser le
    recalcul se terminer.
 4. **Paramètres, E13 à E15** : E15 doit afficher
-   `D:\OneDrive\Applications\ComptaBB`. Si E13 commence par `https://`,
+   `D:\OneDrive\Applications\ComptaJLC`. Si E13 commence par `https://`,
    c'est normal : E14 (racine OneDrive) sert alors de base.
 5. **Données › Actualiser tout.** Si Excel affiche une erreur
    « Formula.Firewall », ouvrir Données › Obtenir des données › Options de

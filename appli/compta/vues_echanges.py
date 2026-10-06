@@ -121,7 +121,7 @@ def modeles(request):
     """Kit de démarrage : modèles vierges de tous les fichiers d'import / export, lexique et mode d'emploi (ZIP)."""
     from django.http import HttpResponse
     r = HttpResponse(moteur.kit_modeles(), content_type="application/zip")
-    r["Content-Disposition"] = 'attachment; filename="ComptaBB_modeles_vierges.zip"'
+    r["Content-Disposition"] = 'attachment; filename="ComptaJLC_modeles_vierges.zip"'
     return r
 
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><title>ComptaBB – Installation et mises à jour</title>
+<html lang="fr"><head><meta charset="utf-8"><title>ComptaJLC – Installation et mises à jour</title>
 <style>
 @page { size: A4; margin: 14mm 14mm 16mm; }
 body { font: 10.5pt/1.5 "DejaVu Sans", "Segoe UI", sans-serif; color: #222; }
@@ -21,14 +21,14 @@ code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; backg
 .menu { font-weight: bold; color: #1f3864; }
 .saut { break-before: page; }
 </style></head><body>
-<div class="bandeau"><h1>ComptaBB – Installation et mises à jour</h1>
-<p>Le site · <a href="https://comptabb.pythonanywhere.com">https://comptabb.pythonanywhere.com</a> · 27/09/2026</p></div>
+<div class="bandeau"><h1>ComptaJLC – Installation et mises à jour</h1>
+<p>Le site · <a href="https://comptajlc.pythonanywhere.com">https://comptajlc.pythonanywhere.com</a> · 27/09/2026</p></div>
 
 <h2>1. Une application en ligne</h2>
-<p>ComptaBB est un <b>site</b> hébergé chez PythonAnywhere : on s'y connecte de partout (ordinateur, tablette, téléphone), par internet,
-avec une connexion chiffrée. Il n'y a rien à installer sur les ordinateurs. Les données sont dans <code>comptabb-data</code> sur PythonAnywhere,
+<p>ComptaJLC est un <b>site</b> hébergé chez PythonAnywhere : on s'y connecte de partout (ordinateur, tablette, téléphone), par internet,
+avec une connexion chiffrée. Il n'y a rien à installer sur les ordinateurs. Les données sont dans <code>comptajlc-data</code> sur PythonAnywhere,
 sauvegardées automatiquement chaque nuit et à chaque mise à jour ; les exports se téléchargent depuis l'application.
-(L'ancien programme Windows, ComptaBB.exe, est abandonné.)</p>
+(L'ancien programme Windows, ComptaJLC.exe, est abandonné.)</p>
 
 <h2>2. Les rôles et les mots de passe</h2>
 <table><tr><th style="width:21%">Rôle</th><th>Droits</th></tr>
@@ -53,27 +53,27 @@ pas uniquement des chiffres, ne ressemble pas à l'identifiant et n'est pas trop
 <h2 class="saut">3. Mettre à jour le site (PythonAnywhere)</h2>
 <h3>1. Télécharger le code sur GitHub</h3>
 <ol><li>Ouvrir la page du <b>code</b> de la branche à installer, par exemple
-<a href="https://github.com/jlchabbat/ComptaBB/tree/claude/keen-tesla-q5sib5">github.com/jlchabbat/ComptaBB/tree/claude/keen-tesla-q5sib5</a>.
+<a href="https://github.com/jlchabbat/ComptaJLC/tree/claude/keen-tesla-q5sib5">github.com/jlchabbat/ComptaJLC/tree/claude/keen-tesla-q5sib5</a>.
 Le sélecteur de branche, au-dessus de la liste des fichiers, doit afficher le nom de la branche.</li>
 <li>Bouton vert <b>&lt;&gt; Code</b> (à droite de « Add file ») › <b>Download ZIP</b>.</li>
-<li>Le fichier s'appelle <code>ComptaBB-&lt;nom de la branche&gt;.zip</code>, par exemple <code>ComptaBB-claude-keen-tesla-q5sib5.zip</code>.</li></ol>
+<li>Le fichier s'appelle <code>ComptaJLC-&lt;nom de la branche&gt;.zip</code>, par exemple <code>ComptaJLC-claude-keen-tesla-q5sib5.zip</code>.</li></ol>
 <div class="cadre attention">Toujours prendre la branche indiquée : les branches ne se cumulent pas entre elles. Dans une même branche,
 le dernier envoi contient tous les précédents.</div>
 <h3>2. L'envoyer sur PythonAnywhere</h3>
-<p>Onglet <b>Files</b>, dossier <code>/home/ComptaBB/</code>, <b>Upload a file</b>.</p>
+<p>Onglet <b>Files</b>, dossier <code>/home/ComptaJLC/</code>, <b>Upload a file</b>.</p>
 <h3>3. Installer, dans une console Bash</h3>
 <p>Onglet <b>Consoles</b> › <b>Bash</b>. <b>Taper</b> les commandes au clavier plutôt que les coller (un collage peut ajouter le texte de la ligne
-précédente) ; le tilde <code>~</code> s'obtient avec AltGr + 2 puis Espace, ou écrire <code>/home/ComptaBB/</code> à sa place.</p>
+précédente) ; le tilde <code>~</code> s'obtient avec AltGr + 2 puis Espace, ou écrire <code>/home/ComptaJLC/</code> à sa place.</p>
 <span class="cmd">ls ~/*.zip</span>
-<p>Le nom doit commencer par <code>ComptaBB-</code>. Sinon, le renommer : <code>mv ~/"NOM AFFICHÉ.zip" ~/ComptaBB-maj.zip</code>. Pour vérifier la version :
-<code>unzip -l ~/ComptaBB-….zip | head -5</code> doit montrer un dossier <code>ComptaBB-&lt;branche&gt;/</code>.</p>
+<p>Le nom doit commencer par <code>ComptaJLC-</code>. Sinon, le renommer : <code>mv ~/"NOM AFFICHÉ.zip" ~/ComptaJLC-maj.zip</code>. Pour vérifier la version :
+<code>unzip -l ~/ComptaJLC-….zip | head -5</code> doit montrer un dossier <code>ComptaJLC-&lt;branche&gt;/</code>.</p>
 <span class="cmd">bash ~/maj.sh</span>
 <p>Le script affiche 5 étapes : sauvegarde de la base, nouveau code, bibliothèques, base de données et paramètres, rechargement du site ;
-puis « MISE À JOUR TERMINÉE ». L'ancien code est gardé dans <code>ComptaBB-ancien</code>, le ZIP est supprimé.</p>
+puis « MISE À JOUR TERMINÉE ». L'ancien code est gardé dans <code>ComptaJLC-ancien</code>, le ZIP est supprimé.</p>
 <h3>4. Vérifier</h3>
 <p>Ouvrir le site et appuyer sur <b>Ctrl+F5</b>. En cas de problème, remettre la version précédente du code :</p>
 <span class="cmd">bash ~/maj.sh --retour</span>
-<p>Les données (<code>comptabb-data</code>) ne sont jamais touchées par une mise à jour. La présentation et le mode d'emploi du menu Éditions sont mis à jour en même temps.</p>
+<p>Les données (<code>comptajlc-data</code>) ne sont jamais touchées par une mise à jour. La présentation et le mode d'emploi du menu Éditions sont mis à jour en même temps.</p>
 <h3>Les coches de GitHub</h3>
 <p>Dans l'onglet Actions, chaque envoi est vérifié (tests automatiques). Une <b>coche verte</b> : tout est passé ;
 une <b>croix rouge</b> : un contrôle a échoué, à signaler avant d'installer. Une vérification n'ajoute ni n'enlève rien au code.</p>
@@ -87,7 +87,7 @@ Parametres.xlsx et une copie de la base).</li>
 <li><span class="menu">Éditions › Exports (référentiels, écritures)</span> : un fichier Excel par référentiel, les écritures, relevés et budget ; « Tout exporter » en .zip.</li></ul>
 <h3>Par la console (site)</h3>
 <p>Se placer d'abord dans l'application :</p>
-<span class="cmd">cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTABB_DATA=~/comptabb-data</span>
+<span class="cmd">cd ~/ComptaJLC/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; export COMPTAJLC_DATA=~/comptajlc-data</span>
 <table><tr><th style="width:42%">Commande</th><th>Effet</th></tr>
 <tr><td><code>python manage.py sauvegarder</code></td><td>Sauvegarde de la base (les 3 dernières sont gardées).</td></tr>
 <tr><td><code>python manage.py restaurer</code></td><td>Liste les sauvegardes, les plus récentes d'abord.</td></tr>
@@ -97,7 +97,7 @@ Parametres.xlsx et une copie de la base).</li>
 <tr><td><code>python manage.py creer_administrateur</code></td><td>Crée un compte administrateur (secours).</td></tr></table>
 <h3>Sauvegarde automatique chaque nuit (site)</h3>
 <p>PythonAnywhere, onglet <b>Tasks</b>, tâche quotidienne avec la commande :</p>
-<span class="cmd">COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder</span>
+<span class="cmd">COMPTAJLC_DATA=/home/ComptaJLC/comptajlc-data /home/ComptaJLC/venv/bin/python /home/ComptaJLC/ComptaJLC/appli/manage.py sauvegarder</span>
 
 <h2 class="saut">5. Réglages de l'association</h2>
 
@@ -121,25 +121,25 @@ ils se corrigent dans <span class="menu">Administration › Référentiels</span
 L'identifiant choisi donne l'adresse du site : <code>amisdumusee</code> → <code>amisdumusee.pythonanywhere.com</code>. Confirmer l'adresse e-mail.</li>
 <li>Onglet <b>Web</b> › <b>Add a new web app</b> › Next › <b>Manual configuration</b> › <b>Python 3.12</b> › Next.</li></ol>
 <h3>B. Le programme</h3>
-<ol><li>Sur GitHub, dépôt ComptaBB, la branche en service › <b>Code</b> › <b>Download ZIP</b>.</li>
+<ol><li>Sur GitHub, dépôt ComptaJLC, la branche en service › <b>Code</b> › <b>Download ZIP</b>.</li>
 <li>PythonAnywhere, onglet <b>Files</b> › <b>Upload a file</b> : envoyer le ZIP (sans le renommer ni l'ouvrir).</li>
 <li>Onglet <b>Consoles</b> › <b>Bash</b>, puis copier cette ligne et appuyer sur Entrée :</li></ol>
-<span class="cmd">unzip -qo ComptaBB-*.zip -d ~/inst &amp;&amp; bash ~/inst/*/appli/deploiement/installer.sh</span>
+<span class="cmd">unzip -qo ComptaJLC-*.zip -d ~/inst &amp;&amp; bash ~/inst/*/appli/deploiement/installer.sh</span>
 <p>Le script installe le programme et ses bibliothèques (quelques minutes), crée la base vide, écrit le fichier WSGI du site et le script de mise à jour
 <code>~/maj.sh</code>. Il termine par <b>INSTALLATION TERMINÉE</b> et un <b>code d'installation</b> de 8 caractères : le noter.</p>
 <h3>C. Les réglages de l'application web</h3>
 <p>Onglet <b>Web</b>, sur la page de l'application :</p>
 <table><tr><th style="width:30%">Rubrique</th><th>Valeur (remplacer NOM par l'identifiant)</th></tr>
 <tr><td>Virtualenv</td><td><code>/home/NOM/venv</code></td></tr>
-<tr><td>Static files</td><td>URL <code>/static/</code>, dossier <code>/home/NOM/comptabb-data/static</code></td></tr>
+<tr><td>Static files</td><td>URL <code>/static/</code>, dossier <code>/home/NOM/comptajlc-data/static</code></td></tr>
 <tr><td>Force HTTPS</td><td>Enabled</td></tr></table>
 <p>Puis le bouton vert <b>Reload</b>.</p>
 <h3>D. Le premier démarrage (dans le navigateur)</h3>
-<ol><li>Ouvrir <code>https://NOM.pythonanywhere.com</code> : la page « Bienvenue dans ComptaBB » demande le <b>code d'installation</b>, puis l'identifiant et le mot de passe
+<ol><li>Ouvrir <code>https://NOM.pythonanywhere.com</code> : la page « Bienvenue dans ComptaJLC » demande le <b>code d'installation</b>, puis l'identifiant et le mot de passe
 (12 caractères au moins) de l'administrateur.</li>
 <li>La page « Premier démarrage » décrit l'association : nom, devise, plan comptable (plan de base proposé, ou vos propres fichiers à partir des
 <b>modèles vierges</b>), premier exercice, jusqu'à trois banques avec le format de leur relevé, caisse, options.
-« Démarrer ComptaBB » crée tout d'un coup ; tout reste modifiable ensuite (chapitre 5).</li>
+« Démarrer ComptaJLC » crée tout d'un coup ; tout reste modifiable ensuite (chapitre 5).</li>
 <li>Créer les utilisateurs (Administration › Utilisateurs) et importer les membres (modèle vierge Tiers).</li>
 <li>Sauvegarde automatique de chaque nuit : chapitre 4 (onglet Tasks), avec l'identifiant de l'association.</li></ol>
 <p>Pour une <b>réinstallation</b> (nouveau compte, données existantes) : après l'étape D.1, « Recharger une sauvegarde » (Administration › Base de données)
@@ -153,7 +153,7 @@ Tous les 3 mois avec l'offre gratuite : onglet Web › <b>Run until 3 months fro
 (export complet compris), on ne saisit plus. Le site de la Loge, installé avant l'assistant, n'est jamais concerné.</p>
 <p><b>Côté éditeur</b> (sur votre propre compte, console du site) :</p>
 <table><tr><th style="width:52%">Commande</th><th>Effet</th></tr>
-<tr><td><code>python manage.py licence cles</code></td><td>Une seule fois : crée la clé privée dans <code>~/comptabb-licence</code> (à garder secrète et à sauvegarder hors du site)
+<tr><td><code>python manage.py licence cles</code></td><td>Une seule fois : crée la clé privée dans <code>~/comptajlc-licence</code> (à garder secrète et à sauvegarder hors du site)
 et affiche la clé publique, à inscrire dans le programme (<code>compta/licence.py</code>, CLE_PUBLIQUE). Tant qu'elle n'y est pas, aucune licence n'est demandée.</td></tr>
 <tr><td><code>python manage.py licence creer --association "Amis du musée" --site amisdumusee.pythonanywhere.com --fin 2027-12-31</code></td><td>Affiche la licence (texte CBB1.…) à envoyer à l'association.</td></tr>
 <tr><td><code>python manage.py licence verifier "CBB1.…"</code></td><td>Affiche l'association, le site et la date de fin d'une licence.</td></tr></table>
@@ -161,10 +161,10 @@ et affiche la clé publique, à inscrire dans le programme (<code>compta/licence
 
 <h2>7. Problèmes rencontrés</h2>
 <table><tr><th style="width:38%">Situation</th><th>Que faire</th></tr>
-<tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaBB/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>
-<tr><td><code>maj.sh</code> : « Aucun fichier ComptaBB-….zip »</td><td>Le ZIP n'est pas envoyé, ou son nom ne commence pas par <code>ComptaBB-</code> : le renommer (chapitre 3).</td></tr>
+<tr><td>Le site garde l'ancienne version après une mise à jour</td><td>Le ZIP venait d'une autre branche, ou de l'onglet Actions : reprendre le chapitre 3. Contrôle : <code>ls ~/ComptaJLC/appli/compta/vues_documentation.py</code> doit répondre sans erreur.</td></tr>
+<tr><td><code>maj.sh</code> : « Aucun fichier ComptaJLC-….zip »</td><td>Le ZIP n'est pas envoyé, ou son nom ne commence pas par <code>ComptaJLC-</code> : le renommer (chapitre 3).</td></tr>
 <tr><td>« No such file or directory » avec un nom collé (<code>maj.shbash</code>)</td><td>La commande a été collée deux fois : effacer la ligne et la taper au clavier.</td></tr>
-<tr><td>La page n'a pas changé</td><td>Ctrl+F5 sur une page de ComptaBB.</td></tr>
+<tr><td>La page n'a pas changé</td><td>Ctrl+F5 sur une page de ComptaJLC.</td></tr>
 <tr><td>Mot de passe oublié</td><td>L'administrateur en donne un nouveau (chapitre 2) ; sinon, commande <code>changepassword</code> (chapitre 5).</td></tr>
 <tr><td>Le site ne répond plus (offre gratuite)</td><td>PythonAnywhere › Web › <b>Run until 3 months from today</b>, tous les 3 mois.</td></tr>
 </table>

@@ -1,23 +1,23 @@
 {% load static %}<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titre %}ComptaBB{% endblock %} – {{ association|default:"ComptaBB" }}</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
+<title>{% block titre %}ComptaJLC{% endblock %} – {{ association|default:"ComptaJLC" }}</title><link rel="stylesheet" href="{% static 'compta/style.css' %}">
 <link rel="icon" href="{% static 'compta/favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'compta/icone-180.png' %}">
 <link rel="manifest" href="{% static 'compta/manifest.json' %}"><meta name="theme-color" content="#1f3864">
-<script>try { var z = localStorage.getItem("comptabb-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
+<script>try { var z = localStorage.getItem("comptajlc-taille"); if (z) document.documentElement.style.zoom = z; } catch (e) {}
 function precedente(a) {    // page précédente de l'historique ; à défaut (page ouverte seule), la page d'origine
   if (history.length > 1 && !window.opener) { history.back(); return false; }
   return true; }
 function fermer(a) {        // page ouverte dans un nouvel onglet : l'onglet se ferme ; sinon, retour à la page d'origine
   if (window.opener || history.length <= 1) { window.close(); setTimeout(function () { location.href = a.href; }, 300); return false; }
   return true; }
-try { if (localStorage.getItem("comptabb-aides") === "oui") document.documentElement.classList.add("avec-aides"); } catch (e) {}
-function aides() { var on = document.documentElement.classList.toggle("avec-aides"); try { localStorage.setItem("comptabb-aides", on ? "oui" : "non"); } catch (e) {} 
+try { if (localStorage.getItem("comptajlc-aides") === "oui") document.documentElement.classList.add("avec-aides"); } catch (e) {}
+function aides() { var on = document.documentElement.classList.toggle("avec-aides"); try { localStorage.setItem("comptajlc-aides", on ? "oui" : "non"); } catch (e) {} 
   var b = document.getElementById("bascule-aides"); if (b) b.setAttribute("aria-pressed", on); }
 function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1); z = d ? Math.min(2, Math.max(0.8, Math.round((z + d) * 10) / 10)) : 1;
-  document.documentElement.style.zoom = z; try { localStorage.setItem("comptabb-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/tableau.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
+  document.documentElement.style.zoom = z; try { localStorage.setItem("comptajlc-taille", z); } catch (e) {} }</script><script src="{% static 'compta/liste.js' %}" defer></script><script src="{% static 'compta/tri.js' %}" defer></script><script src="{% static 'compta/tableau.js' %}" defer></script><script src="{% static 'compta/apercu.js' %}" defer></script></head>
 <body{% if not deux_axes %} class="un-seul-axe"{% endif %}>
 {% if user.is_authenticated %}
-<header><span class="marque">ComptaBB</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
+<header><span class="marque">ComptaJLC</span>{% if association %}<span class="asso" title="Association">{{ association }}</span>{% endif %}
 <nav class="menus">
 {% if perms.compta.add_mouvement or perms.compta.change_mouvement or perms.compta.view_fiche %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
 {% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie guidée</a>

@@ -1,12 +1,12 @@
-"""Réglages de l'application ComptaBB.
+"""Réglages de l'application ComptaJLC.
 
 Les données (base SQLite, clé secrète) vivent dans un dossier `data` à côté
 de l'application — ou de l'exécutable une fois empaqueté — sauf si la
-variable d'environnement COMPTABB_DATA en désigne un autre. Aucun chemin
+variable d'environnement COMPTAJLC_DATA en désigne un autre. Aucun chemin
 absolu n'est codé en dur.
 
-Hébergement (docs/hebergement-pythonanywhere.md) : COMPTABB_DATA (dossier des
-données), COMPTABB_HOTES (nom du site) et COMPTABB_HTTPS=1 (cookies sécurisés,
+Hébergement (docs/hebergement-pythonanywhere.md) : COMPTAJLC_DATA (dossier des
+données), COMPTAJLC_HOTES (nom du site) et COMPTAJLC_HTTPS=1 (cookies sécurisés,
 redirection HTTPS) se règlent dans le fichier WSGI de l'hébergeur.
 """
 
@@ -17,18 +17,18 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 RACINE = BASE_DIR.parent
-DATA_DIR = Path(os.environ.get("COMPTABB_DATA", RACINE / "data"))
+DATA_DIR = Path(os.environ.get("COMPTAJLC_DATA", RACINE / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 # Dossiers d'échange (administrateur) : Imports (fichiers à importer) et Exports (sauvegardes, archives, exports).
 # Sur l'hébergeur : dans le dossier des données, pour survivre aux mises à jour du code.
-_ECHANGES = DATA_DIR if os.environ.get("COMPTABB_DATA") else RACINE
-IMPORTS_DIR = Path(os.environ.get("COMPTABB_IMPORTS", _ECHANGES / "Imports"))
-EXPORTS_DIR = Path(os.environ.get("COMPTABB_EXPORTS", _ECHANGES / "Exports"))
+_ECHANGES = DATA_DIR if os.environ.get("COMPTAJLC_DATA") else RACINE
+IMPORTS_DIR = Path(os.environ.get("COMPTAJLC_IMPORTS", _ECHANGES / "Imports"))
+EXPORTS_DIR = Path(os.environ.get("COMPTAJLC_EXPORTS", _ECHANGES / "Exports"))
 
 
 def _cle_secrete():
-    if os.environ.get("COMPTABB_SECRET"):
-        return os.environ["COMPTABB_SECRET"]
+    if os.environ.get("COMPTAJLC_SECRET"):
+        return os.environ["COMPTAJLC_SECRET"]
     fichier = DATA_DIR / "secret.txt"
     if not fichier.exists():
         fichier.write_text(secrets.token_urlsafe(50), encoding="utf-8")
@@ -36,10 +36,10 @@ def _cle_secrete():
 
 
 SECRET_KEY = _cle_secrete()
-DEBUG = os.environ.get("COMPTABB_DEBUG") == "1"
-ALLOWED_HOSTS = os.environ.get("COMPTABB_HOTES", "127.0.0.1,localhost").split(",")
+DEBUG = os.environ.get("COMPTAJLC_DEBUG") == "1"
+ALLOWED_HOSTS = os.environ.get("COMPTAJLC_HOTES", "127.0.0.1,localhost").split(",")
 
-if os.environ.get("COMPTABB_HTTPS") == "1":
+if os.environ.get("COMPTAJLC_HTTPS") == "1":
     CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
@@ -74,10 +74,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "comptabb.urls"
+ROOT_URLCONF = "comptajlc.urls"
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
-    "DIRS": [BASE_DIR / "compta" / "gabarits_admin"],   # Référentiels : retour aux menus de ComptaBB
+    "DIRS": [BASE_DIR / "compta" / "gabarits_admin"],   # Référentiels : retour aux menus de ComptaJLC
     "APP_DIRS": True,
     "OPTIONS": {"context_processors": [
         "django.template.context_processors.request",
@@ -88,9 +88,9 @@ TEMPLATES = [{
         "compta.retour.contexte",
     ]},
 }]
-WSGI_APPLICATION = "comptabb.wsgi.application"
+WSGI_APPLICATION = "comptajlc.wsgi.application"
 
-DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": DATA_DIR / "comptabb.sqlite3"}}
+DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": DATA_DIR / "comptajlc.sqlite3"}}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},

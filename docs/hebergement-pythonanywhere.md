@@ -1,4 +1,4 @@
-# Héberger ComptaBB sur PythonAnywhere
+# Héberger ComptaJLC sur PythonAnywhere
 
 Objectif : un essai gratuit, puis, s'il est concluant, l'offre payante
 (environ 5 $ par mois, sans engagement). L'application n'existe plus qu'en ligne
@@ -18,7 +18,7 @@ Objectif : un essai gratuit, puis, s'il est concluant, l'offre payante
 
 1. Sur <https://www.pythonanywhere.com>, **Pricing & signup** › **Create a
    Beginner account**. L'identifiant choisi donne l'adresse du site
-   (par exemple `comptabb` → `comptabb.pythonanywhere.com`).
+   (par exemple `comptajlc` → `comptajlc.pythonanywhere.com`).
 2. Confirmer l'adresse e-mail.
 
 Dans la suite, remplacer `VOTRE_NOM` par cet identifiant.
@@ -27,12 +27,12 @@ Dans la suite, remplacer `VOTRE_NOM` par cet identifiant.
 
 1. Onglet **Web** › **Add a new web app** › **Manual configuration** ›
    **Python 3.12**.
-2. Sur GitHub, dépôt **ComptaBB**, bouton **Code** › **Download ZIP** ;
+2. Sur GitHub, dépôt **ComptaJLC**, bouton **Code** › **Download ZIP** ;
    onglet **Files** › **Upload a file** : envoyer le ZIP.
 3. Onglet **Consoles** › **Bash** :
 
 ```bash
-unzip -qo ComptaBB-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh
+unzip -qo ComptaJLC-*.zip -d ~/inst && bash ~/inst/*/appli/deploiement/installer.sh
 ```
 
 Le script (`appli/deploiement/installer.sh`) installe le code et les
@@ -46,7 +46,7 @@ Onglet **Web** :
 | Rubrique | Valeur |
 |---|---|
 | Virtualenv | `/home/VOTRE_NOM/venv` |
-| Static files | URL `/static/`, dossier `/home/VOTRE_NOM/comptabb-data/static` |
+| Static files | URL `/static/`, dossier `/home/VOTRE_NOM/comptajlc-data/static` |
 | Force HTTPS | Enabled |
 
 Bouton vert **Reload**.
@@ -64,13 +64,13 @@ recharger une sauvegarde ou un export complet.
 - **Bénévoles** : Fiches bénévoles › Nouveau bénévole ; leur envoyer
   l'adresse du site, leur identifiant et leur mot de passe.
 - **Sauvegarde** : onglet Files, télécharger régulièrement
-  `comptabb-data/comptabb.sqlite3`.
+  `comptajlc-data/comptajlc.sqlite3`.
 - **Tous les 3 mois (gratuit)** : onglet Web › **Run until 3 months from
   today**.
 
 ## 6. Mettre à jour le code
 
-Suivre le protocole `docs/ComptaBB_protocole_mise_a_jour.pdf` (source :
+Suivre le protocole `docs/ComptaJLC_protocole_mise_a_jour.pdf` (source :
 `docs/protocole-mise-a-jour.html`). En bref : envoyer le ZIP dans Files, puis
 `bash ~/maj.sh` dans une console Bash (script `appli/deploiement/maj.sh` :
 sauvegarde de la base, nouveau code, bibliothèques, `preparer`, rechargement ;

@@ -1,7 +1,7 @@
 """Sauvegarde datée de la base : python manage.py sauvegarder
 
 Pour une sauvegarde automatique quotidienne sur PythonAnywhere (onglet Tasks) :
-COMPTABB_DATA=/home/ComptaBB/comptabb-data /home/ComptaBB/venv/bin/python /home/ComptaBB/ComptaBB/appli/manage.py sauvegarder
+COMPTAJLC_DATA=/home/ComptaJLC/comptajlc-data /home/ComptaJLC/venv/bin/python /home/ComptaJLC/ComptaJLC/appli/manage.py sauvegarder
 Les 3 dernières sauvegardes sont gardées dans Exports/Sauvegardes."""
 
 from django.core.management.base import BaseCommand

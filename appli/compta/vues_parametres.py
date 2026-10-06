@@ -1,6 +1,6 @@
 """Page « Paramètres (Excel) » : le classeur Parametres.xlsx, modifié dans Excel puis réinjecté.
 
-Deux chemins : le dossier Imports (Imports/Parametres.xlsx, sur le PC où tourne ComptaBB) ou le navigateur
+Deux chemins : le dossier Imports (Imports/Parametres.xlsx, sur le PC où tourne ComptaJLC) ou le navigateur
 (télécharger, puis envoyer le fichier modifié). Paramétrage de base : réservé à l'administrateur (droit « parametrer »)."""
 
 import datetime as dt

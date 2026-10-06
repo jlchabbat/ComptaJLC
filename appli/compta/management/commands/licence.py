@@ -1,10 +1,10 @@
 """Licences des sites des associations (côté éditeur, sur votre propre compte seulement).
 
-    python manage.py licence cles                       crée la paire de clés (une seule fois) dans ~/comptabb-licence
+    python manage.py licence cles                       crée la paire de clés (une seule fois) dans ~/comptajlc-licence
     python manage.py licence creer --association "Amis du musée" --site amisdumusee.pythonanywhere.com --fin 2027-12-31
     python manage.py licence verifier "CBB1.…"          affiche le contenu d'une licence
 
-La clé privée (~/comptabb-licence/privee.pem) ne doit jamais quitter votre compte ni entrer dans le dépôt : qui l'a
+La clé privée (~/comptajlc-licence/privee.pem) ne doit jamais quitter votre compte ni entrer dans le dépôt : qui l'a
 peut créer des licences. La clé publique s'inscrit dans compta/licence.py (CLE_PUBLIQUE)."""
 
 import datetime as dt
@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("--association", default="")
         parser.add_argument("--site", default="", help="adresse du site (ex. amisdumusee.pythonanywhere.com) ou * pour tout site")
         parser.add_argument("--fin", default="", help="dernier jour de validité, AAAA-MM-JJ")
-        parser.add_argument("--dossier", default=str(Path.home() / "comptabb-licence"))
+        parser.add_argument("--dossier", default=str(Path.home() / "comptajlc-licence"))
 
     def handle(self, action, texte, association, site, fin, dossier, **o):
         from cryptography.hazmat.primitives import serialization

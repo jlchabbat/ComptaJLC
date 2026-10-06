@@ -1,9 +1,9 @@
 """Imports et exports par fichiers Excel : un fichier .xlsx par nature de données, de même structure à l'import
 et à l'export.
 
-Les fichiers à importer (référentiels, écritures, relevés bancaires) se déposent dans <dossier ComptaBB>/Imports ;
+Les fichiers à importer (référentiels, écritures, relevés bancaires) se déposent dans <dossier ComptaJLC>/Imports ;
 après un import réussi, ils sont déplacés et datés dans Imports/Importés. Les exports s'écrivent dans
-<dossier ComptaBB>/Exports. Un import est tout ou rien : à la première ligne en erreur, rien n'est enregistré.
+<dossier ComptaJLC>/Exports. Un import est tout ou rien : à la première ligne en erreur, rien n'est enregistré.
 """
 
 import datetime as dt
@@ -59,7 +59,7 @@ def changer_dossiers(valeurs, auteur=""):
         v = (v or "").strip().strip('"')
         if v:
             if not dossiers.valable(v):
-                erreurs.append(f"{v} : chemin complet du site attendu (par exemple /home/ComptaBB/comptabb-data/Exports), "
+                erreurs.append(f"{v} : chemin complet du site attendu (par exemple /home/ComptaJLC/comptajlc-data/Exports), "
                                "ou vide pour le dossier par défaut.")
                 continue
             try:
@@ -1031,7 +1031,7 @@ def kit_modeles():
         octets = io.BytesIO()
         classeur_lexique().save(octets)
         z.writestr("Lexique.xlsx", octets.getvalue())
-        z.writestr("LISEZMOI.txt", "Modèles vierges des fichiers d'import et d'export de ComptaBB\r\n\r\n"
+        z.writestr("LISEZMOI.txt", "Modèles vierges des fichiers d'import et d'export de ComptaJLC\r\n\r\n"
                    "- Un fichier par nature de données, numéroté dans l'ordre d'import conseillé : chaque fichier ne cite que\r\n"
                    "  des codes définis par les précédents (exercices, réglages, axes, plan comptable, journaux, tiers...).\r\n"
                    "- Ligne 1 = les colonnes attendues, à ne pas modifier ; données à partir de la ligne 2.\r\n"

@@ -33,7 +33,7 @@ h1 { margin: 4px 0; } h2 { margin: 8px 0 4px; font-size: 17px; } .carte { paddin
 <p class="mini">Choisissez les fichiers (PDF, images, ZIP, ou Excel de liens) puis <b>Déposer</b>. Un n° de Mvt en tête du nom (« 389 facture.pdf ») coche d'office le mouvement.
 <details><summary>Plus d'aide</summary>Autres noms reconnus : « Mvt 389 », un numéro seul, ou date et montant (« 2026-03-15 facture 450,00.pdf »).
 Excel de liens : chaque ligne est proposée au mouvement de même date et même montant. Erreur « 413 Request Entity Too Large » : couper le ZIP en morceaux de 50 Mo, ou l'envoyer par PythonAnywhere › Files puis en console Bash :
-<code>cd ~/ComptaBB/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; COMPTABB_DATA=~/comptabb-data python manage.py importer_justificatifs ~/Justificatifs.zip --rattacher</code></details></p>
+<code>cd ~/ComptaJLC/appli &amp;&amp; source ~/venv/bin/activate &amp;&amp; COMPTAJLC_DATA=~/comptajlc-data python manage.py importer_justificatifs ~/Justificatifs.zip --rattacher</code></details></p>
 </form>
 
 {% if en_ligne %}<details class="carte" {% if request.GET.en_ligne %}open{% endif %}><summary><b>Documents encore en ligne ({{ en_ligne }})</b> — cliquer pour afficher</summary>

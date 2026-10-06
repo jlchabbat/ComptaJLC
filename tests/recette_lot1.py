@@ -1,6 +1,6 @@
 """Recette du Lot 1 par recalcul LibreOffice (headless).
 
-    python tests/recette_lot1.py ComptaBB_lot0.xlsm [dossier_de_travail]
+    python tests/recette_lot1.py ComptaJLC_lot0.xlsm [dossier_de_travail]
 
 Pour chaque scénario : applique le Lot 1 au classeur du Lot 0 en remplissant
 les cases jaunes, fait recalculer le classeur par LibreOffice (conversion

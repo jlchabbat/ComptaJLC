@@ -1,4 +1,4 @@
-"""Contrôles et photographie des totaux du classeur ComptaBB.
+"""Contrôles et photographie des totaux du classeur ComptaJLC.
 
 Lecture seule : le classeur n'est jamais enregistré (openpyxl perdrait
 Power Query, les commentaires à thread et une partie des validations).
@@ -164,7 +164,7 @@ def main(argv=None):
     p.add_argument("--compare", help="compare aux totaux de ce fichier JSON")
     a = p.parse_args(argv)
 
-    chemin = Path(a.classeur) if a.classeur else RACINE / lire_config().get("classeur", "ComptaBB.xlsm")
+    chemin = Path(a.classeur) if a.classeur else RACINE / lire_config().get("classeur", "ComptaJLC.xlsm")
     wb = openpyxl.load_workbook(chemin, data_only=True)
     t = tables(wb)
 

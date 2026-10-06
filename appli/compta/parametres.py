@@ -1,4 +1,4 @@
-"""Classeur Parametres.xlsx : les paramètres de ComptaBB exportés, modifiés dans Excel puis réinjectés.
+"""Classeur Parametres.xlsx : les paramètres de ComptaJLC exportés, modifiés dans Excel puis réinjectés.
 
 Une feuille par table de paramètres. À l'import :
 - une ligne dont la clé existe met à jour l'élément ; une clé inconnue le crée ;
@@ -306,11 +306,11 @@ def classeur(seulement=None):
     aide = wb.active
     aide.title = "Mode d'emploi"
     lignes = [
-        ["Paramètres de ComptaBB", ""],
+        ["Paramètres de ComptaJLC", ""],
         [f"Exporté le {dt.datetime.now():%d/%m/%Y à %H:%M}", ""],
         ["", ""],
         ["1. Modifier les feuilles dans Excel (ajouter des lignes, corriger des libellés…). Ne pas renommer les feuilles ni les en-têtes.", ""],
-        ["2. Enregistrer en .xlsx, puis dans ComptaBB : Administration › Paramètres (Excel) › Importer.", ""],
+        ["2. Enregistrer en .xlsx, puis dans ComptaJLC : Administration › Paramètres (Excel) › Importer.", ""],
         ["3. Une ligne dont la clé (colonne grise) existe met à jour l'élément ; une clé nouvelle le crée.", ""],
         ["4. Une cellule vide ne change rien ; rien n'est jamais supprimé : pour retirer un élément, mettre Actif = Non.", ""],
         ["5. Au moindre problème, rien n'est enregistré et la liste des lignes à corriger s'affiche.", ""],
@@ -356,7 +356,7 @@ def classeur(seulement=None):
                     cellule.number_format = "DD/MM/YYYY"
             if c.aide:
                 from openpyxl.comments import Comment
-                ws.cell(1, i).comment = Comment(c.aide, "ComptaBB")
+                ws.cell(1, i).comment = Comment(c.aide, "ComptaJLC")
         ws.freeze_panes = "A2"
     return wb
 

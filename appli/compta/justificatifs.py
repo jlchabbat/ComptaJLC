@@ -112,7 +112,7 @@ def telecharger(lien):
     import urllib.error
     import urllib.request
     from email.message import Message
-    requete = urllib.request.Request(lien, headers={"User-Agent": "Mozilla/5.0 (ComptaBB)"})
+    requete = urllib.request.Request(lien, headers={"User-Agent": "Mozilla/5.0 (ComptaJLC)"})
     try:
         with urllib.request.urlopen(requete, timeout=30) as r:
             contenu = r.read(TAILLE_MAXI + 1)
@@ -122,7 +122,7 @@ def telecharger(lien):
     except urllib.error.HTTPError as e:
         raise ValueError(f"le site du document répond « {e.code} {e.reason} »") from None
     except (urllib.error.URLError, OSError) as e:
-        raise ValueError("site du document injoignable depuis ComptaBB "
+        raise ValueError("site du document injoignable depuis ComptaJLC "
                          f"({getattr(e, 'reason', e)} ; offre gratuite PythonAnywhere : seuls certains sites sont permis)") from None
     if len(contenu) > TAILLE_MAXI:
         raise ValueError("document de plus de 10 Mo")

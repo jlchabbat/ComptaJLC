@@ -28,7 +28,7 @@ def sauvegarder(motif="manuelle", proteger=None):
     """Copie cohérente de la base (API de sauvegarde SQLite), même pendant que le site tourne.
     proteger : sauvegarde à ne pas effacer en faisant de la place (celle qu'on va restaurer)."""
     connection.ensure_connection()
-    base = f"comptabb_{dt.datetime.now():%Y-%m-%d_%H%M%S}_{motif}"
+    base = f"comptajlc_{dt.datetime.now():%Y-%m-%d_%H%M%S}_{motif}"
     chemin, n = dossier() / f"{base}.sqlite3", 1
     while chemin.exists():                  # deux sauvegardes dans la même seconde : pas d'écrasement
         n += 1
@@ -44,7 +44,7 @@ def sauvegarder(motif="manuelle", proteger=None):
 
 
 def verifier(chemin):
-    """Refuse un fichier qui n'est pas une base ComptaBB."""
+    """Refuse un fichier qui n'est pas une base ComptaJLC."""
     try:
         src = sqlite3.connect(f"file:{chemin}?mode=ro", uri=True)
         tables = {r[0] for r in src.execute("select name from sqlite_master where type='table'")}
@@ -53,7 +53,7 @@ def verifier(chemin):
     except sqlite3.DatabaseError:
         raise ValueError("Ce fichier n'est pas une base de données SQLite.")
     if not set(TABLES_COMPTA) <= tables:
-        raise ValueError("Ce fichier n'est pas une sauvegarde ComptaBB.")
+        raise ValueError("Ce fichier n'est pas une sauvegarde ComptaJLC.")
     return n
 
 
@@ -72,7 +72,7 @@ def restaurer(chemin):
 
 
 def reprendre_classeur(chemin):
-    """Remet la comptabilité à zéro puis reprend le classeur ComptaBB.xlsm (les comptes utilisateurs sont gardés)."""
+    """Remet la comptabilité à zéro puis reprend le classeur ComptaJLC.xlsm (les comptes utilisateurs sont gardés)."""
     import io
     avant = sauvegarder("avant-reprise")
     sortie = io.StringIO()

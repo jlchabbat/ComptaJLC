@@ -24,7 +24,7 @@ def administrateur(u):
 
 
 class RemplacementForm(forms.Form):
-    fichier = forms.FileField(required=False, label="Fichier (.sqlite3, export complet .zip ou ComptaBB.xlsm)")
+    fichier = forms.FileField(required=False, label="Fichier (.sqlite3, export complet .zip ou ComptaJLC.xlsm)")
     sauvegarde = forms.ChoiceField(required=False, label="…ou une sauvegarde ou un export complet du site")
     modifie = forms.BooleanField(required=False, label="Fichiers modifiés",
                                  help_text="Export complet dont vous avez modifié les fichiers Excel : la base rechargée n'est pas "
@@ -78,7 +78,7 @@ def base(request):
                     nom = f.name
                     suffixe = Path(nom).suffix.lower()
                     if suffixe not in (".sqlite3", ".sqlite", ".db", ".zip", ".xlsm", ".xlsx"):
-                        raise ValueError("Fichier .sqlite3 (sauvegarde), .zip (export complet) ou .xlsm (classeur ComptaBB) attendu.")
+                        raise ValueError("Fichier .sqlite3 (sauvegarde), .zip (export complet) ou .xlsm (classeur ComptaJLC) attendu.")
                     tmp = Path(tempfile.mkdtemp()) / f"import{suffixe}"
                     with open(tmp, "wb") as sortie:
                         for morceau in f.chunks():

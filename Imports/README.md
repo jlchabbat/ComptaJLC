@@ -1,9 +1,9 @@
-# Imports et Exports — échanges de ComptaBB par fichiers Excel
+# Imports et Exports — échanges de ComptaJLC par fichiers Excel
 
 L'application web lit ses données dans le dossier **`Imports`** et écrit ses
-exports dans le dossier **`Exports`**, tous deux dans le dossier ComptaBB du
-PC (`D:\OneDrive\Applications\ComptaBB`) ; sur PythonAnywhere, dans le dossier des données
-(`comptabb-data`), pour survivre aux mises à jour. Les chemins se modifient dans
+exports dans le dossier **`Exports`**, tous deux dans le dossier ComptaJLC du
+PC (`D:\OneDrive\Applications\ComptaJLC`) ; sur PythonAnywhere, dans le dossier des données
+(`comptajlc-data`), pour survivre aux mises à jour. Les chemins se modifient dans
 **Administration › Imports / Exports** (réglages `dossier_imports` et
 `dossier_exports`). Les dossiers sont créés automatiquement.
 
@@ -14,7 +14,7 @@ Tout le reste (données des membres, relevés bancaires) est hors Git.
 
 ## `Parametres.xlsx` (application web)
 
-Classeur des paramètres de ComptaBB, une feuille par sujet : Réglages,
+Classeur des paramètres de ComptaJLC, une feuille par sujet : Réglages,
 Axe 1, Axe 2, Préfixes, Plan comptable (hors comptes de tiers), Journaux,
 Types de tiers, Moyens de paiement, Modèles d'opération, Natures fiches,
 Modes fiches, Relevés, Traductions. Il reflète l'application au moment où

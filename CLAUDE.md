@@ -1,21 +1,21 @@
-# ComptaBB — contexte pour Claude Code
+# ComptaJLC — contexte pour Claude Code
 
 Comptabilité d'une association israélienne (Loge Bnei Brith, ₪) tenue
 dans un classeur Excel Microsoft 365. Utilisateurs non comptables :
 trésorier, bureau, vérificateur. Interface en français ; relevés bancaires
 en hébreu. Référence : `docs/cahier-des-charges.md` (la feuille « CDC
-ComptaBB » du classeur fait foi).
+ComptaJLC » du classeur fait foi).
 
 ## Application en ligne
 
-Seule la version en ligne existe (https://comptabb.pythonanywhere.com, mise à
-jour par `appli/deploiement/maj.sh`). Le programme du PC (`ComptaBB.exe`) est
+Seule la version en ligne existe (https://comptajlc.pythonanywhere.com, mise à
+jour par `appli/deploiement/maj.sh`). Le programme du PC (`ComptaJLC.exe`) est
 abandonné et retiré du dépôt : ne pas le réintroduire. Distribution prévue :
 un site par association (étape 1 : application générique, réglages par site).
 
 ## Architecture
 
-- `ComptaBB.xlsm` (nom dans `config.json`, hors Git) : tout le métier est en
+- `ComptaJLC.xlsm` (nom dans `config.json`, hors Git) : tout le métier est en
   **formules** (réponse Q5 : ni VBA ni Office Scripts). Tables structurées
   T_* ; noms P_* pour les hypothèses ; onglet Contrôles = référence.
 - Depuis le Lot 0, les tables T_* sont de simples tables : plus aucune
@@ -89,7 +89,7 @@ python -m unittest discover tests
   carte Isracard, traductions) passe par `appli/compta/reglages.py`
   (Reglage ; valeur neutre si absent) : jamais en dur dans le code.
   Site neuf : assistant de premier démarrage (`appli/compta/demarrage.py`).
-  Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptabb-licence`) ne va jamais dans le dépôt.
+  Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur (`~/comptajlc-licence`) ne va jamais dans le dépôt.
 - Axes (application web) : chaque compte porte un code d'axe 1 ; une écriture ne reçoit un code d'axe 2 que sur un compte 6 ou 7,
   jamais un code d'axe 1 (contrôlé par `Ligne.save`, les formulaires, les imports et les Contrôles RG-02). Compte 6/7 « de projet »
   (`Compte.projet`, ex. 600001) : code axe 2 obligatoire ; compte de fonctionnement (600000) : facultatif.

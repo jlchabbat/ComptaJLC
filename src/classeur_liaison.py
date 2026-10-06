@@ -1,6 +1,6 @@
 """Fichier de liaison pour un bénévole à distance (activités et gestion).
 
-    python src/classeur_liaison.py ComptaBB.xlsm ComptaBB_Liaison.xlsx
+    python src/classeur_liaison.py ComptaJLC.xlsm ComptaJLC_Liaison.xlsx
 
 Le bénévole ne fait pas de comptabilité : il remplit des listes.
 - **Activité** : le trésorier fixe d'avance le code Axe2 de l'activité (C3).
@@ -192,7 +192,7 @@ def base(donnees, chemin):
     acc.title = "Accueil"
     li = wb.create_sheet("Listes")
     lignes = [
-        ("B1", "ComptaBB – fichier de liaison"),
+        ("B1", "ComptaJLC – fichier de liaison"),
         ("B3", "Pour un bénévole qui gère une activité ou des dons et aides, sans connaissance comptable."),
         ("B5", "Onglet Activité : le trésorier a inscrit le code de l'activité en C3. Noter chaque recette (participants, dons, "
                "sponsors) et chaque dépense, une ligne par paiement."),
@@ -201,7 +201,7 @@ def base(donnees, chemin):
         ("B7", "Remplir les cases jaunes ; la colonne Contrôle indique ce qui manque. Enregistrer (OneDrive transmet) et prévenir le trésorier."),
         ("B8", "Tiers : rechercher un membre en tapant le début de son nom dans la liste ; une personne absente s'ajoute dans l'onglet "
                "Tiers (provisoire, le trésorier lui attribue ensuite un compte)."),
-        ("B10", "Trésorier : onglet Export, copier les lignes indiquées et les coller dans l'onglet Transmission du classeur ComptaBB."),
+        ("B10", "Trésorier : onglet Export, copier les lignes indiquées et les coller dans l'onglet Transmission du classeur ComptaJLC."),
         ("B12", f"Listes (membres, codes, correspondances) extraites du classeur maître le {AUJOURDHUI:%d/%m/%Y}."),
     ]
     for c, t in lignes:
@@ -231,7 +231,7 @@ def base(donnees, chemin):
     tiers = wb.create_sheet("Tiers", 1)
     tiers["A1"] = "Tiers : membres existants et nouveaux tiers (provisoires)"
     tiers["A2"] = ("Rechercher : filtre de la colonne Nom, ou taper le début du nom dans les listes. Nouveau tiers : l'ajouter sous la "
-                   "table, compte vide ; il est provisoire jusqu'à ce que le trésorier lui attribue un compte (onglet Codes du classeur ComptaBB).")
+                   "table, compte vide ; il est provisoire jusqu'à ce que le trésorier lui attribue un compte (onglet Codes du classeur ComptaJLC).")
     for j, h in enumerate(["Nom", "Compte", "Type", "Téléphone", "E-mail", "Remarque"]):
         tiers.cell(4, 1 + j, h)
     for i, (nom_, compte) in enumerate(membres):
@@ -360,7 +360,7 @@ def construire(maitre, sortie, entrees=None):
     part = cl.nouvel_onglet("Export", "Gestion", largeurs, cf=cf,
                             vue='<pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/>')
     fe = Feuille(cl.p, part)
-    fe.poser("A1", c_texte("A1", ch, "Export vers le classeur ComptaBB (trésorier)", S_TITRE))
+    fe.poser("A1", c_texte("A1", ch, "Export vers le classeur ComptaJLC (trésorier)", S_TITRE))
     erreurs = "+".join(f'COUNTIF({t}[Contrôle],"?*")' for t in defs)
     nb_ops = "+".join(f"COUNTIF({t}[OK],TRUE)" for t in defs)
     for r, nom, f_ in ((1, "LI_Err", erreurs), (2, "LI_NbOps", nb_ops), (3, "LI_NbLignes", f"MAX(Q7:Q{6 + n_brut})"),
@@ -369,7 +369,7 @@ def construire(maitre, sortie, entrees=None):
         cl.nommer(nom, f"Export!$P${r}")
     fe.poser("A3", c_f("A3", 'IF(LI_NbOps+LI_Err=0,"Aucune opération saisie.",IF(LI_OK,"PRÊT : "&LI_NbOps&" opérations, "&LI_NbLignes'
                              '&" lignes d\'écritures.","À COMPLÉTER : "&LI_Err&" ligne(s) signalée(s) dans les onglets Activité et Gestion."))', S_GRAS))
-    fe.poser("A4", c_f("A4", 'IF(NOT(LI_OK),"","Sélectionner A6:M"&(5+LI_NbLignes)&", Copier ; dans ComptaBB, onglet Transmission, clic droit '
+    fe.poser("A4", c_f("A4", 'IF(NOT(LI_OK),"","Sélectionner A6:M"&(5+LI_NbLignes)&", Copier ; dans ComptaJLC, onglet Transmission, clic droit '
                              'sur A7 › Collage spécial › Valeurs.")', S_NOTE))
     for j, h in enumerate(COLONNES):
         fe.poser(f"{lettre(1 + j)}5", c_texte(f"{lettre(1 + j)}5", ch, h, S_ENTETE))
