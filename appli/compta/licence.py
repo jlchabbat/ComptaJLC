@@ -1,6 +1,6 @@
 """Clé de licence des sites créés par l'assistant de premier démarrage (un site par association, étape 3).
 
-- Sites d'avant l'assistant (celui de la Loge) : jamais de licence demandée.
+- Sites d'avant l'assistant (déjà des journaux) : jamais de licence demandée.
 - Site neuf : ESSAI_JOURS jours d'essai à partir du démarrage, puis une licence signée (association, site, date de fin).
 - Sans licence valide : lecture seule. On consulte, imprime et exporte (export complet compris), on ne saisit plus.
 

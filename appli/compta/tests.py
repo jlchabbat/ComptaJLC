@@ -23,7 +23,7 @@ from . import controles, reglages
 from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, Tiers, TypeTiers, soldes
 
 D = Decimal
-# Les tests décrivent le site de la Loge : un réglage absent y prend la valeur de la Loge (Mizrahi, Bit, Isracard…).
+# Les tests décrivent un site déjà en service : un réglage absent y prend sa valeur d'usage (Mizrahi, Bit, Isracard…).
 # La classe ReglagesAssociation vérifie les valeurs neutres d'une nouvelle association.
 NEUTRES = dict(reglages.NEUTRES)
 reglages.NEUTRES.update({cle: loge for cle, _, _, loge in reglages.REGLAGES})
@@ -238,11 +238,11 @@ class ReglagesAssociation(TestCase):
         creer(apps, None)                                             # base neuve : rien d'enregistré
         self.assertFalse(Reglage.objects.filter(cle__in=[c for c, *_ in reglages.REGLAGES]).exists())
         Journal.objects.create(code="B1", intitule="Mizrahi")
-        Reglage.objects.create(cle="association", valeur="Loge de Jérusalem")
+        Reglage.objects.create(cle="association", valeur="Association exemple")
         creer(apps, None)                                             # site existant : ses valeurs actuelles
         self.assertEqual([Reglage.lire(c) for c in ("nom_association", "devise", "releves_mizrahi", "releve_bit",
                                                     "carte_bancaire", "hebergeur_liens", "traductions_releve")],
-                         ["Loge de Jérusalem", "₪", "B1,B2", "B3", "Isracard", "SUMIT", "oui"])
+                         ["Association exemple", "₪", "B1,B2", "B3", "Isracard", "SUMIT", "oui"])
 
     def test_nouvelle_association_sans_mizrahi_bit_ni_isracard(self):
         from unittest import mock
@@ -264,12 +264,12 @@ class ReglagesAssociation(TestCase):
     def test_nom_et_devise_affiches(self):
         referentiels_saisie()
         call_command("migrate", verbosity=0)
-        Reglage.objects.update_or_create(cle="nom_association", defaults={"valeur": "Loge de Jérusalem"})
+        Reglage.objects.update_or_create(cle="nom_association", defaults={"valeur": "Association exemple"})
         u = User.objects.create_user("tresorier", password="x")
         u.groups.add(Group.objects.get(name="Gestion"))
         self.client.force_login(u)
         r = self.client.get("/?du=2026-01-01&au=2026-12-31")
-        self.assertContains(r, "Loge de Jérusalem")
+        self.assertContains(r, "Association exemple")
         self.assertContains(r, " ₪</div>")
         self.assertContains(r, "Traductions du relevé")
         Reglage.objects.create(cle="traductions_releve", valeur="non")
@@ -346,7 +346,7 @@ class PremierDemarrage(TestCase):
 
 
 class Licences(TestCase):
-    """Étape 3 : sites créés par l'assistant ; essai, lecture seule, licence signée ; le site de la Loge est exempté."""
+    """Étape 3 : sites créés par l'assistant ; essai, lecture seule, licence signée ; un site déjà en service est exempté."""
 
     def setUp(self):
         from unittest import mock

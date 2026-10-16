@@ -5,7 +5,6 @@ Application web (Django) de la comptabilité de l'association.
 L'application est utilisée **en ligne** sur PythonAnywhere
 (https://comptajlc.pythonanywhere.com ; mise à jour :
 `docs/ComptaJLC_protocole_mise_a_jour.pdf`, script `deploiement/maj.sh`).
-L'ancien programme du PC (`ComptaJLC.exe`) est abandonné et retiré du dépôt.
 
 Données (hors Git) : dossier `comptajlc-data` du site (`comptajlc.sqlite3`,
 `secret.txt`, justificatifs, Imports, Exports, sauvegardes).

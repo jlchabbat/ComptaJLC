@@ -2,13 +2,13 @@
 carte de paiement, hébergeur des justificatifs en lien, traductions du relevé.
 
 Ils sont enregistrés dans Reglage (Administration › Paramètres, fichier Parametres.xlsx). Un réglage absent prend
-la valeur neutre d'une nouvelle association ; la migration 0016 a donné aux sites existants les valeurs de la Loge."""
+la valeur neutre d'une nouvelle association ; la migration 0016 donne leurs valeurs d'usage aux sites qui avaient déjà des journaux avant l'assistant."""
 
 from .models import Reglage
 
-# clé, description, valeur neutre (nouvelle association), valeur des sites existants (Loge)
+# clé, description, valeur neutre (nouvelle association), valeur des sites qui avaient déjà des journaux
 REGLAGES = [
-    ("nom_association", "Nom de l'association (en-tête des pages, situation, éditions)", "", "Loge Bnei Brith"),
+    ("nom_association", "Nom de l'association (en-tête des pages, situation, éditions)", "", "Association"),
     ("devise", "Symbole de la devise des montants (₪, €, $…)", "€", "₪"),
     ("releves_mizrahi", "Journaux de la banque Mizrahi-Tefahot (nom du moyen de paiement à la saisie), séparés par des virgules ; "
                         "vide : le nom du journal est utilisé", "", "B1,B2"),

@@ -46,13 +46,10 @@ que ComptaJLC. Interface en français ; relevés bancaires possibles en hébreu.
 - Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur ne va jamais dans le dépôt.
 - Documentation PDF : `docs/*.html` → `python appli/deploiement/documentation.py --sans-captures`.
 
-## À reprendre (héritage de ComptaBB)
+## À reprendre
 
-- `src/`, `tests/recette_*.py`, `docs/cahier-des-charges.md`, `docs/plan-lots.md`,
-  `docs/inventaire.md` et `docs/livraison-*.md` décrivent le classeur Excel de ComptaBB et ses
-  « lots » ; conservés pour mémoire, ils ne reflètent pas ComptaJLC.
-- `docs/*.html` et les PDF (`docs/`, `appli/compta/documentation/`) portent encore le texte de
-  ComptaBB (axes 1 et 2, membres, bénévoles) : à réécrire puis à régénérer.
+- `docs/*.html` et les PDF (`docs/`, `appli/compta/documentation/`) portent encore le texte d'
+une ancienne application (axes 1 et 2, membres, bénévoles) : à réécrire puis à régénérer.
 - `appli/deploiement/documentation.py` (génération des PDF avec captures) crée des données
   d'exemple qui utilisent l'ancien modèle : à réécrire avant usage.
 

@@ -4,7 +4,7 @@
    « python manage.py preparer » (fichier code_installation.txt du dossier des données, effacé ensuite).
 2. Base sans journal : l'administrateur décrit l'association (nom, devise, exercice, banques et caisse, options) et
    choisit un plan comptable de base ou l'import de ses propres fichiers (modèles vierges).
-Le site de la Loge (déjà des journaux) n'est jamais concerné."""
+Un site qui a déjà des journaux n'est jamais concerné."""
 
 import datetime as dt
 import secrets
