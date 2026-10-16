@@ -8,7 +8,7 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 
 | Règle | Choix |
 |---|---|
-| Format | **Excel `.xlsx` ou `.xlsm`** (format principal ; les macros et requêtes Power Query de l'administrateur servent à adapter les fichiers d'autres horizons : l'application lit seulement les valeurs, jamais les macros) ; si le classeur a plusieurs feuilles, celle qui porte le nom du fichier voulu (Ecritures, Banque1…), sinon la première. `.csv` accepté aussi (séparateur `;`, UTF-8 avec BOM). Les exports sont des `.xlsx` |
+| Format | **Excel `.xlsx` ou `.xlsm`** (format principal ; les macros et requêtes Power Query de l'administrateur servent à adapter les fichiers d'autres horizons : l'application lit seulement les valeurs, jamais les macros) ; si le classeur a plusieurs feuilles, celle qui porte le nom du fichier voulu (Ecritures, Banque…), sinon la première. `.csv` accepté aussi (séparateur `;`, UTF-8 avec BOM). Les exports sont des `.xlsx` |
 | Première ligne | exactement les noms de rubriques ci-dessous |
 | Noms de rubriques | abréviations sans espace ni accent : `Mvt`, `Jnl`, `Compte`, `LibelCompte`, `Libelle`… |
 | Dates | `jj/mm/aaaa` |
