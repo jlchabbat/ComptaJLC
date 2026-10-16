@@ -901,7 +901,7 @@ REGLES = [
     ("Ordre", "Importer dans l'ordre du lexique : chaque fichier ne cite que des codes définis par les précédents."),
     ("Dates", "Dates Excel (affichées jj/mm/aaaa)."),
     ("Montants", "Nombres, sans symbole monétaire ; cellule vide quand il n'y a pas de montant."),
-    ("Relevés bancaires", "Une seule structure, quelle que soit la banque : Jnl, Date, Libelle (langue d'origine), Debit, Credit, Solde (facultatif). La préparation à partir du fichier de la banque (PDF, Excel…) se fait en amont, par Power Query."),
+    ("Relevés bancaires", "Une seule structure, quelle que soit la banque : Journ, Date, Libelle (langue d'origine), Debit (sortie), Credit (entrée). La préparation à partir du fichier de la banque (PDF, Excel…) se fait en amont, par Power Query."),
 ]
 AIDE = {
     "Exercices": ("Mise à jour par libellé ; un exercice clos ne change plus. La clôture se fait par Fin d'exercice › Clôture.", {

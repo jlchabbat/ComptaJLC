@@ -40,8 +40,8 @@ partie du code ou du libellé.
 
 Par journal de trésorerie (B1, B2, B3, CA) :
 
-- **Import du relevé** : un seul fichier `Banque.xlsx` (Jnl, Date, Libelle, Debit, Credit,
-  Solde facultatif), préparé en amont pour toutes les banques ; format Excel ou CSV. Les lignes déjà importées sont
+- **Import du relevé** : un seul fichier `Banque.xlsx` (Journ, Date, Libelle, Debit = sortie,
+  Credit = entrée), préparé en amont pour toutes les banques ; format Excel ou CSV. Les lignes déjà importées sont
   ignorées (clé : journal, date, libellé, montant). Au premier
   import, un solde d'ouverture est déduit du premier solde du relevé (0 sans solde).
 - **Écarter** une ligne : elle sort de la liste sans écriture (liste « Lignes écartées », bouton « Remettre »).
