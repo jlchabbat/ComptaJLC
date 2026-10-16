@@ -1912,6 +1912,19 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("Plan_adapte.xlsm"), "importé (")
         self.assertTrue(Compte.objects.filter(numero="600955").exists())
 
+    def test_banque_en_tetes_faux_et_dossier_temporaire_non_effacable(self):
+        """En-têtes non conformes : refus lisible, même quand le dossier temporaire ne peut pas être effacé (disque réseau)."""
+        from unittest import mock
+        wb = openpyxl.Workbook()
+        wb.active.append(["Date", "Operation", "Montant"])
+        wb.active.append([dt.datetime(2026, 3, 2), "x", 5])
+        tampon = io.BytesIO()
+        wb.save(tampon)
+        with mock.patch("os.rmdir", side_effect=OSError(39, "Directory not empty")):
+            with self.assertRaises(ech.Refus) as e:
+                ech.importer_banque("Banque.xlsx", tampon.getvalue(), None)
+        self.assertIn("En-têtes de la ligne 1 non conformes", e.exception.erreurs[0])
+
     def test_banque_un_seul_fichier_pour_toutes_les_banques(self):
         """Un classeur (préparé par Power Query) pour tous les journaux : relevés dans la langue d'origine, sans doublon, avec historique."""
         from .models import ImportReleve

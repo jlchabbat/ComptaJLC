@@ -1274,7 +1274,9 @@ def importer_banque(nom, contenu, utilisateur=None):
     suffixe = Path(nom).suffix.lower()
     if suffixe not in TABLEURS + (".csv",):
         raise Refus([f"{nom} : fichier .xlsx, .xlsm ou .csv attendu (structure Banque : {' | '.join(f.colonnes)})."])
-    with tempfile.TemporaryDirectory() as dossier:
+    # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
+    # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
         chemin = Path(dossier) / f"Banque{suffixe}"
         chemin.write_bytes(contenu)
         lignes = lire(chemin, f)
