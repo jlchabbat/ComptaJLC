@@ -208,7 +208,7 @@ def etat(journal, jusquau):
 
 
 def par_mois(journal):
-    """Soldes de fin de mois relevé / compta et écart (comme l'onglet Banque1)."""
+    """Soldes de fin de mois relevé / compta et écart."""
     rel = list(LigneReleve.objects.filter(journal=journal).values_list("date", "montant"))
     if not rel:
         return []

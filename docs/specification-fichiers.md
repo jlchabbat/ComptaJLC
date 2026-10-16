@@ -48,7 +48,7 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 
 ### Relevés bancaires (`BQE`) : un fichier par banque ou par import
 `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`
-- `Jnl` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = entrée, `Credit` = sortie ; `Solde` **facultatif** (Bit n'en donne pas) : s'il est présent, il sert à déduire le solde d'ouverture du premier import et à contrôler le relevé. Plus de référence.
+- `Jnl` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = entrée, `Credit` = sortie ; `Solde` **facultatif** : s'il est présent, il sert à déduire le solde d'ouverture du premier import et à contrôler le relevé. Plus de référence.
 - La traduction et le rapprochement (pointage, affectation, `Anal2`) se font dans l'écran Rapprochement, comme aujourd'hui.
 
 ### Utilisateurs (`USR`)

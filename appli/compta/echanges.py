@@ -852,7 +852,7 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
             a_faire.reverse()                             # fichier du plus récent au plus ancien : ordre chronologique
         a_faire.sort(key=lambda l: l["date"])             # le rang dans la journée suit l'ordre du fichier
         try:
-            ouverture = None if a_faire[0]["solde"] is not None else ZERO       # sans solde (Bit…) : ouverture à 0
+            ouverture = None if a_faire[0]["solde"] is not None else ZERO       # sans solde : ouverture à 0
             ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier,
                                                      solde_ouverture=ouverture, auteur=auteur)
         except ValueError as e:
@@ -953,7 +953,7 @@ AIDE = {
         "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
         "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit (l'autre colonne vide ou à 0)"),
         "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
-        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit n'en donne pas) ; sert à contrôler le relevé")}),
+        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne ; sert à contrôler le relevé")}),
 }
 AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
 

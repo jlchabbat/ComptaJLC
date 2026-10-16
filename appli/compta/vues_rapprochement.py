@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from . import echanges
 from . import releves as moteur
-from .models import CodeAnalytique, Compte, Journal, Ligne, LigneReleve, Modification, ParametreReleve, Traduction
+from .models import Compte, Journal, Ligne, LigneReleve, Modification, ParametreReleve, Traduction
 
 consulter = permission_required("compta.view_lignereleve", raise_exception=True)
 pointer = permission_required("compta.pointer_releve", raise_exception=True)

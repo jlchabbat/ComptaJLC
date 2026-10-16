@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from .models import ZERO, CodeAnalytique, Compte, Exercice, Ligne, Modification, Mouvement
+from .models import ZERO, Compte, Exercice, Ligne, Modification, Mouvement
 
 
 @dataclass

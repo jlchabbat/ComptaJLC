@@ -12,12 +12,9 @@ from pathlib import Path
 
 import openpyxl
 from django.contrib.auth.models import Group, User
-from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase, TransactionTestCase, override_settings
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.table import Table
 
 from . import controles, reglages
 from .models import CodeAnalytique, Compte, Exercice, Journal, Ligne, Mouvement, Prefixe, Reglage, Tiers, TypeTiers, soldes
@@ -943,7 +940,6 @@ class EcransEtats(TestCase):
 # ---------------------------------------------------------------- W5 : suivi des membres
 
 from . import tiers as mbr  # noqa: E402
-from .models import Tiers  # noqa: E402
 
 
 class SuiviTiers(TestCase):

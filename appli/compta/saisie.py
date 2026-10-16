@@ -15,7 +15,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from .models import (
-    CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneSchema, ModeleOperation, Modification, MoyenPaiement, Mouvement,
+    Compte, Exercice, Journal, Ligne, LigneSchema, ModeleOperation, Modification, MoyenPaiement, Mouvement,
     Reglage, TypeTiers,
 )
 

@@ -1,7 +1,7 @@
 from django import forms
 from django.db.models import Q
 
-from .models import CodeAnalytique, Compte, Journal, ModeleOperation, MoyenPaiement, Prefixe, TypeTiers
+from .models import Compte, Journal, ModeleOperation, MoyenPaiement, Prefixe, TypeTiers
 
 
 CHERCHABLE = {"data-cherchable": "Code ou libellé…"}
