@@ -61,7 +61,7 @@ recharger une sauvegarde ou un export complet.
 
 ## 5. Au quotidien
 
-- **Bénévoles** : Fiches bénévoles › Nouveau bénévole ; leur envoyer
+- **Utilisateurs** : Administration › Utilisateurs (mode Administration ou Gestion) ; leur envoyer
   l'adresse du site, leur identifiant et leur mot de passe.
 - **Sauvegarde** : onglet Files, télécharger régulièrement
   `comptajlc-data/comptajlc.sqlite3`.

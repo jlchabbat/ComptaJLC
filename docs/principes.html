@@ -27,7 +27,7 @@ code, .cmd { font-family: "DejaVu Sans Mono", monospace; font-size: 9.2pt; backg
 <p>Ce document explique <b>comment l'application tient ensemble</b>. Cinq mécanismes en sont la base : les référentiels (ce que l'on peut choisir
 en saisie), les paramètres (réglés dans Excel), les échanges de fichiers (imports et exports), la base de données (avec ses sauvegardes et ses
 archives) et le cycle installation / mise à jour du site. Les menus cités sont ceux de l'application ; les quatre premiers sont réservés à
-l'administrateur (certains au trésorier).</p>
+l'administrateur (mode Administration).</p>
 
 <div class="cadre"><b>L'idée directrice.</b> Rien de propre à l'association n'est écrit dans le programme : noms, comptes, journaux, codes, modèles
 d'opérations, traductions sont des <b>données</b>. On les modifie dans l'application ou dans Excel, jamais dans le code. Le programme (le « site »)
@@ -38,29 +38,27 @@ se remplace par une mise à jour ; les données restent là où elles sont et so
 <p>Un <b>référentiel</b> est une liste de valeurs autorisées, créée une fois, que la saisie propose ensuite. On ne tape pas un compte ou un code de
 mémoire : on le choisit. Cela évite les fautes de frappe et garantit que chaque écriture ne cite que des éléments qui existent.</p>
 <table><tr><th style="width:24%">Référentiel</th><th>Rôle</th><th style="width:26%">Où le gérer</th></tr>
-<tr><td>Plan comptable</td><td>Les comptes (512000 banque, 600000 achats…). <b>Chaque compte porte obligatoirement un code d'axe 1</b> (sa nature).</td><td>Saisie › Plan comptable</td></tr>
-<tr><td>Axe 1 – nature</td><td>Ce que sont les sommes : cotisations, fonctionnement, bilan (BIL)…</td><td>Saisie › Codes des axes 1 et 2</td></tr>
-<tr><td>Axe 2 – événement, projet</td><td>À quoi servent les sommes : un rallye, un gala, une bourse. Codes proposés par l'application (préfixe + numéro suivant) ; l'utilisateur ne saisit que le libellé.</td><td>Saisie › Codes et nouveaux tiers</td></tr>
+<tr><td>Plan comptable</td><td>Les comptes (512000 banque, 600000 achats…). <b>Chaque compte porte obligatoirement un code Anal.</b></td><td>Saisie › Plan comptable</td></tr>
+<tr><td>Codes Anal</td><td>L'unique axe analytique : ce à quoi servent les sommes (recettes, activités, fonctionnement, bilan…). Codes proposés par l'application (préfixe + numéro suivant) ; l'utilisateur ne saisit que le libellé.</td><td>Saisie › Codes Anal, Codes et nouveaux tiers</td></tr>
 <tr><td>Journaux</td><td>Banques et caisses (B1, CA…), achats, ventes, opérations diverses, à-nouveaux.</td><td>Administration › Journaux</td></tr>
-<tr><td>Tiers</td><td>Membres (411…), fournisseurs (401…) : un compte par tiers.</td><td>Tiers › Liste des tiers</td></tr>
-<tr><td>Utilisateurs et rôles</td><td>Administrateur, trésorier, bureau, bénévole.</td><td>Administration › Utilisateurs</td></tr>
-<tr><td>Modèles, moyens de paiement, traductions…</td><td>Types d'opérations de la saisie guidée, banques et caisses proposées, traduction des relevés en hébreu.</td><td>Administration › Paramètres (Excel)</td></tr></table>
-<h3>Les règles d'affectation des axes</h3>
+<tr><td>Tiers</td><td>Clients (411…), fournisseurs (401…) et autres types : un compte par tiers.</td><td>Tiers › Liste des tiers</td></tr>
+<tr><td>Utilisateurs et modes</td><td>Administration ou Gestion.</td><td>Administration › Utilisateurs</td></tr>
+<tr><td>Préfixes, types de tiers, modèles, moyens de paiement, traductions…</td><td>Préfixes des codes Anal, types d'opérations de la saisie guidée, banques et caisses proposées, traduction des libellés de relevé.</td><td>Administration › Paramètres (Excel)</td></tr></table>
+<h3>La règle de l'Anal</h3>
 <ul>
-<li><b>Axe 1 = le compte.</b> Un compte porte toujours un code d'axe 1 (jamais un code d'axe 2) ; les écritures en héritent. Un compte sans code d'axe 1 est refusé
-dans le plan, à l'import, et signalé par les Contrôles.</li>
-<li><b>Axe 2 = l'écriture.</b> Une écriture ne reçoit qu'un code d'axe 2 (jamais un code d'axe 1), et seulement sur un compte de <b>charges (6) ou de produits (7)</b>.
-Les comptes de bilan (classes 1 à 5) n'ont pas d'axe 2.</li>
-<li><b>Fonctionnement ou projet.</b> Pour une même nature de dépense ou de recette, on ouvre deux comptes : l'un pour le fonctionnement courant
-(ex. <code>600000</code>), l'autre pour les projets (ex. <code>600001</code>, coché « Compte de projet »). Toute écriture sur un compte de projet
-doit porter un code d'axe 2 ; le compte de fonctionnement n'en exige pas.</li></ul>
+<li><b>Un seul axe.</b> Il n'y a qu'un axe analytique, appelé <b>Anal</b>. Pas de second axe, pas de statut (« en cours », « terminé ») sur les codes.</li>
+<li><b>Anal = le compte.</b> Un compte porte toujours un code Anal ; les écritures en héritent, aucune écriture n'a de code propre. Un compte sans Anal est refusé
+dans le plan, à l'import, et signalé par les Contrôles. Changer l'Anal d'un compte déplace toutes ses écritures vers le nouveau code.</li>
+<li><b>Nommer les codes.</b> Un code est un <b>préfixe</b> et un numéro (<code>FON.1</code>, <code>FON.2</code>…). L'application propose le préfixe puis le numéro suivant
+(plus grand numéro + 1).</li>
+<li><b>Deux comptes pour une nature.</b> Pour distinguer deux usages d'une même dépense ou recette, on ouvre deux comptes (ex. <code>600000</code> et <code>600001</code>), chacun avec son code Anal.</li></ul>
 <div class="cadre">Rien n'est supprimé d'un référentiel utilisé par des écritures : on le <b>désactive</b> (« Proposé en saisie » décoché). Chaque création ou
 modification est inscrite dans <span class="menu">Contrôle › Historique</span>.</div>
 
 <h2 class="saut">2. Administration › Paramètres (Excel)</h2>
 <h3>Le principe</h3>
-<p>Tous les paramètres tiennent dans <b>un seul classeur, Parametres.xlsx</b>, une feuille par table : Réglages, Axe 1, Axe 2, Préfixes, Plan comptable,
-Journaux, Types de tiers, Moyens de paiement, Schémas, Modèles d'opération, Natures et modes des fiches, Relevés, Traductions. On l'exporte, on le
+<p>Tous les paramètres tiennent dans <b>un seul classeur, Parametres.xlsx</b>, une feuille par table : Réglages, Codes Anal, Préfixes, Plan comptable,
+Journaux, Types de tiers, Moyens de paiement, Schémas, Modèles d'opération, Relevés, Traductions. On l'exporte, on le
 modifie dans Excel (copier-coller de dizaines de lignes d'un coup), puis on le réinjecte.</p>
 <ol><li><b>Télécharger</b> Parametres.xlsx (<span class="menu">Administration › Paramètres (Excel)</span>) ; une copie reste dans le dossier Exports.</li>
 <li><b>Modifier</b> dans Excel, sans changer les en-têtes de colonnes ni l'ordre des feuilles.</li>
@@ -74,7 +72,7 @@ modifie dans Excel (copier-coller de dizaines de lignes d'un coup), puis on le r
 <tr><td>Une seule erreur</td><td><b>Tout ou rien</b> : rien n'est enregistré ; le rapport liste chaque ligne à corriger (feuille, ligne, motif).</td></tr>
 <tr><td>Dans tous les cas</td><td>Une sauvegarde de la base est faite juste avant ; chaque changement est inscrit dans l'Historique.</td></tr></table>
 <p>Les comptes de tiers n'y figurent pas : ils ont leur fichier <b>Tiers.xlsx</b>. Un fichier venu d'une autre application de comptabilité
-n'est jamais lu tel quel : l'administrateur l'adapte d'abord à cette structure (Power Query ou macro dans Excel).</p>
+n'est jamais lu tel quel : on l'adapte d'abord à cette structure (Power Query ou macro dans Excel) ; l'application ne fait pas la transformation.</p>
 
 <h2>3. Administration › Imports et exports</h2>
 <h3>Le principe</h3>
@@ -86,14 +84,14 @@ modèles vierges). L'application ne lit ni PDF ni format de banque : le fichier 
 <tr><td>Exports/Sauvegardes</td><td>Copies de la base (voir § 4).</td></tr>
 <tr><td>Exports/Archives</td><td>Classeurs figés des clôtures, copies de l'historique effacé.</td></tr></table>
 <h3>Les formats reconnus</h3>
-<p>Exercices · Réglages · Axe 1 · Axe 2 · Préfixes · Plan comptable · Axes de comptes · Journaux · Tiers · Traductions · Budget · Écritures · Libellés ·
-Liens des documents · Banque (relevés de toutes les banques et caisses).</p>
+<p>Exercices · Réglages · Anal · Préfixes · Plan comptable · Axes de comptes · Journaux · Tiers · Traductions · Budget · Écritures · Libellés ·
+Liens des documents · Banque (relevés de toutes les banques et caisses : un seul modèle, <b>Banque.xlsx</b>).</p>
 <h3>Importer</h3>
 <ul><li><b>Tout importer</b> traite les fichiers déposés <b>dans l'ordre du lexique</b> : chaque fichier ne cite que des codes définis par les précédents (les axes avant le
 plan comptable, le plan avant les écritures).</li>
 <li><b>Tout ou rien</b> : une erreur dans une ligne et rien n'est importé ; une sauvegarde précède chaque import ; les référentiels sont mis à jour, jamais supprimés.</li>
 <li>Les <b>écritures</b> importées sont contrôlées comme les écritures saisies : un débit OU un crédit par ligne, mouvements équilibrés, exercice non clos,
-codes existants, axe 2 réservé aux comptes 6 et 7 (un code d'axe 1 en axe 2 est refusé). Un nouveau compte doit porter son code d'axe 1.</li>
+comptes existants. Le code Anal d'une écriture est celui de son compte (colonnes Anal et LibelAnal d'information). Un nouveau compte doit porter son code Anal.</li>
 <li>Un Mvt déjà présent et inchangé est ignoré (aucun doublon) ; un Mvt modifié est mis à jour avec l'avant / après dans l'historique.</li></ul>
 <h3>Exporter</h3>
 <p><b>Exporter des données</b> (menu Éditions) donne un fichier par référentiel ou nature de données, ou tout dans un .zip avec Parametres.xlsx et Lexique.xlsx.
@@ -108,18 +106,18 @@ trois façons complémentaires, toutes visibles sur la page <span class="menu">A
 <table><tr><th style="width:23%">Protection</th><th>Ce que c'est</th><th style="width:25%">Où est-ce rangé</th></tr>
 <tr><td>Sauvegarde</td><td>Copie datée et cohérente de la base (même pendant que le site tourne), faite à la demande, avant chaque import, chaque remise à zéro et chaque mise à jour.
 Les <b>3 dernières</b> sont gardées.</td><td>Exports/Sauvegardes, sur le site</td></tr>
-<tr><td>Export complet</td><td>Un .zip : base, Parametres, Tiers, Écritures, Données (budget, relevés, fiches, historique), justificatifs (scans et photos) et états de chaque exercice.
+<tr><td>Export complet</td><td>Un .zip : base, Parametres, Tiers, Écritures, Données (budget, relevés, historique), justificatifs (scans et photos) et états de chaque exercice.
 Il est lisible dans Excel, donc <b>indépendant du logiciel</b>.</td><td>Exports ; à télécharger et ranger sur le PC ou OneDrive</td></tr>
 <tr><td>Archives</td><td>Classeur Excel <b>figé en valeurs</b> à chaque clôture d'exercice, et copie de l'historique avant effacement. Lecture seule, preuve de l'exercice clos.</td><td>Exports/Archives, sur le site</td></tr></table>
 <h3>Que faire, et quand</h3>
 <ul><li><b>Chaque mois, et avant une clôture</b> : « Créer une sauvegarde », puis « Tout exporter » et télécharger le .zip sur le PC.</li>
 <li><b>Une sauvegarde sur le site ne suffit pas</b> : elle disparaît avec le site. Seul l'export téléchargé hors du site protège d'une perte de l'hébergement.</li>
 <li><b>Restaurer ou recharger</b> : « Remettre à zéro et recharger » accepte une sauvegarde (.sqlite3 : la base redevient exactement celle de la sauvegarde, comptes utilisateurs compris),
-un export complet (.zip : la comptabilité est vidée puis rechargée depuis ses fichiers Excel, puis comparée au fichier de contrôle ; au moindre écart, rien n'est modifié) ou, pour une reprise, le classeur ComptaJLC.xlsm.
+un export complet (.zip : la comptabilité est vidée puis rechargée depuis ses fichiers Excel, puis comparée au fichier de contrôle ; au moindre écart, rien n'est modifié)
 Pour un export dont les fichiers Excel ont été modifiés, cocher « Fichiers modifiés » : la base est alors vérifiée par les contrôles de cohérence.</li>
 <li><b>Sécurité de l'opération</b> : il faut taper REMPLACER pour confirmer ; une sauvegarde de la base actuelle est faite juste avant, on peut donc tout annuler en la rechargeant.</li></ul>
-<div class="cadre">Les écritures ne se modifient ni ne se suppriment « en douce » : une correction passe par l'application (trésorier), jamais dans un exercice clos, avec l'avant / après
-conservé dans l'Historique. Les contrôles (Contrôle › Contrôles) vérifient l'équilibre, les axes, les exercices clos et les comptes d'attente ; leur résultat doit être « OK » avant toute clôture.</div>
+<div class="cadre">Les écritures ne se modifient ni ne se suppriment « en douce » : une correction passe par l'application (mode Gestion), jamais dans un exercice clos, avec l'avant / après
+conservé dans l'Historique. Les contrôles (Contrôle › Contrôles) vérifient l'équilibre, les codes Anal, les exercices clos et les comptes d'attente ; leur résultat doit être « OK » avant toute clôture.</div>
 
 <h2>5. Installation et mise à jour</h2>
 <h3>Le principe : un site par association</h3>
@@ -141,9 +139,9 @@ Le script installe le code, l'environnement Python, la base vide et le fichier W
 (3) bibliothèques Python, (4) migration de la base et des paramètres, (5) rechargement du site. Il se termine par « MISE À JOUR TERMINÉE ».</li>
 <li>Ouvrir le site et appuyer sur <b>Ctrl+F5</b>.</li></ol>
 <div class="cadre attention"><b>En cas de problème</b> : <span class="cmd">bash ~/maj.sh --retour</span> remet le code précédent ; les données n'ont jamais été touchées, et les 3 dernières sauvegardes
-de la base sont listées par le script. Les corrections de données faites par une mise à jour (par exemple, retirer un code d'axe 2 d'une écriture de bilan) sont appliquées automatiquement à l'étape 4.</div>
+de la base sont listées par le script. Les corrections de données faites par une mise à jour sont appliquées automatiquement à l'étape 4.</div>
 <h3>Ce qu'une mise à jour apporte avec elle</h3>
-<p>Le code, les migrations de la base, et les documents PDF du menu Éditions (Présentation, Mode d'emploi, Guide des bénévoles, Principes de fonctionnement) : ils sont livrés avec le code
+<p>Le code, les migrations de la base, et les documents PDF du menu Éditions (Présentation, Mode d'emploi, Principes de fonctionnement, Installation et mises à jour) : ils sont livrés avec le code
 et donc toujours à jour. Les <b>comptes de la comptabilité, les paramètres et les réglages ne sont jamais écrasés</b>.</p>
 
 <h2 class="saut">6. Contrôle › Contrôles</h2>
@@ -158,13 +156,11 @@ une écriture serait arrivée autrement (import, reprise, ancienne version). Ell
 <tr><td>Info</td><td>Simple indication (remboursements : recette au débit, dépense au crédit).</td></tr></table>
 <h3>Ce qui est contrôlé</h3>
 <ul><li><b>Équilibre</b> : total débit = total crédit ; aucun mouvement déséquilibré ni de moins de deux lignes ; une ligne = un débit <b>ou</b> un crédit.</li>
-<li><b>Axes</b> : chaque compte porte un code d'axe 1 (et c'est bien un code d'axe 1) ; aucune écriture n'a un code d'axe 1 en axe 2 ni un axe 2 sur un compte de bilan ;
-toute écriture d'un compte « de projet » porte un code d'axe 2.</li>
+<li><b>Anal</b> : chaque compte porte un code Anal existant.</li>
 <li><b>Exercices clos</b> : aucune écriture nouvelle dans un exercice clos.</li>
 <li><b>Comptes techniques</b> : le compte de virement interne et le compte d'attente doivent revenir à zéro.</li></ul>
 <div class="cadre"><b>Corriger.</b> Une écriture se corrige depuis l'application (<span class="menu">Saisie › Modifier une écriture</span>), jamais dans un exercice clos, avec l'avant / après dans
-l'Historique. Les anomalies d'axes les plus courantes (code d'axe 2 invalide, compte sans axe 1 repris d'un compte voisin) sont aussi corrigées automatiquement à chaque mise à jour,
-ou à la demande par la commande <code>python manage.py corriger_axes</code> (aperçu sans l'option <code>--appliquer</code>) ; chaque correction est inscrite dans l'Historique.</div>
+l'Historique. </div>
 
 <h2>7. Banque › Relevés à passer en comptabilité</h2>
 <h3>Le principe</h3>
@@ -172,12 +168,12 @@ ou à la demande par la commande <code>python manage.py corriger_axes</code> (ap
 <b>une écriture, et une seule</b>. Les lignes qui n'en ont pas encore sont listées sur cette page, par banque (un onglet par journal : B1, B2…). On ne tape jamais une écriture de banque à la main :
 on indique seulement la contrepartie, et l'application crée l'écriture à deux lignes (banque / contrepartie), aussitôt <b>reliée</b> à sa ligne de relevé, qui disparaît de la liste.</p>
 <h3>Déroulement</h3>
-<ol><li><b>Télécharger le relevé</b> (« Télécharger un relevé… », en bas de page) : un fichier Excel ou CSV unique pour toutes les banques (colonnes Jnl, Date, Libelle, Debit, Credit, Solde facultatif),
-préparé en amont. Les lignes déjà connues sont ignorées : on peut reprendre un relevé qui chevauche le précédent, sans doublon.</li>
+<ol><li><b>Télécharger le relevé</b> (« Télécharger un relevé… », en bas de page) : un fichier Excel ou CSV unique pour toutes les banques (colonnes <b>Journ, Date, Libelle, Debit, Credit</b> : Debit = sortie, Credit = entrée),
+préparé en amont ; il n'y a pas d'autre modèle. Les lignes déjà connues sont ignorées : on peut reprendre un relevé qui chevauche le précédent, sans doublon.</li>
 <li><b>Relier celles déjà en compta</b> : l'application relie d'elle-même les lignes dont <b>une seule</b> écriture de même montant existe déjà à quelques jours près (7 jours par défaut, réglage
 <code>tolerance_rapprochement</code>). Rien n'est créé ; les cas douteux restent dans la liste, avec des pistes (même montant plus ancien, autre banque, plusieurs écritures regroupées).</li>
 <li><b>Reprendre les propositions</b> : l'application se souvient du compte utilisé pour un même libellé et le propose ; on l'accepte ligne à ligne ou pour toutes les lignes vides.</li>
-<li>Pour chaque ligne restante, choisir le <b>compte de contrepartie</b> (et le <b>code axe 2</b> si le compte est de charges ou de produits) ; le libellé de l'écriture est modifiable.</li>
+<li>Pour chaque ligne restante, choisir le <b>compte de contrepartie</b> (son Anal en découle) ; le libellé de l'écriture est modifiable.</li>
 <li><b>Créer les écritures</b> : une écriture par ligne renseignée. Les lignes laissées vides restent à faire.</li>
 <li><b>Écarter</b> une ligne déjà passée autrement (doublon, écriture d'une autre banque…) : elle quitte la liste sans écriture ; on peut la <b>remettre</b> plus tard.</li></ol>
 <div class="cadre">La fenêtre est organisée du plus fréquent au plus rare : onglets des banques et titre sur une seule ligne, puis une barre d'actions (Créer, Reprendre les propositions,
@@ -191,7 +187,7 @@ apporté quelles lignes et à vérifier qu'un relevé n'a pas été repris deux 
 écriture</b>, et n'empêche pas de reprendre le même fichier (les doublons restent écartés à chaque import). La suppression est inscrite dans l'Historique général.</p>
 
 <h2>9. Banque › Traductions du relevé</h2>
-<p>Les relevés arrivent en hébreu. Une <b>traduction</b> associe un libellé hébreu à son équivalent français ; elle s'applique ensuite à toutes les lignes identiques et devient le libellé proposé
+<p>Les relevés peuvent arriver en hébreu ; le libellé du relevé reste dans sa langue d'origine. Une <b>traduction</b> associe un libellé hébreu à son équivalent français ; elle s'applique ensuite à toutes les lignes identiques et devient le libellé proposé
 des écritures. La page liste les opérations « À traduire » avec un exemple (date, montant).</p>
 <p><b>Propositions à valider.</b> Pour chaque opération, l'application inscrit une proposition fondée sur un glossaire de termes bancaires courants (virement, commission, dépôt, retrait, chèque,
 électricité, assurance, cotisation…) et sur les traductions déjà validées. Ce n'est pas une traduction certaine : « à valider » signifie que tous les mots sont reconnus, « à compléter » que des mots
@@ -207,11 +203,12 @@ Ce fichier n'est ni dans la base, ni dans les exports, ni touché par les mises 
 
 <h2>Récapitulatif : qui fait quoi</h2>
 <table><tr><th style="width:26%">Besoin</th><th>Où</th><th style="width:22%">Qui</th></tr>
-<tr><td>Ajouter un compte, un code, un journal</td><td>Plan comptable, Codes, Journaux</td><td>Administrateur, gestion</td></tr>
-<tr><td>Modifier des dizaines de paramètres</td><td>Paramètres (Excel)</td><td>Administrateur, trésorier</td></tr>
-<tr><td>Importer des écritures, un relevé, un budget</td><td>Imports et exports</td><td>Administrateur</td></tr>
-<tr><td>Sauvegarder, exporter, restaurer</td><td>Base de données</td><td>Administrateur</td></tr>
-<tr><td>Vérifier la comptabilité</td><td>Contrôle › Contrôles</td><td>Trésorier, bureau</td></tr>
-<tr><td>Passer le relevé en comptabilité, traduire</td><td>Banque</td><td>Trésorier</td></tr>
-<tr><td>Installer, mettre à jour, revenir en arrière</td><td>PythonAnywhere : <code>installer.sh</code>, <code>maj.sh</code></td><td>Administrateur</td></tr></table>
+<tr><td>Ajouter un compte, un code Anal</td><td>Plan comptable, Codes Anal</td><td>Administration, Gestion</td></tr>
+<tr><td>Ajouter un journal (banque, caisse)</td><td>Journaux</td><td>Administration</td></tr>
+<tr><td>Modifier des dizaines de paramètres</td><td>Paramètres (Excel)</td><td>Administration</td></tr>
+<tr><td>Importer des écritures, un relevé, un budget</td><td>Imports et exports</td><td>Administration</td></tr>
+<tr><td>Sauvegarder, exporter, restaurer</td><td>Base de données</td><td>Administration</td></tr>
+<tr><td>Vérifier la comptabilité</td><td>Contrôle › Contrôles</td><td>Administration, Gestion</td></tr>
+<tr><td>Passer le relevé en comptabilité, traduire</td><td>Banque</td><td>Administration, Gestion</td></tr>
+<tr><td>Installer, mettre à jour, revenir en arrière</td><td>PythonAnywhere : <code>installer.sh</code>, <code>maj.sh</code></td><td>Administration</td></tr></table>
 </body></html>

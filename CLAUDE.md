@@ -46,12 +46,11 @@ que ComptaJLC. Interface en français ; relevés bancaires possibles en hébreu.
 - Licence (`appli/compta/licence.py`) : la clé privée de l'éditeur ne va jamais dans le dépôt.
 - Documentation PDF : `docs/*.html` → `python appli/deploiement/documentation.py --sans-captures`.
 
-## À reprendre
+## Documentation
 
-- `docs/*.html` et les PDF (`docs/`, `appli/compta/documentation/`) portent encore le texte d'
-une ancienne application (axes 1 et 2, membres, bénévoles) : à réécrire puis à régénérer.
-- `appli/deploiement/documentation.py` (génération des PDF avec captures) crée des données
-  d'exemple qui utilisent l'ancien modèle : à réécrire avant usage.
+- Sources : `docs/*.html` (présentation, mode d'emploi, principes, installation, deux protocoles) ; captures dans
+  `docs/images/` produites par `python appli/deploiement/documentation.py` (données d'exemple fictives, Chromium
+  + Playwright). Sans les captures : `--sans-captures`. À réécrire en même temps que l'application.
 
 ## Git
 
