@@ -483,10 +483,10 @@ from . import echanges as ech_rap  # noqa: E402
 from . import releves as rap  # noqa: E402
 from .models import LigneReleve, ParametreReleve, Rapprochement, Traduction  # noqa: E402
 
-CSV_MODELE = ("\ufeffJourn;Date;Libelle;Debit;Credit;Etat\n"
-              "B1;05/01/2026;עמלת מסלול;10,00;;TERMINE\n"
-              "B1;10/01/2026;הפקדת שיק;;1 550,00;TERMINE\n"
-              "B1;20/01/2026;העברה באינטרנט;400,00;;TERMINE\n").encode("utf-8")
+CSV_MODELE = ("\ufeffJourn;Date;Libelle;Debit;Credit\n"
+              "B1;05/01/2026;עמלת מסלול;10,00;\n"
+              "B1;10/01/2026;הפקדת שיק;;1 550,00\n"
+              "B1;20/01/2026;העברה באינטרנט;400,00;\n").encode("utf-8")
 
 
 class Rapprochements(TestCase):
@@ -541,17 +541,17 @@ class Rapprochements(TestCase):
         self.assertEqual(self.importer(CSV_MODELE)[:2], (2, 1))                       # retrouvée sans référence : pas de doublon
         self.assertEqual(self.importer(CSV_MODELE)[:2], (0, 3))
         # même jour, même libellé, même montant, deux fois : deux lignes ; la 2e se retrouve au réimport
-        deux = ("Journ;Date;Libelle;Debit;Credit;Etat\nB1;21/01/2026;פירעון שיק;5,00;;TERMINE\nB1;21/01/2026;פירעון שיק;5,00;;TERMINE\n").encode()
+        deux = ("Journ;Date;Libelle;Debit;Credit\nB1;21/01/2026;פירעון שיק;5,00;\nB1;21/01/2026;פירעון שיק;5,00;\n").encode()
         self.assertEqual(self.importer(deux)[:2], (2, 0))
         self.assertEqual(self.importer(deux)[:2], (0, 2))
         self.assertEqual(LigneReleve.objects.filter(date=dt.date(2026, 1, 21)).count(), 2)
         # libellé différent = autre ligne, sans collision de clé en base
-        autre = ("Journ;Date;Libelle;Debit;Credit;Etat\nB1;21/01/2026;פירעון אחר;5,00;;TERMINE\n").encode()
+        autre = ("Journ;Date;Libelle;Debit;Credit\nB1;21/01/2026;פירעון אחר;5,00;\n").encode()
         self.assertEqual(self.importer(autre)[:2], (1, 0))
 
     def test_montants_a_zero_et_negatifs_acceptes(self):
-        fichier = ("Journ;Date;Libelle;Debit;Credit;Etat\nB1;05/01/2026;עמלת מסלול;10,00;0;TERMINE\n"
-                   "B1;10/01/2026;הפקדת שיק;0;1550,00;TERMINE\nB1;20/01/2026;העברה;-400,00;;TERMINE\n").encode()
+        fichier = ("Journ;Date;Libelle;Debit;Credit\nB1;05/01/2026;עמלת מסלול;10,00;0\n"
+                   "B1;10/01/2026;הפקדת שיק;0;1550,00\nB1;20/01/2026;העברה;-400,00;\n").encode()
         self.assertEqual(self.importer(fichier)[:2], (3, 0))
         self.assertEqual([l.montant for l in LigneReleve.objects.filter(ouverture=False).order_by("date")], [D("-10"), D("1550"), D("-400")])
         deux = "Journ;Date;Libelle;Debit;Credit\nB1;05/01/2026;x;5,00;3,00\n".encode()
@@ -1817,7 +1817,7 @@ class Echanges(TransactionTestCase):
         self.assertEqual(ech.format_de(ech.imports() / "Releve.xlsx"), None)
         classeur("Libelles_octobre.xlsx", ech.COLONNES_ECRITURES)
         self.assertEqual(ech.format_de(ech.imports() / "Libelles_octobre.xlsx").nom, "Libelles")
-        classeur("Banque_octobre.xlsx", ["Journ", "Date", "Libelle", "Debit", "Credit", "Etat"])
+        classeur("Banque_octobre.xlsx", ["Journ", "Date", "Libelle", "Debit", "Credit"])
         self.assertEqual(ech.format_de(ech.imports() / "Banque_octobre.xlsx").nom, "Banque")
         classeur("Autre.xlsx", ["Un", "Deux"], [["a", "b"]])
         self.assertIsNone(ech.format_de(ech.imports() / "Autre.xlsx"))
@@ -2102,12 +2102,12 @@ class Echanges(TransactionTestCase):
 
     def test_banque_export_identique_a_l_import(self):
         d = dt.datetime(2026, 1, 5)
-        self.fichier("Banque.xlsx", [["B1", d, "עמלת מסלול", 10, None, "TERMINE"], ["B1", d, "הפקדת שיק", None, 1550, "TERMINE"]])
+        self.fichier("Banque.xlsx", [["B1", d, "עמלת מסלול", 10, None], ["B1", d, "הפקדת שיק", None, 1550]])
         self.assertContains(self.importer("Banque.xlsx"), "B1 : 2 ajoutée(s), 0 déjà présente(s)")
         chemin, n = ech.exporter(ech.PAR_NOM["Banque"])
         ws = openpyxl.load_workbook(chemin).active
         self.assertEqual([c.value for c in ws[1]], ech.PAR_NOM["Banque"].colonnes)            # mêmes colonnes en export et en import
-        self.assertEqual((n, ws["F2"].value), (2, "TERMINE"))
+        self.assertEqual(n, 2)
         (ech.imports() / chemin.name).write_bytes(chemin.read_bytes())                        # l'export se réimporte tel quel
         self.assertContains(self.importer(chemin.name), "B1 : 0 ajoutée(s), 2 déjà présente(s)")
 

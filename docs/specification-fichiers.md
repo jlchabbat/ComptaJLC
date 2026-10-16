@@ -47,8 +47,8 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 - `Let` : code de lettrage de **3 lettres majuscules** (`AAA`, `AAB`…), vide hors comptes lettrables ; les lignes d'un même compte portant le même code se compensent (facture et règlement d'un membre).
 
 ### Relevés bancaires (`BQE`) : un fichier par banque ou par import
-`Journ`, `Date`, `Libelle`, `Debit`, `Credit`, `Etat`
-- `Journ` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = sortie, `Credit` = entrée (point de vue de la banque) ; `Etat` : `TERMINE` ou vide = ligne importée, autre valeur = ignorée. Pas de colonne de solde ni de montant en devise d'origine (Power Query prépare le fichier, l'application ne transforme rien).
+`Journ`, `Date`, `Libelle`, `Debit`, `Credit`
+- `Journ` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = sortie, `Credit` = entrée (point de vue de la banque) ; Pas de colonne d'état, de solde ni de montant en devise d'origine (Power Query prépare le fichier, l'application ne transforme rien).
 - La traduction et le rapprochement (pointage, affectation, `Anal2`) se font dans l'écran Rapprochement, comme aujourd'hui.
 
 ### Utilisateurs (`USR`)
@@ -120,7 +120,7 @@ puis importés. Un message d'erreur en français indique la ligne et la rubrique
 L'administrateur est lui aussi un **bénévole néophyte** : tout ce qui est réservé à l'administration (imports, utilisateurs, plan, journaux, clôture) passe par des écrans guidés, avec un résumé de ce qui va changer avant d'enregistrer et une sauvegarde automatique.
 
 ### Relevés bancaires et historique d'importation
-- Le relevé s'importe **dans la langue d'origine** (`Banque.xlsx` : `Journ`, `Date`, `Libelle`, `Debit`, `Credit`, `Etat`).
+- Le relevé s'importe **dans la langue d'origine** (`Banque.xlsx` : `Journ`, `Date`, `Libelle`, `Debit`, `Credit`).
 - Chaque import est gardé dans un **historique** (fichier, date, journal, lignes ajoutées, doublons ignorés) ; une ligne déjà importée (même journal, date, libellé et montant ; deux lignes identiques le même jour comptent pour deux) n'est jamais ajoutée deux fois, même si le même relevé est redéposé ou chevauche le précédent.
 
 ### Lexique de traduction
