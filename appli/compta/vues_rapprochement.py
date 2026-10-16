@@ -22,7 +22,7 @@ def journaliser(request, action, objet, apres=""):
 
 
 class ImportForm(forms.Form):
-    fichier = forms.FileField(label="Relevé (structure Banque : Journ, Date, Libelle, Debit, Credit, Etat)")
+    fichier = forms.FileField(label="Relevé (structure Banque : Journ, Date, Libelle, Debit, Credit)")
 
 
 
