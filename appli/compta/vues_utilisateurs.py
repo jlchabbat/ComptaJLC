@@ -1,8 +1,8 @@
 """Comptes de connexion : « Mon compte » pour chacun, page Utilisateurs pour l'administrateur.
 
 L'identifiant peut être un nom (sans espace) ou une adresse e-mail ; on se connecte aussi avec l'e-mail enregistré.
-Profils, du plus large au plus restreint : Administration (paramétrage de base, utilisateurs, base de données),
-Gestion (tout sauf le paramétrage de base), Consultation (consultation seule), Bénévole (la liaison : ses fiches seulement)."""
+Deux modes : Administration (paramétrage de base, utilisateurs, base de données) et
+Gestion (tenue de la comptabilité : tout sauf le paramétrage de base)."""
 
 from django import forms
 from django.contrib import messages
@@ -20,7 +20,7 @@ from .apps import ROLES
 from .forms import identifiant_libre
 from .models import Modification
 
-ROLES_CREES_ICI = [r for r in ROLES if r != "Bénévole"]       # un bénévole se crée depuis Fiches bénévoles (il doit être membre)
+ROLES_CREES_ICI = list(ROLES)
 
 
 class ConnexionParEmail(ModelBackend):

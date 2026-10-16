@@ -70,11 +70,3 @@ def restaurer(chemin):
     initialiser_parametres()
     return n, avant
 
-
-def reprendre_classeur(chemin):
-    """Remet la comptabilité à zéro puis reprend le classeur ComptaJLC.xlsm (les comptes utilisateurs sont gardés)."""
-    import io
-    avant = sauvegarder("avant-reprise")
-    sortie = io.StringIO()
-    call_command("importer_classeur", str(chemin), remplacer=True, stdout=sortie)
-    return sortie.getvalue().strip(), avant

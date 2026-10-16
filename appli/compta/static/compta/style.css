@@ -293,12 +293,12 @@ header nav.menus { order: 3; flex: 1 1 100%; margin: 0 -16px; padding: 0 12px; g
 .menu.admin { margin-left: auto; border-left: 0; }
 .menu.admin > button { color: #fff; }
 
-/* ===== Analytique : deux fenêtres, Nature (axe 1) et Objet (axe 2) ===== */
+/* ===== Analytique : code Anal ===== */
 .ana-fenetres { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 1100px) { .ana-fenetres { grid-template-columns: 1fr; } }
 .ana-fenetre { background: #fff; border: 1px solid var(--ligne); border-radius: 10px; padding: 14px 16px 16px;
   box-shadow: 0 2px 8px rgba(31,56,100,.06); border-top: 6px solid var(--c-axe); }
-.ana-axe1 { --c-axe: #2e8b6e; } .ana-axe2 { --c-axe: #6a6fc4; }
+.ana-axe1 { --c-axe: #2e8b6e; }
 .ana-fenetre h2 { margin: 0 0 10px; color: var(--bleu); font-size: 19px; }
 .ana-choix { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .ana-choix select { flex: 1 1 260px; min-width: 220px; }
@@ -308,7 +308,6 @@ header nav.menus { order: 3; flex: 1 1 100%; margin: 0 -16px; padding: 0 12px; g
 .ana-synthese tr.cliquable:hover td { background: color-mix(in srgb, var(--c-axe) 14%, #fff) !important; }
 @media print { .ana-choix { display: none; } .ana-fenetres { grid-template-columns: 1fr; } .ana-fenetre { box-shadow: none; break-inside: avoid; } }
 a.bouton.fermer { font-weight: 600; border-color: #8a93a3; }
-.un-seul-axe .axe2 { display: none !important; }
 
 /* tableau.js : choix des colonnes, sélection de cellules, barre de somme */
 .choix-colonnes { font-size: 15px; padding: 2px 10px; cursor: pointer; }

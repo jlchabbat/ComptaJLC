@@ -27,22 +27,21 @@ def exercice_choisi(request):
 class BudgetForm(forms.ModelForm):
     class Meta:
         model = Budget
-        fields = ["nature", "compte", "anal1", "anal2", "montant"]
+        fields = ["nature", "compte", "anal1", "montant"]
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fields["compte"].queryset = etats.comptes_sans_budget()
-        self.fields["anal1"].queryset = CodeAnalytique.objects.filter(axe=1)
-        self.fields["anal2"].queryset = CodeAnalytique.objects.filter(axe=2)
+        self.fields["anal1"].queryset = CodeAnalytique.objects.all()
         self.fields["montant"].min_value = 0
-        for n in ("compte", "anal1", "anal2"):
-            self.fields[n].help_text = "Un seul des trois : compte, axe 1 ou axe 2."
+        for n in ("compte", "anal1"):
+            self.fields[n].help_text = "Un seul des deux : compte ou code Anal."
         cherchable(self)
 
     def clean(self):
         c = super().clean()
-        if sum(1 for n in ("compte", "anal1", "anal2") if c.get(n)) != 1:
-            raise forms.ValidationError("Choisir exactement un compte, un code d'axe 1 ou un code d'axe 2.")
+        if sum(1 for n in ("compte", "anal1") if c.get(n)) != 1:
+            raise forms.ValidationError("Choisir exactement un compte ou un code Anal.")
         if c.get("compte") and c["compte"].numero[0] != ("6" if c.get("nature") == "C" else "7"):
             raise forms.ValidationError("Charges : compte de classe 6 ; produits : compte de classe 7.")
         return c
@@ -73,7 +72,7 @@ def etats_annuels(request):
     return render(request, "compta/etats.html", {
         "exercice": ex, "precedent": prec, "exercices": Exercice.objects.order_by("-debut"),
         "cr": etats.compte_de_resultat(ex, prec),
-        "axes": [("Résultat par axe 1 (nature)", etats.par_axe(ex, prec, 1)), ("Résultat par axe 2 (événement, projet)", etats.par_axe(ex, prec, 2))],
+        "axes": [("Résultat par code Anal", etats.par_anal(ex, prec))],
         "bilan": etats.comparer(etats.bilan(ex.fin, ex.debut), bilan_n1), "bilan_n1": bilan_n1,
         "budget": etats.budget(ex), "budget_form": budget_form,
     })

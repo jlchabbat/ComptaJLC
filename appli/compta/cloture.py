@@ -57,12 +57,6 @@ def preparer(ex):
     etat, _ = ctrl.etat_general()
     if etat != "OK":
         p.avertissements.append(f"Contrôles : {etat} (page Contrôles).")
-    from .models import LigneFiche, TiersProvisoire
-    n = LigneFiche.objects.filter(mouvement__isnull=True, date__range=(ex.debut, ex.fin)).count()
-    if n:
-        p.avertissements.append(f"{n} ligne(s) de fiches bénévoles de l'exercice non reportée(s).")
-    if TiersProvisoire.objects.filter(compte__isnull=True).exists():
-        p.avertissements.append("Des tiers provisoires attendent un compte.")
     if b["resultats_anterieurs"]:
         p.avertissements.append(f"Résultats d'exercices antérieurs jamais reportés : {etats.montant(b['resultats_anterieurs'])} ; "
                                 "ils sont affectés avec celui de l'exercice.")
@@ -86,7 +80,7 @@ def preparer(ex):
 
 
 @transaction.atomic
-def cloturer(ex, utilisateur, anal2=None):
+def cloturer(ex, utilisateur):
     p = preparer(ex)
     if not p.ok:
         raise ValueError(" ".join(p.bloquants))
@@ -105,7 +99,7 @@ def cloturer(ex, utilisateur, anal2=None):
                                       origine="cloture", cree_par=utilisateur,
                                       commentaire=f"À-nouveaux de la clôture de « {ex.libelle} »")
         Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte_id=n, libelle=f"A NOUVEAU {ex.libelle}".upper()[:200],
-                                         debit=d, credit=c, anal2=anal2 if n[0] in ("6", "7") else None) for i, (n, d, c) in enumerate(p.lignes)])
+                                         debit=d, credit=c) for i, (n, d, c) in enumerate(p.lignes)])
     ex.clos, ex.mouvement_an, ex.resultat = True, mv, p.resultat
     ex.cloture_le, ex.cloture_par = timezone.now(), utilisateur.get_username()
     ex.save()

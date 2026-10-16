@@ -19,8 +19,8 @@ import openpyxl
 from django.db import transaction
 
 from . import dossiers, export, releves
-from .membres import ENTETES_MODELE, importer_tableau
-from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneFiche, LigneReleve, Membre,
+from .tiers import ENTETES_MODELE, importer_tableau
+from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneReleve, Tiers,
                      Modification, Mouvement, Prefixe, Rapprochement, Reglage, Traduction)
 
 IMPORTES = "Importés"
@@ -288,79 +288,59 @@ def imp_parametres(lignes, fichier, utilisateur=None):
     return resume(c)
 
 
-# ---- axes analytiques et préfixes
+# ---- codes Anal et préfixes
 
-def exp_axe(axe):
-    def f():
-        return [[x.code, x.libelle] + ([x.statut] if axe == 2 else []) for x in CodeAnalytique.objects.filter(axe=axe)]
-    return f
+def exp_anal():
+    return [[x.code, x.libelle] for x in CodeAnalytique.objects.all()]
 
 
-def imp_axe(axe):
-    def f(lignes, fichier, utilisateur=None):
-        L, a_faire = Lecteur(), []
-        for n, d in lignes:
-            code = L.texte(n, d, "Code", True, 20)
-            lib = L.texte(n, d, "Libellé", longueur=100)
-            if axe == 2:
-                lu = _sans_accent(str(d.get("Statut") or "").strip().lower())      # « En cours » accepté comme 1, etc.
-                d = dict(d, Statut=next((v for k, v in (("non affect", 0), ("en cours", 1), ("termin", 2)) if lu.startswith(k)),
-                                        d.get("Statut")))
-            statut = L.entier(n, d, "Statut", (0, 1, 2), defaut=1) if axe == 2 else 1
-            autre = CodeAnalytique.objects.filter(code=code).exclude(axe=axe).first()
-            if autre:
-                L.erreur(n, f"le code {code} existe déjà sur l'axe {autre.axe}.")
-            a_faire.append((code, lib, statut))
-        L.verifier()
-        c = defaultdict(int)
-        for code, lib, statut in a_faire:
-            valeurs = {"axe": axe, "libelle": lib} | ({"statut": statut} if axe == 2 else {})
-            maj_ou_cree(CodeAnalytique, {"code": code}, valeurs, c)
-        return resume(c)
-    return f
+def imp_anal(lignes, fichier, utilisateur=None):
+    L, a_faire = Lecteur(), []
+    for n, d in lignes:
+        a_faire.append((L.texte(n, d, "Code", True, 20), L.texte(n, d, "Libellé", longueur=100)))
+    L.verifier()
+    c = defaultdict(int)
+    for code, lib in a_faire:
+        maj_ou_cree(CodeAnalytique, {"code": code}, {"libelle": lib}, c)
+    return resume(c)
 
 
 def exp_prefixes():
-    return [[p.prefixe, p.axe, p.libelle] for p in Prefixe.objects.all()]
+    return [[p.prefixe, p.libelle] for p in Prefixe.objects.all()]
 
 
 def imp_prefixes(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
     for n, d in lignes:
-        a_faire.append((L.texte(n, d, "Préfixe", True, 10), L.entier(n, d, "Axe", (1, 2)), L.texte(n, d, "Libellé", longueur=60)))
+        a_faire.append((L.texte(n, d, "Préfixe", True, 10), L.texte(n, d, "Libellé", longueur=60)))
     L.verifier()
     c = defaultdict(int)
-    for prefixe, axe, lib in a_faire:
-        maj_ou_cree(Prefixe, {"prefixe": prefixe}, {"axe": axe, "libelle": lib}, c)
+    for prefixe, lib in a_faire:
+        maj_ou_cree(Prefixe, {"prefixe": prefixe}, {"libelle": lib}, c)
     return resume(c)
 
 
 # ---- plan comptable et journaux
 
-def axe_du_code(code):
-    """Axe (1 ou 2) du code analytique s'il existe, sinon None."""
-    return CodeAnalytique.objects.filter(code=code).values_list("axe", flat=True).first()
-
-
 def creer_codes(nouveaux):
-    """Crée les codes analytiques inconnus {(axe, code): libellé} (axe 2 : « En cours »). Renvoie le texte du compte rendu."""
+    """Crée les codes Anal inconnus {code: libellé}. Renvoie le texte du compte rendu."""
     if not nouveaux:
         return ""
-    for (axe, code), lib in sorted(nouveaux.items()):
-        CodeAnalytique.objects.create(code=code, axe=axe, libelle=(lib or code)[:100], **({"statut": 1} if axe == 2 else {}))
-    liste = ", ".join(f"{c} (axe {a})" for a, c in sorted(nouveaux)[:20]) + (" …" if len(nouveaux) > 20 else "")
-    return f" ; {len(nouveaux)} code(s) analytique(s) créé(s) ({liste})"
+    for code, lib in sorted(nouveaux.items()):
+        CodeAnalytique.objects.create(code=code, libelle=(lib or code)[:100])
+    liste = ", ".join(sorted(nouveaux)[:20]) + (" …" if len(nouveaux) > 20 else "")
+    return f" ; {len(nouveaux)} code(s) Anal créé(s) ({liste})"
 
 
 def creer_comptes(nouveaux):
-    """Crée les comptes inconnus {numéro: (libellé, code axe 1 ou None)} ; un compte de tiers (401…, 411…) devient lettrable
+    """Crée les comptes inconnus {numéro: (libellé, code Anal ou None)} ; un compte de tiers (401…, 411…) devient lettrable
     et reçoit sa fiche tiers. Renvoie le texte à ajouter au compte rendu (vide si rien n'a été créé)."""
-    from .membres import creer_manquants, type_du_compte
+    from .tiers import creer_manquants, type_du_compte
     if not nouveaux:
         return ""
-    axe1 = set(CodeAnalytique.objects.filter(axe=1).values_list("code", flat=True))
+    codes = set(CodeAnalytique.objects.values_list("code", flat=True))
     for numero, (lib, anal1) in sorted(nouveaux.items()):
-        Compte.objects.create(numero=numero, libelle=(lib or numero)[:100], anal1_id=anal1 if anal1 in axe1 else None,
+        Compte.objects.create(numero=numero, libelle=(lib or numero)[:100], anal1_id=anal1 if anal1 in codes else None,
                               lettrable=bool(type_du_compte(numero)))
     fiches = creer_manquants()
     liste = ", ".join(sorted(nouveaux)[:20]) + (" …" if len(nouveaux) > 20 else "")
@@ -375,11 +355,9 @@ def imp_plan(lignes, fichier, utilisateur=None):
     L, a_faire = Lecteur(), []
     nouveaux_codes = {}
     for n, d in lignes:
-        numero, lib, anal1 = L.texte(n, d, "Compte", True, 20), L.texte(n, d, "Libellé", True, 100), L.texte(n, d, "Axe 1", True)
-        if anal1 and axe_du_code(anal1) not in (1, None):
-            L.erreur(n, f"le code {anal1} existe déjà sur l'axe {axe_du_code(anal1)}.")
-        elif anal1 and axe_du_code(anal1) is None:                  # code axe 1 inconnu : créé à l'import
-            nouveaux_codes[(1, anal1)] = anal1
+        numero, lib, anal1 = L.texte(n, d, "Compte", True, 20), L.texte(n, d, "Libellé", True, 100), L.texte(n, d, "Anal", True)
+        if anal1 and not CodeAnalytique.objects.filter(code=anal1).exists():      # code Anal inconnu : créé à l'import
+            nouveaux_codes[anal1] = anal1
         a_faire.append((numero, {"libelle": lib, "anal1_id": anal1 or None, "lettrable": L.oui(n, d, "Lettrable"),
                                  "actif": L.oui(n, d, "Actif", True)}))
     L.verifier()
@@ -387,7 +365,7 @@ def imp_plan(lignes, fichier, utilisateur=None):
     c = defaultdict(int)
     for numero, valeurs in a_faire:
         maj_ou_cree(Compte, {"numero": numero}, valeurs, c)
-    from .membres import creer_manquants
+    from .tiers import creer_manquants
     fiches = creer_manquants()                            # une fiche pour chaque nouveau compte de tiers (401…, 411…)
     return resume(c) + codes_crees + (f" ; {fiches} fiche(s) tiers créée(s)" if fiches else "")
 
@@ -419,8 +397,8 @@ def imp_journaux(lignes, fichier, utilisateur=None):
 
 def exp_tiers():
     return [[m.compte_id, m.type.libelle if m.type_id else "", m.nom, m.prenom, m.adresse, m.code_postal, m.ville, m.telephone,
-             m.email, m.date_adhesion, m.get_statut_display() if m.type_id and m.type.libelle == "Membre" else "", m.cotisation]
-            for m in Membre.objects.select_related("type").order_by("compte")]
+             m.email]
+            for m in Tiers.objects.select_related("type").order_by("compte")]
 
 
 def imp_tiers(lignes, fichier, utilisateur=None):
@@ -519,7 +497,7 @@ def imp_traductions(lignes, fichier, utilisateur=None):
 # ---- budget
 
 def exp_budget():
-    return [[b.exercice.libelle, b.get_nature_display(), b.compte_id or "", b.anal1_id or "", b.anal2_id or "", b.montant]
+    return [[b.exercice.libelle, b.get_nature_display(), b.compte_id or "", b.anal1_id or "", b.montant]
             for b in Budget.objects.select_related("exercice")]
 
 
@@ -534,18 +512,15 @@ def imp_budget(lignes, fichier, utilisateur=None):
         nature = natures.get(L.texte(n, d, "Nature").lower())
         if not nature:
             L.erreur(n, "Nature : Charges ou Produits attendu.")
-        compte, anal1, anal2 = L.texte(n, d, "Compte"), L.texte(n, d, "Axe 1"), L.texte(n, d, "Axe 2")
-        if len([x for x in (compte, anal1, anal2) if x]) != 1:
-            L.erreur(n, "remplir un seul des trois : Compte, Axe 1 ou Axe 2.")
+        compte, anal1 = L.texte(n, d, "Compte"), L.texte(n, d, "Anal")
+        if len([x for x in (compte, anal1) if x]) != 1:
+            L.erreur(n, "remplir un seul des deux : Compte ou Anal.")
         if compte and not Compte.objects.filter(numero=compte).exists():
             nouveaux[compte] = (compte, None)                 # compte inconnu : créé (libellé à compléter dans le plan)
-        for code, axe in ((anal1, 1), (anal2, 2)):
-            if code and axe_du_code(code) not in (axe, None):
-                L.erreur(n, f"le code {code} existe déjà sur l'axe {axe_du_code(code)}.")
-            elif code and axe_du_code(code) is None:             # code inconnu : créé à l'import
-                nouveaux_codes[(axe, code)] = code
-        a_faire.append(({"exercice": ex, "nature": nature, "compte_id": compte or None, "anal1_id": anal1 or None,
-                         "anal2_id": anal2 or None}, L.montant(n, d, "Montant", True)))
+        if anal1 and not CodeAnalytique.objects.filter(code=anal1).exists():      # code inconnu : créé à l'import
+            nouveaux_codes[anal1] = anal1
+        a_faire.append(({"exercice": ex, "nature": nature, "compte_id": compte or None, "anal1_id": anal1 or None},
+                        L.montant(n, d, "Montant", True)))
     L.verifier()
     c = defaultdict(int)
     texte = creer_codes(nouveaux_codes) + creer_comptes(nouveaux)
@@ -561,13 +536,13 @@ def exp_ecritures():
     for j in Justificatif.objects.exclude(lien="").order_by("pk"):
         liens.setdefault(j.mouvement_id, j.lien)              # un lien par Mvt, porté par sa première ligne
     lignes, vus = [], set()
-    for l in Ligne.objects.select_related("mouvement", "compte", "compte__anal1", "anal2").order_by("mouvement__numero", "ordre"):
+    for l in Ligne.objects.select_related("mouvement", "compte", "compte__anal1").order_by("mouvement__numero", "ordre"):
         a1 = l.compte.anal1
         lien = "" if l.mouvement_id in vus else liens.get(l.mouvement_id, "")
         vus.add(l.mouvement_id)
         lignes.append([l.mouvement.numero, l.mouvement.journal_id, l.mouvement.date, l.compte_id, l.compte.libelle, l.libelle,
                        l.debit or None, l.credit or None, a1.code if a1 else "", a1.libelle if a1 else "",
-                       l.anal2_id, l.anal2.libelle if l.anal2_id else "", lien, l.lettrage])
+                       lien, l.lettrage])
     return lignes
 
 
@@ -584,41 +559,26 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     L, mvts = Lecteur(), defaultdict(list)
     comptes = set(Compte.objects.values_list("numero", flat=True))
     journaux = set(Journal.objects.values_list("code", flat=True))
-    axe2 = set(CodeAnalytique.objects.filter(axe=2).values_list("code", flat=True))
     existants = set(Mouvement.objects.values_list("numero", flat=True))
     plan_anal1 = dict(Compte.objects.exclude(anal1__isnull=True).values_list("numero", "anal1_id"))
     differences, nouveaux, nouveaux_codes = [], {}, {}
-    from .reglages import code_axe2_defaut
-    defaut2 = code_axe2_defaut()                          # un seul axe : Anal2 facultatif, code d'office
-    if defaut2:
-        axe2.add(defaut2)
     for n, d in lignes:
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
-        compte, anal2 = L.texte(n, d, "Compte", True), L.texte(n, d, "Anal2")
-        anal2 = anal2 or (defaut2 if compte[:1] in ("6", "7") else None)       # axe 2 facultatif ; un seul axe : code d'office
+        compte = L.texte(n, d, "Compte", True)
         debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
         if jnl and jnl not in journaux:
             L.erreur(n, f"journal {jnl} inconnu.")
         if compte and compte not in comptes:                  # compte ou tiers inconnu : créé à l'import
-            a1 = L.texte(n, d, "Anal1")
-            if not a1:                                    # compte de tiers : axe 1 des comptes de même racine (401, 411…)
+            a1 = L.texte(n, d, "Anal")
+            if not a1:                                    # compte de tiers : code Anal des comptes de même racine (401, 411…)
                 modele = Compte.objects.filter(numero__startswith=compte[:3], anal1__isnull=False).first()
                 a1 = modele.anal1_id if modele else ""
             if not a1:
-                L.erreur(n, f"le nouveau compte {compte} doit porter un code d'axe 1 (colonne Anal1).")
+                L.erreur(n, f"le nouveau compte {compte} doit porter un code Anal (colonne Anal).")
             nouveaux.setdefault(compte, (L.texte(n, d, "LibelCompte", longueur=100), a1))
-            if a1 and axe_du_code(a1) is None:                # code axe 1 du nouveau compte inconnu : créé aussi
-                nouveaux_codes.setdefault((1, a1), L.texte(n, d, "LibelAnal1", longueur=100))
-            elif a1 and axe_du_code(a1) != 1:
-                L.erreur(n, f"le code {a1} existe déjà sur l'axe {axe_du_code(a1)}.")
-        if compte[:1] not in ("6", "7"):                      # axe 2 : charges et produits seulement (comptes de bilan : ignoré)
-            anal2 = None
-        if anal2 and anal2 not in axe2:
-            if axe_du_code(anal2) is not None:
-                L.erreur(n, f"le code {anal2} existe déjà sur l'axe {axe_du_code(anal2)}.")
-            else:                                             # code axe 2 inconnu : créé à l'import
-                nouveaux_codes.setdefault((2, anal2), L.texte(n, d, "LibelAnal2", longueur=100))
+            if a1 and not CodeAnalytique.objects.filter(code=a1).exists():      # code Anal du nouveau compte inconnu : créé aussi
+                nouveaux_codes.setdefault(a1, L.texte(n, d, "LibelAnal", longueur=100))
         if (debit > 0) == (credit > 0) or debit < 0 or credit < 0:
             L.erreur(n, "un débit OU un crédit, positif (RG-03).")
         lettre = L.texte(n, d, "Let", longueur=3)
@@ -627,9 +587,9 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
         lien = L.texte(n, d, "Lien", longueur=500)
         if lien and not lien.startswith("https://"):
             L.erreur(n, "Lien : adresse https:// attendue.")
-        if compte in comptes and (L.texte(n, d, "Anal1") or "") not in ("", plan_anal1.get(compte, "")):
+        if compte in comptes and (L.texte(n, d, "Anal") or "") not in ("", plan_anal1.get(compte, "")):
             differences.append(n)                         # le plan fait foi : simple avertissement
-        mvts[numero].append((n, date, jnl, compte, L.texte(n, d, "Libelle", True, 200), debit, credit, anal2, lettre, lien))
+        mvts[numero].append((n, date, jnl, compte, L.texte(n, d, "Libelle", True, 200), debit, credit, lettre, lien))
     for numero, ls in mvts.items():
         if numero is None:
             continue
@@ -653,9 +613,9 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             if ls[0][1] and ls[0][2] != "AN" and Exercice.date_close(ls[0][1]):
                 L.erreur(ls[0][0], f"Mvt {numero} : date dans un exercice clos (RG-04).")
             continue
-        actuel = [(m.date, m.journal_id, l.compte_id, l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage)
+        actuel = [(m.date, m.journal_id, l.compte_id, l.libelle, l.debit, l.credit, l.lettrage)
                   for l in m.lignes.all()]
-        if actuel != [tuple(x[1:9]) for x in ls]:
+        if actuel != [tuple(x[1:8]) for x in ls]:
             if corrections.verrou(m):
                 L.erreur(ls[0][0], f"Mvt {numero} modifié dans le fichier, mais non modifiable : {corrections.verrou(m)}")
             modifies[numero] = m
@@ -670,17 +630,17 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
             m = modifies[numero]
             ids = list(m.lignes.values_list("pk", flat=True)) + [None] * len(ls)    # même rang = même ligne (pointage gardé)
             corrections.modifier(m, date, Journal.objects.get(code=jnl),
-                                 [corrections.LigneSaisie(ids[i], Compte.objects.get(numero=x[3]), x[4], x[5], x[6],
-                                                          CodeAnalytique.objects.filter(code=x[7]).first()) for i, x in enumerate(ls)],
+                                 [corrections.LigneSaisie(ids[i], Compte.objects.get(numero=x[3]), x[4], x[5], x[6])
+                                  for i, x in enumerate(ls)],
                                  f"import {fichier}", utilisateur)
             for l, x in zip(m.lignes.all(), ls):
-                if l.lettrage != x[8]:
-                    Ligne.objects.filter(pk=l.pk).update(lettrage=x[8])
+                if l.lettrage != x[7]:
+                    Ligne.objects.filter(pk=l.pk).update(lettrage=x[7])
         elif numero not in existants:
             m = Mouvement.objects.create(numero=numero, date=date, journal_id=jnl, origine="import",
                                          commentaire=f"Import {fichier}", cree_par=utilisateur)
             Ligne.objects.bulk_create([Ligne(mouvement=m, ordre=i, compte_id=x[3], libelle=x[4], debit=x[5], credit=x[6],
-                                             anal2_id=x[7], lettrage=x[8]) for i, x in enumerate(ls)])
+                                             lettrage=x[7]) for i, x in enumerate(ls)])
             crees += 1
     texte = f"{crees} mouvement(s) ajouté(s), {len(modifies)} modifié(s), {len(mvts) - crees - len(modifies) - len(ecartes)} inchangé(s)"
     texte += comptes_crees
@@ -691,11 +651,11 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
                   + ", ".join(f"{n} = {v}" for n, v in sorted(ecartes.items())[:20]) + (" …" if len(ecartes) > 20 else "") + ")")
     auteur = utilisateur.get_username() if utilisateur else ""
     joints = sum(_joindre_lien(Mouvement.objects.get(numero=numero), lien, auteur)
-                 for numero, ls in mvts.items() if numero not in ecartes for lien in {x[9] for x in ls if x[9]})
+                 for numero, ls in mvts.items() if numero not in ecartes for lien in {x[8] for x in ls if x[8]})
     if joints:
         texte += f" ; {joints} lien(s) de document joint(s)"
     if differences:
-        texte += (f" ; attention : l'axe 1 du fichier diffère du plan à {len(differences)} ligne(s) "
+        texte += (f" ; attention : le code Anal du fichier diffère du plan à {len(differences)} ligne(s) "
                   f"(ex. ligne {differences[0]}), le plan fait foi")
     return texte
 
@@ -848,8 +808,7 @@ def rapport_ecarts(ecarts, deja_pris=()):
 
 # ---- relevés Banque 1 et Banque 2 et caisse
 
-COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal1", "LibelAnal1", "Anal2",
-                      "LibelAnal2", "Lien", "Let"]
+COLONNES_ECRITURES = ["Mvt", "Jnl", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Anal", "LibelAnal", "Lien", "Let"]
 
 
 def journal_obligatoire(code):
@@ -862,19 +821,23 @@ def journal_obligatoire(code):
 # ---- Banque : un seul fichier pour toutes les banques et caisses (structure interne, préparée en amont par Power Query)
 
 def exp_banque_tout():
-    return [[l.journal_id, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None, l.solde]
+    return [[l.journal_id, l.date, l.operation, -l.montant if l.montant < 0 else None, l.montant if l.montant > 0 else None, "TERMINE"]
             for l in LigneReleve.objects.filter(ouverture=False).order_by("journal_id", "date", "rang")]
 
 
 def imp_banque_tout(lignes, fichier, utilisateur=None):
-    """Chaque ligne porte son journal (Jnl) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
-    Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures). Une ligne déjà
-    importée (journal, date, libellé, montant) n'est jamais ajoutée deux fois ; chaque import est
-    noté dans l'historique des imports."""
-    L, par_journal = Lecteur(), defaultdict(list)
+    """Chaque ligne porte son journal (Journ) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
+    Point de vue de la banque : Debit = sortie d'argent du compte, Credit = entrée. Seules les lignes dont l'Etat est
+    TERMINE (ou vide) sont importées. Une ligne déjà importée (journal, date, libellé, montant) n'est jamais ajoutée
+    deux fois ; chaque import est noté dans l'historique des imports."""
+    L, par_journal, en_cours = Lecteur(), defaultdict(list), 0
     existants = set(Journal.objects.values_list("code", flat=True))
     for n, d in lignes:
-        jnl = L.texte(n, d, "Jnl", True)
+        etat = L.texte(n, d, "Etat").upper()
+        if etat and etat != "TERMINE":
+            en_cours += 1                                   # opération pas encore définitive : reprise au prochain relevé
+            continue
+        jnl = L.texte(n, d, "Journ", True)
         if jnl and jnl not in existants:
             L.erreur(n, f"journal {jnl} inconnu (Administration › Journaux).")
         debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
@@ -884,7 +847,7 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
             L.erreur(n, f"un seul montant, dans Debit OU dans Credit (trouvé : Debit « {'' if brut[0] is None else brut[0]} », "
                         f"Credit « {'' if brut[1] is None else brut[1]} »).")
         par_journal[jnl].append({"date": L.date(n, d, "Date"), "reference": "", "operation": L.texte(n, d, "Libelle", True, 200),
-                                 "montant": (debit or ZERO) - (credit or ZERO), "solde": L.montant(n, d, "Solde")})
+                                 "montant": (credit or ZERO) - (debit or ZERO), "solde": None})
     L.verifier()
     auteur = utilisateur.get_username() if utilisateur else ""
     comptes_rendus = []
@@ -893,12 +856,13 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
             a_faire.reverse()                             # fichier du plus récent au plus ancien : ordre chronologique
         a_faire.sort(key=lambda l: l["date"])             # le rang dans la journée suit l'ordre du fichier
         try:
-            ouverture = None if a_faire[0]["solde"] is not None else ZERO       # sans solde (Bit…) : ouverture à 0
             ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier,
-                                                     solde_ouverture=ouverture, auteur=auteur)
+                                                     solde_ouverture=ZERO, auteur=auteur)
         except ValueError as e:
             raise Refus([str(e)])
         comptes_rendus.append(f"{jnl} : {ajoutees} ajoutée(s), {doublons} déjà présente(s)")
+    if en_cours:
+        comptes_rendus.append(f"{en_cours} ligne(s) non terminée(s) ignorée(s)")
     return " ; ".join(comptes_rendus)
 
 
@@ -907,25 +871,24 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
 FORMATS = [
     Format("Exercices", "Exercices comptables", ["Libellé", "Début", "Fin", "Clos"], exp_exercices, imp_exercices),
     Format("Reglages", "Réglages (clé, valeur)", ["Clé", "Valeur", "Description"], exp_parametres, imp_parametres),
-    Format("Axe1", "Codes analytiques axe 1 (nature)", ["Code", "Libellé"], exp_axe(1), imp_axe(1)),
-    Format("Axe2", "Codes analytiques axe 2 (événement, projet)", ["Code", "Libellé", "Statut"], exp_axe(2), imp_axe(2)),
-    Format("Prefixes", "Préfixes des codes analytiques", ["Préfixe", "Axe", "Libellé"], exp_prefixes, imp_prefixes),
-    Format("PlanComptable", "Plan comptable", ["Compte", "Libellé", "Axe 1", "Lettrable", "Actif"], exp_plan, imp_plan),
+    Format("Anal", "Codes Anal (analytique)", ["Code", "Libellé"], exp_anal, imp_anal),
+    Format("Prefixes", "Préfixes des codes Anal", ["Préfixe", "Libellé"], exp_prefixes, imp_prefixes),
+    Format("PlanComptable", "Plan comptable", ["Compte", "Libellé", "Anal", "Lettrable", "Actif"], exp_plan, imp_plan),
     Format("AxesComptes", "Axes de comptes (rubriques, catégories, groupes…), une colonne par axe", ["Compte"],
            exp_axes_comptes, imp_axes_comptes, libres=True),
     Format("Journaux", "Journaux", ["Code", "Intitulé", "Type", "Compte de trésorerie", "Actif"], exp_journaux,
            imp_journaux),
-    Format("Tiers", "Tiers : membres, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers, (12,)),
+    Format("Tiers", "Tiers : clients, fournisseurs…", ENTETES_MODELE, exp_tiers, imp_tiers),
     Format("Traductions", "Traductions des relevés (hébreu)", ["Opération (hébreu)", "Traduction"], exp_traductions, imp_traductions,
            synonymes=(("Libellé hébreu", "Traduction"),)),
-    Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Axe 1", "Axe 2", "Montant"], exp_budget, imp_budget, (6,)),
+    Format("Budget", "Budget", ["Exercice", "Nature", "Compte", "Anal", "Montant"], exp_budget, imp_budget, (6,)),
     Format("Ecritures", "Écritures (Mvt ajoutés ou modifiés)", COLONNES_ECRITURES, exp_ecritures, imp_ecritures, (7, 8),
-           (11, 12, 13, 14)),
+           (11, 12)),
     Format("Libelles", "Libellés des écritures seulement (Mvt retrouvés par leur contenu)", COLONNES_ECRITURES, exp_ecritures,
-           imp_libelles, (7, 8), (11, 12, 13, 14)),
+           imp_libelles, (7, 8), (11, 12)),
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
-           ["Jnl", "Date", "Libelle", "Debit", "Credit", "Solde"], exp_banque_tout, imp_banque_tout, (4, 5, 6), (6,)),
+           ["Journ", "Date", "Libelle", "Debit", "Credit", "Etat"], exp_banque_tout, imp_banque_tout, (4, 5), (6,)),
 ]
 
 PAR_NOM = {f.nom: f for f in FORMATS}
@@ -954,14 +917,12 @@ AIDE = {
     "Reglages": ("Mise à jour par clé.", {
         "Clé": (O, CODE, "Nom du réglage (compte_virement, tolerance_rapprochement, dossier_imports…)"),
         "Valeur": (F, TEXTE, "Valeur du réglage"), "Description": (F, TEXTE, "Explication")}),
-    "Axe1": ("Mise à jour par code.", {"Code": (O, CODE, "Code nature (ex. COT.2)"), "Libellé": (F, TEXTE, "Libellé du code")}),
-    "Axe2": ("Mise à jour par code.", {"Code": (O, CODE, "Code événement ou projet (ex. MAN.013)"), "Libellé": (F, TEXTE, "Libellé du code"),
-                                     "Statut": (F, "0, 1 ou 2", "0 non affecté, 1 en cours (par défaut), 2 terminé")}),
-    "Prefixes": ("Mise à jour par préfixe.", {"Préfixe": (O, CODE, "Début des codes (ex. MAN.)"), "Axe": (O, "1 ou 2", "Axe concerné"),
+    "Anal": ("Mise à jour par code.", {"Code": (O, CODE, "Code Anal (ex. COT.2)"), "Libellé": (F, TEXTE, "Libellé du code")}),
+    "Prefixes": ("Mise à jour par préfixe.", {"Préfixe": (O, CODE, "Début des codes (ex. COT.)"),
                                              "Libellé": (F, TEXTE, "Libellé du préfixe")}),
     "PlanComptable": ("Mise à jour par numéro de compte ; rien n'est supprimé.", {
         "Compte": (O, CODE, "Numéro de compte (ex. 512000, 411TAIEB001)"), "Libellé": (O, TEXTE, "Intitulé du compte"),
-        "Axe 1": (F, CODE, "Code axe 1 du compte (Axe1.xlsx)"), "Lettrable": (F, OUI, "Compte de tiers lettrable (non par défaut)"),
+        "Anal": (O, CODE, "Code Anal du compte (Anal.xlsx)"), "Lettrable": (F, OUI, "Compte de tiers lettrable (non par défaut)"),
         "Actif": (F, OUI, "Utilisable en saisie (oui par défaut)")}),
     "AxesComptes": ("Une ligne par compte, une colonne par axe (l'en-tête est le nom de l'axe, créé au besoin) ; une cellule vide ne remplace rien.", {
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)")}),
@@ -971,35 +932,33 @@ AIDE = {
         "Actif": (F, OUI, "Utilisable (oui par défaut)")}),
     "Tiers": ("Tiers retrouvé par compte, sinon par type + nom + prénom ; une cellule vide ne remplace rien ; rien n'est supprimé.", {
         "Compte": (F, CODE, "Compte du tiers ; vide = créé d'après le type (411 + 5 lettres du nom + rang)"),
-        "Type": (F, TEXTE, "Membre (par défaut), Fournisseur…"), "Nom": (O, TEXTE, "Nom ou raison sociale"), "Prénom": (F, TEXTE, ""),
+        "Type": (F, TEXTE, "Client (par défaut), Fournisseur…"), "Nom": (O, TEXTE, "Nom ou raison sociale"), "Prénom": (F, TEXTE, ""),
         "Adresse": (F, TEXTE, ""), "Code postal": (F, TEXTE, ""), "Ville": (F, TEXTE, ""), "Téléphone": (F, TEXTE, ""),
-        "E-mail": (F, TEXTE, "Adresse e-mail valide"), "Date d'adhésion": (F, DATE, "Membres"),
-        "Statut": (F, "Actif / Honoraire / Démissionnaire", "Membres"), "Cotisation annuelle": (F, MONTANT, "Cotisation attendue")}),
+        "E-mail": (F, TEXTE, "Adresse e-mail valide")}),
     "Traductions": ("Mise à jour par opération.", {"Opération (hébreu)": (O, TEXTE, "Libellé du relevé bancaire"),
                                                    "Traduction": (O, TEXTE, "Traduction française")}),
     "Budget": ("Mise à jour par exercice + nature + cible.", {
         "Exercice": (O, TEXTE, "Libellé de l'exercice (Exercices.xlsx)"), "Nature": (O, "Charges / Produits", ""),
-        "Compte": (F, CODE, "Cible : un compte…"), "Axe 1": (F, CODE, "… ou un code axe 1…"), "Axe 2": (F, CODE, "… ou un code axe 2 (une seule cible)"),
+        "Compte": (F, CODE, "Cible : un compte…"), "Anal": (F, CODE, "… ou un code Anal (une seule cible)"),
         "Montant": (O, MONTANT, "Montant budgété")}),
-    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos. Compte, tiers (401…, 411…), code Anal1 ou Anal2 inconnu : créé à l'import avec LibelCompte, LibelAnal1 ou LibelAnal2 (un tiers reçoit sa fiche ; un code existant sur l'autre axe est refusé). LibelCompte, Anal1, LibelAnal1 et LibelAnal2 sont repris du plan et des axes : en cas de différence, le plan fait foi (avertissement).", {
+    "Ecritures": ("Le n° de Mvt désigne l'écriture : n° présent sur le site = Mvt mis à jour (tracé), n° nouveau = Mvt ajouté ; un Mvt nouveau identique à un Mvt du site (même date, journal, comptes et montants) est refusé comme doublon. Chaque Mvt équilibré, hors exercice clos. Compte, tiers (401…, 411…), code Anal inconnu : créé à l'import avec LibelCompte ou LibelAnal (un tiers reçoit sa fiche). LibelCompte, Anal et LibelAnal sont repris du plan et des codes Anal : en cas de différence, le plan fait foi (avertissement).", {
         "Mvt": (O, "entier", "N° de mouvement (une opération équilibrée)"), "Jnl": (O, CODE, "Journal (Journaux.xlsx)"),
         "Date": (O, DATE, "Même date sur toutes les lignes du Mvt"),
         "Compte": (O, CODE, "Compte (PlanComptable.xlsx)"), "LibelCompte": (F, TEXTE, "Rappel du plan, non lu"),
         "Libelle": (O, TEXTE, ""), "Debit": (F, MONTANT, "Débit OU crédit"), "Credit": (F, MONTANT, "Débit OU crédit"),
-        "Anal1": (F, CODE, "Rappel du plan (axe 1 du compte) : le plan fait foi"), "LibelAnal1": (F, TEXTE, "Rappel, non lu"),
-        "Anal2": (F, CODE, "Code axe 2 (Axe2.xlsx), obligatoire pour les comptes 6 et 7 seulement (facultatif avec un seul axe : réglage un_seul_axe)"),
-        "LibelAnal2": (F, TEXTE, "Rappel, non lu"), "Lien": (F, "adresse https://", "Document justificatif en ligne, joint au Mvt"),
+        "Anal": (F, CODE, "Rappel du plan (code Anal du compte) : le plan fait foi"), "LibelAnal": (F, TEXTE, "Rappel, non lu"),
+        "Lien": (F, "adresse https://", "Document justificatif en ligne, joint au Mvt"),
         "Let": (F, "3 lettres majuscules", "Code de lettrage (AAA, AAB…), vide hors comptes de tiers")}),
     "Liens": ("Chaque lien est joint comme justificatif au Mvt indiqué ; un lien déjà joint est ignoré ; rien n'est supprimé. "
               "Les documents se copient ensuite sur le site (Justificatifs existants › Les enregistrer sur le site).", {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
         "Description": (F, TEXTE, "Tiers, catégorie…")}),
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
-    "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare le classeur d'adaptation (Power Query) : une ligne par mouvement, libellé dans la langue d'origine. Debit = entrée d'argent sur le compte, Credit = sortie (comme les écritures). Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
-        "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
-        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit (l'autre colonne vide ou à 0)"),
-        "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
-        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne (Bit n'en donne pas) ; sert à contrôler le relevé")}),
+    "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare Power Query (l'application ne transforme rien) : une ligne par mouvement, libellé dans la langue d'origine. Point de vue de la banque : Debit = sortie d'argent du compte, Credit = entrée. Seules les lignes dont Etat vaut TERMINE (ou vide) sont importées. Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
+        "Journ": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
+        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Sortie : Debit OU Credit (l'autre colonne vide ou à 0)"),
+        "Credit": (F, MONTANT, "Entrée : Debit OU Credit"),
+        "Etat": (F, TEXTE, "TERMINE (ou vide) : ligne importée ; autre valeur : ligne ignorée (pas encore définitive)")}),
 }
 AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
 
@@ -1033,7 +992,7 @@ def kit_modeles():
         z.writestr("Lexique.xlsx", octets.getvalue())
         z.writestr("LISEZMOI.txt", "Modèles vierges des fichiers d'import et d'export de ComptaJLC\r\n\r\n"
                    "- Un fichier par nature de données, numéroté dans l'ordre d'import conseillé : chaque fichier ne cite que\r\n"
-                   "  des codes définis par les précédents (exercices, réglages, axes, plan comptable, journaux, tiers...).\r\n"
+                   "  des codes définis par les précédents (exercices, réglages, codes Anal, plan comptable, journaux, tiers...).\r\n"
                    "- Ligne 1 = les colonnes attendues, à ne pas modifier ; données à partir de la ligne 2.\r\n"
                    "- Lexique.xlsx : contenu de chaque fichier, colonnes obligatoires, formats et règles.\r\n"
                    "- Pour importer : retirer le numéro du nom (ex. Tiers.xlsx ou Tiers_2026.xlsx), puis\r\n"
@@ -1320,7 +1279,9 @@ def importer_banque(nom, contenu, utilisateur=None):
     suffixe = Path(nom).suffix.lower()
     if suffixe not in TABLEURS + (".csv",):
         raise Refus([f"{nom} : fichier .xlsx, .xlsm ou .csv attendu (structure Banque : {' | '.join(f.colonnes)})."])
-    with tempfile.TemporaryDirectory() as dossier:
+    # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
+    # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
         chemin = Path(dossier) / f"Banque{suffixe}"
         chemin.write_bytes(contenu)
         lignes = lire(chemin, f)
@@ -1364,7 +1325,6 @@ def _memoriser():
     return {
         "mvts": {m.numero: (m.origine, m.commentaire, m.cree_par_id) for m in Mouvement.objects.all()},
         "an": {e.pk: e.mouvement_an.numero for e in Exercice.objects.filter(mouvement_an__isnull=False).select_related("mouvement_an")},
-        "fiches": {l.pk: l.mouvement.numero for l in LigneFiche.objects.filter(mouvement__isnull=False).select_related("mouvement")},
         "pointages": [(r.journal_id, r.mode, r.cree_par_id, [cles[l.pk] for l in r.releves.all()],
                        [(l.mouvement.numero, l.ordre) for l in r.ecritures.select_related("mouvement")])
                       for r in Rapprochement.objects.prefetch_related("releves", "ecritures")],
@@ -1380,11 +1340,6 @@ def _retablir(memo):
     for pk, numero in memo["an"].items():
         if numero in mvts:
             Exercice.objects.filter(pk=pk).update(mouvement_an_id=mvts[numero])
-        else:
-            perdus += 1
-    for pk, numero in memo["fiches"].items():
-        if numero in mvts:
-            LigneFiche.objects.filter(pk=pk).update(mouvement_id=mvts[numero])
         else:
             perdus += 1
     lignes_releve = {cle: pk for pk, cle in _cles_releves().items()}
@@ -1406,7 +1361,7 @@ def reinjecter(utilisateur=None):
 
     Un fichier d'écritures, de relevé (Banque) ou de budget remplace entièrement les données de sa
     nature ; les référentiels sont mis à jour (jamais supprimés : les écritures y renvoient). Pointages, à-nouveaux et
-    fiches bénévoles reportées sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
+    à-nouveaux de clôture sont recollés quand leurs écritures et lignes de relevé reviennent à l'identique."""
     from .base_donnees import sauvegarder
     choisis = fichiers_a_reinjecter()
     if not choisis:
@@ -1427,7 +1382,6 @@ def reinjecter(utilisateur=None):
         Rapprochement.objects.all().delete()
         if "Ecritures" in noms:
             Exercice.objects.update(mouvement_an=None)
-            LigneFiche.objects.update(mouvement=None)
             Mouvement.objects.all().delete()
         for f, _, lignes in lus:
             if f.nom == "Banque":                      # le relevé de chaque journal du fichier est remplacé
@@ -1442,7 +1396,7 @@ def reinjecter(utilisateur=None):
             comptes_rendus.append(f"{chemin.name} : {texte}")
         perdus = _retablir(memo)
         if perdus:
-            comptes_rendus.append(f"{perdus} lien(s) non recollé(s) (pointage, à-nouveau ou fiche dont l'écriture a changé)")
+            comptes_rendus.append(f"{perdus} lien(s) non recollé(s) (pointage ou à-nouveau dont l'écriture a changé)")
         Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", lot="Échanges",
                                     action="Réinjection", objet=", ".join(f.nom for f, _, _ in lus)[:200],
                                     avant=sauvegarde.name[:300], apres=" ; ".join(comptes_rendus)[:300])

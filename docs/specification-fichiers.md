@@ -8,7 +8,7 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 
 | Règle | Choix |
 |---|---|
-| Format | **Excel `.xlsx` ou `.xlsm`** (format principal ; les macros et requêtes Power Query de l'administrateur servent à adapter les fichiers d'autres horizons : l'application lit seulement les valeurs, jamais les macros) ; si le classeur a plusieurs feuilles, celle qui porte le nom du fichier voulu (Ecritures, Banque1…), sinon la première. `.csv` accepté aussi (séparateur `;`, UTF-8 avec BOM). Les exports sont des `.xlsx` |
+| Format | **Excel `.xlsx` ou `.xlsm`** (format principal ; les macros et requêtes Power Query de l'administrateur servent à adapter les fichiers d'autres horizons : l'application lit seulement les valeurs, jamais les macros) ; si le classeur a plusieurs feuilles, celle qui porte le nom du fichier voulu (Ecritures, Banque…), sinon la première. `.csv` accepté aussi (séparateur `;`, UTF-8 avec BOM). Les exports sont des `.xlsx` |
 | Première ligne | exactement les noms de rubriques ci-dessous |
 | Noms de rubriques | abréviations sans espace ni accent : `Mvt`, `Jnl`, `Compte`, `LibelCompte`, `Libelle`… |
 | Dates | `jj/mm/aaaa` |
@@ -47,8 +47,8 @@ Le reste de l'application (écrans, fenêtres, fonctions) est conservé.
 - `Let` : code de lettrage de **3 lettres majuscules** (`AAA`, `AAB`…), vide hors comptes lettrables ; les lignes d'un même compte portant le même code se compensent (facture et règlement d'un membre).
 
 ### Relevés bancaires (`BQE`) : un fichier par banque ou par import
-`Jnl`, `Date`, `Libelle`, `Debit`, `Credit`
-- `Jnl` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = entrée, `Credit` = sortie ; `Solde` **facultatif** (Bit n'en donne pas) : s'il est présent, il sert à déduire le solde d'ouverture du premier import et à contrôler le relevé. Plus de référence.
+`Journ`, `Date`, `Libelle`, `Debit`, `Credit`, `Etat`
+- `Journ` = code du journal de banque ; `Libelle` = texte de la banque **dans sa langue d'origine** (hébreu conservé) ; `Debit` = sortie, `Credit` = entrée (point de vue de la banque) ; `Etat` : `TERMINE` ou vide = ligne importée, autre valeur = ignorée. Pas de colonne de solde ni de montant en devise d'origine (Power Query prépare le fichier, l'application ne transforme rien).
 - La traduction et le rapprochement (pointage, affectation, `Anal2`) se font dans l'écran Rapprochement, comme aujourd'hui.
 
 ### Utilisateurs (`USR`)
@@ -120,7 +120,7 @@ puis importés. Un message d'erreur en français indique la ligne et la rubrique
 L'administrateur est lui aussi un **bénévole néophyte** : tout ce qui est réservé à l'administration (imports, utilisateurs, plan, journaux, clôture) passe par des écrans guidés, avec un résumé de ce qui va changer avant d'enregistrer et une sauvegarde automatique.
 
 ### Relevés bancaires et historique d'importation
-- Le relevé s'importe **dans la langue d'origine** (`Banque.csv` : `Jnl`, `Date`, `Libelle`, `Debit`, `Credit`, `Solde` facultatif).
+- Le relevé s'importe **dans la langue d'origine** (`Banque.xlsx` : `Journ`, `Date`, `Libelle`, `Debit`, `Credit`, `Etat`).
 - Chaque import est gardé dans un **historique** (fichier, date, journal, lignes ajoutées, doublons ignorés) ; une ligne déjà importée (même journal, date, libellé et montant ; deux lignes identiques le même jour comptent pour deux) n'est jamais ajoutée deux fois, même si le même relevé est redéposé ou chevauche le précédent.
 
 ### Lexique de traduction
@@ -139,5 +139,5 @@ L'administrateur est lui aussi un **bénévole néophyte** : tout ce qui est ré
 ## 7. Modèles CSV
 
 Un modèle de chaque fichier, avec quelques lignes d'exemple neutres, est dans `Imports/modeles/csv/` :
-`Plan.csv`, `Anal1.csv`, `Anal2.csv`, `Journaux.csv`, `Ecritures.csv`, `Banque.csv`, `Utilisateurs.csv`.
-Ordre d'import conseillé : Anal1, Anal2, Plan, Journaux, Utilisateurs, Ecritures, Banque.
+`Plan.csv`, `Anal.csv`, `Journaux.csv`, `Ecritures.csv`, `Utilisateurs.csv` ; le relevé de banque n'a qu'un modèle : `Banque.xlsx`.
+Ordre d'import conseillé : Anal, Plan, Journaux, Utilisateurs, Ecritures, Banque.

@@ -27,10 +27,8 @@ cocher « Graphiques d'arrière-plan » pour garder les couleurs et décocher «
 {% for t in tresorerie %}<tr><td>{{ t.journal.code }} – {{ t.journal.intitule }}</td><td>{{ t.journal.compte }}</td><td class="n {% if t.solde < 0 %}neg{% endif %}">{{ t.solde|shekel }}</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ total_tresorerie|shekel }}</td></tr></table></section>
 
-<section class="sit-bloc"><h2>Solde par nature (axe 1)</h2>
-{% include "compta/_situation_axe.html" with lignes=axe1 total=total_axe1 %}</section>
-<section class="sit-bloc"><h2>Solde par événement / projet (axe 2)</h2>
-{% include "compta/_situation_axe.html" with lignes=axe2 total=total_axe2 %}</section>
+<section class="sit-bloc"><h2>Solde par code Anal</h2>
+{% include "compta/_situation_axe.html" with lignes=anal total=total_anal %}</section>
 
 <div class="sit-deux">
 <section class="sit-bloc"><h2>Produits par compte</h2>

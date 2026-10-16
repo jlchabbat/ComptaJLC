@@ -28,7 +28,6 @@ SORTIE = APPLI / "compta" / "documentation"
 MOT_DE_PASSE = "Demo-ComptaJLC-2026"
 DOCUMENTS = {"presentation.html": ("Présentation", "ComptaJLC_presentation.pdf"),
              "mode-emploi.html": ("Mode d'emploi", "ComptaJLC_mode_emploi.pdf"),
-             "mode-emploi-benevoles.html": ("Guide des bénévoles", "ComptaJLC_guide_benevoles.pdf"),
              "installation.html": ("Installation et mises à jour", "ComptaJLC_installation.pdf"),
              "principes.html": ("Principes de fonctionnement", "ComptaJLC_principes.pdf")}
 
@@ -80,7 +79,7 @@ def demonstration():
     Exercice.objects.create(libelle="2025", debut=dt.date(2025, 1, 1), fin=dt.date(2025, 12, 31), clos=True)
     Exercice.objects.create(libelle="2026", debut=dt.date(2026, 1, 1), fin=dt.date(2026, 12, 31))
     for cle, valeur in (("compte_virement", "580000"), ("compte_attente", "470000"), ("compte_cotisations", "700000"),
-                         ("nom_association", "Loge Bnei Brith"), ("releves_mizrahi", "B1,B2"), ("releve_bit", "B3"),
+                         ("nom_association", "Association exemple"), ("releves_mizrahi", "B1,B2"), ("releve_bit", "B3"),
                          ("carte_bancaire", "Isracard"), ("traductions_releve", "oui")):
         Reglage.objects.update_or_create(cle=cle, defaults={"valeur": valeur})
     moteur.initialiser_parametres()

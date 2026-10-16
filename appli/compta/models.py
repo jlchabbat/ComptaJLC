@@ -2,7 +2,7 @@
 
 Un mouvement (Mvt) = une opération équilibrée : une date, un journal, une
 pièce, et des lignes qui portent chacune un débit OU un crédit, un compte et
-un code analytique d'axe 2. L'axe 1 découle du compte (plan comptable).
+un compte. Le code Anal (analytique) découle du compte (plan comptable).
 """
 
 from decimal import Decimal
@@ -18,16 +18,13 @@ ZERO = Decimal("0.00")
 
 
 class CodeAnalytique(models.Model):
-    """Axe 1 (nature) ou axe 2 (événement, projet)."""
+    """Code Anal : l'unique axe analytique, rattaché à chaque compte du plan."""
 
-    STATUTS = [(0, "Non affecté"), (1, "En cours"), (2, "Terminé")]
     code = models.CharField(max_length=20, primary_key=True)
-    axe = models.PositiveSmallIntegerField(choices=[(1, "Axe 1"), (2, "Axe 2")])
     libelle = models.CharField("libellé", max_length=100, blank=True)
-    statut = models.PositiveSmallIntegerField(choices=STATUTS, default=1)
 
     class Meta:
-        ordering = ["axe", "code"]
+        ordering = ["code"]
         verbose_name = "code analytique"
         verbose_name_plural = "codes analytiques"
 
@@ -37,35 +34,31 @@ class CodeAnalytique(models.Model):
 
 class Prefixe(models.Model):
     prefixe = models.CharField("préfixe", max_length=10, primary_key=True)
-    axe = models.PositiveSmallIntegerField(choices=[(1, "Axe 1"), (2, "Axe 2")])
     libelle = models.CharField("libellé", max_length=60, blank=True)
 
     class Meta:
-        ordering = ["axe", "prefixe"]
+        ordering = ["prefixe"]
         verbose_name = "préfixe"
 
     def __str__(self):
-        return f"{self.prefixe} – {self.libelle} (axe {self.axe})" if self.libelle else f"{self.prefixe} (axe {self.axe})"
+        return f"{self.prefixe} – {self.libelle}" if self.libelle else self.prefixe
 
     def code_suivant(self):
-        """Plus grand numéro existant + 1 ; 1 chiffre pour l'axe 1, 3 pour l'axe 2."""
+        """Plus grand numéro existant + 1 (au moins 1 chiffre)."""
         suffixes = [c[len(self.prefixe):] for c in CodeAnalytique.objects.filter(code__startswith=self.prefixe)
                     .values_list("code", flat=True)]
         nums = [s for s in suffixes if s.isdigit()]
-        largeur = max([3 if self.axe == 2 else 1] + [len(s) for s in nums])
+        largeur = max([1] + [len(s) for s in nums])
         return self.prefixe + str(max([int(s) for s in nums], default=0) + 1).zfill(largeur)
 
 
 class Compte(models.Model):
     numero = models.CharField("compte", max_length=20, primary_key=True)
     libelle = models.CharField("libellé", max_length=100)
-    anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 1},
-                              related_name="comptes", verbose_name="axe 1")
+    anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True,
+                              related_name="comptes", verbose_name="Anal")
     lettrable = models.BooleanField(default=False)
     actif = models.BooleanField(default=True)
-    projet = models.BooleanField("compte de projet", default=False,
-                                 help_text="Charges et produits d'un projet (activité ponctuelle, opération durable) : "
-                                           "toute écriture porte un code axe 2. Sinon : frais de fonctionnement (ex. 600000 / 600001).")
 
     class Meta:
         ordering = ["numero"]
@@ -73,24 +66,12 @@ class Compte(models.Model):
     def __str__(self):
         return f"{self.numero} – {self.libelle}"
 
-    def clean(self):
-        if self.anal1_id and self.anal1.axe != 1:
-            raise ValidationError({"anal1": "Un compte ne reçoit qu'un code d'axe 1 (nature)."})
-        if self.projet and not self.porte_axe2:
-            raise ValidationError({"projet": "Seuls les comptes de charges (6) et de produits (7) peuvent être affectés à un projet."})
-
     def save(self, *a, **k):
-        self.clean()
         super().save(*a, **k)
 
     @property
     def classe(self):
         return self.numero[:1]
-
-    @property
-    def porte_axe2(self):
-        """L'axe 2 (activité, événement) n'affecte que les dépenses et recettes : comptes de classe 6 ou 7."""
-        return self.numero[:1] in ("6", "7")
 
 
 class Journal(models.Model):
@@ -159,7 +140,7 @@ class Reglage(models.Model):
 
 
 class Mouvement(models.Model):
-    ORIGINES = [("import", "Reprise"), ("saisie", "Saisie"), ("liaison", "Fiche bénévole"), ("correction", "Correction"),
+    ORIGINES = [("import", "Reprise"), ("saisie", "Saisie"), ("correction", "Correction"),
                 ("cloture", "À-nouveaux de clôture")]
     numero = models.PositiveIntegerField("Mvt", unique=True)
     date = models.DateField()
@@ -196,8 +177,6 @@ class Ligne(models.Model):
     libelle = models.CharField("libellé", max_length=200)
     debit = models.DecimalField("débit", max_digits=14, decimal_places=2, default=ZERO)
     credit = models.DecimalField("crédit", max_digits=14, decimal_places=2, default=ZERO)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              related_name="lignes", verbose_name="axe 2", help_text="Comptes de classe 6 et 7 seulement.")
     lettrage = models.CharField(max_length=10, blank=True)
     rapprochement = models.ForeignKey("Rapprochement", on_delete=models.SET_NULL, null=True, blank=True, related_name="ecritures")
 
@@ -214,44 +193,10 @@ class Ligne(models.Model):
     def clean(self):
         if (self.debit > 0) == (self.credit > 0):
             raise ValidationError("Une ligne porte soit un débit, soit un crédit (RG-03).")
-        self.verifier_axes()
-
-    def verifier_axes(self):
-        """Axe 2 : codes d'axe 2 seulement, comptes de charges et de produits seulement (jamais un code d'axe 1)."""
-        if not self.anal2_id:
-            return
-        if self.anal2.axe != 2:
-            raise ValidationError({"anal2": f"Le code {self.anal2_id} est un code d'axe 1 : une écriture ne reçoit qu'un code d'axe 2."})
-        if not self.compte.porte_axe2:
-            self.anal2 = None                       # comptes de bilan : pas d'axe 2
-
-    def save(self, *a, **k):
-        self.verifier_axes()
-        super().save(*a, **k)
 
     @property
     def montant(self):
         return self.debit - self.credit
-
-
-class DocumentFiche(models.Model):
-    """Reçu, facture ou photo transmis par un bénévole avec sa fiche ; au report, il devient justificatif des mouvements."""
-
-    fiche = models.ForeignKey("Fiche", on_delete=models.CASCADE, related_name="documents")
-    ligne = models.ForeignKey("LigneFiche", on_delete=models.SET_NULL, null=True, blank=True, related_name="documents",
-                              help_text="Vide = document de toute la fiche.")
-    chemin = models.CharField(max_length=255, unique=True)
-    nom = models.CharField("fichier d'origine", max_length=150)
-    description = models.CharField(max_length=150, blank=True)
-    taille = models.PositiveIntegerField(default=0)
-    ajoute_le = models.DateTimeField("ajouté le", auto_now_add=True)
-    ajoute_par = models.CharField("ajouté par", max_length=100, blank=True)
-
-    class Meta:
-        ordering = ["fiche", "ajoute_le", "id"]
-
-    def __str__(self):
-        return f"Fiche {self.fiche_id} · {self.nom}"
 
 
 class Justificatif(models.Model):
@@ -393,143 +338,6 @@ class ModeleOperation(models.Model):
 
     def lignes_schema(self, regle):
         return [l for l in LigneSchema.objects.filter(schema=self.schema) if regle or not l.si_regle]
-
-
-# ---------------------------------------------------------------- fiches bénévoles (liaison)
-
-FICHE_TYPES = [("activite", "Activité"), ("gestion", "Gestion")]
-SENS_FICHE = [("R", "Recette"), ("D", "Dépense")]
-
-
-class NatureFiche(models.Model):
-    """Nature d'une ligne de fiche : donne le compte proposé et le début du libellé d'écriture."""
-
-    type_fiche = models.CharField("fiche", max_length=10, choices=FICHE_TYPES)
-    sens = models.CharField(max_length=1, choices=SENS_FICHE)
-    libelle = models.CharField("libellé", max_length=60)
-    compte = models.ForeignKey(Compte, on_delete=models.PROTECT)
-    libelle_ecriture = models.CharField("libellé d'écriture", max_length=40)
-    ordre = models.PositiveSmallIntegerField(default=0)
-
-    class Meta:
-        ordering = ["type_fiche", "sens", "ordre"]
-        unique_together = [("type_fiche", "sens", "libelle")]
-        verbose_name = "nature (fiche bénévole)"
-        verbose_name_plural = "natures (fiches bénévoles)"
-
-    def __str__(self):
-        return self.libelle
-
-
-class ModeFiche(models.Model):
-    """Mode de paiement d'une fiche : journal et compte de trésorerie, ou cas particulier."""
-
-    GENRES = [("TRESO", "banque, caisse ou carte"), ("NON_PAYE", "non payé : reste dû par le membre"),
-              ("AVANCE", "avance d'un membre : dette envers lui")]
-    type_fiche = models.CharField("fiche", max_length=10, choices=FICHE_TYPES)
-    sens = models.CharField(max_length=1, choices=SENS_FICHE + [("*", "Les deux")], default="*")
-    libelle = models.CharField("libellé", max_length=40)
-    genre = models.CharField(max_length=10, choices=GENRES, default="TRESO")
-    journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
-    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, help_text="Vide sauf pour TRESO.")
-    ordre = models.PositiveSmallIntegerField(default=0)
-
-    class Meta:
-        ordering = ["type_fiche", "ordre"]
-        unique_together = [("type_fiche", "sens", "libelle")]
-        verbose_name = "mode de paiement (fiche bénévole)"
-        verbose_name_plural = "modes de paiement (fiches bénévoles)"
-
-    def __str__(self):
-        return self.libelle
-
-
-class Fiche(models.Model):
-    STATUTS = [("ouverte", "Ouverte : saisie du bénévole"), ("transmise", "Transmise au trésorier"),
-               ("reportee", "Reportée en comptabilité")]
-    type = models.CharField(max_length=10, choices=FICHE_TYPES)
-    titre = models.CharField(max_length=100)
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              verbose_name="code axe 2", help_text="Activité : fixé d'avance par le trésorier.")
-    benevoles = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="fiches", verbose_name="bénévoles")
-    statut = models.CharField(max_length=10, choices=STATUTS, default="ouverte")
-    cree_le = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-cree_le"]
-        permissions = [("gerer_fiche", "Compléter et reporter les fiches bénévoles")]
-
-    def __str__(self):
-        return self.titre
-
-
-class TiersProvisoire(models.Model):
-    """Tiers créé par un bénévole ; le trésorier lui attribue un compte."""
-
-    nom = models.CharField(max_length=60)
-    prenom = models.CharField("prénom", max_length=60, blank=True)
-    remarque = models.CharField(max_length=100, blank=True)
-    telephone = models.CharField("téléphone", max_length=40, blank=True)
-    email = models.EmailField("e-mail", blank=True)
-    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
-    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    cree_le = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["nom", "prenom"]
-        verbose_name = "tiers provisoire"
-        verbose_name_plural = "tiers provisoires"
-
-    def __str__(self):
-        return f"{self.nom.upper()} {self.prenom.upper()}".strip() + ("" if self.compte_id else " (provisoire)")
-
-
-class LigneFiche(models.Model):
-    fiche = models.ForeignKey(Fiche, on_delete=models.CASCADE, related_name="lignes")
-    sens = models.CharField(max_length=1, choices=SENS_FICHE)
-    date = models.DateField()
-    tiers = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes_fiche",
-                              verbose_name="membre")
-    provisoire = models.ForeignKey(TiersProvisoire, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes",
-                                   verbose_name="nouveau tiers")
-    autre = models.CharField("autre payeur ou bénéficiaire", max_length=60, blank=True)
-    personnes = models.PositiveSmallIntegerField("nombre de personnes", null=True, blank=True)
-    nature = models.ForeignKey(NatureFiche, on_delete=models.PROTECT)
-    montant = models.DecimalField(max_digits=12, decimal_places=2)
-    mode = models.ForeignKey(ModeFiche, on_delete=models.PROTECT, null=True, blank=True, verbose_name="mode de paiement")
-    justificatif = models.CharField(max_length=60, blank=True)
-    remarque = models.CharField(max_length=100, blank=True)
-    # colonnes du trésorier
-    compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
-                               verbose_name="compte de contrepartie", help_text="Vide = compte de la nature.")
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, limit_choices_to={"axe": 2},
-                              related_name="+", verbose_name="code axe 2", help_text="Gestion : choisi par le trésorier.")
-    mouvement = models.ForeignKey(Mouvement, on_delete=models.PROTECT, null=True, blank=True, related_name="lignes_fiche")
-    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    cree_le = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["date", "id"]
-        verbose_name = "ligne de fiche"
-        verbose_name_plural = "lignes de fiches"
-
-    def __str__(self):
-        return f"{self.fiche} · {self.date:%d/%m/%Y} · {self.montant}"
-
-    @property
-    def membre(self):
-        """Compte du membre : choisi directement ou attribué au tiers provisoire."""
-        if self.tiers_id:
-            return self.tiers
-        return self.provisoire.compte if self.provisoire_id else None
-
-    @property
-    def qui(self):
-        if self.tiers_id:
-            return self.tiers.libelle
-        if self.provisoire_id:
-            return str(self.provisoire)
-        return self.autre
 
 
 # ---------------------------------------------------------------- rapprochement bancaire (Lot 3)
@@ -690,40 +498,35 @@ class ValeurCompte(models.Model):
 # ---------------------------------------------------------------- budget (Lot 4)
 
 class Budget(models.Model):
-    """Prévision d'un exercice, par compte, par code d'axe 1 ou par code d'axe 2."""
+    """Prévision d'un exercice, par compte ou par code Anal."""
 
     exercice = models.ForeignKey(Exercice, on_delete=models.CASCADE, related_name="budgets")
     nature = models.CharField(max_length=1, choices=[("C", "Charges"), ("P", "Produits")])
     compte = models.ForeignKey(Compte, on_delete=models.PROTECT, null=True, blank=True)
     anal1 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
-                              limit_choices_to={"axe": 1}, verbose_name="axe 1")
-    anal2 = models.ForeignKey(CodeAnalytique, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
-                              limit_choices_to={"axe": 2}, verbose_name="axe 2")
+                              verbose_name="Anal")
     montant = models.DecimalField(max_digits=14, decimal_places=2)
 
     class Meta:
-        ordering = ["exercice", "nature", "compte", "anal1", "anal2"]
+        ordering = ["exercice", "nature", "compte", "anal1"]
         constraints = [models.CheckConstraint(
-            condition=(Q(compte__isnull=False, anal1__isnull=True, anal2__isnull=True)
-                       | Q(compte__isnull=True, anal1__isnull=False, anal2__isnull=True)
-                       | Q(compte__isnull=True, anal1__isnull=True, anal2__isnull=False)), name="budget_une_cible")]
+            condition=(Q(compte__isnull=False, anal1__isnull=True) | Q(compte__isnull=True, anal1__isnull=False)),
+            name="budget_une_cible")]
 
     def __str__(self):
         return f"{self.exercice} {self.cible} {self.montant}"
 
     @property
     def cible(self):
-        return self.compte or self.anal1 or self.anal2
+        return self.compte or self.anal1
 
 
-# ---------------------------------------------------------------- suivi des membres (Lot 2)
+# ---------------------------------------------------------------- tiers (clients, fournisseurs…)
 
-class Membre(models.Model):
-    """Fiche d'un tiers : membre, fournisseur ou tout autre type de tiers (Référentiels › Types de tiers).
-    Statut, adhésion et cotisation ne concernent que les membres."""
+class Tiers(models.Model):
+    """Fiche d'un tiers : client, fournisseur ou tout autre type de tiers (Référentiels › Types de tiers)."""
 
-    STATUTS = [("actif", "Actif"), ("honoraire", "Honoraire"), ("demissionnaire", "Démissionnaire")]
-    compte = models.OneToOneField(Compte, on_delete=models.PROTECT, primary_key=True, related_name="membre")
+    compte = models.OneToOneField(Compte, on_delete=models.PROTECT, primary_key=True, related_name="tiers")
     type = models.ForeignKey(TypeTiers, on_delete=models.PROTECT, null=True, blank=True, verbose_name="type de tiers")
     nom = models.CharField("nom ou raison sociale", max_length=60)
     prenom = models.CharField("prénom", max_length=60, blank=True)
@@ -732,11 +535,6 @@ class Membre(models.Model):
     ville = models.CharField(max_length=60, blank=True)
     telephone = models.CharField("téléphone", max_length=40, blank=True)
     email = models.EmailField("e-mail", blank=True)
-    date_adhesion = models.DateField("date d'adhésion", null=True, blank=True)
-    statut = models.CharField(max_length=15, choices=STATUTS, default="actif")
-    cotisation = models.DecimalField("cotisation annuelle attendue", max_digits=10, decimal_places=2, null=True, blank=True)
-    utilisateur = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                       related_name="membre", verbose_name="identifiant de bénévole")
 
     class Meta:
         ordering = ["nom", "prenom"]
@@ -745,10 +543,6 @@ class Membre(models.Model):
 
     def __str__(self):
         return f"{self.nom} {self.prenom}".strip()
-
-    @property
-    def est_membre(self):
-        return bool(self.type and self.type.libelle == "Membre")
 
     @property
     def adresse_complete(self):

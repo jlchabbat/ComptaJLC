@@ -10,7 +10,7 @@ est dépointée du relevé et délettrée.</p>
 <form method="post" class="carte" id="edition">{% csrf_token %}
 <div class="formulaire">{% for f in entete %}{% include "compta/_champ.html" %}{% endfor %}</div>
 {{ formset.management_form }}{% if formset.non_form_errors %}<ul class="erreurs">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-<table class="lignes-edition" style="margin-top:12px"><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th class="axe2">Axe 2</th><th>Suppr.</th></tr>
+<table class="lignes-edition" style="margin-top:12px"><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th><th>Suppr.</th></tr>
 <tbody id="lignes">{% for f in formset %}<tr>{% include "compta/_ligne_edition.html" %}</tr>{% endfor %}</tbody>
 <tr class="total"><td colspan="2"><button type="button" id="ajouter">+ Ajouter une ligne</button></td><td class="n" id="total-d"></td><td class="n" id="total-c"></td><td colspan="2" id="ecart"></td></tr></table>
 <template id="modele-ligne"><tr>{% with f=formset.empty_form %}{% include "compta/_ligne_edition.html" %}{% endwith %}</tr></template>

@@ -1,4 +1,4 @@
-"""Bouton « ← Retour à la liste » des fiches : l'application retient la dernière adresse (filtres compris) de chaque
+"""Bouton « ← Retour à la liste » des fiches (pages de détail) : l'application retient la dernière adresse (filtres compris) de chaque
 liste consultée, et le bouton d'une fiche ramène à la plus récente des listes d'où elle peut s'ouvrir, même après un
 ou plusieurs enregistrements sur la fiche."""
 
@@ -7,12 +7,11 @@ import time
 from django.urls import reverse
 
 # fiche (nom d'URL) -> listes d'où elle s'ouvre ; la première sert à défaut
-LISTES_MOUVEMENT = ["ecritures", "grand_livre", "journaux", "balance", "analytique", "analytique_detail", "membre", "fiche",
+LISTES_MOUVEMENT = ["ecritures", "grand_livre", "journaux", "balance", "analytique", "analytique_detail", "tiers_fiche",
                     "rapprochement_journal", "justificatifs_a_classer", "modifications", "controles", "tableau_de_bord"]
 LISTES = {
     "mouvement": LISTES_MOUVEMENT, "mouvement_modifier": LISTES_MOUVEMENT, "mouvement_nouveau": LISTES_MOUVEMENT,
-    "membre": ["membres", "cotisations", "provisoires", "codes"],
-    "fiche": ["fiches"], "fiche_modifier": ["fiches"],
+    "tiers_fiche": ["tiers", "codes"],
     "utilisateur": ["utilisateurs"],
 }
 MEMORISEES = {n for noms in LISTES.values() for n in noms}
@@ -53,13 +52,13 @@ def adresse(request, fiche=None, defaut=None):
 SANS_FERMER = {"tableau_de_bord", "login", "demarrage", "demarrage_compte"}
 PARENTS = {                                   # page -> page d'où elle s'ouvre (mêmes paramètres d'adresse)
     "releve_parametres": "rapprochement_journal", "releve_import": "rapprochement_journal",
-    "rapprochement_journal": "rapprochement", "traductions": "rapprochement", "provisoires": "fiches",
+    "rapprochement_journal": "rapprochement", "traductions": "rapprochement",
     "compte": "plan", "compte_nouveau": "plan", "journal": "journaux_param", "journal_nouveau": "journaux_param",
     "code_axe": "axes_param", "releves_historique": "rapprochement",
     "archive": "cloture", "analytique_detail": "analytique", "situation": "tableau_de_bord", "situation_excel": "situation",
     "etats": "tableau_de_bord", "licence": "tableau_de_bord", "echanges": "tableau_de_bord", "referentiels": "tableau_de_bord",
     "base": "tableau_de_bord", "parametres": "tableau_de_bord", "justificatifs_imprimer": "justificatifs_a_classer",
-    "fiche_papier": "fiches", "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
+    "justificatif_a_classer_voir": "justificatifs_a_classer", "mon_compte": "tableau_de_bord",
 }
 
 
@@ -71,10 +70,6 @@ def adresse_fermer(request):
         return ""
     if nom in LISTES:
         return adresse(request, nom)
-    if nom == "ligne_fiche":
-        from .models import LigneFiche
-        l = LigneFiche.objects.filter(pk=m.kwargs.get("pk")).first()
-        return reverse("fiche", args=[l.fiche_id]) if l else reverse("fiches")
     if nom in PARENTS:
         parent = PARENTS[nom]
         return reverse(parent, kwargs=m.kwargs if parent == "rapprochement_journal" else None)

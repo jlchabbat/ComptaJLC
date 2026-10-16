@@ -31,7 +31,7 @@ def journal_tresorerie(journal, debut, fin):
     """Lignes du compte de trésorerie du journal : recette, dépense, contrepartie, solde progressif."""
     ouverture = etats.solde_cumule(journal.compte, debut - dt.timedelta(days=1))
     lignes = (Ligne.objects.filter(compte=journal.compte, mouvement__date__range=(debut, fin))
-              .select_related("mouvement", "mouvement__journal", "anal2")
+              .select_related("mouvement", "mouvement__journal")
               .prefetch_related("mouvement__lignes__compte")
               .order_by("mouvement__date", "mouvement__numero", "ordre"))
     o_fin = etats.origine(fin)
@@ -60,7 +60,7 @@ def journaux(request):
                    cloture=lignes[-1]["solde"] if lignes else ouverture)
     elif journal:
         mvts = (Mouvement.objects.filter(journal=journal, date__range=(debut, fin)).order_by("date", "numero")
-                .prefetch_related("lignes__compte", "lignes__anal2"))
+                .prefetch_related("lignes__compte__anal1"))
         ctx.update(tresorerie=False, mouvements=mvts,
                    total_debit=sum((l.debit for m in mvts for l in m.lignes.all()), ZERO),
                    total_credit=sum((l.credit for m in mvts for l in m.lignes.all()), ZERO))
@@ -76,10 +76,10 @@ def journaux(request):
             rangs.append(["", "", "", "Totaux et solde final", ctx["recettes"], ctx["depenses"], ctx["cloture"]])
             feuille(wb, titre, ["Date", "Mvt", "Libellé", "Contrepartie", "Recette", "Dépense", "Solde"], rangs, (5, 6, 7))
         else:
-            rangs = [[m.date, m.numero, l.compte_id, l.compte.libelle, l.libelle, l.debit, l.credit, l.anal2_id]
+            rangs = [[m.date, m.numero, l.compte_id, l.compte.libelle, l.libelle, l.debit, l.credit, l.compte.anal1_id]
                      for m in ctx["mouvements"] for l in m.lignes.all()]
             rangs.append(["", "", "", "", "Totaux", ctx["total_debit"], ctx["total_credit"], ""])
-            feuille(wb, titre, ["Date", "Mvt", "Compte", "Intitulé", "Libellé", "Débit", "Crédit", "Axe 2"], rangs, (6, 7))
+            feuille(wb, titre, ["Date", "Mvt", "Compte", "Intitulé", "Libellé", "Débit", "Crédit", "Anal"], rangs, (6, 7))
         for ws in wb.worksheets:
             for row in ws.iter_rows(min_row=2):
                 if hasattr(row[0].value, "year"):

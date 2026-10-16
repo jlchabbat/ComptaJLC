@@ -4,7 +4,7 @@
    « python manage.py preparer » (fichier code_installation.txt du dossier des données, effacé ensuite).
 2. Base sans journal : l'administrateur décrit l'association (nom, devise, exercice, banques et caisse, options) et
    choisit un plan comptable de base ou l'import de ses propres fichiers (modèles vierges).
-Le site de la Loge (déjà des journaux) n'est jamais concerné."""
+Un site qui a déjà des journaux n'est jamais concerné."""
 
 import datetime as dt
 import secrets
@@ -19,20 +19,19 @@ from .models import CodeAnalytique, Compte, Exercice, Journal, Modification, Mou
 FICHIER_CODE = "code_installation.txt"
 FORMATS_RELEVE = [("excel", "Autre banque"), ("mizrahi", "Banque Mizrahi-Tefahot"), ("bit", "Bit")]
 
-# plan de base : codes axe 1, préfixes, comptes (numéro, libellé, code axe 1, lettrable) ; 401000 et 411000 donnent
-# leur code axe 1 aux comptes de tiers créés ensuite (401…, 411…)
-AXE1 = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
-        ("ACT.1", "ACTIVITES"), ("COT.1", "COTISATIONS"), ("DON.1", "DONS ET SUBVENTIONS")]
-AXE2 = [("GEN.001", "GENERAL")]
-PREFIXES = [("ACT.", 1, "Activités"), ("GEN.", 2, "Général"), ("MAN.", 2, "Manifestations"), ("PRO.", 2, "Projets")]
+# plan de base : codes Anal, préfixes, comptes (numéro, libellé, code Anal, lettrable) ; 401000 et 411000 donnent
+# leur code Anal aux comptes de tiers créés ensuite (401…, 411…)
+ANAL = [("BIL", "BILAN"), ("FON.1", "FONCTIONNEMENT"),
+        ("ACT.1", "ACTIVITES"), ("REC.1", "RECETTES"), ("DON.1", "DONS ET SUBVENTIONS")]
+PREFIXES = [("ACT.", "Activités"), ("REC.", "Recettes"), ("DON.", "Dons et subventions")]
 COMPTES = [
     ("110000", "REPORT A NOUVEAU", "BIL", False), ("401000", "FOURNISSEURS DIVERS", "BIL", True),
-    ("411000", "MEMBRES DIVERS", "BIL", True),
+    ("411000", "CLIENTS DIVERS", "BIL", True),
     ("470000", "COMPTE D'ATTENTE", "BIL", False), ("580000", "VIREMENTS INTERNES", "BIL", False),
     ("600000", "ACHATS ET FRAIS DIVERS", "FON.1", False), ("600100", "FRAIS BANCAIRES", "FON.1", False),
     ("600200", "LOCATION DE SALLES", "ACT.1", False), ("610000", "MANIFESTATIONS", "ACT.1", False),
     ("625000", "DONS VERSES", "DON.1", False), ("630000", "AIDES VERSEES", "DON.1", False),
-    ("700000", "COTISATIONS", "COT.1", False), ("710000", "PARTICIPATIONS AUX MANIFESTATIONS", "ACT.1", False),
+    ("700000", "VENTES ET PRESTATIONS", "REC.1", False), ("710000", "PARTICIPATIONS AUX MANIFESTATIONS", "ACT.1", False),
     ("720000", "AUTRES RECETTES", "ACT.1", False), ("725000", "DONS RECUS", "DON.1", False),
     ("740000", "SUBVENTIONS", "DON.1", False), ("750000", "PRODUITS FINANCIERS", "FON.1", False),
 ]
@@ -94,19 +93,17 @@ def demarrer(d, auteur=""):
     _reglage("hebergeur_liens", d.get("hebergeur", ""))
     _reglage("traductions_releve", "oui" if d.get("traductions") else "non")
     fait.append("réglages de l'association")
-    from .saisie import TYPES_TIERS                       # types de tiers (411 membres, 401 fournisseurs) : dans les deux cas
+    from .saisie import TYPES_TIERS                       # types de tiers (411 clients, 401 fournisseurs) : dans les deux cas
     for lib, pref in TYPES_TIERS:
         TypeTiers.objects.get_or_create(libelle=lib, defaults={"prefixe": pref})
     if d["plan"] == "base":
         debut, fin = d["debut"], d["fin"]
         libelle = str(debut.year) if debut.year == fin.year else f"{debut.year}-{fin.year}"
         Exercice.objects.get_or_create(debut=debut, defaults={"libelle": libelle, "fin": fin})
-        for code, lib in AXE1:
-            CodeAnalytique.objects.get_or_create(code=code, defaults={"axe": 1, "libelle": lib})
-        for code, lib in AXE2:
-            CodeAnalytique.objects.get_or_create(code=code, defaults={"axe": 2, "libelle": lib})
-        for p, axe, lib in PREFIXES:
-            Prefixe.objects.get_or_create(prefixe=p, defaults={"axe": axe, "libelle": lib})
+        for code, lib in ANAL:
+            CodeAnalytique.objects.get_or_create(code=code, defaults={"libelle": lib})
+        for p, lib in PREFIXES:
+            Prefixe.objects.get_or_create(prefixe=p, defaults={"libelle": lib})
         for numero, lib, a1, lettrable in COMPTES:
             Compte.objects.get_or_create(numero=numero, defaults={"libelle": lib, "anal1_id": a1, "lettrable": lettrable})
         mizrahi, bit = [], ""

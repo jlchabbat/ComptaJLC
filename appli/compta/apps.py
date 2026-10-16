@@ -2,17 +2,13 @@ from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
 # Paramétrage de base : réservé à l'administrateur (Référentiels, Paramètres Excel, codes axe 1, relevés, utilisateurs)
-PARAMETRAGE = ["journal", "prefixe", "typetiers", "moyenpaiement", "ligneschema", "modeleoperation", "naturefiche", "modefiche",
+PARAMETRAGE = ["journal", "prefixe", "typetiers", "moyenpaiement", "ligneschema", "modeleoperation",
                "reglage", "parametrereleve"]
 
-# Rôles (cahier des charges §1) : droits Django attribués à chaque groupe, du plus large au plus restreint
+# Deux modes de travail : Administration et Gestion (droits Django attribués à chaque groupe)
 ROLES = {
     "Administration": "tout",      # au-dessus de la gestion : paramétrage de base, utilisateurs, base de données
     "Gestion": "tenue",          # tenue quotidienne des comptes : ni paramétrage, ni imports / exports, ni base de données
-    "Consultation": "consultation",
-    # fiches bénévoles : le bénévole ne voit que les fiches qui lui sont confiées
-    "Bénévole": ["view_fiche", "add_lignefiche", "change_lignefiche", "delete_lignefiche", "view_tiersprovisoire",
-                 "add_tiersprovisoire"],
 }
 
 
@@ -27,10 +23,8 @@ def creer_roles(sender, **kwargs):
             # administrateur seulement : paramétrage de base, et imports / exports de fichiers (reprise, réinstallation)
             reserves = [f"{a}_{m}" for m in PARAMETRAGE for a in ("add", "change", "delete")] + ["parametrer", "echanger_fichiers"]
             groupe.permissions.set(perms.exclude(codename__in=reserves))
-        elif portee == "consultation":
-            groupe.permissions.set(perms.filter(codename__startswith="view_"))
-        elif isinstance(portee, list):
-            groupe.permissions.set(perms.filter(codename__in=portee))
+    for ancien in Group.objects.filter(name__in=("Consultation", "Bénévole"), user__isnull=True):
+        ancien.delete()                                  # anciens rôles sans utilisateur : supprimés
 
 
 class ComptaConfig(AppConfig):

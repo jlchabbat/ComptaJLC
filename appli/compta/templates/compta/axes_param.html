@@ -1,5 +1,5 @@
-{% extends "compta/base.html" %}{% block titre %}Codes d'axe{% endblock %}{% block contenu %}
-<h1>Codes des axes 1 et 2</h1>
+{% extends "compta/base.html" %}{% block titre %}Codes Anal{% endblock %}{% block contenu %}
+<h1>Codes Anal</h1>
 <div class="barre"><a class="bouton principal" href="{% url 'codes' %}">Nouveau code</a></div>
-<table class="triable"><tr><th>Code</th><th>Axe</th><th>Libellé</th><th>Statut</th></tr>
-{% for c in codes %}<tr><td><a href="{% url 'code_axe' c.code %}">{{ c.code }}</a></td><td>{{ c.axe }}</td><td>{{ c.libelle }}</td><td>{{ c.get_statut_display }}</td></tr>{% endfor %}</table>{% endblock %}
+<table class="triable"><tr><th>Code</th><th>Libellé</th></tr>
+{% for c in codes %}<tr><td><a href="{% url 'code_axe' c.code %}">{{ c.code }}</a></td><td>{{ c.libelle }}</td></tr>{% endfor %}</table>{% endblock %}

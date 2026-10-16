@@ -34,26 +34,9 @@ def executer():
     double = Ligne.objects.filter(Q(debit__gt=0, credit__gt=0) | Q(debit=0, credit=0)).count()
     res.append(Resultat("RG-03", "Lignes avec débit ET crédit, ou aucun des deux", double, "OK" if not double else "Anomalie"))
 
-    sans_axe1 = Compte.objects.filter(lignes__isnull=False, anal1__isnull=True).distinct().values_list("numero", flat=True)
-    res.append(Resultat("RG-02", "Comptes utilisés sans code d'axe 1", len(sans_axe1), "OK" if not sans_axe1 else "Anomalie",
-                        list(sans_axe1)))
-
     sans1 = Compte.objects.filter(anal1__isnull=True).values_list("numero", flat=True)
-    res.append(Resultat("RG-02", "Comptes sans code d'axe 1 (chaque compte en porte un)", len(sans1), "OK" if not sans1 else "Anomalie",
+    res.append(Resultat("RG-02", "Comptes sans code Anal (chaque compte en porte un)", len(sans1), "OK" if not sans1 else "Anomalie",
                         list(sans1[:50])))
-    mauvais1 = Compte.objects.exclude(anal1__isnull=True).exclude(anal1__axe=1).values_list("numero", flat=True)
-    res.append(Resultat("RG-02", "Comptes dont l'axe 1 est un code d'axe 2", len(mauvais1), "OK" if not mauvais1 else "Anomalie",
-                        list(mauvais1[:50])))
-    mauvais2 = Ligne.objects.filter(anal2__isnull=False).exclude(anal2__axe=2).values_list("mouvement__numero", flat=True)
-    res.append(Resultat("RG-02", "Écritures dont l'axe 2 est un code d'axe 1", len(mauvais2), "OK" if not mauvais2 else "Anomalie",
-                        [f"Mvt {n}" for n in mauvais2[:50]]))
-    bilan2 = (Ligne.objects.filter(anal2__isnull=False).exclude(compte__numero__startswith="6")
-              .exclude(compte__numero__startswith="7").values_list("mouvement__numero", flat=True))
-    res.append(Resultat("RG-02", "Écritures d'un compte de bilan portant un code axe 2", len(bilan2), "OK" if not bilan2 else "Anomalie",
-                        [f"Mvt {n}" for n in bilan2[:50]]))
-    proj = Ligne.objects.filter(compte__projet=True, anal2__isnull=True).values_list("mouvement__numero", flat=True)
-    res.append(Resultat("RG-02", "Écritures d'un compte de projet sans code axe 2", len(proj), "OK" if not proj else "Anomalie",
-                        [f"Mvt {n}" for n in proj[:50]]))
 
     clos = [e for e in Exercice.objects.filter(clos=True)]
     periode_close = Mouvement.objects.none()

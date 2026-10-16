@@ -1,15 +1,14 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}{{ m }}{% endblock %}{% block contenu %}
-<div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.type|default:"Tiers" }}{% if m.est_membre %} · {{ m.get_statut_display }}{% endif %}</span></div>
+<div class="entete-fiche"><h1>{{ m.nom }} {{ m.prenom }}</h1><span class="statut Info">{{ m.type|default:"Tiers" }}</span></div>
 <div class="barre">{% bouton_retour %}
 {% if peut %}<button form="lettrage" class="principal" name="lettrer" value="1" id="bouton-lettrer" disabled>Lettrer la sélection</button>
 <button form="lettrage" name="lettrage_auto" value="1">Lettrage automatique</button>
-<span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>{% endif %}{% if form %}<button form="f-membre" name="enregistrer" value="1">Enregistrer la fiche</button>{% endif %}</div>
-<p>Compte {{ m.compte_id }}{% if m.adresse_complete %} · {{ m.adresse_complete }}{% endif %}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
-{% if m.date_adhesion %} · membre depuis le {{ m.date_adhesion|date:"d/m/Y" }}{% endif %}{% if m.cotisation %} · cotisation {{ m.cotisation|shekel }}{% endif %}</p>
+<span id="total-lettrage" class="aide">Cochez des lignes dont le débit égale le crédit.</span>{% endif %}{% if form %}<button form="f-tiers" name="enregistrer" value="1">Enregistrer la fiche</button>{% endif %}</div>
+<p>Compte {{ m.compte_id }}{% if m.adresse_complete %} · {{ m.adresse_complete }}{% endif %}{% if m.telephone %} · {{ m.telephone }}{% endif %}{% if m.email %} · <a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}</p>
 <div class="chiffres"><div class="chiffre"><div class="lib">Facturé</div><div class="val">{{ s.facture|shekel }}</div></div>
 <div class="chiffre"><div class="lib">Réglé</div><div class="val">{{ s.regle|shekel }}</div></div>
 <div class="chiffre"><div class="lib">Solde dû</div><div class="val {% if s.solde > 0 %}neg{% endif %}">{{ s.solde|shekel }}</div></div></div>
-{% if s.avance %}<p class="aide">Avance du membre (règlements non imputés) : {{ s.avance|shekel }}.</p>{% endif %}
+{% if s.avance %}<p class="aide">Avance du tiers (règlements non imputés) : {{ s.avance|shekel }}.</p>{% endif %}
 
 <h2>Historique</h2>
 <form method="post" id="lettrage">{% csrf_token %}
@@ -21,7 +20,7 @@
 {% empty %}<tr><td colspan="8">Aucune écriture.</td></tr>{% endfor %}</table>
 </form>
 
-{% if form %}<details class="carte"><summary>Modifier la fiche (type, coordonnées, adresse)</summary><form method="post" id="f-membre">{% csrf_token %}
+{% if form %}<details class="carte"><summary>Modifier la fiche (type, coordonnées, adresse)</summary><form method="post" id="f-tiers">{% csrf_token %}
 <div class="formulaire" style="margin-top:12px">{% for f in form %}{% include "compta/_champ.html" %}{% endfor %}</div>
 </form></details>{% endif %}
 <script>

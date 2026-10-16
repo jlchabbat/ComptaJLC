@@ -9,7 +9,7 @@
 <label>Journal <select name="journal" data-cherchable="Code ou intitulé…"><option value="">Tous</option>{% for j in journaux %}<option value="{{ j.code }}" {% if filtres.journal == j.code %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></label>
 <label>Compte (début ou choix) <input name="compte" value="{{ filtres.compte }}" size="14" list="liste-comptes" placeholder="n° ou libellé"></label>
 <datalist id="liste-comptes">{% for c in comptes %}<option value="{{ c.numero }}">{{ c.libelle }}</option>{% endfor %}</datalist>
-<label class="axe2">Axe 2 <select name="anal2" data-cherchable><option value="">Tous</option>{% for c in codes2 %}<option value="{{ c.code }}" {% if filtres.anal2 == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+<label>Anal <select name="anal" data-cherchable><option value="">Tous</option>{% for c in codes %}<option value="{{ c.code }}" {% if filtres.anal == c.code %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
 <label>Recherche <input name="q" value="{{ filtres.q }}"></label>
 
 <label>Justificatif <select name="just"><option value="">Tous</option><option value="avec" {% if filtres.just == "avec" %}selected{% endif %}>Avec</option><option value="sans" {% if filtres.just == "sans" %}selected{% endif %}>Sans</option></select></label><button class="principal">Filtrer</button></form>
@@ -17,6 +17,6 @@
 <table><tr>{% for e in entetes %}<th class="tri {% if e.n %}n{% endif %}" {% if e.sens %}data-sens="{{ e.sens }}"{% endif %}><a class="tri-lien" href="{{ e.url }}" title="Trier sur toutes les pages">{{ e.titre }}</a></th>{% endfor %}<th title="Justificatifs joints">📎</th></tr>
 {% for l in page %}<tr><td>{{ l.mouvement.date|date:"d/m/Y" }}</td><td>{{ l.mouvement.journal_id }}</td><td><a href="{% url 'mouvement' l.mouvement.numero %}">{{ l.mouvement.numero }}</a></td>
 <td title="{{ l.compte.libelle }}">{{ l.compte_id }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td>
-<td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td><td title="{{ l.anal2.libelle }}">{{ l.anal2_id|default:"" }}</td>
+<td title="{{ l.compte.anal1.libelle }}">{{ l.compte.anal1_id|default:"" }}</td>
 <td>{% with n=pieces|get_item:l.mouvement_id %}{% if n %}<a href="{% url 'mouvement' l.mouvement.numero %}" title="{{ n }} justificatif(s)">📎{% if n > 1 %}{{ n }}{% endif %}</a>{% endif %}{% endwith %}</td></tr>{% endfor %}</table>
 {% include "compta/_pages.html" %}{% endblock %}

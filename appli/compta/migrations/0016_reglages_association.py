@@ -1,11 +1,11 @@
 # Un site par association (étape 1) : réglages propres à l'association. Un site qui a déjà des écritures ou des
-# journaux (celui de la Loge) reçoit ses valeurs actuelles ; une base neuve reçoit les valeurs neutres.
+# journaux reçoit ses valeurs d'usage ; une base neuve reçoit les valeurs neutres.
 
 from django.db import migrations, models
 
 # clé, description, valeur neutre, valeur des sites existants
 REGLAGES = [
-    ("nom_association", "Nom de l'association (en-tête des pages, situation, éditions)", "", "Loge Bnei Brith"),
+    ("nom_association", "Nom de l'association (en-tête des pages, situation, éditions)", "", "Association"),
     ("devise", "Symbole de la devise des montants (₪, €, $…)", "€", "₪"),
     ("releves_mizrahi", "Journaux dont le relevé PDF est au format Mizrahi-Tefahot (hébreu), séparés par des virgules ; "
                         "vide : relevés en Excel ou CSV seulement", "", "B1,B2"),

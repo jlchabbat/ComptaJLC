@@ -42,10 +42,9 @@ def classeur_exercice(ex):
         lignes.append(["", f"Total {s['titre'].lower()}", s["total_n"], s["total_n1"]])
     lignes.append(["", "Résultat", cr["resultat_n"], cr["resultat_n1"]])
     feuille(wb, "Compte de résultat", ["Compte", "Libellé", ex.libelle, prec.libelle if prec else "N-1"], lignes, (3, 4))
-    for axe in (1, 2):
-        feuille(wb, f"Résultat axe {axe}", ["Code", "Libellé", "Produits", "Charges", "Résultat", "Résultat N-1"],
-                [[r["code"], r["libelle"], r["produits"], r["charges"], r["resultat"], r["resultat_n1"]]
-                 for r in etats.par_axe(ex, prec, axe)], (3, 4, 5, 6))
+    feuille(wb, "Résultat Anal", ["Code", "Libellé", "Produits", "Charges", "Résultat", "Résultat N-1"],
+            [[r["code"], r["libelle"], r["produits"], r["charges"], r["resultat"], r["resultat_n1"]]
+             for r in etats.par_anal(ex, prec)], (3, 4, 5, 6))
     b = etats.bilan(ex.fin, ex.debut)
     lignes = [["Actif", "", "", ""]]
     for _, lib, ls in b["actif"]:
@@ -59,10 +58,10 @@ def classeur_exercice(ex):
     bal = etats.soldes_par_compte(Ligne.objects.filter(mouvement__date__range=(ex.debut, ex.fin)))
     feuille(wb, "Balance", ["Compte", "Libellé", "Solde"], [[k, lib, s] for k, (lib, s) in bal.items()], (3,))
     ecr = (Ligne.objects.filter(mouvement__date__range=(ex.debut, ex.fin))
-           .select_related("mouvement", "compte").order_by("compte__numero", "mouvement__date", "mouvement__numero", "ordre"))
-    feuille(wb, "Grand livre", ["Compte", "Intitulé", "Date", "Jnl", "Mvt", "Libellé", "Débit", "Crédit", "Anal2", "Let"],
+           .select_related("mouvement", "compte", "compte__anal1").order_by("compte__numero", "mouvement__date", "mouvement__numero", "ordre"))
+    feuille(wb, "Grand livre", ["Compte", "Intitulé", "Date", "Jnl", "Mvt", "Libellé", "Débit", "Crédit", "Anal", "Let"],
             [[l.compte_id, l.compte.libelle, l.mouvement.date, l.mouvement.journal_id, l.mouvement.numero,
-              l.libelle, l.debit, l.credit, l.anal2_id, l.lettrage] for l in ecr], (7, 8))
+              l.libelle, l.debit, l.credit, l.compte.anal1_id, l.lettrage] for l in ecr], (7, 8))
     bud = etats.budget(ex)
     if bud:
         feuille(wb, "Budget", ["Nature", "Cible", "Budget", "Réalisé", "Écart", "Écart %"],

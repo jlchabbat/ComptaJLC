@@ -5,7 +5,7 @@ Une feuille par table de paramètres. À l'import :
 - une cellule vide ne remplace rien ; rien n'est jamais supprimé (mettre Actif = Non pour retirer) ;
 - une seule erreur et rien n'est enregistré : le rapport liste toutes les lignes à corriger.
 
-Les comptes de tiers (membres, fournisseurs…) n'y figurent pas : ils ont leur propre fichier Tiers.xlsx.
+Les comptes de tiers (clients, fournisseurs…) n'y figurent pas : ils ont leur propre fichier Tiers.xlsx.
 """
 
 import datetime as dt
@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from django.db import transaction
 
 from .models import (
-    CodeAnalytique, Compte, FICHE_TYPES, Journal, LigneSchema, Membre, ModeFiche, ModeleOperation, Modification,
-    MoyenPaiement, NatureFiche, ParametreReleve, Prefixe, Reglage, SENS_FICHE, Traduction, TypeTiers,
+    CodeAnalytique, Compte, Journal, LigneSchema, Tiers, ModeleOperation, Modification,
+    MoyenPaiement, ParametreReleve, Prefixe, Reglage, Traduction, TypeTiers,
 )
 
 NOM_FICHIER = "Parametres.xlsx"
@@ -165,7 +165,7 @@ class Feuille:
 # ---------------------------------------------------------------- définition des feuilles
 
 def _comptes_hors_tiers():
-    tiers = Membre.objects.values_list("compte_id", flat=True)
+    tiers = Tiers.objects.values_list("compte_id", flat=True)
     return Compte.objects.exclude(numero__in=tiers).select_related("anal1")
 
 
@@ -174,24 +174,13 @@ def _verifier_modele(m):
         raise Refus(f"schéma « {m.schema} » inconnu (schémas : {', '.join(sorted(set(LigneSchema.objects.values_list('schema', flat=True))))})")
 
 
-def _verifier_compte(c):
-    if c.projet and c.numero[:1] not in ("6", "7"):
-        raise Refus("seuls les comptes de charges (6) et de produits (7) peuvent être « Projet »")
-
-
-def _verifier_mode(m):
-    if m.genre == "TRESO" and not m.compte_id:
-        raise Refus("un mode « banque, caisse ou carte » demande un compte de trésorerie")
-
-
 def _preparer_traduction(t):
     t.cle = Traduction.cle_de(t.hebreu)
     if not t.cle:
         raise Refus("opération (hébreu) vide")
 
 
-STATUTS_ANALYTIQUES = Choix(CodeAnalytique.STATUTS)
-AXE1 = Reference(CodeAnalytique, "code", "code axe 1", {"axe": 1})
+ANAL = Reference(CodeAnalytique, "code", "code Anal")
 COMPTE = Reference(Compte, "numero", "compte")
 JOURNAL = Reference(Journal, "code", "journal")
 
@@ -200,32 +189,23 @@ FEUILLES = [
         Colonne("Clé", "cle", Texte(40), True, 26),
         Colonne("Valeur", "valeur", Texte(200), True, 22),
         Colonne("Description", "description", Texte(200), False, 60),
-    ], "Hypothèses nommées : compte de virement interne, compte d'attente, compte des cotisations…"),
-    Feuille("Axe 1", CodeAnalytique, ["code"], [
+    ], "Hypothèses nommées : compte de virement interne, compte d'attente…"),
+    Feuille("Anal", CodeAnalytique, ["code"], [
         Colonne("Code", "code", Texte(20), True, 14),
         Colonne("Libellé", "libelle", Texte(100), False, 40),
-        Colonne("Statut", "statut", STATUTS_ANALYTIQUES, False, 14, "Non affecté, En cours ou Terminé"),
-    ], "Codes de nature (axe 1).", requete=lambda: CodeAnalytique.objects.filter(axe=1), fixe={"axe": 1}),
-    Feuille("Axe 2", CodeAnalytique, ["code"], [
-        Colonne("Code", "code", Texte(20), True, 14),
-        Colonne("Libellé", "libelle", Texte(100), False, 40),
-        Colonne("Statut", "statut", STATUTS_ANALYTIQUES, False, 14, "Non affecté, En cours ou Terminé"),
-    ], "Codes d'événement ou de projet (axe 2).", requete=lambda: CodeAnalytique.objects.filter(axe=2), fixe={"axe": 2}),
+    ], "Codes Anal (analytique) : chaque compte du plan en porte un."),
     Feuille("Préfixes", Prefixe, ["prefixe"], [
         Colonne("Préfixe", "prefixe", Texte(10), True, 12),
-        Colonne("Axe", "axe", Choix([(1, "1"), (2, "2")]), True, 8, "1 ou 2"),
         Colonne("Libellé", "libelle", Texte(60), False, 40),
-    ], "Préfixes des codes analytiques proposés par l'application (ACT, MAN…)."),
+    ], "Préfixes des codes Anal proposés par l'application (ACT, COT…)."),
     Feuille("Plan comptable", Compte, ["numero"], [
         Colonne("Compte", "numero", Texte(20), True, 14),
         Colonne("Libellé", "libelle", Texte(100), True, 42),
-        Colonne("Axe 1", "anal1", AXE1, True, 12, "code de la feuille Axe 1 : obligatoire pour chaque compte"),
-        Colonne("Projet", "projet", Booleen(), False, 9, "Oui : charges ou produits d'un projet (code axe 2 obligatoire) ; Non : fonctionnement"),
+        Colonne("Anal", "anal1", ANAL, True, 12, "code de la feuille Anal : obligatoire pour chaque compte"),
         Colonne("Lettrable", "lettrable", Booleen(), False, 11, "Oui ou Non"),
         Colonne("Actif", "actif", Booleen(), False, 9, "Oui ou Non"),
-    ], "Comptes généraux. Les comptes de tiers (membres, fournisseurs…) sont dans Tiers.xlsx. Un compte 6 ou 7 de projet "
-       "(ex. 600001) se distingue du compte de fonctionnement (600000).",
-        requete=_comptes_hors_tiers, verifier=_verifier_compte),
+    ], "Comptes généraux. Les comptes de tiers (clients, fournisseurs…) sont dans Tiers.xlsx.",
+        requete=_comptes_hors_tiers),
     Feuille("Journaux", Journal, ["code"], [
         Colonne("Code", "code", Texte(10), True, 10),
         Colonne("Intitulé", "intitule", Texte(60), True, 30),
@@ -236,7 +216,7 @@ FEUILLES = [
     Feuille("Types de tiers", TypeTiers, ["libelle"], [
         Colonne("Libellé", "libelle", Texte(30), True, 20),
         Colonne("Préfixe de compte", "prefixe", Texte(10), True, 18),
-    ], "Catégories de tiers et début de leurs numéros de compte (Membre 411, Fournisseur 401…)."),
+    ], "Catégories de tiers et début de leurs numéros de compte (Client 411, Fournisseur 401…)."),
     Feuille("Moyens de paiement", MoyenPaiement, ["libelle"], [
         Colonne("Libellé", "libelle", Texte(40), True, 26),
         Colonne("Journal", "journal", JOURNAL, False, 10, "vide = non réglé (facture seule)"),
@@ -264,23 +244,6 @@ FEUILLES = [
         Colonne("Ordre", "ordre", Entier(), False, 8),
         Colonne("Actif", "actif", Booleen(), False, 9, "Oui ou Non"),
     ], "Modèles de la saisie guidée.", verifier=_verifier_modele),
-    Feuille("Natures fiches", NatureFiche, ["type_fiche", "sens", "libelle"], [
-        Colonne("Fiche", "type_fiche", Choix(FICHE_TYPES), True, 11, "Activité ou Gestion"),
-        Colonne("Sens", "sens", Choix(SENS_FICHE), True, 10, "Recette ou Dépense"),
-        Colonne("Libellé", "libelle", Texte(60), True, 30),
-        Colonne("Compte", "compte", COMPTE, True, 12),
-        Colonne("Libellé d'écriture", "libelle_ecriture", Texte(40), True, 24),
-        Colonne("Ordre", "ordre", Entier(), False, 8),
-    ], "Natures proposées sur les fiches bénévoles."),
-    Feuille("Modes fiches", ModeFiche, ["type_fiche", "sens", "libelle"], [
-        Colonne("Fiche", "type_fiche", Choix(FICHE_TYPES), True, 11, "Activité ou Gestion"),
-        Colonne("Sens", "sens", Choix(SENS_FICHE + [("*", "Les deux")]), True, 10, "Recette, Dépense ou Les deux"),
-        Colonne("Libellé", "libelle", Texte(40), True, 24),
-        Colonne("Genre", "genre", Choix(ModeFiche.GENRES), True, 28),
-        Colonne("Journal", "journal", JOURNAL, True, 10),
-        Colonne("Compte", "compte", COMPTE, False, 12, "obligatoire pour banque, caisse ou carte"),
-        Colonne("Ordre", "ordre", Entier(), False, 8),
-    ], "Modes de paiement des fiches bénévoles.", verifier=_verifier_mode),
     Feuille("Relevés", ParametreReleve, ["journal"], [
         Colonne("Journal", "journal", JOURNAL, True, 10),
         Colonne("Date de reprise", "date_reprise", Date(), False, 16, "jj/mm/aaaa"),

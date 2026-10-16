@@ -15,7 +15,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from .models import (
-    CodeAnalytique, Compte, Exercice, Journal, Ligne, LigneSchema, ModeleOperation, Modification, MoyenPaiement, Mouvement,
+    Compte, Exercice, Journal, Ligne, LigneSchema, ModeleOperation, Modification, MoyenPaiement, Mouvement,
     Reglage, TypeTiers,
 )
 
@@ -28,7 +28,6 @@ class Operation:
     montant: Decimal | None = None
     paiement: MoyenPaiement | None = None
     vers: MoyenPaiement | None = None
-    anal2: CodeAnalytique | None = None
     compte: Compte | None = None
     remboursement: bool = False
     libelle: str = ""
@@ -125,11 +124,6 @@ def controler(op):
             e["Virement"] = "Les deux comptes du virement doivent être différents."
     elif op.vers:
         e["Virement"] = "La case « Vers » ne sert qu'aux virements internes : la vider."
-    if not op.anal2:                                      # axe 2 facultatif (comptes 6 et 7 seulement quand il est donné)
-        from .reglages import code_axe2_defaut
-        defaut = code_axe2_defaut()                       # un seul axe : code d'office
-        if defaut:
-            op.anal2 = CodeAnalytique.objects.get(code=defaut)
     utilise_contrepartie = LigneSchema.objects.filter(schema=m.schema, role="CONTREPARTIE").exists()
     contrepartie = op.compte or m.compte
     if not utilise_contrepartie:
@@ -139,8 +133,6 @@ def controler(op):
         e["Compte"] = f"Choisir le compte (classe {m.classe})."
     elif m.classe and not contrepartie.numero.startswith(m.classe):
         e["Compte"] = f"Ce type d'opération attend un compte de classe {m.classe}."
-    if contrepartie and contrepartie.projet and not op.anal2 and "Compte" not in e:
-        e["Événement / projet (axe 2)"] = f"Le compte {contrepartie.numero} est affecté à un projet : choisir le code axe 2."
     if r.lignes and not e:
         if any(l.compte is None for l in r.lignes):
             e["Écritures générées"] = "Un compte généré est manquant (vérifier les réglages et les moyens de paiement)."
@@ -168,8 +160,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
         ls = [l for l in r.lignes if l.mvt == rang]
         mv = Mouvement.objects.create(numero=numero + rang - 1, date=op.date, journal=ls[0].journal,
                                       origine="saisie", cree_par=utilisateur)
-        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit,
-                                         anal2=op.anal2 if l.compte.porte_axe2 else None) for i, l in enumerate(ls)])
+        Ligne.objects.bulk_create([Ligne(mouvement=mv, ordre=i, compte=l.compte, libelle=r.libelle, debit=l.debit, credit=l.credit) for i, l in enumerate(ls)])
         crees.append(mv)
     Modification.objects.create(auteur=utilisateur.get_username() if utilisateur else "", action="Saisie",
                                 objet=", ".join(f"Mvt {m.numero}" for m in crees),
@@ -179,7 +170,7 @@ def enregistrer(op, utilisateur, forcer_doublon=False):
 
 # ---------------------------------------------------------------- paramètres initiaux (repris du classeur, Lot 1)
 
-TYPES_TIERS = [("Membre", "411"), ("Fournisseur", "401")]
+TYPES_TIERS = [("Client", "411"), ("Fournisseur", "401")]
 MOYENS = [("Mizrahi compte courant", "B1"), ("Mizrahi épargne", "B2"), ("BIT", "BIT"), ("Caisse (espèces)", "CA"), ("Non réglé", None)]
 SCHEMAS = [
     ("RT", 1, 1, "TIERS", "D", False, "PAIEMENT_OU_DEFAUT"), ("RT", 2, 1, "CONTREPARTIE", "C", False, "PAIEMENT_OU_DEFAUT"),
@@ -197,15 +188,10 @@ SCHEMAS = [
 ]
 MODELES = [
     # type, schéma, compte, journal par défaut, tiers, paiement obligatoire, classe, libellé type, aide
-    ("Cotisation membre", "RT", "700000", "VT", "Membre", False, "7", "COTISATION",
-     "Facture la cotisation au membre ; avec un moyen de paiement, le règlement est passé dans la même opération."),
-    ("Facture manifestation (membre)", "RT", "710000", "VT", "Membre", False, "7", "FACTURE MANIFESTATION",
-     "Participation d'un membre à une manifestation, réglée ou non."),
-    ("Recette d'opération (membre)", "RT", "720000", "VT", "Membre", False, "7", "FACTURE OPERATION",
-     "Recette d'une opération facturée à un membre."),
-    ("Don reçu d'un membre", "RT", "725000", "VT", "Membre", False, "7", "DON", "Don d'un membre, suivi sur son compte."),
-    ("Règlement d'un membre", "RM", None, None, "Membre", True, "", "REGLEMENT", "Encaissement d'une facture déjà passée au membre."),
-    ("Don reçu (sans tiers)", "RS", "725000", None, None, True, "7", "DON", "Don encaissé directement, sans compte de membre."),
+    ("Facture client", "RT", None, "VT", "Client", False, "7", "FACTURE CLIENT",
+     "Facture à un client ; avec un moyen de paiement, le règlement est passé dans la même opération : choisir le compte de produit."),
+    ("Règlement d'un client", "RM", None, None, "Client", True, "", "REGLEMENT CLIENT", "Encaissement d'une facture déjà passée au client."),
+    ("Recette (sans tiers)", "RS", None, None, None, True, "7", "RECETTE", "Recette encaissée directement : choisir le compte de produit."),
     ("Subvention", "RS", "740000", None, None, True, "7", "SUBVENTION", "Subvention encaissée."),
     ("Intérêts perçus", "RS", "750000", None, None, True, "7", "INTERETS", "Intérêts versés par la banque."),
     ("Dépense directe", "DS", None, None, None, True, "6", "DEPENSE", "Dépense payée immédiatement : choisir le compte de charge."),
@@ -251,10 +237,5 @@ def initialiser_parametres():
         ModeleOperation.objects.get_or_create(type=t, defaults=dict(
             schema=s, compte_id=compte, journal_defaut_id=jnl, tiers=TypeTiers.objects.filter(libelle=tiers).first(),
             paiement_obligatoire=oblig, classe=classe, libelle_type=lib, aide=aide, ordre=i))
-    from .fiches import initialiser as initialiser_fiches
-    initialiser_fiches()
-    if Compte.objects.filter(numero="700000").exists():
-        Reglage.objects.get_or_create(cle="compte_cotisations", defaults={
-            "valeur": "700000", "description": "Compte des cotisations (suivi des membres)"})
-    from .membres import creer_manquants
+    from .tiers import creer_manquants
     creer_manquants()

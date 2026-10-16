@@ -1,22 +1,22 @@
-{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique – {% if axe == 1 %}Nature{% else %}Objet{% endif %}{% endblock %}{% block contenu %}
-<h1>Analytique – {{ a.titre }}</h1>
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique{% endblock %}{% block contenu %}
+<h1>Analytique – Anal</h1>
 <div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
 <a class="bouton principal" href="?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
-{% if deux_axes %}<a class="bouton" href="?axe={% if axe == 1 %}2{% else %}1{% endif %}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{% if axe == 1 %}Voir l'analytique Objet (axe 2){% else %}Voir l'analytique Nature (axe 1){% endif %}</a>{% endif %}</div>
-<form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}"><input type="hidden" name="axe" value="{{ axe }}">
-<label><b>{% if axe == 1 %}Libellé Axe 1 (nature){% else %}Libellé Axe 2 (objet){% endif %}</b>
-<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">{% if axe == 1 %}Toutes les natures{% else %}Tous les objets{% endif %}</option>
+</div>
+<form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}">
+<label><b>Libellé Anal</b>
+<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">Tous les codes</option>
 {% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}</select></label>
 <button class="principal">État détaillé</button>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <label>Type de comptes <select name="comptes" class="court">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <button formaction="{% url 'analytique' %}">Actualiser le tableau</button></form>
 <p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
-La liste contient les libellés des codes {% if axe == 1 %}axe 1 (nature){% else %}axe 2 (objet){% endif %}, pas ceux des comptes. Choisir un libellé puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
+La liste contient les libellés des codes Anal, pas ceux des comptes. Choisir un libellé puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
 
-<section class="ana-fenetre ana-axe{{ axe }}">
-<table class="sit-table ana-synthese"><tr><th>Libellé {% if axe == 1 %}axe 1{% else %}axe 2{% endif %}</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
-{% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?comptes={{ nature }}&amp;axe={{ axe }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
+<section class="ana-fenetre ana-axe1">
+<table class="sit-table ana-synthese"><tr><th>Libellé Anal</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?comptes={{ nature }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
 <td><b>{{ l.libelle|default:"(sans code)" }}</b></td><td class="code">{{ l.code }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
 <td class="n {% if l.s < 0 %}neg{% endif %}"><b>{{ l.s|shekel }}</b></td></tr>
 {% empty %}<tr><td colspan="5">Aucune opération sur la période.</td></tr>{% endfor %}
