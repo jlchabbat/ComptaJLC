@@ -821,19 +821,23 @@ def journal_obligatoire(code):
 # ---- Banque : un seul fichier pour toutes les banques et caisses (structure interne, préparée en amont par Power Query)
 
 def exp_banque_tout():
-    return [[l.journal_id, l.date, l.operation, l.montant if l.montant > 0 else None, -l.montant if l.montant < 0 else None, l.solde]
+    return [[l.journal_id, l.date, l.operation, -l.montant if l.montant < 0 else None, l.montant if l.montant > 0 else None, "TERMINE"]
             for l in LigneReleve.objects.filter(ouverture=False).order_by("journal_id", "date", "rang")]
 
 
 def imp_banque_tout(lignes, fichier, utilisateur=None):
-    """Chaque ligne porte son journal (Jnl) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
-    Debit = entrée sur le compte de banque, Credit = sortie (comme les écritures). Une ligne déjà
-    importée (journal, date, libellé, montant) n'est jamais ajoutée deux fois ; chaque import est
-    noté dans l'historique des imports."""
-    L, par_journal = Lecteur(), defaultdict(list)
+    """Chaque ligne porte son journal (Journ) : le relevé de chaque banque ou caisse reçoit ses lignes, dans la langue d'origine.
+    Point de vue de la banque : Debit = sortie d'argent du compte, Credit = entrée. Seules les lignes dont l'Etat est
+    TERMINE (ou vide) sont importées. Une ligne déjà importée (journal, date, libellé, montant) n'est jamais ajoutée
+    deux fois ; chaque import est noté dans l'historique des imports."""
+    L, par_journal, en_cours = Lecteur(), defaultdict(list), 0
     existants = set(Journal.objects.values_list("code", flat=True))
     for n, d in lignes:
-        jnl = L.texte(n, d, "Jnl", True)
+        etat = L.texte(n, d, "Etat").upper()
+        if etat and etat != "TERMINE":
+            en_cours += 1                                   # opération pas encore définitive : reprise au prochain relevé
+            continue
+        jnl = L.texte(n, d, "Journ", True)
         if jnl and jnl not in existants:
             L.erreur(n, f"journal {jnl} inconnu (Administration › Journaux).")
         debit, credit = L.montant(n, d, "Debit"), L.montant(n, d, "Credit")
@@ -843,7 +847,7 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
             L.erreur(n, f"un seul montant, dans Debit OU dans Credit (trouvé : Debit « {'' if brut[0] is None else brut[0]} », "
                         f"Credit « {'' if brut[1] is None else brut[1]} »).")
         par_journal[jnl].append({"date": L.date(n, d, "Date"), "reference": "", "operation": L.texte(n, d, "Libelle", True, 200),
-                                 "montant": (debit or ZERO) - (credit or ZERO), "solde": L.montant(n, d, "Solde")})
+                                 "montant": (credit or ZERO) - (debit or ZERO), "solde": None})
     L.verifier()
     auteur = utilisateur.get_username() if utilisateur else ""
     comptes_rendus = []
@@ -852,12 +856,13 @@ def imp_banque_tout(lignes, fichier, utilisateur=None):
             a_faire.reverse()                             # fichier du plus récent au plus ancien : ordre chronologique
         a_faire.sort(key=lambda l: l["date"])             # le rang dans la journée suit l'ordre du fichier
         try:
-            ouverture = None if a_faire[0]["solde"] is not None else ZERO       # sans solde : ouverture à 0
             ajoutees, doublons, _ = releves.importer(Journal.objects.get(code=jnl), a_faire, source=fichier,
-                                                     solde_ouverture=ouverture, auteur=auteur)
+                                                     solde_ouverture=ZERO, auteur=auteur)
         except ValueError as e:
             raise Refus([str(e)])
         comptes_rendus.append(f"{jnl} : {ajoutees} ajoutée(s), {doublons} déjà présente(s)")
+    if en_cours:
+        comptes_rendus.append(f"{en_cours} ligne(s) non terminée(s) ignorée(s)")
     return " ; ".join(comptes_rendus)
 
 
@@ -883,7 +888,7 @@ FORMATS = [
            imp_libelles, (7, 8), (11, 12)),
     Format("Liens", "Liens des documents en ligne, joints à leur Mvt", ["Mvt", "Lien", "Description"], exp_liens, imp_liens),
     Format("Banque", "Relevés de toutes les banques et caisses (un fichier, une ligne par mouvement)",
-           ["Jnl", "Date", "Libelle", "Debit", "Credit", "Solde"], exp_banque_tout, imp_banque_tout, (4, 5, 6), (6,)),
+           ["Journ", "Date", "Libelle", "Debit", "Credit", "Etat"], exp_banque_tout, imp_banque_tout, (4, 5), (6,)),
 ]
 
 PAR_NOM = {f.nom: f for f in FORMATS}
@@ -949,11 +954,11 @@ AIDE = {
         "Mvt": (O, "entier", "N° du mouvement (Ecritures.xlsx ou site)"), "Lien": (O, "adresse https://", "Lien du document"),
         "Description": (F, TEXTE, "Tiers, catégorie…")}),
     "Libelles": ("Même fichier qu'Ecritures.xlsx, nommé Libelles….xlsx : seuls les libellés sont repris. Chaque Mvt est retrouvé sur le site par sa date, son journal, ses comptes et ses montants (le n° peut différer : fichier venu d'une autre base) ; introuvables, ambigus et exercices clos sont signalés et laissés tels quels.", {}),
-    "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare le classeur d'adaptation (Power Query) : une ligne par mouvement, libellé dans la langue d'origine. Debit = entrée d'argent sur le compte, Credit = sortie (comme les écritures). Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
-        "Jnl": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
-        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Entrée : Debit OU Credit (l'autre colonne vide ou à 0)"),
-        "Credit": (F, MONTANT, "Sortie : Debit OU Credit"),
-        "Solde": (F, MONTANT, "Solde après la ligne, si la banque le donne ; sert à contrôler le relevé")}),
+    "Banque": ("Un seul fichier pour toutes les banques et caisses, tel que le prépare Power Query (l'application ne transforme rien) : une ligne par mouvement, libellé dans la langue d'origine. Point de vue de la banque : Debit = sortie d'argent du compte, Credit = entrée. Seules les lignes dont Etat vaut TERMINE (ou vide) sont importées. Lignes déjà importées ignorées ; chaque import est gardé dans l'historique (Banque › Historique des imports).", {
+        "Journ": (O, CODE, "Journal de la banque ou de la caisse (Journaux)"), "Date": (O, DATE, ""),
+        "Libelle": (O, TEXTE, "Libellé de la banque, tel quel (hébreu conservé)"), "Debit": (F, MONTANT, "Sortie : Debit OU Credit (l'autre colonne vide ou à 0)"),
+        "Credit": (F, MONTANT, "Entrée : Debit OU Credit"),
+        "Etat": (F, TEXTE, "TERMINE (ou vide) : ligne importée ; autre valeur : ligne ignorée (pas encore définitive)")}),
 }
 AIDE["Libelles"][1].update({c: v for c, v in AIDE["Ecritures"][1].items()})
 

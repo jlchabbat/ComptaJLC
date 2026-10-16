@@ -55,7 +55,7 @@ Mvt <a href="{% url 'mouvement' e.mouvement.numero %}">{{ e.mouvement.numero }}<
 
 {% if peut %}<details class="carte" id="outils-releve" style="margin-top:12px"><summary>Télécharger un relevé · paramètres de {{ journal.code }}</summary><div class="deux" style="margin-top:10px">
 <form method="post" enctype="multipart/form-data" action="{% url 'releve_import' journal.code %}" class="carte" id="f-import">{% csrf_token %}<h2 style="margin-top:0">Télécharger un relevé {{ journal.code }}</h2>
-<p class="aide">Fichier unique pour toutes les banques (colonne Jnl = journal), Excel ou CSV. Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent,
+<p class="aide">Fichier unique pour toutes les banques (colonne Journ = journal), Excel ou CSV. Les lignes déjà téléchargées sont ignorées : on peut reprendre un relevé qui chevauche le précédent,
 sans doublon.</p>
 <div class="formulaire">{% for f in import_form %}{% include "compta/_champ.html" %}{% endfor %}</div><p><button class="principal">Télécharger le relevé choisi</button></p>
 </form>
