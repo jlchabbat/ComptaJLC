@@ -136,6 +136,10 @@ sauvegarde automatique juste avant ; journalisé.
   (classes 1 à 5 ; résultat de l'exercice et résultats antérieurs non
   reportés), budget et réalisé avec écarts en montant et en %. Impression et
   téléchargement Excel.
+- **Fichier FEC** (bouton de la page États) : fichier des écritures comptables de l'exercice
+  (art. A47 A-1 du LPF), 18 colonnes séparées par des tabulations, à-nouveaux compris ; les comptes
+  de tiers y sont en comptes auxiliaires du préfixe de leur type (411, 401…). Nom
+  `<SIREN>FEC<AAAAMMJJ>.txt` d'après le réglage `siren` (000000000 s'il est vide). Copie dans Exports.
 - **Budget** : par compte (6 ou 7), ou par code Anal.
 - **Clôture** (menu Clôture, trésorier) : exercices clôturés dans l'ordre ;
   blocage si mouvement déséquilibré ou bilan déséquilibré ; avertissements

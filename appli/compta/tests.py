@@ -929,6 +929,15 @@ class EcransEtats(TestCase):
         wb = openpyxl.load_workbook(__import__("io").BytesIO(r.content))
         self.assertEqual(wb.sheetnames, ["Compte de résultat", "Résultat Anal", "Bilan", "Balance", "Grand livre", "Budget",
                                          "Historique"])
+        r = self.client.get(f"/etats/fec/?exercice={self.e25.pk}")
+        self.assertEqual(r["Content-Disposition"], 'attachment; filename="000000000FEC20251231.txt"')
+        lignes = r.content.decode("utf-8").split("\r\n")
+        self.assertEqual(lignes[0].split("\t")[:5], ["JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum"])
+        champs = [l.split("\t") for l in lignes[1:] if l]
+        self.assertTrue(all(len(c) == 18 for c in champs))
+        self.assertEqual(champs[0][:5] + champs[0][11:13], ["B1", Journal.objects.get(code="B1").intitule, "1", "20250301", "512000", "1000,00", "0,00"])
+        Reglage.objects.create(cle="siren", valeur="123 456 789")
+        self.assertIn("123456789FEC20251231.txt", self.client.get(f"/etats/fec/?exercice={self.e25.pk}")["Content-Disposition"])
         self.assertContains(self.client.get("/cloture/"), "À-nouveaux qui seront créés")
         self.client.post("/cloture/", {"confirmation": "on"})
         self.e25.refresh_from_db()

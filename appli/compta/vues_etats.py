@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from . import cloture as moteur
 from . import etats
+from . import fec
 from .export import classeur_exercice
 from .forms import cherchable
 from .models import Budget, CodeAnalytique, Compte, Exercice, Modification
@@ -92,6 +93,20 @@ def export_etats(request):
     return HttpResponse(tampon.getvalue(), headers={
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": f'attachment; filename="{nom}"'})
+
+
+@login_required
+@consulter
+def export_fec(request):
+    ex = exercice_choisi(request)
+    if not ex:
+        raise Http404
+    nom = fec.nom_fichier(ex)
+    donnees = fec.contenu(ex).encode("utf-8")
+    from .dossiers import copier_export
+    copier_export(nom, donnees)
+    return HttpResponse(donnees, headers={"Content-Type": "text/plain; charset=utf-8",
+                                          "Content-Disposition": f'attachment; filename="{nom}"'})
 
 
 class ClotureForm(forms.Form):
