@@ -1,5 +1,5 @@
 """Analyse par axes de comptes : chaque compte porte des valeurs sur des axes libres (RubDecl, RubCh, RubType, Cat,
-Groupe…), plus trois axes intégrés (Compte, Classe, Axe 1). On choisit un axe en lignes, un axe en colonnes
+Groupe…), plus trois axes intégrés (Compte, Classe, Anal). On choisit un axe en lignes, un axe en colonnes
 (facultatif), des filtres sur les autres axes et la période ; les montants sont les soldes débit − crédit des comptes."""
 
 from collections import OrderedDict, defaultdict
@@ -8,7 +8,7 @@ from django.db.models import Sum
 
 from .models import ZERO, AxeCompte, Compte, Ligne, ValeurCompte, arrondi
 
-INTEGRES = ["Compte", "Classe", "Axe 1"]
+INTEGRES = ["Compte", "Classe", "Anal"]
 SANS = "(sans)"
 
 
@@ -21,7 +21,7 @@ def valeurs_par_compte():
     res = defaultdict(dict)
     for c in Compte.objects.select_related("anal1"):
         res[c.numero].update({"Compte": f"{c.numero} {c.libelle}", "Classe": c.numero[:1],
-                              "Axe 1": f"{c.anal1_id} {c.anal1.libelle}".strip() if c.anal1_id else SANS})
+                              "Anal": f"{c.anal1_id} {c.anal1.libelle}".strip() if c.anal1_id else SANS})
     for v in ValeurCompte.objects.select_related("axe"):
         res[v.compte_id][v.axe.nom] = v.valeur
     return res

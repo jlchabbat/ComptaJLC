@@ -1,5 +1,14 @@
 {% extends "compta/base.html" %}{% block titre %}Imports et exports{% endblock %}{% block contenu %}
 <h1>Imports et exports</h1>
+<div class="carte ecran"><h2 style="margin-top:0">Tous les imports et exports</h2>
+<table><tr><th>Données</th><th>Importer</th><th>Exporter</th></tr>
+<tr><td>Toutes les données (plan, Anal, axes, journaux, tiers, écritures…)</td><td><a href="#importer">Fichiers Excel ci-dessous</a></td><td><a href="{% url 'referentiel_export' 'Tout' %}">ZIP complet</a> · <a href="{% url 'referentiels' %}">un fichier par nature</a></td></tr>
+<tr><td>Relevés bancaires (Banque.xlsx)</td><td><a href="{% url 'rapprochement' %}">Banque › Relevés</a> · <a href="{% url 'releves_historique' %}">historique</a></td><td></td></tr>
+<tr><td>Paramètres (Parametres.xlsx)</td><td colspan="2"><a href="{% url 'parametres' %}">Administration › Paramètres</a></td></tr>
+<tr><td>États annuels (Excel) et fichier FEC</td><td></td><td><a href="{% url 'export_etats' %}">États en Excel</a> · <a href="{% url 'export_fec' %}">FEC</a></td></tr>
+{% if user.is_superuser %}<tr><td>Base de données (sauvegarde, restauration, export complet)</td><td colspan="2"><a href="{% url 'base' %}">Administration › Base de données</a></td></tr>{% endif %}
+</table>
+<p class="aide">Chaque tableau de l'application s'exporte aussi en Excel avec le bouton « Excel » de sa page.</p></div>
 <div class="deux">
 <div class="carte"><h2 style="margin-top:0">Exporter</h2>
 <p><a class="bouton principal" href="{% url 'referentiel_export' 'Tout' %}">Exporter toutes les données (.zip)</a></p>

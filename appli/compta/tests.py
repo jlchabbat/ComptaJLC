@@ -1772,6 +1772,11 @@ class Echanges(TransactionTestCase):
     def importer(self, nom):
         return self.client.post("/echanges/", {"importer": nom}, follow=True)
 
+    def test_page_regroupe_imports_et_exports(self):
+        r = self.client.get("/echanges/")
+        for texte in ("Tous les imports et exports", "Relevés bancaires", "/etats/fec/", "/parametres/", "/rapprochement/"):
+            self.assertContains(r, texte)
+
     def test_aller_retour_des_referentiels(self):
         self.client.post("/echanges/", {"exporter": "tout"})
         exportes = sorted(p.name for p in ech.exports().iterdir() if not p.name.startswith("Lexique"))
@@ -1874,9 +1879,16 @@ class Echanges(TransactionTestCase):
         t = ax.analyser(dt.date(2026, 1, 1), dt.date(2026, 12, 31), "Groupe", "RubDecl", {"Classe": ["6"]})
         self.assertTrue(all(l["valeur"] in ("Verl", "Soco", "(sans)") for l in t["lignes"]))
         r = self.client.get("/axes/?lignes=Groupe&colonnes=RubDecl")
-        self.assertContains(r, "Analyse par axes de comptes")
+        self.assertContains(r, "Analyse par axes de comptes · Groupe")
+        self.assertContains(r, "· Par RubDecl</a>")                              # une page par axe dans le menu
+        self.assertContains(r, 'href="/axes/?lignes=Groupe" class="sous-axe actif"')
+        self.assertIn("Anal", ax.axes())
         chemin, n = ech.exporter(ech.PAR_NOM["AxesComptes"])
         self.assertEqual((n, [c.value for c in openpyxl.load_workbook(chemin).active[1]]), (3, ["Compte", "RubDecl", "Groupe"]))
+        self.assertContains(r, "Supprimer l'axe Groupe")
+        r = self.client.post("/axes/", {"supprimer_axe": "Groupe"}, follow=True)
+        self.assertContains(r, "Axe « Groupe » supprimé (3 valeur(s))")
+        self.assertEqual(ax.axes()[3:], ["RubDecl"])
 
     def test_tout_importer(self):
         """Tous les fichiers déposés, dans l'ordre du lexique (le compte avant les écritures, les écritures avant leurs

@@ -131,6 +131,7 @@ nav.menus { display: flex; flex-wrap: wrap; gap: 2px; flex: 1 1 auto; }
 .menu .sous a { display: block; white-space: nowrap; padding: 9px 16px; color: #1f3864; font-size: 14.5px; text-decoration: none; box-shadow: none; }
 .menu .sous a:hover { background: #eef3fb; }
 .menu .sous a.actif { font-weight: 700; background: #ddebf7; }
+.menu .sous a.sous-axe { padding-left: 32px; font-size: 13.5px; }
 header .qui { font-size: 14px; color: #fff; }
 header .qui button { font-size: 14px; color: #dfe7f5; }
 @media print { nav.menus { display: none; } }
