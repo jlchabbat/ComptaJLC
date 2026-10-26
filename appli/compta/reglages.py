@@ -53,7 +53,9 @@ def montant(v):
 def contexte(request):
     """Processeur de contexte : nom de l'association, devise et options, dans tous les gabarits."""
     try:
+        from .models import AxeCompte
         return {"association": lire("nom_association"), "devise": devise(), "avec_traductions": oui("traductions_releve"),
-                "hebergeur_liens": lire("hebergeur_liens")}
+                "hebergeur_liens": lire("hebergeur_liens"),
+                "axes_menu": list(AxeCompte.objects.values_list("nom", flat=True))}     # une page par axe (menu)
     except Exception:                                    # base pas encore créée (première migration)
-        return {"association": "", "devise": NEUTRES["devise"], "avec_traductions": False, "hebergeur_liens": ""}
+        return {"association": "", "devise": NEUTRES["devise"], "avec_traductions": False, "hebergeur_liens": "", "axes_menu": []}

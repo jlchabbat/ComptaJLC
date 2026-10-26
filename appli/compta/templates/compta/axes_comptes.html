@@ -1,5 +1,7 @@
-{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analyse par axes{% endblock %}{% block contenu %}
-<h1>Analyse par axes de comptes</h1>
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analyse par {{ ligne }}{% endblock %}{% block contenu %}
+<h1>Analyse par axes de comptes · {{ ligne }}</h1>
+{% if perms.compta.change_compte and ligne not in integres %}<form method="post" class="barre ecran">{% csrf_token %}
+<button name="supprimer_axe" value="{{ ligne }}" onclick="return confirm('Supprimer l\'axe « {{ ligne|escapejs }} » et ses valeurs ? Les comptes et les écritures ne changent pas.')">Supprimer l'axe {{ ligne }}</button></form>{% endif %}
 <form method="get" class="carte filtres ecran">
 <div class="barre-filtre" style="flex-wrap:wrap">
 <label>En lignes <select name="lignes">{% for a in axes %}<option {% if a == ligne %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>

@@ -129,6 +129,20 @@ sauvegarde automatique juste avant ; journalisé.
 - **Historique** : toutes les opérations faites dans l'application (qui,
   quand, quoi), recherche, export Excel ; repris dans l'archive de clôture.
 
+## Axes de comptes
+
+- Chaque compte peut porter des valeurs sur des **axes fixes** (RubDecl, RubType, Cat, Groupe…), importés par
+  `AxesComptes.xlsx` (une colonne par axe). Une écriture prend les axes de son compte.
+- **Analyse par axes de comptes** (menu Consultation) : un axe en lignes, un second en colonnes, filtres, période ;
+  le menu propose aussi **une page par axe** (« · Par RubType »…). Axes intégrés : Compte, Classe, Anal.
+- **Supprimer un axe** (droit de modifier le plan) : bouton de la page de l'axe ; ses valeurs disparaissent, les comptes
+  et les écritures ne changent pas (tracé dans l'historique).
+
+## Imports et exports
+
+Administration › Imports et exports regroupe tout : données en Excel (import, ZIP complet, un fichier par nature),
+relevés bancaires, paramètres, états annuels, FEC et base de données.
+
 ## TVA
 
 - **TVA** (menu Éditions) : pour une période (par défaut le mois précédent), TVA collectée (comptes 4457),
