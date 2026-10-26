@@ -1812,8 +1812,10 @@ class Echanges(TransactionTestCase):
         self.assertEqual(Compte.objects.get(numero="606999").anal1_id, "3TEST")       # code abîmé réparé
         self.assertEqual(Compte.objects.get(numero="401NOUV").libelle, "NOUVEAU FOURNISSEUR")
         (ech.imports() / "RImport.txt").write_bytes(contenu)                     # réimporté : rien en double
+        CodeAnalytique.objects.filter(code="3TEST").update(libelle="3TEST")      # code créé sans libellé (import du plan)
         self.assertIn("1 inchangé(s)", ech.importer("RImport.txt")[1])
         self.assertEqual(Mouvement.objects.filter(numero=9001).count(), 1)
+        self.assertEqual(CodeAnalytique.objects.get(code="3TEST").libelle, "TEST")   # libellé repris du fichier
         (ech.imports() / "notes.txt").write_text("autre chose")
         self.assertIsNone(dict(ech.a_importer())[ech.imports() / "notes.txt"])  # un autre .txt n'est pas reconnu
 

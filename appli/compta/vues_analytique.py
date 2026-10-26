@@ -15,6 +15,7 @@ from django.db.models import Q, Sum
 from django.contrib import messages
 from django.shortcuts import redirect, render
 
+from .axes_comptes import libelle_propre
 from .export import feuille
 from .models import ZERO, CodeAnalytique, arrondi
 from .views import lignes_periode, periode
@@ -44,14 +45,14 @@ def codes_des_comptes(axe):
     """{compte: (code, libellé)} sur l'axe ; un compte sans valeur est absent."""
     from .models import Compte, ValeurCompte
     if axe == TITRE:
-        return {c.numero: (c.anal1_id, c.anal1.libelle) for c in Compte.objects.select_related("anal1") if c.anal1_id}
+        return {c.numero: (c.anal1_id, libelle_propre(c.anal1)) for c in Compte.objects.select_related("anal1") if c.anal1_id}
     return {c: (v, "") for c, v in ValeurCompte.objects.filter(axe__nom=axe).values_list("compte_id", "valeur") if v}
 
 
 def codes_du_choix(axe):
     """[(code, libellé)] de la liste de choix de l'axe."""
     if axe == TITRE:
-        return list(CodeAnalytique.objects.order_by("libelle", "code").values_list("code", "libelle"))
+        return [(x.code, libelle_propre(x)) for x in CodeAnalytique.objects.order_by("libelle", "code")]
     return sorted(set(codes_des_comptes(axe).values()), key=lambda x: (x[1] or x[0]).lower())
 
 
