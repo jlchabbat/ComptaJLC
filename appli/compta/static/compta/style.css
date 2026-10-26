@@ -364,3 +364,50 @@ details.plus .plus-liste { position: absolute; z-index: 40; top: 100%; left: 0; 
 details.aide-bloc { margin: 2px 0 8px; } details.aide-bloc summary { cursor: pointer; color: var(--bleu); font-size: 14px; }
 .rap-table td { padding-top: 4px; padding-bottom: 4px; }
 @media print { .rap-barre, details.aide-bloc { display: none !important; } }
+
+/* ===== Affichage compact (remplace les tailles précédentes) : caractères plus petits, fenêtres resserrées ;
+   les boutons A− A A+ de l'en-tête agrandissent toujours l'affichage ===== */
+body { font-size: 13px; line-height: 1.35; }
+main { max-width: 1440px; padding: 8px 12px; }
+h1 { font-size: 18px; margin: 4px 0 8px; }
+h2 { font-size: 15px; margin: 14px 0 6px; }
+h3 { font-size: 14px; margin: 10px 0 4px; }
+.carte { padding: 10px 12px; margin-bottom: 10px; border-radius: 6px; }
+.chiffre { padding: 6px 10px; } .chiffre .val { font-size: 18px; } .chiffre .lib { font-size: 11px; }
+table { font-size: 12.5px; }
+th, td { padding: 2px 6px; }
+table th { padding-top: 3px; padding-bottom: 3px; }
+table td { padding-top: 1px; padding-bottom: 1px; line-height: 1.25; }
+input, select, button, textarea { font-size: 12.5px; padding: 3px 6px; }
+a.bouton, details.plus summary { padding: 3px 8px; font-size: 12.5px; }
+.liste-cherchable li { font-size: 12.5px; padding: 3px 6px; }
+.aide, td.ctrl, .barre-filtre .aide, span.aide, td.aide { font-size: 12px; }
+p.aide, div.aide { font-size: 12.5px; line-height: 1.4; padding: 5px 9px; margin: 4px 0 8px; }
+.formulaire .aide { font-size: 12px; padding: 3px 8px; }
+.formulaire label { font-size: 13px; }
+.message { font-size: 13px; line-height: 1.4; }
+.statut { font-size: 11.5px; padding: 1px 6px; }
+.onglets { margin-bottom: 8px; } .onglets a { font-size: 12.5px; padding: 4px 10px; }
+.barre { gap: 6px; padding: 5px 0; margin: 0 0 8px; }
+.barre .sommaire { font-size: 12.5px; }
+.boutons { margin-top: 10px; }
+form.filtres { gap: 6px; margin-bottom: 8px; } form.filtres label { font-size: 11.5px; }
+header .marque { font-size: 16px; padding: 4px 10px 4px 0; }
+header .asso { font-size: 11.5px; }
+header .qui, header .qui button { font-size: 12.5px; }
+header .qui .taille button { padding: 1px 7px; }
+.bascule-aides { width: 22px; height: 22px; }
+.menu > button { font-size: 13.5px; padding: 8px 12px 6px; margin-top: 3px; border-top-width: 3px; }
+.menu .sous { padding: 3px 0; }
+.menu .sous a { font-size: 13px; padding: 5px 14px; }
+.menu .sous a.sous-axe { padding-left: 26px; font-size: 12.5px; }
+.menu .sous .groupe { font-size: 10.5px; padding: 3px 10px; }
+.ana-fenetres { gap: 10px; }
+.ana-fenetre { padding: 8px 10px 10px; border-top-width: 4px; }
+.ana-fenetre h2 { font-size: 15px; margin: 0 0 6px; }
+.ana-choix { margin-bottom: 6px; }
+.choix-colonnes { font-size: 12.5px; }
+#barre-selection { font-size: 13px; padding: 4px 12px; }
+.rap-tete h1 { font-size: 17px; }
+details.aide-bloc summary { font-size: 12.5px; }
+.sit-table { font-size: 12.5px; }
