@@ -32,6 +32,7 @@ Dans `Ecritures.xlsx`, les colonnes `Anal` et `LibelAnal` sont donc **informativ
 | `Libelles` | idem `Ecritures` | ne change que les libellés ; Mvt retrouvés par leur contenu |
 | `Liens` | Mvt, Lien, Description | documents restés en ligne, joints à leur Mvt |
 | `Banque` | Journ, Date, Libelle, Debit, Credit | un seul modèle pour toutes les banques et caisses |
+| `Ecrt` (.csv) | Mvt, Journ, Date, Compte, LibelCompte, Libelle, Debit, Credit, Npiece, Anal, LibelAnal | autre logiciel ; Mvt renumérotés à la suite, doublons écartés |
 | `RImport.txt` | texte « ##Transfert » (sections Mvt, Tiers, Jnl) | export d'un autre logiciel, importé avec les écritures |
 
 ## Banque.xlsx : le relevé
