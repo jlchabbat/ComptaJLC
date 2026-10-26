@@ -332,6 +332,17 @@ def creer_codes(nouveaux):
     return f" ; {len(nouveaux)} code(s) Anal créé(s) ({liste})"
 
 
+def completer_libelles(libelles):
+    """Codes Anal créés sans libellé (libellé = code, par l'import du plan) : libellé repris du fichier {code: libellé}."""
+    n = 0
+    for x in CodeAnalytique.objects.filter(code__in=[c for c, lib in libelles.items() if lib and lib != c]):
+        if not x.libelle or x.libelle == x.code:
+            x.libelle = libelles[x.code][:100]
+            x.save(update_fields=["libelle"])
+            n += 1
+    return f" ; libellé de {n} code(s) Anal complété" if n else ""
+
+
 def creer_comptes(nouveaux):
     """Crée les comptes inconnus {numéro: (libellé, code Anal ou None)} ; un compte de tiers (401…, 411…) devient lettrable
     et reçoit sa fiche tiers. Renvoie le texte à ajouter au compte rendu (vide si rien n'a été créé)."""
@@ -561,9 +572,11 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
     journaux = set(Journal.objects.values_list("code", flat=True))
     existants = set(Mouvement.objects.values_list("numero", flat=True))
     plan_anal1 = dict(Compte.objects.exclude(anal1__isnull=True).values_list("numero", "anal1_id"))
-    differences, nouveaux, nouveaux_codes = [], {}, {}
+    differences, nouveaux, nouveaux_codes, libelles_anal = [], {}, {}, {}
     for n, d in lignes:
         date, jnl = L.date(n, d, "Date"), L.texte(n, d, "Jnl", True)
+        if d.get("Anal") and d.get("LibelAnal"):
+            libelles_anal.setdefault(str(d["Anal"]).strip(), str(d["LibelAnal"]).strip())
         numero = L.entier(n, d, "Mvt", range(1, 10 ** 9))
         compte = L.texte(n, d, "Compte", True)
         debit, credit = L.montant(n, d, "Debit") or ZERO, L.montant(n, d, "Credit") or ZERO
@@ -620,7 +633,7 @@ def imp_ecritures(lignes, fichier, utilisateur=None):
                 L.erreur(ls[0][0], f"Mvt {numero} modifié dans le fichier, mais non modifiable : {corrections.verrou(m)}")
             modifies[numero] = m
     L.verifier()
-    comptes_crees = creer_codes(nouveaux_codes) + creer_comptes(nouveaux)
+    comptes_crees = creer_codes(nouveaux_codes) + creer_comptes(nouveaux) + completer_libelles(libelles_anal)
     crees = 0
     for numero, ls in sorted(mvts.items()):
         _, date, jnl = ls[0][:3]
