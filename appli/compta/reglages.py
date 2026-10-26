@@ -21,6 +21,7 @@ REGLAGES = [
     ("compte_tva_a_payer", "Compte de TVA à décaisser, crédité par la liquidation", "44551", "44551"),
     ("compte_credit_tva", "Compte de crédit de TVA à reporter, débité par la liquidation", "44567", "44567"),
     ("journal_tva", "Journal de l'écriture de liquidation de la TVA", "OD", "OD"),
+    ("siren", "SIREN (9 chiffres) qui nomme le fichier des écritures comptables (FEC) ; vide : 000000000", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]
 NEUTRES = {cle: neutre for cle, _, neutre, _ in REGLAGES}

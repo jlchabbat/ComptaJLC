@@ -54,6 +54,7 @@ urlpatterns = [
     path("tiers/<str:numero>/", vues_tiers.fiche, name="tiers_fiche"),
     path("etats/", vues_etats.etats_annuels, name="etats"),
     path("etats/export/", vues_etats.export_etats, name="export_etats"),
+    path("etats/fec/", vues_etats.export_fec, name="export_fec"),
     path("cloture/", vues_etats.cloture, name="cloture"),
     path("tva/", vues_tva.page, name="tva"),
     path("cloture/archive/<int:pk>/", vues_etats.archive, name="archive"),
