@@ -3100,3 +3100,54 @@ class CommandePreparer(TestCase):
         sortie = io.StringIO()
         call_command("preparer", stdout=sortie)                  # installer.sh et maj.sh l'appellent
         self.assertIn("ComptaJLC prêt", sortie.getvalue())
+
+
+# ---------------------------------------------------------------- modèles d'écritures et abonnements
+
+from .models import Abonnement, ModeleEcriture  # noqa: E402
+
+
+class Abonnements(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        self.u = User.objects.create_user("t")
+        self.u.groups.add(Group.objects.get(name="Gestion"))
+        self.client.force_login(self.u)
+        m = Mouvement.objects.create(numero=500, date=dt.date(2026, 1, 5), journal_id="OD")
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="610000", libelle="LOYER", debit=D(800))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="512000", libelle="LOYER", credit=D(800))
+
+    def test_modele_puis_abonnement(self):
+        self.client.post("/mouvement/500/modele/", {"nom": "Loyer"})
+        modele = ModeleEcriture.objects.get(nom="Loyer")
+        self.assertEqual((modele.journal_id, modele.lignes.count()), ("OD", 2))
+        self.assertContains(self.client.get(f"/mouvement/nouveau/?modele={modele.pk}"), "LOYER")   # saisie pré-remplie
+        self.client.post("/abonnements/", {"ab-modele": modele.pk, "ab-periodicite": 1, "ab-jour": 31,
+                                           "ab-debut": "2026-01-31", "ab-fin": "2026-04-30", "ajouter": "1"})
+        a = Abonnement.objects.get()
+        r = self.client.post("/abonnements/", {"generer": "1", "jusquau": "2026-03-15"}, follow=True)
+        self.assertContains(r, "2 écriture(s) générée(s)")
+        nouveaux = Mouvement.objects.exclude(numero__in=(421, 500)).order_by("date")
+        self.assertEqual([m.date for m in nouveaux], [dt.date(2026, 1, 31), dt.date(2026, 2, 28)])  # fin de mois
+        self.assertEqual(nouveaux[1].lignes.first().libelle, "LOYER 02/2026")
+        self.assertContains(self.client.post("/abonnements/", {"generer": "1", "jusquau": "2026-03-15"}, follow=True),
+                            "Aucune échéance")                                                  # jamais deux fois
+        self.client.post("/abonnements/", {"generer": "1", "jusquau": "2026-12-31"})
+        a.refresh_from_db()
+        self.assertEqual((Mouvement.objects.count(), a.derniere), (6, dt.date(2026, 4, 30)))       # s'arrête à la fin
+
+    def test_exercice_clos(self):
+        modele = abonnements_moteur.depuis_mouvement(Mouvement.objects.get(numero=500), "Loyer")
+        Abonnement.objects.create(modele=modele, periodicite=3, jour=1, debut=dt.date(2025, 11, 1))
+        crees, erreurs = abonnements_moteur.generer(dt.date(2026, 2, 1), self.u)
+        self.assertEqual((crees, len(erreurs)), ([], 1))
+        self.assertIn("exercice clos", erreurs[0])
+        self.assertIsNone(Abonnement.objects.get().derniere)
+
+    def test_prochaine(self):
+        modele = abonnements_moteur.depuis_mouvement(Mouvement.objects.get(numero=500), "Loyer")
+        a = Abonnement(modele=modele, periodicite=12, jour=15, debut=dt.date(2026, 3, 10), derniere=dt.date(2027, 3, 15))
+        self.assertEqual(abonnements_moteur.prochaine(a), dt.date(2028, 3, 15))
+
+
+from . import abonnements as abonnements_moteur  # noqa: E402

@@ -22,6 +22,7 @@ function taille(d) { var z = parseFloat(document.documentElement.style.zoom || 1
 {% if perms.compta.add_mouvement or perms.compta.change_mouvement %}<div class="menu m-saisie"><button type="button">Saisie ▾</button><div class="sous">
 {% if perms.compta.add_mouvement %}{% url 'saisie' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Saisie guidée</a>
 {% url 'mouvement_nouveau' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Écriture libre</a>
+{% url 'abonnements' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modèles et abonnements</a>
 {% if perms.compta.change_mouvement %}{% url 'mouvement_rappel' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Modifier une écriture</a>{% endif %}{% endif %}
 {% if perms.compta.add_mouvement or perms.compta.change_mouvement %}{% url 'justificatifs_a_classer' as u %}<a href="{{ u }}" {% if request.path == u %}class="actif"{% endif %}>Justificatifs (dépôt et classement)</a>{% endif %}
 {% if perms.compta.change_compte and perms.compta.delete_compte %}{% url 'plan' as u %}<a href="{{ u }}" {% if request.path|slice:":6" == "/plan/" %}class="actif"{% endif %}>Plan comptable</a>{% endif %}

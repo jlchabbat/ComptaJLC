@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 
-from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_tiers, vues_utilisateurs, vues_rapprochement as rap
+from compta import views, vues_abonnements, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_tiers, vues_utilisateurs, vues_rapprochement as rap
 from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_plan, vues_referentiels, vues_situation, vues_tva
 
 admin.site.site_header = "ComptaJLC – administration"
@@ -31,6 +31,8 @@ urlpatterns = [
     path("mouvement/<int:numero>/supprimer/", vues_corrections.supprimer, name="mouvement_supprimer"),
     path("mouvement/rappel/", vues_corrections.rappeler, name="mouvement_rappel"),
     path("mouvement/nouveau/", vues_corrections.nouveau, name="mouvement_nouveau"),
+    path("mouvement/<int:numero>/modele/", vues_abonnements.depuis_mouvement, name="mouvement_modele"),
+    path("abonnements/", vues_abonnements.page, name="abonnements"),
     path("grand-livre/", views.grand_livre, name="grand_livre"),
     path("axes/", vues_analytique.axes_comptes, name="axes_comptes"),
     path("balance/", views.balance, name="balance"),

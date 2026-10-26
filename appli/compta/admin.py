@@ -131,3 +131,23 @@ class TiersAdmin(admin.ModelAdmin):
     list_display = ("nom", "prenom", "compte", "type", "telephone", "email")
     list_filter = ("type",)
     search_fields = ("nom", "prenom", "compte__numero", "email")
+
+
+from .models import Abonnement, LigneModele, ModeleEcriture  # noqa: E402
+
+
+class LigneModeleInline(admin.TabularInline):
+    model = LigneModele
+    extra = 0
+    autocomplete_fields = ("compte",)
+
+
+@admin.register(ModeleEcriture)
+class ModeleEcritureAdmin(admin.ModelAdmin):
+    list_display = ("nom", "journal", "actif")
+    inlines = [LigneModeleInline]
+
+
+@admin.register(Abonnement)
+class AbonnementAdmin(admin.ModelAdmin):
+    list_display = ("modele", "periodicite", "jour", "debut", "fin", "derniere", "actif")

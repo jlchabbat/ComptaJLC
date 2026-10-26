@@ -129,6 +129,16 @@ sauvegarde automatique juste avant ; journalisé.
 - **Historique** : toutes les opérations faites dans l'application (qui,
   quand, quoi), recherche, export Excel ; repris dans l'archive de clôture.
 
+## Modèles d'écritures et abonnements
+
+- **Modèle** : bouton « Enregistrer comme modèle » de la fiche d'un mouvement (journal, comptes, libellés et
+  montants repris). Saisie › Modèles et abonnements › « Saisir une écriture avec ce modèle » ouvre une écriture
+  libre pré-remplie. Lignes modifiables dans Administration › Autres référentiels.
+- **Abonnement** : modèle, périodicité (mensuelle, trimestrielle, semestrielle, annuelle), jour du mois (31 = fin de
+  mois), première et dernière échéance. « Générer les écritures échues » passe chaque échéance une seule fois
+  (écriture libre tracée, libellé suivi du mois) ; un abonnement s'arrête à la première erreur (exercice clos…).
+  Suspendre, reprendre, supprimer (les écritures déjà générées restent).
+
 ## TVA
 
 - **TVA** (menu Éditions) : pour une période (par défaut le mois précédent), TVA collectée (comptes 4457),
