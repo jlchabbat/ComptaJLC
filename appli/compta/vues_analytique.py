@@ -11,7 +11,8 @@ from collections import OrderedDict
 import openpyxl
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q, Sum
-from django.shortcuts import render
+from django.contrib import messages
+from django.shortcuts import redirect, render
 
 from .export import feuille
 from .models import ZERO, CodeAnalytique, arrondi
@@ -179,14 +180,32 @@ def analytique_detail(request):
 def axes_comptes(request):
     """Analyse par axes de comptes : axe en lignes, axe en colonnes, filtres, période."""
     from . import axes_comptes as moteur
+    if request.method == "POST" and "supprimer_axe" in request.POST:
+        return supprimer_axe(request, request.POST["supprimer_axe"])
     debut, fin = periode(request)
     tous = moteur.axes()
-    ligne = request.GET.get("lignes") or (tous[3] if len(tous) > 3 else "Axe 1")
+    ligne = request.GET.get("lignes") or (tous[3] if len(tous) > 3 else "Anal")
     colonne = request.GET.get("colonnes", "")
     mesure = request.GET.get("mesure", "solde") if request.GET.get("mesure") in ("solde", "debit", "credit") else "solde"
     choix = moteur.choix_filtres()
     filtres = {a: request.GET.getlist(f"f_{i}") for i, a in enumerate(choix)}
     t = moteur.analyser(debut, fin, ligne, colonne if colonne != ligne else "", filtres, mesure)
     return render(request, "compta/axes_comptes.html", {
-        "debut": debut, "fin": fin, "axes": tous, "ligne": ligne, "colonne": colonne, "mesure": mesure, "t": t,
+        "debut": debut, "fin": fin, "axes": tous, "integres": moteur.INTEGRES, "ligne": ligne, "colonne": colonne, "mesure": mesure, "t": t,
         "filtres": [(i, a, vals, filtres.get(a, [])) for i, (a, vals) in enumerate(choix.items())]})
+
+
+def supprimer_axe(request, nom):
+    """Supprime un axe de comptes et ses valeurs (gestion du plan) ; les comptes et les écritures ne changent pas."""
+    from .models import AxeCompte, Modification
+    if not request.user.has_perm("compta.change_compte"):
+        messages.error(request, "Droits insuffisants pour supprimer un axe.")
+    else:
+        axe = AxeCompte.objects.filter(nom=nom).first()
+        if axe:
+            n = axe.valeurs.count()
+            axe.delete()
+            Modification.objects.create(auteur=request.user.get_username(), lot="Plan", action="Suppression d'un axe",
+                                        objet=nom[:200], avant=f"{n} valeur(s)")
+            messages.success(request, f"Axe « {nom} » supprimé ({n} valeur(s)) ; comptes et écritures inchangés.")
+    return redirect("axes_comptes")
