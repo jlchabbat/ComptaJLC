@@ -1,7 +1,7 @@
 """Rapports analytiques (Consulter › Analytique) : synthèse par valeur d'un axe et détail d'une valeur ou de toutes
 (sous-totaux par compte, écritures), à l'écran, à l'impression et en Excel.
 
-L'axe se choisit : Anal (code du compte, par défaut), Classe, ou l'un des axes fixes du plan (une colonne du plan :
+L'axe se choisit : Anal (code du compte, par défaut) ou l'un des axes fixes du plan (une colonne du plan :
 RubDecl, Cat, Groupe…, valeurs portées par les comptes). Deux familles de comptes, jamais mélangées :
 - gestion (classes 6 et 7) : produit = crédit − débit d'un compte 7, charge = débit − crédit d'un compte 6, résultat ;
 - bilan (classes 1 à 5) : débit, crédit et solde (débit − crédit) des mouvements de la période."""
@@ -29,9 +29,9 @@ NATURES = {
 
 
 def axes_proposes():
-    """Axes de l'analytique : Anal, Classe, puis les axes fixes du plan."""
+    """Axes de l'analytique : Anal, puis les axes fixes du plan (Compte et Classe ne sont pas des axes analytiques)."""
     from .axes_comptes import axes
-    return [a for a in axes() if a != "Compte"]
+    return [a for a in axes() if a not in ("Compte", "Classe")]
 
 
 def axe_choisi(request):
@@ -44,8 +44,6 @@ def codes_des_comptes(axe):
     from .models import Compte, ValeurCompte
     if axe == TITRE:
         return {c.numero: (c.anal1_id, c.anal1.libelle) for c in Compte.objects.select_related("anal1") if c.anal1_id}
-    if axe == "Classe":
-        return {n: (n[:1], f"Classe {n[:1]}") for n in Compte.objects.values_list("numero", flat=True)}
     return {c: (v, "") for c, v in ValeurCompte.objects.filter(axe__nom=axe).values_list("compte_id", "valeur") if v}
 
 

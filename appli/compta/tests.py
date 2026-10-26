@@ -1916,6 +1916,7 @@ class Echanges(TransactionTestCase):
         r = self.client.get("/analytique/detail/?axe=Groupe&code=Verl&du=2026-01-01&au=2026-12-31")
         self.assertTrue(all(x["numero"] in ("600100", "700000") for s_ in r.context["sections"] for x in s_["comptes"]))
         self.assertEqual(self.client.get("/analytique/?axe=Inconnu").context["axe"], "Anal")
+        self.assertEqual(r.context["axes"], ["Anal", "RubDecl", "Groupe"])                  # ni Compte ni Classe
         r = self.client.post("/axes/", {"supprimer_axe": "Groupe"}, follow=True)
         self.assertContains(r, "Axe « Groupe » supprimé (3 valeur(s))")
         self.assertEqual(ax.axes()[3:], ["RubDecl"])
