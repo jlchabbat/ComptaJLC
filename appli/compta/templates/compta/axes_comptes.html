@@ -1,26 +1,54 @@
-{% extends "compta/base.html" %}{% load compta %}{% block titre %}Analyse par {{ ligne }}{% endblock %}{% block contenu %}
-<h1>Analyse par axes de comptes · {{ ligne }}</h1>
-{% if perms.compta.change_compte and ligne not in integres %}<form method="post" class="barre ecran">{% csrf_token %}
-<button name="supprimer_axe" value="{{ ligne }}" onclick="return confirm('Supprimer l\'axe « {{ ligne|escapejs }} » et ses valeurs ? Les comptes et les écritures ne changent pas.')">Supprimer l'axe {{ ligne }}</button></form>{% endif %}
-<form method="get" class="carte filtres ecran">
-<div class="barre-filtre" style="flex-wrap:wrap">
-<label>En lignes <select name="lignes">{% for a in axes %}<option {% if a == ligne %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
-<label>En colonnes <select name="colonnes"><option value="">(aucun)</option>{% for a in axes %}<option {% if a == colonne %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
-<label>Montant <select name="mesure"><option value="solde" {% if mesure == "solde" %}selected{% endif %}>Solde (débit − crédit)</option>
-<option value="debit" {% if mesure == "debit" %}selected{% endif %}>Débits</option><option value="credit" {% if mesure == "credit" %}selected{% endif %}>Crédits</option></select></label>
-<label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
-<button class="principal">Afficher</button></div>
-<details {% for i, a, vals, choisis in filtres %}{% if choisis %}open{% endif %}{% endfor %}><summary>Filtres (combiner plusieurs axes)</summary>
-<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">
-{% for i, a, vals, choisis in filtres %}<label style="display:flex;flex-direction:column">{{ a }}
-<select name="f_{{ i }}" multiple size="5" style="min-width:12em">{% for v in vals %}<option {% if v in choisis %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>{% endfor %}
-</div><p class="aide">Ctrl + clic pour choisir plusieurs valeurs ; un compte est retenu s'il a une valeur choisie sur chaque axe filtré.</p></details>
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Tableau croisé{% endblock %}{% block contenu %}
+<h1>Tableau croisé (TCD)</h1>
+<form method="get" class="carte ecran tcd-choix" id="f-tcd">
+<div class="tcd-zones">
+<fieldset><legend>Lignes</legend>
+{% for choisi in lignes_choisies %}<select name="l{{ forloop.counter }}" aria-label="Lignes {{ forloop.counter }}">{% if not forloop.first %}<option value="">—</option>{% endif %}
+{% for c in champs %}<option {% if c == choisi %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>{% if not forloop.last %} › {% endif %}{% endfor %}</fieldset>
+<fieldset><legend>Colonnes</legend><select name="col"><option value="">—</option>{% for c in champs %}<option {% if c == colonne %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></fieldset>
+<fieldset><legend>Valeur</legend><select name="valeur">{% for cle, v in valeurs.items %}<option value="{{ cle }}" {% if cle == valeur %}selected{% endif %}>{{ v.0 }}</option>{% endfor %}</select>
+<select name="type">{% for cle, v in types.items %}<option value="{{ cle }}" {% if cle == type %}selected{% endif %}>{{ v.0 }}</option>{% endfor %}</select></fieldset>
+<fieldset><legend>Période</legend><input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"> au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></fieldset>
+<div class="tcd-boutons"><button class="principal">Afficher</button>
+<a class="bouton" href="?{{ requete }}&amp;format=xlsx">Excel</a></div>
+</div>
+<details class="tcd-filtres" {% if nb_filtres %}open{% endif %}><summary>Filtres{% if nb_filtres %} ({{ nb_filtres }} actif{{ nb_filtres|pluralize }}){% endif %}</summary>
+<div class="tcd-zones">{% for i, ch, vals, choisis in filtres %}<details class="tcd-filtre"><summary>{{ ch }}{% if choisis %} <b>({{ choisis|length }})</b>{% endif %}</summary>
+<div class="tcd-cases"><label><input type="checkbox" onclick="this.closest('.tcd-cases').querySelectorAll('input[name]').forEach(function (x) { x.checked = false; })"> <i>tout (aucun filtre)</i></label>
+{% for v in vals %}<label><input type="checkbox" name="f{{ i }}" value="{{ v }}" {% if v in choisis %}checked{% endif %}> {{ v }}</label>{% endfor %}</div></details>{% endfor %}</div>
+</details>
 </form>
-<p class="aide">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }} · {{ ligne }}{% if colonne and colonne != ligne %} × {{ colonne }}{% endif %} · cliquer sur une ligne pour voir ses comptes.</p>
-<table class="triable"><tr><th>{{ ligne }}</th>{% for c in t.colonnes %}<th class="n">{{ c }}</th>{% endfor %}{% if t.colonnes|length > 1 %}<th class="n">Total</th>{% endif %}</tr>
-{% for l in t.lignes %}<tr><td><details><summary>{{ l.valeur }}</summary>
-<table class="aide">{% for numero, nom, col, m in l.comptes %}<tr><td><a href="{% url 'grand_livre' %}?compte={{ numero }}&du={{ debut|date:'Y-m-d' }}&au={{ fin|date:'Y-m-d' }}">{{ nom }}</a></td>{% if t.colonnes|length > 1 %}<td>{{ col }}</td>{% endif %}<td class="n">{{ m|shekel }}</td></tr>{% endfor %}</table></details></td>
-{% for m in l.cellules %}<td class="n {% if m < 0 %}neg{% endif %}">{{ m|zero_vide }}</td>{% endfor %}{% if t.colonnes|length > 1 %}<td class="n"><b>{{ l.total|shekel }}</b></td>{% endif %}</tr>
-{% empty %}<tr><td>Aucun montant pour ces choix.</td></tr>{% endfor %}
-<tr class="total"><td>Total</td>{% for m in t.totaux %}<td class="n">{{ m|shekel }}</td>{% endfor %}{% if t.colonnes|length > 1 %}<td class="n">{{ t.total|shekel }}</td>{% endif %}</tr></table>
+<p class="aide">Choisir jusqu'à trois champs en lignes (imbriqués, avec sous-totaux), un champ en colonnes, la valeur et les filtres.
+▸ / ▾ replie ou déplie un groupe ; un clic sur un montant ouvre ses écritures.</p>
+
+<div class="barre-filtre ecran"><button type="button" onclick="tcdTout(true)">Tout développer</button><button type="button" onclick="tcdTout(false)">Tout réduire</button></div>
+<div class="tcd-cadre"><table class="tcd sans-tri" data-tri="non" data-filtre="non">
+<tr><th>{{ titre_lignes }}</th>{% for c in t.colonnes %}<th class="n">{{ c }}</th>{% endfor %}<th class="n">Total</th></tr>
+{% for l in t.lignes %}<tr class="tcd-n{{ l.niveau }}{% if not l.feuille %} tcd-groupe{% endif %}" data-niveau="{{ l.niveau }}">
+<td style="padding-left:{{ l.niveau|add:1 }}em">{% if not l.feuille %}<span class="tcd-bascule" onclick="tcdBasculer(this)">▾</span> {% endif %}{{ l.libelle }}</td>
+{% for m, cles in l.cases %}<td class="n {% if m < 0 %}neg{% endif %}">{% if m %}<a href="?{{ requete }}&amp;ecritures=1&amp;{{ cles }}">{{ m|shekel }}</a>{% endif %}</td>{% endfor %}
+<td class="n {% if l.total < 0 %}neg{% endif %}"><b><a href="?{{ requete }}&amp;ecritures=1&amp;{{ l.cles }}">{{ l.total|shekel }}</a></b></td></tr>
+{% empty %}<tr><td colspan="{{ t.colonnes|length|add:2 }}">Aucun montant pour ces choix.</td></tr>{% endfor %}
+<tr class="total"><td>Total</td>{% for m in t.totaux %}<td class="n">{{ m|shekel }}</td>{% endfor %}<td class="n">{{ t.total|shekel }}</td></tr>
+</table></div>
+<script>
+function tcdBasculer(b) {                    // replie ou déplie les lignes d'un groupe (jusqu'au groupe suivant de même niveau)
+  var tr = b.closest("tr"), n = +tr.dataset.niveau, ouvrir = b.textContent === "▸";
+  b.textContent = ouvrir ? "▾" : "▸";
+  for (var x = tr.nextElementSibling; x && x.dataset.niveau !== undefined && +x.dataset.niveau > n; x = x.nextElementSibling) {
+    x.hidden = !ouvrir;
+    var bx = x.querySelector(".tcd-bascule"); if (bx) bx.textContent = ouvrir ? "▾" : "▸";
+  }
+}
+function tcdTout(ouvrir) {
+  document.querySelectorAll("table.tcd tr[data-niveau]").forEach(function (x) {
+    x.hidden = !ouvrir && +x.dataset.niveau > 0;
+    var b = x.querySelector(".tcd-bascule"); if (b) b.textContent = ouvrir ? "▾" : "▸";
+  });
+}
+</script>
+{% if perms.compta.change_compte and axes_plan %}<details class="carte ecran"><summary>Gérer les axes du plan</summary>
+<form method="post">{% csrf_token %}{% for a in axes_plan %}
+<button name="supprimer_axe" value="{{ a }}" onclick="return confirm('Supprimer l\'axe « {{ a|escapejs }} » et ses valeurs ? Les comptes et les écritures ne changent pas.')">Supprimer l'axe {{ a }}</button>{% endfor %}</form>
+<p class="aide">Les valeurs des axes se mettent à jour par AxesComptes.xlsx (Administration › Imports et exports).</p></details>{% endif %}
 {% endblock %}

@@ -143,9 +143,12 @@ sauvegarde automatique juste avant ; journalisé.
 
 - Chaque compte peut porter des valeurs sur des **axes fixes** (RubDecl, RubType, Cat, Groupe…), importés par
   `AxesComptes.xlsx` (une colonne par axe). Une écriture prend les axes de son compte.
-- **Analyse par axes de comptes** (menu Consultation) : un axe en lignes, un second en colonnes, filtres, période ;
-  le menu propose aussi **une page par axe** (« · Par RubType »…). Axes intégrés : Compte, Classe, Anal.
-- **Supprimer un axe** (droit de modifier le plan) : bouton de la page de l'axe ; ses valeurs disparaissent, les comptes
+- **Tableau croisé (TCD)** (menu Consulter, `/axes/`) : jusqu'à trois champs en lignes, imbriqués avec sous-totaux
+  (repliables), un champ en colonnes ; champs Anal, axes du plan, Compte, Journal, Mois ; valeur résultat
+  (crédit − débit), solde, débits ou crédits ; comptes de gestion, de bilan ou tous ; filtres à cases sur chaque champ ;
+  un clic sur un montant liste ses écritures ; export Excel. Colonnes vides masquées, première colonne fixe.
+- Le menu propose aussi **une page par axe** (« · Par RubDecl »…), qui ouvre l'Analytique sur cet axe.
+- **Supprimer un axe** (droit de modifier le plan) : « Gérer les axes du plan » en bas du TCD ; ses valeurs disparaissent, les comptes
   et les écritures ne changent pas (tracé dans l'historique).
 - **Analytique (par axe)** et **État détaillé par axe** : un choix « Axe » (Anal par défaut ou une colonne du plan) ; synthèse, détail par compte et écritures se font sur les valeurs de cet axe.
 

@@ -51,7 +51,7 @@
         return r !== entete && !r.classList.contains("total") && !r.classList.contains("remarques") && !r.querySelector("th") && r.cells.length >= entete.cells.length;
       });
     };
-    var groupes = table.querySelector("tr.sit-compte, tr.sit-sous-total");      // tableau à sous-totaux : ni tri ni filtre
+    var groupes = table.querySelector("tr.sit-compte, tr.sit-sous-total") || table.classList.contains("tcd");  // sous-totaux : ni tri ni filtre
     var cle = "comptajlc-colonnes:" + location.pathname + ":" + rang;
     var largeurs = lire(cle) || {};
     var choix = {};                                                              // colonne -> valeurs gardées
