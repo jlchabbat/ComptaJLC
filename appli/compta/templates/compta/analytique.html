@@ -1,23 +1,25 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique{% endblock %}{% block contenu %}
-<h1>Analytique – Anal</h1>
+<h1>Analytique – {{ axe }}</h1>
 <div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
-<a class="bouton principal" href="?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
+<a class="bouton principal" href="?axe={{ axe|urlencode }}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
 </div>
 <form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}">
-<label><b>Libellé Anal</b>
-<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">Tous les codes</option>
-{% for c in a.codes %}<option value="{{ c.code }}">{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}</select></label>
+<label><b>Axe</b> <select name="axe" class="court" onchange="this.form.action='{% url 'analytique' %}'; this.form.code.value=''; this.form.submit()">
+{% for x in axes %}<option {% if x == axe %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+<label><b>{{ axe }}</b>
+<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">Toutes les valeurs</option>
+{% for code, libelle in codes %}<option value="{{ code }}">{% if libelle %}{{ libelle }} ({{ code }}){% else %}{{ code }}{% endif %}</option>{% endfor %}</select></label>
 <button class="principal">État détaillé</button>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <label>Type de comptes <select name="comptes" class="court">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <button formaction="{% url 'analytique' %}">Actualiser le tableau</button></form>
 <p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
-La liste contient les libellés des codes Anal, pas ceux des comptes. Choisir un libellé puis « État détaillé », ou cliquer sur une ligne du tableau.</p>
+Choisir l'axe (Anal ou une colonne du plan), puis une valeur et « État détaillé », ou cliquer sur une ligne du tableau.</p>
 
 <section class="ana-fenetre ana-axe1">
-<table class="sit-table ana-synthese"><tr><th>Libellé Anal</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
-{% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?comptes={{ nature }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
-<td><b>{{ l.libelle|default:"(sans code)" }}</b></td><td class="code">{{ l.code }}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
+<table class="sit-table ana-synthese"><tr><th>{{ axe }}</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for l in a.lignes %}<tr class="cliquable" onclick="location.href=this.dataset.url" data-url="{% url 'analytique_detail' %}?axe={{ axe|urlencode }}&amp;comptes={{ nature }}&amp;code={{ l.code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">
+<td><b>{{ l.libelle|default:l.code }}</b></td><td class="code">{% if l.libelle %}{{ l.code }}{% endif %}</td><td class="n">{{ l.a|zero_vide }}</td><td class="n">{{ l.b|zero_vide }}</td>
 <td class="n {% if l.s < 0 %}neg{% endif %}"><b>{{ l.s|shekel }}</b></td></tr>
 {% empty %}<tr><td colspan="5">Aucune opération sur la période.</td></tr>{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ a.total.a|shekel }}</td><td class="n">{{ a.total.b|shekel }}</td>

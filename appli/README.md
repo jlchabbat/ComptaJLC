@@ -147,6 +147,8 @@ sauvegarde automatique juste avant ; journalisé.
   le menu propose aussi **une page par axe** (« · Par RubType »…). Axes intégrés : Compte, Classe, Anal.
 - **Supprimer un axe** (droit de modifier le plan) : bouton de la page de l'axe ; ses valeurs disparaissent, les comptes
   et les écritures ne changent pas (tracé dans l'historique).
+- **Analytique (par axe)** et **État détaillé par axe** : un choix « Axe » (Anal par défaut, Classe, ou une colonne
+  du plan) ; synthèse, détail par compte et écritures se font sur les valeurs de cet axe.
 
 ## Imports et exports
 

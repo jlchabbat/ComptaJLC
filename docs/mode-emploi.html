@@ -103,10 +103,10 @@ pour chacun Administration ou Gestion. Chacun ne voit que les menus de son mode.
 <table><tr><th style="width:18%">Menu</th><th>Pages</th></tr>
 <tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Modifier une écriture · Justificatifs (dépôt et classement) · Plan comptable · Codes Anal · Codes et nouveaux tiers</td></tr>
 <tr><td>Tiers</td><td>Liste des tiers</td></tr>
-<tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analyse par axes de comptes · Analytique (Anal)</td></tr>
+<tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analyse par axes de comptes · Analytique (par axe)</td></tr>
 <tr><td>Banque</td><td>Relevés à passer en compta · Historique des imports · Traductions du relevé (si les traductions sont activées)</td></tr>
 <tr><td>Contrôle</td><td>Contrôles · Historique</td></tr>
-<tr><td>Éditions</td><td>Situation financière · État détaillé par code Anal · États annuels et budget · Clôture de l'exercice · Exporter des données (Excel) · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
+<tr><td>Éditions</td><td>Situation financière · État détaillé par axe · États annuels et budget · Clôture de l'exercice · Exporter des données (Excel) · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
 <tr><td>Administration</td><td>Utilisateurs · Journaux (banques, caisses) · Autres référentiels (avancé) · Paramètres (Excel) · Imports et exports · Base de données · Principes de fonctionnement (PDF) · Installation et mises à jour (PDF) · Licence</td></tr></table>
 <p>Le menu de la page en cours est souligné. Les pages réservées à l'administrateur n'apparaissent pas en mode Gestion.</p>
 <h2>La barre des boutons</h2>
@@ -266,8 +266,9 @@ d'un justificatif (colonne 📎). Tri par colonne sur toutes les pages.</p>
 <ul><li><b>Grand livre</b> : un compte, ses lignes et son solde cumulé.</li>
 <li><b>Balance</b> : chaque compte avec débit, crédit et solde ; clic sur un compte = son grand livre.</li></ul>
 <figure><img src="images/23_grand_livre.png"><figcaption>Grand livre d'un compte.</figcaption></figure>
-<h2>Analytique (Anal)</h2>
-<p><span class="menu">Consulter › Analytique (Anal)</span> : par code Anal, au choix sur les comptes de <b>gestion</b> (6 et 7 : produits, charges, solde)
+<h2>Analytique (par axe)</h2>
+<p><span class="menu">Consulter › Analytique (par axe)</span> : par valeur de l'<b>axe choisi</b> (Anal par défaut, Classe, ou
+une colonne du plan : RubDecl, Cat, Groupe…), au choix sur les comptes de <b>gestion</b> (6 et 7 : produits, charges, solde)
 ou de <b>bilan</b> (1 à 5 : débit, crédit, solde), avec totaux. Un clic sur un code ouvre le détail : sous-totaux par compte puis écritures,
 un code par page à l'impression. Excel et Imprimer / PDF en haut.</p>
 <figure><img src="images/21_analytique.png"><figcaption>Analytique par code Anal.</figcaption></figure>
@@ -312,8 +313,8 @@ Si la comptabilité contient déjà une écriture de même montant à une date p
 <p><span class="menu">Éditions › Situation financière</span> : une page imprimable pour le bureau ou le vérificateur, sur la période choisie : produits, charges,
 <b>solde</b>, trésorerie, solde par code Anal, produits et charges par compte. Boutons en haut : <b>PDF / Imprimer</b>, <b>Excel</b>.</p>
 <figure><img src="images/20_situation.png"><figcaption>Situation financière.</figcaption></figure>
-<h2>État détaillé par code Anal</h2>
-<p><span class="menu">Éditions › État détaillé par code Anal</span> : pour un code, le détail par compte puis les écritures. C'est le détail de l'Analytique (chapitre 7), prêt à imprimer.</p>
+<h2>État détaillé par axe</h2>
+<p><span class="menu">Éditions › État détaillé par axe</span> : pour un axe et une valeur (ou toutes), le détail par compte puis les écritures. C'est le détail de l'Analytique (chapitre 7), prêt à imprimer.</p>
 <h2>États annuels et budget</h2>
 <p><span class="menu">Éditions › États annuels et budget</span> : choisir l'exercice ; comparaison automatique avec l'exercice précédent.
 En haut : <b>Télécharger en Excel</b> (toutes les feuilles), <b>Imprimer / PDF</b>, <b>Ajouter la ligne de budget</b>.</p>

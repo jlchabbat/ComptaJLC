@@ -1909,6 +1909,13 @@ class Echanges(TransactionTestCase):
         chemin, n = ech.exporter(ech.PAR_NOM["AxesComptes"])
         self.assertEqual((n, [c.value for c in openpyxl.load_workbook(chemin).active[1]]), (3, ["Compte", "RubDecl", "Groupe"]))
         self.assertContains(r, "Supprimer l'axe Groupe")
+        r = self.client.get("/analytique/?axe=Groupe&du=2026-01-01&au=2026-12-31")     # analytique sur un axe du plan
+        self.assertContains(r, "<h1>Analytique – Groupe</h1>")
+        self.assertEqual([c for c, _ in r.context["codes"]], ["Soco", "Verl"])
+        self.assertTrue({l["code"] for l in r.context["a"]["lignes"]} <= {"Soco", "Verl", "(sans code)"})
+        r = self.client.get("/analytique/detail/?axe=Groupe&code=Verl&du=2026-01-01&au=2026-12-31")
+        self.assertTrue(all(x["numero"] in ("600100", "700000") for s_ in r.context["sections"] for x in s_["comptes"]))
+        self.assertEqual(self.client.get("/analytique/?axe=Inconnu").context["axe"], "Anal")
         r = self.client.post("/axes/", {"supprimer_axe": "Groupe"}, follow=True)
         self.assertContains(r, "Axe « Groupe » supprimé (3 valeur(s))")
         self.assertEqual(ax.axes()[3:], ["RubDecl"])
@@ -2415,7 +2422,7 @@ class RapportsAnalytiques(TestCase):
         self.assertContains(r, "Imprimer")
         self.assertContains(r, "Résultat")
         self.assertContains(r, "<h1>Analytique – Anal</h1>")
-        self.assertContains(r, "/analytique/detail/?comptes=gestion&amp;code=COT.2")
+        self.assertContains(r, "/analytique/detail/?axe=Anal&amp;comptes=gestion&amp;code=COT.2")
         self.assertNotContains(r, "axe 2")
         self.assertContains(r, '<option value="COT.2">COTISATIONS (COT.2)</option>')             # choix par le libellé
         x = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31&format=xlsx")
