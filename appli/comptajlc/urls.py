@@ -5,7 +5,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from compta import views, vues_base, vues_justificatifs, vues_parametres, vues_corrections, vues_journaux, vues_etats, vues_tiers, vues_utilisateurs, vues_rapprochement as rap
-from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_plan, vues_referentiels, vues_situation
+from compta import vues_analytique, vues_demarrage, vues_documentation, vues_echanges, vues_licence, vues_plan, vues_referentiels, vues_situation, vues_tva
 
 admin.site.site_header = "ComptaJLC – administration"
 admin.site.site_title = "ComptaJLC"
@@ -55,6 +55,7 @@ urlpatterns = [
     path("etats/", vues_etats.etats_annuels, name="etats"),
     path("etats/export/", vues_etats.export_etats, name="export_etats"),
     path("cloture/", vues_etats.cloture, name="cloture"),
+    path("tva/", vues_tva.page, name="tva"),
     path("cloture/archive/<int:pk>/", vues_etats.archive, name="archive"),
     path("connexion/", auth.LoginView.as_view(template_name="compta/connexion.html"), name="login"),
     path("deconnexion/", auth.LogoutView.as_view(), name="logout"),
