@@ -3093,3 +3093,10 @@ class Tva(TestCase):
         self.mvt(dt.date(2026, 4, 2), [("411TAIEB001", 120, 0), ("700000", 0, 100), ("445710", 0, 20)])
         r = self.client.post("/tva/", {"debut": "2026-04-01", "fin": "2026-04-30"}, follow=True)
         self.assertContains(r, "compte 999999")
+
+
+class CommandePreparer(TestCase):
+    def test_site_neuf(self):
+        sortie = io.StringIO()
+        call_command("preparer", stdout=sortie)                  # installer.sh et maj.sh l'appellent
+        self.assertIn("ComptaJLC prêt", sortie.getvalue())
