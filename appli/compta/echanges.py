@@ -18,7 +18,7 @@ from pathlib import Path
 import openpyxl
 from django.db import transaction
 
-from . import dossiers, export, releves
+from . import dossiers, export, releves, rimport
 from .tiers import ENTETES_MODELE, importer_tableau
 from .models import (ZERO, Budget, CodeAnalytique, Compte, Exercice, Journal, Justificatif, Ligne, LigneReleve, Tiers,
                      Modification, Mouvement, Prefixe, Rapprochement, Reglage, Traduction)
@@ -887,6 +887,36 @@ FORMATS = [
 PAR_NOM = {f.nom: f for f in FORMATS}
 
 
+# ---------------------------------------------------------------- export RImport.txt d'un autre logiciel
+
+def imp_rimport(lignes, fichier, utilisateur=None):
+    """RImport.txt : journaux absents créés (section Jnl), exercice de l'année créé si aucun ne couvre une date, puis les
+    écritures par le moteur de Ecritures.xlsx (comptes et codes Anal absents créés, Mvt déjà importés inchangés)."""
+    L, journaux, annees = Lecteur(), {}, set()
+    for n, d in lignes:
+        jnl, date = L.texte(n, d, "Jnl", True, 10), L.date(n, d, "Date")
+        if jnl and not Journal.objects.filter(code=jnl).exists():
+            journaux.setdefault(jnl, {"intitule": d["Intitulé"] or jnl, "type": d["Type"]})
+        if date and not Exercice.objects.filter(debut__lte=date, fin__gte=date).exists():
+            annees.add(date.year)
+    L.verifier()
+    for code, valeurs in journaux.items():
+        Journal.objects.create(code=code, **valeurs)
+    for a in sorted(annees):
+        Exercice.objects.create(libelle=str(a), debut=dt.date(a, 1, 1), fin=dt.date(a, 12, 31))
+    texte = imp_ecritures(lignes, fichier, utilisateur)
+    if journaux:
+        texte += f" ; {len(journaux)} journal(aux) créé(s) ({', '.join(sorted(journaux))}), compte de banque à indiquer dans Journaux"
+    if annees:
+        texte += f" ; exercice(s) créé(s) : {', '.join(map(str, sorted(annees)))}"
+    return texte
+
+
+RIMPORT = Format("RImport", "Export RImport.txt d'un autre logiciel (écritures, journaux)", COLONNES_ECRITURES, None,
+                 imp_rimport)
+TEXTES = (".txt",)                                         # seul fichier texte reconnu : RImport.txt
+
+
 # ---------------------------------------------------------------- lexique (Lexique.xlsx dans Imports et Exports)
 
 LEXIQUE = "Lexique"
@@ -1069,7 +1099,9 @@ def formats_de_structure(entetes):
 def format_de(chemin):
     """Format d'un fichier : d'après sa **structure** (colonnes de la ligne 1) ; si plusieurs formats ont la même structure
     (relevés de plusieurs journaux, écritures et libellés), le nom du fichier départage ; à défaut de structure
-    reconnue, le nom seul (comportement des fichiers plus anciens)."""
+    reconnue, le nom seul (comportement des fichiers plus anciens). Un .txt n'est reconnu que s'il est un RImport."""
+    if Path(chemin).suffix.lower() in TEXTES:
+        return RIMPORT if rimport.reconnait(chemin) else None
     if Path(chemin).suffix.lower() in TABLEURS + (".csv",):
         par_structure = formats_de_structure(entetes_du_fichier(chemin))
         if len(par_structure) == 1:
@@ -1103,6 +1135,8 @@ def exporter(f, auteur=""):
 
 def lire(chemin, f):
     """Lignes du fichier : [(n° de ligne Excel, {colonne: valeur})] ; refuse des en-têtes non conformes."""
+    if f is RIMPORT:
+        return rimport.lire(chemin)
     if Path(chemin).suffix.lower() == ".csv":             # CSV : point-virgule
         import csv as csv_
         brut = Path(chemin).read_bytes()
@@ -1143,7 +1177,8 @@ def lire(chemin, f):
 def a_importer():
     """Fichiers présents dans Imports : [(chemin, format ou None)]."""
     return [(p, format_de(p)) for p in sorted(imports().iterdir())
-            if p.is_file() and p.suffix.lower() in TABLEURS + (".csv",) and not p.name.startswith("~$") and p.stem != LEXIQUE]
+            if p.is_file() and p.suffix.lower() in TABLEURS + (".csv",) + TEXTES and not p.name.startswith("~$")
+            and p.stem != LEXIQUE]
 
 
 def retirer(nom, auteur=""):
@@ -1155,11 +1190,12 @@ def retirer(nom, auteur=""):
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Fichier retiré du dossier Imports", objet=nom[:200])
 
 
-DEPOSABLES = TABLEURS + (".csv",)
+DEPOSABLES = TABLEURS + (".csv",) + TEXTES
 
 
 def deposer(nom, contenu, auteur=""):
-    """Dépose dans Imports un fichier envoyé par le navigateur (.xlsx, .csv, ou .zip dont les .xlsx et .csv sont extraits).
+    """Dépose dans Imports un fichier envoyé par le navigateur (.xlsx, .csv, RImport.txt, ou .zip dont ces fichiers sont
+    extraits).
 
     Renvoie les noms déposés ; un fichier de même nom est remplacé."""
     import io
@@ -1173,12 +1209,15 @@ def deposer(nom, contenu, auteur=""):
         with z:
             fichiers = [(n.replace("\\", "/").rsplit("/", 1)[-1], n) for n in z.namelist() if not n.endswith("/")
                         and not n.startswith("__MACOSX")]
-            fichiers = [(b, n) for b, n in fichiers if Path(b).suffix.lower() in DEPOSABLES and not b.startswith("~$")]
+            fichiers = [(b, n) for b, n in fichiers if Path(b).suffix.lower() in DEPOSABLES and not b.startswith("~$")
+                        and (Path(b).suffix.lower() not in TEXTES or rimport.est_rimport(z.read(n)))]   # autres .txt ignorés
             if not fichiers:
-                raise Refus([f"{nom} : aucun fichier .xlsx ou .csv dans le ZIP."])
+                raise Refus([f"{nom} : aucun fichier .xlsx, .csv ou .txt dans le ZIP."])
             return [n for b, n_ in fichiers for n in deposer(b, z.read(n_), auteur)]
     if Path(nom).suffix.lower() not in DEPOSABLES or not nom or nom.startswith("."):
-        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv ou .zip attendu."])
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv, .txt (RImport) ou .zip attendu."])
+    if Path(nom).suffix.lower() in TEXTES and not rimport.est_rimport(contenu):
+        raise Refus([f"{nom} : seul un export RImport.txt (commençant par ##Transfert) est accepté en .txt."])
     (imports() / nom).write_bytes(contenu)
     Modification.objects.create(auteur=auteur, lot="Échanges", action="Dépôt dans Imports", objet=nom[:200])
     return [nom]
@@ -1189,7 +1228,8 @@ def importer_tout(utilisateur=None):
     rien n'est enregistré. Rien n'est supprimé (contrairement à Tout réinjecter). Renvoie (comptes rendus, ignorés)."""
     from .base_donnees import sauvegarder
     ordre = {f.nom: i for i, f in enumerate(FORMATS)}
-    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in TABLEURS + (".csv",)),
+    ordre[RIMPORT.nom] = ordre["Ecritures"]                 # RImport.txt : avec les écritures, après plan et journaux
+    choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in TABLEURS + (".csv",) + TEXTES),
                      key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
     ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() in TABLEURS]
     if not choisis:
@@ -1246,7 +1286,7 @@ def importer(nom, utilisateur=None):
     from .base_donnees import sauvegarder
     chemin = fichier_d_import(nom)
     f = format_de(chemin)
-    if not f or chemin.suffix.lower() not in TABLEURS + (".csv",):
+    if not f or chemin.suffix.lower() not in TABLEURS + (".csv",) + TEXTES:
         raise Refus([f"{chemin.name} : structure non reconnue. La ligne 1 doit contenir exactement les colonnes de l'un des "
                      "fichiers décrits dans le lexique (Tiers, Journaux, Ecritures…), dans le même ordre."])
     lignes = lire(chemin, f)

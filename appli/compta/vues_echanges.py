@@ -110,7 +110,7 @@ def echanges(request):
         "dossiers_pc": [(cle, lib, Reglage.lire(cle), exemple) for cle, (exemple, lib) in DOSSIERS_PC.items()],
         "pc_imports": Reglage.lire("dossier_pc_imports"), "pc_telechgt": Reglage.lire("dossier_pc_telechgt"), "pc_export": Reglage.lire("dossier_pc_export"), "formats": moteur.FORMATS, "imports": moteur.imports(), "exports": moteur.exports(), "sauvegardes": dossiers.sauvegardes(),
         "dossiers": [(c, lib, Reglage.lire(c), moteur.defaut(c), dossiers.chemin(c)) for c, (_, lib) in moteur.REGLAGES_DOSSIERS.items()],
-        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",)],
+        "a_importer": [(p.name, f) for p, f in fichiers if p.suffix.lower() in moteur.TABLEURS + (".csv",) + moteur.TEXTES],
         "exportes": [(p.name, max(1, p.stat().st_size // 1024)) for p in moteur.fichiers_exportes()],
     })
 

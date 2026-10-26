@@ -1777,6 +1777,29 @@ class Echanges(TransactionTestCase):
         for texte in ("Tous les imports et exports", "Relevés bancaires", "/etats/fec/", "/parametres/", "/rapprochement/"):
             self.assertContains(r, texte)
 
+    def test_rimport_txt(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import ZERO
+        mvt = ['"9001"\t"ZZ"\t"15/03/2026"\t"606999"\t"FOURNITURES"\t"1\xa0234,50"\tD\tB\t"ACHAT"\t\t\t\t\t"3TESTO120B12C"\t"TEST"',
+               '"9001"\t"ZZ"\t"15/03/2026"\t"401NOUV"\t"NOUV"\t"1\xa0234,50"\tC\tB\t"ACHAT"' + "\t" * 15 + '"ABC"']
+        texte = "\r\n".join(["##Transfert", "##Section\tDos", "EUR", "##Section\tMvt", *mvt, "##Section\tTiers",
+                              '"401NOUV"\t"NOUVEAU FOURNISSEUR"\t"SR"', "##Section\tJnl", '"ZZ"\t"JOURNAL \x90TUDES"\t"O"'])
+        contenu = texte.encode("latin-1")
+        r = self.client.post("/echanges/", {"importer_fichiers": "1",
+                                            "fichiers": SimpleUploadedFile("RImport.txt", contenu)}, follow=True)
+        self.assertContains(r, "Import terminé")
+        m = Mouvement.objects.get(numero=9001)
+        self.assertEqual([(l.compte_id, l.debit, l.credit, l.lettrage) for l in m.lignes.order_by("ordre")],
+                         [("606999", Decimal("1234.50"), ZERO, ""), ("401NOUV", ZERO, Decimal("1234.50"), "ABC")])
+        self.assertEqual((m.journal.intitule, m.journal.type), ("JOURNAL ÉTUDES", "OD"))
+        self.assertEqual(Compte.objects.get(numero="606999").anal1_id, "3TEST")       # code abîmé réparé
+        self.assertEqual(Compte.objects.get(numero="401NOUV").libelle, "NOUVEAU FOURNISSEUR")
+        (ech.imports() / "RImport.txt").write_bytes(contenu)                     # réimporté : rien en double
+        self.assertIn("1 inchangé(s)", ech.importer("RImport.txt")[1])
+        self.assertEqual(Mouvement.objects.filter(numero=9001).count(), 1)
+        (ech.imports() / "notes.txt").write_text("autre chose")
+        self.assertIsNone(dict(ech.a_importer())[ech.imports() / "notes.txt"])  # un autre .txt n'est pas reconnu
+
     def test_aller_retour_des_referentiels(self):
         self.client.post("/echanges/", {"exporter": "tout"})
         exportes = sorted(p.name for p in ech.exports().iterdir() if not p.name.startswith("Lexique"))
@@ -2171,7 +2194,7 @@ class Echanges(TransactionTestCase):
         self.assertContains(r, "Déposé(s) dans Imports")
         self.assertEqual(sorted(p.name for p, _ in ech.a_importer()), ["Budget.xlsx", nom])
         r = self.client.post("/echanges/", {"deposer": "1", "fichiers": SimpleUploadedFile("virus.exe", b"x")}, follow=True)
-        self.assertContains(r, "fichier .xlsx, .xlsm, .csv ou .zip attendu")
+        self.assertContains(r, "fichier .xlsx, .xlsm, .csv, .txt (RImport) ou .zip attendu")
 
     def test_tout_reinjecter(self):
         """Tout exporter, corriger à la main, tout réinjecter : les données de chaque fichier sont remplacées."""
