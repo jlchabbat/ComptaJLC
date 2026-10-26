@@ -1777,6 +1777,23 @@ class Echanges(TransactionTestCase):
         for texte in ("Tous les imports et exports", "Relevés bancaires", "/etats/fec/", "/parametres/", "/rapprochement/"):
             self.assertContains(r, texte)
 
+    def test_ecrt_csv(self):
+        """Ecrt.csv d'un autre logiciel : Mvt renumérotés à la suite du site, doublon écarté au second import."""
+        texte = ("Mvt;Journ;Date;Compte;LibelCompte;Libelle;Debit;Credit;Npiece;Anal;LibelAnal\r\n"
+                 "421;B1;26/10/2026;512000;BANQUE;VIREMENT TEST;2500;0;-2500;BIL.5;BILAN\r\n"
+                 "421;B1;26/10/2026;606400;FOURNITURES;VIREMENT TEST;0;2500;2500;FON.1;FONCT\r\n")
+        avant = Mouvement.objects.get(numero=421).lignes.count()
+        (ech.imports() / "Ecrt.csv").write_text(texte, encoding="utf-8")
+        self.assertEqual(ech.format_de(ech.imports() / "Ecrt.csv").nom, "Ecrt")
+        f, compte_rendu = ech.importer("Ecrt.csv")
+        self.assertIn("1 mouvement(s) ajouté(s)", compte_rendu)
+        self.assertEqual(Mouvement.objects.get(numero=421).lignes.count(), avant)          # le Mvt 421 du site est intact
+        m = Mouvement.objects.order_by("-numero").first()
+        self.assertEqual([(l.compte_id, l.debit, l.credit) for l in m.lignes.order_by("ordre")],
+                         [("512000", D("2500"), D(0)), ("606400", D(0), D("2500"))])
+        (ech.imports() / "Ecrt.csv").write_text(texte, encoding="utf-8")
+        self.assertIn("1 doublon(s) écarté(s)", ech.importer("Ecrt.csv")[1])
+
     def test_rimport_txt(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .models import ZERO

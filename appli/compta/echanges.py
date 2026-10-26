@@ -912,6 +912,28 @@ def imp_rimport(lignes, fichier, utilisateur=None):
     return texte
 
 
+COLONNES_ECRT = ["Mvt", "Journ", "Date", "Compte", "LibelCompte", "Libelle", "Debit", "Credit", "Npiece", "Anal", "LibelAnal"]
+
+
+def imp_ecrt(lignes, fichier, utilisateur=None):
+    """Ecrt.csv d'un autre logiciel (Mvt;Journ;…;Npiece;Anal;LibelAnal) : le n° Mvt du fichier ne sert qu'à regrouper
+    les lignes d'une opération ; chaque Mvt reçoit le numéro suivant du site (jamais d'écrasement d'un Mvt existant).
+    Un Mvt déjà en compta (même date, journal, comptes et montants) est écarté comme doublon. Npiece n'est pas repris."""
+    numeros, suivant = {}, Mouvement.prochain_numero()
+    converties = []
+    for n, d in lignes:
+        cle = str(d.get("Mvt") or "").strip()
+        if cle not in numeros:
+            numeros[cle] = suivant + len(numeros)
+        zero = lambda v: None if str(v or "").strip() in ("", "0", "0,00", "0.00") else v      # 0 = colonne vide
+        converties.append((n, {"Mvt": numeros[cle], "Jnl": d.get("Journ"), "Date": d.get("Date"), "Compte": d.get("Compte"),
+                               "LibelCompte": d.get("LibelCompte"), "Libelle": d.get("Libelle"), "Debit": zero(d.get("Debit")),
+                               "Credit": zero(d.get("Credit")), "Anal": d.get("Anal"), "LibelAnal": d.get("LibelAnal"),
+                               "Lien": None, "Let": None}))
+    return imp_ecritures(converties, fichier, utilisateur) + f" (Mvt numérotés à partir de {suivant})"
+
+
+ECRT = Format("Ecrt", "Écritures d'un autre logiciel (Ecrt.csv), numérotées à la suite", COLONNES_ECRT, None, imp_ecrt)
 RIMPORT = Format("RImport", "Export RImport.txt d'un autre logiciel (écritures, journaux)", COLONNES_ECRITURES, None,
                  imp_rimport)
 TEXTES = (".txt",)                                         # seul fichier texte reconnu : RImport.txt
@@ -1088,7 +1110,7 @@ def formats_de_structure(entetes):
     if not vus:
         return []
     trouves = []
-    for f in FORMATS:
+    for f in FORMATS + [ECRT]:
         base = [_norme(c) for c in f.colonnes]
         permis = [base[:len(base) - k] for k in range(len(f.facultatives) + 1)] + [[_norme(c) for c in x] for x in f.synonymes]
         if vus in permis:                                   # (colonnes libres : AxesComptes se reconnaît par son nom)
@@ -1108,7 +1130,7 @@ def format_de(chemin):
             return par_structure[0]
         if par_structure:
             return next((f for f in par_structure if f.reconnait(chemin)), None)
-    return next((f for f in FORMATS if f.reconnait(chemin)), None)
+    return next((f for f in FORMATS + [ECRT] if f.reconnait(chemin)), None)
 
 
 # ---------------------------------------------------------------- fichiers
@@ -1228,7 +1250,7 @@ def importer_tout(utilisateur=None):
     rien n'est enregistré. Rien n'est supprimé (contrairement à Tout réinjecter). Renvoie (comptes rendus, ignorés)."""
     from .base_donnees import sauvegarder
     ordre = {f.nom: i for i, f in enumerate(FORMATS)}
-    ordre[RIMPORT.nom] = ordre["Ecritures"]                 # RImport.txt : avec les écritures, après plan et journaux
+    ordre[RIMPORT.nom] = ordre[ECRT.nom] = ordre["Ecritures"]     # avec les écritures, après plan et journaux
     choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in TABLEURS + (".csv",) + TEXTES),
                      key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
     ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() in TABLEURS]

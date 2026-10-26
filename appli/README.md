@@ -159,6 +159,9 @@ relevés bancaires, paramètres, états annuels, FEC et base de données.
   `Ecritures.xlsx` (Mvt déjà présents inchangés, comptes et codes Anal absents créés) ; les journaux absents sont créés
   d'après la section Jnl (compte de banque à indiquer ensuite) et l'exercice de l'année si aucun ne couvre une date.
   Les n° de Mvt du fichier sont gardés : un Mvt du site de même numéro serait remplacé.
+- **Ecrt.csv** (autre logiciel : `Mvt;Journ;Date;Compte;LibelCompte;Libelle;Debit;Credit;Npiece;Anal;LibelAnal`) : reconnu
+  par ses colonnes ; le n° Mvt du fichier ne sert qu'à regrouper les lignes, chaque Mvt prend le numéro suivant du site
+  (jamais d'écrasement) ; un Mvt déjà en compta est écarté comme doublon ; Npiece n'est pas repris ; 0 = colonne vide.
 
 ## TVA
 
