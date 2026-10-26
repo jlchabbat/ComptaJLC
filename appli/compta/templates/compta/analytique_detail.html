@@ -1,14 +1,15 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}État détaillé – {{ titre_axe }}{% endblock %}{% block contenu %}
 <div class="barre"><button type="button" class="principal" onclick="window.print()" title="Choisir « Enregistrer au format PDF » comme imprimante">PDF / Imprimer</button>
-<a class="bouton principal" href="?comptes={{ nature }}&amp;code={{ code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
-<a class="bouton" href="{% url 'analytique' %}?comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">Synthèse analytique</a></div>
+<a class="bouton principal" href="?axe={{ axe|urlencode }}&amp;comptes={{ nature }}&amp;code={{ code|urlencode }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
+<a class="bouton" href="{% url 'analytique' %}?axe={{ axe|urlencode }}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">Synthèse analytique</a></div>
 <div class="ecran">
 <form class="filtres" method="get">
-<label><b>Libellé Anal</b> <select name="code" data-cherchable="Taper une partie du libellé…" style="min-width:24em"><option value="">Tous les codes</option>{% for c in codes %}<option value="{{ c.code }}" {% if c.code == code %}selected{% endif %}>{{ c.libelle|default:c.code }} ({{ c.code }})</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
+<label><b>Axe</b> <select name="axe" onchange="this.form.code.value=''; this.form.submit()">{% for x in axes %}<option {% if x == axe %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+<label><b>{{ axe }}</b> <select name="code" data-cherchable="Taper une partie du libellé…" style="min-width:24em"><option value="">Toutes les valeurs</option>{% for c, lib in codes %}<option value="{{ c }}" {% if c == code %}selected{% endif %}>{% if lib %}{{ lib }} ({{ c }}){% else %}{{ c }}{% endif %}</option>{% endfor %}<option value="{{ sans_code }}" {% if code == sans_code %}selected{% endif %}>{{ sans_code }}</option></select></label>
 <label>Type de comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button></form>
-<p class="aide">Choisir le libellé du code Anal (taper une partie du libellé dans la liste ; ce ne sont pas les libellés des comptes). Pour le PDF : « PDF / Imprimer », imprimante
+<p class="aide">Choisir l'axe (Anal ou une colonne du plan), puis la valeur (taper une partie du libellé dans la liste). Pour le PDF : « PDF / Imprimer », imprimante
 « Enregistrer au format PDF », et cocher « Graphiques d'arrière-plan » dans « Plus de paramètres ».</p></div>
 
 {% if sections|length > 1 %}<article class="situation">
