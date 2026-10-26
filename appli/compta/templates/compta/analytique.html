@@ -1,20 +1,18 @@
 {% extends "compta/base.html" %}{% load compta %}{% block titre %}Analytique{% endblock %}{% block contenu %}
 <h1>Analytique – {{ axe }}</h1>
 <div class="barre"><button type="button" class="principal" onclick="window.print()">PDF / Imprimer</button>
-<a class="bouton principal" href="?axe={{ axe|urlencode }}&amp;comptes={{ nature }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}&amp;format=xlsx">Excel</a>
+<a class="bouton principal" href="?{{ params }}&amp;format=xlsx">Excel</a>
 </div>
 <form class="filtres ecran ana-choix" method="get" action="{% url 'analytique_detail' %}">
-<label><b>Axe</b> <select name="axe" class="court" onchange="this.form.action='{% url 'analytique' %}'; this.form.code.value=''; this.form.submit()">
+<label><b>Axe</b> <select name="axe" class="court" onchange="this.form.action='{% url 'analytique' %}'; this.form.querySelectorAll('input[name=code]').forEach(function (x) { x.checked = false; }); this.form.submit()">
 {% for x in axes %}<option {% if x == axe %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
-<label><b>{{ axe }}</b>
-<select name="code" data-cherchable="Taper une partie du libellé…" aria-label="{{ a.titre }}" style="min-width:24em"><option value="">Toutes les valeurs</option>
-{% for code, libelle in codes %}<option value="{{ code }}">{% if libelle %}{{ libelle }} ({{ code }}){% else %}{{ code }}{% endif %}</option>{% endfor %}</select></label>
+{% include "compta/_choix_valeurs.html" %}
 <button class="principal">État détaillé</button>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <label>Type de comptes <select name="comptes" class="court">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <button formaction="{% url 'analytique' %}">Actualiser le tableau</button></form>
 <p class="aide">Période {{ periode_texte }} · {% if nature == "bilan" %}mouvements des comptes 1 à 5 (solde = débit − crédit){% else %}produits (classe 7) et charges (classe 6){% endif %}.
-Choisir l'axe (Anal ou une colonne du plan), puis une valeur et « État détaillé », ou cliquer sur une ligne du tableau.</p>
+Choisir l'axe (Anal ou une colonne du plan), cocher une ou plusieurs valeurs, puis « Actualiser le tableau » ou « État détaillé » ; ou cliquer sur une ligne du tableau.</p>
 
 <section class="ana-fenetre ana-axe1">
 <table class="sit-table ana-synthese"><tr><th>{{ axe }}</th><th>Code</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
