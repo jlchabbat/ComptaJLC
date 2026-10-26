@@ -3033,3 +3033,63 @@ class TraductionClaude(TestCase):
         from unittest import mock
         with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}), mock.patch("compta.traduction_auto.cle_api", return_value=""):
             self.assertNotContains(self.client.get("/rapprochement/traductions/"), "Proposer par traduction automatique")
+
+
+# ---------------------------------------------------------------- TVA
+
+from . import tva  # noqa: E402
+
+
+class Tva(TestCase):
+    def setUp(self):
+        referentiels_saisie()
+        for n, lib in (("445660", "TVA DEDUCTIBLE"), ("445710", "TVA COLLECTEE"), ("445510", "TVA A DECAISSER"),
+                       ("445670", "CREDIT DE TVA")):
+            Compte.objects.create(numero=n, libelle=lib, anal1_id="BIL.4")
+        Reglage.objects.create(cle="compte_tva_a_payer", valeur="445510")
+        Reglage.objects.create(cle="compte_credit_tva", valeur="445670")
+        self.mvt(dt.date(2026, 3, 5), [("411TAIEB001", 1200, 0), ("700000", 0, 1000), ("445710", 0, 200)])   # vente
+        self.mvt(dt.date(2026, 3, 9), [("600000", 300, 0), ("445660", 60, 0), ("401000", 0, 360)])          # achat
+        self.u = User.objects.create_user("t")
+        self.u.groups.add(Group.objects.get(name="Gestion"))
+        self.client.force_login(self.u)
+
+    def mvt(self, date, lignes):
+        m = Mouvement.objects.create(numero=Mouvement.prochain_numero(), date=date, journal_id="OD")
+        for i, (c, d, cr) in enumerate(lignes):
+            Ligne.objects.create(mouvement=m, ordre=i, compte_id=c, libelle="T", debit=D(d), credit=D(cr))
+
+    def test_declaration_et_liquidation(self):
+        mars = (dt.date(2026, 3, 1), dt.date(2026, 3, 31))
+        d = tva.declaration(*mars)
+        self.assertEqual((d["total_collectee"], d["total_deductible"], d["a_payer"], d["chiffre_affaires"]),
+                         (D(200), D(60), D(140), D(1000)))
+        mv = tva.liquider(*mars, self.u)
+        self.assertEqual((mv.total_debit, mv.total_credit), (D(200), D(200)))
+        self.assertEqual(soldes(Ligne.objects.filter(compte_id="445510"))[2], D(-140))
+        self.assertFalse(tva.declaration(*mars)["a_liquider"])
+        with self.assertRaises(ValueError):
+            tva.liquider(*mars, self.u)
+
+    def test_credit_reporte(self):
+        avril = (dt.date(2026, 4, 1), dt.date(2026, 4, 30))
+        self.mvt(dt.date(2026, 4, 2), [("600000", 1000, 0), ("445660", 200, 0), ("401000", 0, 1200)])
+        mv = tva.liquider(*avril, self.u)                                  # 200 − 260 : crédit de 60
+        self.assertEqual(soldes(Ligne.objects.filter(compte_id="445670"))[2], D(60))
+        self.assertEqual((mv.total_debit, mv.total_credit), (D(260), D(260)))
+        self.mvt(dt.date(2026, 5, 3), [("411TAIEB001", 600, 0), ("700000", 0, 500), ("445710", 0, 100)])
+        d = tva.declaration(dt.date(2026, 5, 1), dt.date(2026, 5, 31))
+        self.assertEqual((d["report"], d["a_payer"]), (D(60), D(40)))
+        tva.liquider(dt.date(2026, 5, 1), dt.date(2026, 5, 31), self.u)
+        self.assertEqual(soldes(Ligne.objects.filter(compte_id="445670"))[2], D(0))
+
+    def test_page(self):
+        r = self.client.get("/tva/?debut=2026-03-01&fin=2026-03-31")
+        self.assertContains(r, "TVA à payer")
+        self.assertContains(r, "Passer l'écriture de liquidation")
+        self.client.post("/tva/", {"debut": "2026-03-01", "fin": "2026-03-31"})
+        self.assertTrue(Mouvement.objects.filter(commentaire__startswith="Liquidation de la TVA").exists())
+        Reglage.objects.filter(cle="compte_tva_a_payer").update(valeur="999999")
+        self.mvt(dt.date(2026, 4, 2), [("411TAIEB001", 120, 0), ("700000", 0, 100), ("445710", 0, 20)])
+        r = self.client.post("/tva/", {"debut": "2026-04-01", "fin": "2026-04-30"}, follow=True)
+        self.assertContains(r, "compte 999999")

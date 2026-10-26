@@ -16,6 +16,11 @@ REGLAGES = [
     ("carte_bancaire", "Nom de la carte de paiement réglée par la banque le mois suivant (passe par le compte de "
                        "virement interne) ; vide : pas de carte", "", "Isracard"),
     ("hebergeur_liens", "Site qui héberge des justificatifs gardés en lien (nom du site) ; vide : pas de lien", "", ""),
+    ("tva_collectee", "Préfixe des comptes de TVA collectée (page TVA)", "4457", "4457"),
+    ("tva_deductible", "Préfixe des comptes de TVA déductible (page TVA)", "4456", "4456"),
+    ("compte_tva_a_payer", "Compte de TVA à décaisser, crédité par la liquidation", "44551", "44551"),
+    ("compte_credit_tva", "Compte de crédit de TVA à reporter, débité par la liquidation", "44567", "44567"),
+    ("journal_tva", "Journal de l'écriture de liquidation de la TVA", "OD", "OD"),
     ("siren", "SIREN (9 chiffres) qui nomme le fichier des écritures comptables (FEC) ; vide : 000000000", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]

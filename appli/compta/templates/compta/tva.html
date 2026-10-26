@@ -1,0 +1,24 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}TVA{% endblock %}{% block contenu %}
+<h1>TVA</h1>
+<form class="filtres ecran" method="get"><label>Du <input type="date" name="debut" value="{{ d.debut|date:'Y-m-d' }}"></label>
+<label>au <input type="date" name="fin" value="{{ d.fin|date:'Y-m-d' }}"></label><button>Calculer</button></form>
+<p class="aide">Soldes des comptes de TVA au {{ d.fin|date:"d/m/Y" }} : une période non liquidée reste due à la suivante.
+La liquidation solde ces comptes et porte le net en TVA à décaisser ou en crédit à reporter (comptes et journal dans les réglages).</p>
+
+<section class="carte"><h2 style="margin-top:0">Déclaration</h2>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">Montant</th></tr>
+<tr><th colspan="3">TVA collectée</th></tr>
+{% for c, s in d.collectee %}<tr><td>{{ c.numero }}</td><td>{{ c.libelle }}</td><td class="n">{{ s|shekel }}</td></tr>{% empty %}<tr><td colspan="3">Aucune.</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total TVA collectée</td><td class="n">{{ d.total_collectee|shekel }}</td></tr>
+<tr><th colspan="3">TVA déductible</th></tr>
+{% for c, s in d.deductible %}<tr><td>{{ c.numero }}</td><td>{{ c.libelle }}</td><td class="n">{{ s|shekel }}</td></tr>{% empty %}<tr><td colspan="3">Aucune.</td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Total TVA déductible</td><td class="n">{{ d.total_deductible|shekel }}</td></tr>
+{% if d.report %}<tr><td colspan="2">Crédit de TVA reporté</td><td class="n">{{ d.report|shekel }}</td></tr>{% endif %}
+<tr class="total"><td colspan="2">{% if d.net >= 0 %}TVA à payer{% else %}Crédit de TVA à reporter{% endif %}</td>
+<td class="n">{% if d.net >= 0 %}{{ d.a_payer|shekel }}{% else %}{{ d.credit|shekel }}{% endif %}</td></tr></table>
+<p class="aide">Chiffre d'affaires de la période (comptes 70, hors taxes) : {{ d.chiffre_affaires|shekel }}</p>
+{% if d.a_liquider and perms.compta.add_mouvement %}<form method="post">{% csrf_token %}
+<input type="hidden" name="debut" value="{{ d.debut|date:'Y-m-d' }}"><input type="hidden" name="fin" value="{{ d.fin|date:'Y-m-d' }}">
+<button class="principal">Passer l'écriture de liquidation au {{ d.fin|date:"d/m/Y" }}</button></form>{% endif %}
+</section>
+{% endblock %}

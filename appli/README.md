@@ -129,6 +129,17 @@ sauvegarde automatique juste avant ; journalisé.
 - **Historique** : toutes les opérations faites dans l'application (qui,
   quand, quoi), recherche, export Excel ; repris dans l'archive de clôture.
 
+## TVA
+
+- **TVA** (menu Éditions) : pour une période (par défaut le mois précédent), TVA collectée (comptes 4457),
+  TVA déductible (4456, hors crédit à reporter), crédit reporté (44567), net à payer ou crédit, et chiffre
+  d'affaires HT de la période (comptes 70). Les soldes sont cumulés jusqu'à la fin de la période : une période
+  non liquidée reste due à la suivante.
+- **Liquidation** (droit de saisie) : un Mvt au dernier jour de la période qui solde ces comptes et porte le
+  net au compte 44551 (TVA à décaisser) ou 44567 (crédit à reporter) ; refusée dans un exercice clos.
+- Préfixes, comptes et journal (OD par défaut) dans les réglages : `tva_collectee`, `tva_deductible`,
+  `compte_tva_a_payer`, `compte_credit_tva`, `journal_tva`.
+
 ## États annuels et clôture (W4)
 
 - **États** (menu États, exercice au choix, N comparé à N-1) : compte de
