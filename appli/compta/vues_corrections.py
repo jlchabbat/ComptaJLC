@@ -54,8 +54,15 @@ def editer(request, m=None):
             formset = LignesMouvementFormSet(prefix="l", initial=[
                 {"id": l.pk, "compte": l.compte_id, "libelle": l.libelle, "debit": l.debit or None, "credit": l.credit or None} for l in m.lignes.all()])
         else:
-            entete = EnteteMouvementForm(initial={"date": dt.date.today()})
-            formset = LignesMouvementFormSet(prefix="l")
+            from .models import ModeleEcriture
+            modele = ModeleEcriture.objects.filter(pk=request.GET.get("modele") or 0).first() \
+                if (request.GET.get("modele") or "").isdigit() else None
+            entete = EnteteMouvementForm(initial={"date": dt.date.today(), "journal": modele.journal_id if modele else None})
+            if modele:                                    # écriture libre pré-remplie par un modèle d'écriture
+                from .abonnements import lignes_initiales
+                formset = LignesMouvementFormSet(prefix="l", initial=lignes_initiales(modele))
+            else:
+                formset = LignesMouvementFormSet(prefix="l")
     return render(request, "compta/mouvement_edition.html", {"m": m, "entete": entete, "formset": formset, "retour": retour})
 
 

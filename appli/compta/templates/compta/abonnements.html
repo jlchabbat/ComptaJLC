@@ -1,0 +1,27 @@
+{% extends "compta/base.html" %}{% load compta %}{% block titre %}Modèles et abonnements{% endblock %}{% block contenu %}
+<h1>Modèles d'écritures et abonnements</h1>
+<form method="post" class="carte barre">{% csrf_token %}
+<label>Générer les échéances jusqu'au <input type="date" name="jusquau" value="{{ aujourdhui|date:'Y-m-d' }}"></label>
+<button class="principal" name="generer" value="1">Générer les écritures échues</button></form>
+<p class="aide">Chaque échéance n'est générée qu'une fois (écriture libre tracée, libellé suivi du mois). Un modèle se crée depuis la fiche
+d'un mouvement (bouton « Enregistrer comme modèle ») ; il sert aussi à pré-remplir une écriture libre.</p>
+
+<section class="carte"><h2 style="margin-top:0">Abonnements</h2>
+<table><tr><th>Modèle</th><th>Journal</th><th>Périodicité</th><th class="n">Jour</th><th>Début</th><th>Fin</th><th>Dernière générée</th><th>Prochaine</th><th></th></tr>
+{% for a, prochaine in abonnements %}<tr{% if not a.actif %} class="aide"{% endif %}><td>{{ a.modele }}</td><td>{{ a.modele.journal_id }}</td><td>{{ a.get_periodicite_display }}</td>
+<td class="n">{{ a.jour }}</td><td>{{ a.debut|date:"d/m/Y" }}</td><td>{{ a.fin|date:"d/m/Y" }}</td><td>{{ a.derniere|date:"d/m/Y" }}</td>
+<td>{% if a.actif %}{{ prochaine|date:"d/m/Y"|default:"terminé" }}{% else %}suspendu{% endif %}</td>
+<td><form method="post" style="display:inline">{% csrf_token %}<button name="suspendre" value="{{ a.pk }}">{% if a.actif %}Suspendre{% else %}Reprendre{% endif %}</button>
+<button name="supprimer_abonnement" value="{{ a.pk }}" onclick="return confirm('Supprimer cet abonnement ? Les écritures déjà générées restent.')">Supprimer</button></form></td></tr>
+{% empty %}<tr><td colspan="9">Aucun abonnement.</td></tr>{% endfor %}</table>
+{% if modeles %}<form method="post" class="formulaire" style="margin-top:12px">{% csrf_token %}{{ form.as_p }}
+<button class="principal" name="ajouter" value="1">Ajouter l'abonnement</button></form>{% endif %}</section>
+
+<section class="carte"><h2 style="margin-top:0">Modèles d'écritures</h2>
+{% for m in modeles %}<h3>{{ m.nom }} <span class="aide">· journal {{ m.journal_id }}</span></h3>
+<table><tr><th>Compte</th><th>Libellé</th><th class="n">Débit</th><th class="n">Crédit</th></tr>
+{% for l in m.lignes.all %}<tr><td>{{ l.compte }}</td><td>{{ l.libelle }}</td><td class="n">{{ l.debit|zero_vide }}</td><td class="n">{{ l.credit|zero_vide }}</td></tr>{% endfor %}</table>
+<div class="barre"><a class="bouton" href="{% url 'mouvement_nouveau' %}?modele={{ m.pk|stringformat:'d' }}">Saisir une écriture avec ce modèle</a>
+<form method="post" style="display:inline">{% csrf_token %}<button name="supprimer_modele" value="{{ m.pk }}" onclick="return confirm('Supprimer le modèle ?')">Supprimer le modèle</button></form></div>
+{% empty %}<p>Aucun modèle : ouvrez un mouvement et cliquez sur « Enregistrer comme modèle ».</p>{% endfor %}</section>
+{% endblock %}

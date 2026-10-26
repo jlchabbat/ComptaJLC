@@ -547,3 +547,55 @@ class Tiers(models.Model):
     @property
     def adresse_complete(self):
         return ", ".join(x for x in (self.adresse, f"{self.code_postal} {self.ville}".strip()) if x)
+
+
+# ---------------------------------------------------------------- modèles d'écritures et abonnements
+
+class ModeleEcriture(models.Model):
+    """Écriture type (journal, lignes et montants facultatifs), créée depuis un Mvt existant ; base des abonnements."""
+
+    nom = models.CharField(max_length=60, unique=True)
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nom"]
+        verbose_name = "modèle d'écriture"
+        verbose_name_plural = "modèles d'écritures"
+
+    def __str__(self):
+        return self.nom
+
+
+class LigneModele(models.Model):
+    modele = models.ForeignKey(ModeleEcriture, on_delete=models.CASCADE, related_name="lignes")
+    ordre = models.PositiveSmallIntegerField(default=0)
+    compte = models.ForeignKey(Compte, on_delete=models.PROTECT)
+    libelle = models.CharField("libellé", max_length=200)
+    debit = models.DecimalField("débit", max_digits=14, decimal_places=2, default=ZERO)
+    credit = models.DecimalField("crédit", max_digits=14, decimal_places=2, default=ZERO)
+
+    class Meta:
+        ordering = ["modele", "ordre"]
+        verbose_name = "ligne de modèle"
+        verbose_name_plural = "lignes de modèle"
+
+
+class Abonnement(models.Model):
+    """Écriture répétée : le modèle est passé à chaque échéance (jour du mois, tous les 1, 3, 6 ou 12 mois)."""
+
+    PERIODES = [(1, "mensuelle"), (3, "trimestrielle"), (6, "semestrielle"), (12, "annuelle")]
+    modele = models.ForeignKey(ModeleEcriture, on_delete=models.PROTECT, related_name="abonnements")
+    periodicite = models.PositiveSmallIntegerField("périodicité", choices=PERIODES, default=1)
+    jour = models.PositiveSmallIntegerField(default=1, help_text="Jour du mois (31 = dernier jour du mois).")
+    debut = models.DateField("première échéance")
+    fin = models.DateField("dernière échéance", null=True, blank=True)
+    derniere = models.DateField("dernière écriture générée", null=True, blank=True)
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["modele__nom"]
+        verbose_name = "abonnement"
+
+    def __str__(self):
+        return f"{self.modele} ({self.get_periodicite_display()})"
