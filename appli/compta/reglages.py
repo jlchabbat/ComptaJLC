@@ -16,6 +16,7 @@ REGLAGES = [
     ("carte_bancaire", "Nom de la carte de paiement réglée par la banque le mois suivant (passe par le compte de "
                        "virement interne) ; vide : pas de carte", "", "Isracard"),
     ("hebergeur_liens", "Site qui héberge des justificatifs gardés en lien (nom du site) ; vide : pas de lien", "", ""),
+    ("siren", "SIREN (9 chiffres) qui nomme le fichier des écritures comptables (FEC) ; vide : 000000000", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]
 NEUTRES = {cle: neutre for cle, _, neutre, _ in REGLAGES}
