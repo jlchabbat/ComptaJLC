@@ -153,6 +153,12 @@ sauvegarde automatique juste avant ; journalisé.
 Administration › Imports et exports regroupe tout : données en Excel (import, ZIP complet, un fichier par nature),
 relevés bancaires, paramètres, états annuels, FEC et base de données.
 
+- **RImport.txt** (export « ##Transfert » d'un autre logiciel, latin-1, tabulations) : se dépose et s'importe comme un
+  fichier Excel, seul ou dans un ZIP, après le plan et les journaux. Les écritures passent par le moteur de
+  `Ecritures.xlsx` (Mvt déjà présents inchangés, comptes et codes Anal absents créés) ; les journaux absents sont créés
+  d'après la section Jnl (compte de banque à indiquer ensuite) et l'exercice de l'année si aucun ne couvre une date.
+  Les n° de Mvt du fichier sont gardés : un Mvt du site de même numéro serait remplacé.
+
 ## TVA
 
 - **TVA** (menu Éditions) : pour une période (par défaut le mois précédent), TVA collectée (comptes 4457),
