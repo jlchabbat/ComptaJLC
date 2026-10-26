@@ -411,3 +411,23 @@ header .qui .taille button { padding: 1px 7px; }
 .rap-tete h1 { font-size: 17px; }
 details.aide-bloc summary { font-size: 12.5px; }
 .sit-table { font-size: 12.5px; }
+
+/* Tableau croisé (TCD) : zones Lignes / Colonnes / Valeur / Période, filtres à cases, lignes imbriquées repliables */
+.tcd-zones { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+.tcd-zones fieldset { border: 1px solid var(--ligne); border-radius: 6px; padding: 3px 8px 6px; margin: 0; }
+.tcd-zones legend { font-size: 11.5px; color: #555; padding: 0 4px; }
+.tcd-boutons { display: flex; gap: 6px; }
+.tcd-filtres { margin-top: 8px; } .tcd-filtres > summary { cursor: pointer; color: var(--bleu); }
+.tcd-filtre { position: relative; } .tcd-filtre > summary { cursor: pointer; border: 1px solid var(--ligne); border-radius: 6px; padding: 2px 8px; background: #fff; }
+.tcd-cases { position: absolute; z-index: 40; background: #fff; border: 1px solid #b8c4d8; border-radius: 6px; padding: 6px 8px;
+  max-height: 50vh; overflow-y: auto; box-shadow: 0 4px 14px rgba(0,0,0,.15); white-space: nowrap; }
+.tcd-cases label { display: block; padding: 1px 0; }
+.tcd-cadre { overflow-x: auto; max-width: 100%; }
+table.tcd td:first-child, table.tcd th:first-child { position: sticky; left: 0; background: #fff; white-space: nowrap; z-index: 1; }
+table.tcd th:first-child { background: #e8edf5; }
+table.tcd th.n { white-space: nowrap; }
+table.tcd tr.tcd-groupe td { font-weight: 600; background: #f3f6fb; }
+table.tcd tr.tcd-groupe.tcd-n0 td { background: #e9eef7; }
+table.tcd td a { color: inherit; text-decoration: none; } table.tcd td a:hover { text-decoration: underline; }
+.tcd-bascule { cursor: pointer; display: inline-block; width: 1em; color: var(--bleu); }
+@media print { .tcd-cadre { overflow: visible; } .tcd-bascule { display: none; } }

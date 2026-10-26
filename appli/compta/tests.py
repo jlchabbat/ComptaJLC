@@ -1899,12 +1899,18 @@ class Echanges(TransactionTestCase):
         self.assertContains(self.importer("AxesComptes.xlsx"), "AxesComptes.xlsx importé (")
         from . import axes_comptes as ax
         self.assertEqual(ax.axes()[3:], ["RubDecl", "Groupe"])
-        t = ax.analyser(dt.date(2026, 1, 1), dt.date(2026, 12, 31), "Groupe", "RubDecl", {"Classe": ["6"]})
-        self.assertTrue(all(l["valeur"] in ("Verl", "Soco", "(sans)") for l in t["lignes"]))
-        r = self.client.get("/axes/?lignes=Groupe&colonnes=RubDecl")
-        self.assertContains(r, "Analyse par axes de comptes · Groupe")
-        self.assertContains(r, "· Par RubDecl</a>")                              # une page par axe dans le menu
-        self.assertContains(r, 'href="/axes/?lignes=Groupe" class="sous-axe actif"')
+        from . import tcd
+        enrs = tcd.enregistrements(dt.date(2026, 1, 1), dt.date(2026, 12, 31), "gestion")
+        t = tcd.tableau(enrs, ["Groupe", "Anal"], "RubDecl")                     # TCD : deux champs en lignes, un en colonnes
+        self.assertTrue({l["libelle"] for l in t["lignes"] if l["niveau"] == 0} <= {"Verl", "Soco", "(sans)"})
+        self.assertEqual(t["total"], sum((e["c"] - e["d"] for e in enrs), D(0)))
+        self.assertEqual(t["total"], sum(t["totaux"], D(0)))
+        r = self.client.get("/axes/?l1=Groupe&l2=Anal&col=RubDecl&du=2026-01-01&au=2026-12-31")
+        self.assertContains(r, "Tableau croisé (TCD)")
+        self.assertContains(r, 'href="/analytique/?axe=RubDecl" class="sous-axe">· Par RubDecl</a>')   # une page par axe
+        i = tcd.champs().index("Groupe")
+        r2 = self.client.get(f"/axes/?l1=Groupe&du=2026-01-01&au=2026-12-31&ecritures=1&k{i}=Verl")  # écritures d'une case
+        self.assertTrue(all(l.compte_id in ("600100", "700000") for l, _ in r2.context["lignes"]))
         self.assertIn("Anal", ax.axes())
         chemin, n = ech.exporter(ech.PAR_NOM["AxesComptes"])
         self.assertEqual((n, [c.value for c in openpyxl.load_workbook(chemin).active[1]]), (3, ["Compte", "RubDecl", "Groupe"]))

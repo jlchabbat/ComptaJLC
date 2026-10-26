@@ -7,6 +7,7 @@ RubDecl, Cat, Groupe…, valeurs portées par les comptes). Deux familles de com
 - bilan (classes 1 à 5) : débit, crédit et solde (débit − crédit) des mouvements de la période."""
 
 from collections import OrderedDict
+from urllib.parse import urlencode
 
 import openpyxl
 from django.contrib.auth.decorators import login_required, permission_required
@@ -204,21 +205,58 @@ def analytique_detail(request):
 @login_required
 @consulter
 def axes_comptes(request):
-    """Analyse par axes de comptes : axe en lignes, axe en colonnes, filtres, période."""
-    from . import axes_comptes as moteur
+    """Tableau croisé dynamique (TCD) : jusqu'à trois champs en lignes, un en colonnes, filtres, valeur, période ;
+    ?ecritures=1 liste les écritures d'une case (champs k_<n> = valeur)."""
+    from . import tcd
+    from .models import Ligne
     if request.method == "POST" and "supprimer_axe" in request.POST:
         return supprimer_axe(request, request.POST["supprimer_axe"])
     debut, fin = periode(request)
-    tous = moteur.axes()
-    ligne = request.GET.get("lignes") or (tous[3] if len(tous) > 3 else "Anal")
-    colonne = request.GET.get("colonnes", "")
-    mesure = request.GET.get("mesure", "solde") if request.GET.get("mesure") in ("solde", "debit", "credit") else "solde"
-    choix = moteur.choix_filtres()
-    filtres = {a: request.GET.getlist(f"f_{i}") for i, a in enumerate(choix)}
-    t = moteur.analyser(debut, fin, ligne, colonne if colonne != ligne else "", filtres, mesure)
+    tous = tcd.champs()
+    type_comptes = request.GET.get("type") if request.GET.get("type") in tcd.TYPES else "gestion"
+    valeur = request.GET.get("valeur") if request.GET.get("valeur") in tcd.VALEURS else (
+        "resultat" if type_comptes == "gestion" else "solde")
+    lignes = [x for x in (request.GET.get(f"l{i}", "") for i in (1, 2, 3)) if x in tous]
+    lignes = list(OrderedDict.fromkeys(lignes)) or ["Anal"]
+    colonne = request.GET.get("col", "") if request.GET.get("col", "") in tous and request.GET.get("col") not in lignes else ""
+    enrs = tcd.enregistrements(debut, fin, type_comptes)
+    choix = tcd.valeurs_des_champs(enrs)
+    filtres = {ch: request.GET.getlist(f"f{i}") for i, ch in enumerate(tous)}
+    gardes = tcd.filtrer(enrs, filtres)
+    if request.GET.get("ecritures"):                       # écritures d'une case du tableau
+        criteres = {ch: request.GET[f"k{i}"] for i, ch in enumerate(tous) if f"k{i}" in request.GET}
+        cles = {(e["compte"], e["Journal"], e["Mois"]) for e in gardes if all(e[ch] == v for ch, v in criteres.items())}
+        q = Q(pk__in=[])
+        for compte, journal, mois in cles:
+            a, m = map(int, mois.split("-"))
+            q |= Q(compte_id=compte, mouvement__journal_id=journal, mouvement__date__year=a, mouvement__date__month=m)
+        qs = (Ligne.objects.filter(q, mouvement__date__range=(debut, fin)).select_related("mouvement", "compte")
+              .order_by("mouvement__date", "mouvement__numero", "ordre"))
+        calcul = tcd.VALEURS[valeur][1]
+        lignes_ecr = [(l, calcul(l.debit, l.credit)) for l in qs]
+        return render(request, "compta/tcd_ecritures.html", {
+            "debut": debut, "fin": fin, "criteres": criteres, "lignes": lignes_ecr, "titre_valeur": tcd.VALEURS[valeur][0],
+            "total": sum((m for _, m in lignes_ecr), ZERO), "retour": request.GET.get("retour", "")})
+    t = tcd.tableau(gardes, lignes, colonne, valeur)
+    if request.GET.get("format") == "xlsx":
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+        rangs = [["    " * l["niveau"] + l["libelle"], *l["cellules"], l["total"]] for l in t["lignes"]]
+        rangs.append(["Total", *t["totaux"], t["total"]])
+        n = len(t["colonnes"])
+        feuille(wb, "TCD", [" / ".join(lignes) + (f" × {colonne}" if colonne else ""), *t["colonnes"], "Total"], rangs,
+                tuple(range(2, n + 3)))
+        return reponse_excel(wb, f"TCD_{'_'.join(lignes)}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx")
+    rang = {ch: i for i, ch in enumerate(tous)}
+    for l in t["lignes"]:                                  # lien vers les écritures de la ligne
+        l["cles"] = urlencode({f"k{rang[ch]}": v for ch, v in zip(lignes, l["chemin"])})
+        l["cases"] = [(m, l["cles"] + "&" + urlencode({f"k{rang[colonne]}": c})) for m, c in zip(l["cellules"], t["colonnes"])]
     return render(request, "compta/axes_comptes.html", {
-        "debut": debut, "fin": fin, "axes": tous, "integres": moteur.INTEGRES, "ligne": ligne, "colonne": colonne, "mesure": mesure, "t": t,
-        "filtres": [(i, a, vals, filtres.get(a, [])) for i, (a, vals) in enumerate(choix.items())]})
+        "debut": debut, "fin": fin, "champs": tous, "lignes_choisies": lignes + [""] * (3 - len(lignes)), "colonne": colonne,
+        "titre_lignes": " › ".join(lignes), "valeur": valeur, "valeurs": tcd.VALEURS, "type": type_comptes, "types": tcd.TYPES,
+        "t": t, "axes_plan": [ch for ch in tous[1:] if ch not in tcd.AUTRES],
+        "filtres": [(i, ch, choix[ch], filtres.get(ch, [])) for i, ch in enumerate(tous)],
+        "nb_filtres": sum(1 for v in filtres.values() if v), "requete": request.GET.urlencode()})
 
 
 def supprimer_axe(request, nom):

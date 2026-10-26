@@ -103,7 +103,7 @@ pour chacun Administration ou Gestion. Chacun ne voit que les menus de son mode.
 <table><tr><th style="width:18%">Menu</th><th>Pages</th></tr>
 <tr><td>Saisie</td><td>Saisie guidée · Écriture libre · Modifier une écriture · Justificatifs (dépôt et classement) · Plan comptable · Codes Anal · Codes et nouveaux tiers</td></tr>
 <tr><td>Tiers</td><td>Liste des tiers</td></tr>
-<tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Analyse par axes de comptes · Analytique (par axe)</td></tr>
+<tr><td>Consulter</td><td>Tableau de bord · Écritures · Journaux (banque, caisse…) · Grand livre · Balance · Tableau croisé (TCD) · Analytique (par axe)</td></tr>
 <tr><td>Banque</td><td>Relevés à passer en compta · Historique des imports · Traductions du relevé (si les traductions sont activées)</td></tr>
 <tr><td>Contrôle</td><td>Contrôles · Historique</td></tr>
 <tr><td>Éditions</td><td>Situation financière · État détaillé par axe · États annuels et budget · Clôture de l'exercice · Exporter des données (Excel) · Présentation (PDF) · Mode d'emploi (PDF)</td></tr>
@@ -272,9 +272,12 @@ une colonne du plan : RubDecl, RubCh…), au choix sur les comptes de <b>gestion
 ou de <b>bilan</b> (1 à 5 : débit, crédit, solde), avec totaux. Un clic sur un code ouvre le détail : sous-totaux par compte puis écritures,
 un code par page à l'impression. Excel et Imprimer / PDF en haut.</p>
 <figure><img src="images/21_analytique.png"><figcaption>Analytique par code Anal.</figcaption></figure>
-<h2>Analyse par axes de comptes</h2>
-<p><span class="menu">Consulter › Analyse par axes de comptes</span> : regroupements libres des comptes (rubriques, catégories…) au choix, une colonne par regroupement ;
-ils s'importent par le fichier AxesComptes.xlsx. Sans intérêt si le seul axe Anal vous suffit.</p>
+<h2>Tableau croisé (TCD)</h2>
+<p><span class="menu">Consulter › Tableau croisé (TCD)</span> : comme un tableau croisé dynamique d'Excel. Jusqu'à trois champs en
+<b>lignes</b> (imbriqués, avec sous-totaux, ▸ / ▾ pour replier), un champ en <b>colonnes</b>, la <b>valeur</b> (résultat
+crédit − débit, solde, débits ou crédits) et le type de comptes (gestion, bilan ou tous). Champs : Anal, les axes du plan
+(RubDecl, RubCh…, importés par AxesComptes.xlsx), Compte, Journal et Mois. <b>Filtres</b> : cocher les valeurs à garder
+sur chaque champ. Un clic sur un montant liste ses écritures ; bouton Excel pour exporter le tableau.</p>
 
 <!-- 8 -->
 <h1 id="c8">8. Banque : relevés à passer en comptabilité</h1>
