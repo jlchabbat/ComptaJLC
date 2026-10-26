@@ -1,0 +1,5 @@
+<details class="tcd-filtre ana-valeurs"><summary><b>{{ axe }}</b> : {% if choix %}{{ choix|length }} valeur{{ choix|length|pluralize }} cochée{{ choix|length|pluralize }}{% else %}toutes les valeurs{% endif %}</summary>
+<div class="tcd-cases"><input type="search" placeholder="Taper une partie du libellé…" oninput="var t = this.value.toLowerCase(); this.parentNode.querySelectorAll('label[data-texte]').forEach(function (l) { l.hidden = t && l.dataset.texte.indexOf(t) < 0; })">
+<label><input type="checkbox" onclick="this.closest('.tcd-cases').querySelectorAll('input[name=code]').forEach(function (x) { x.checked = false; }); this.checked = false"> <i>tout décocher (toutes les valeurs)</i></label>
+{% for c, lib in codes %}<label data-texte="{{ c|lower }} {{ lib|lower }}"><input type="checkbox" name="code" value="{{ c }}" {% if c in choix %}checked{% endif %}> {% if lib %}{{ lib }} ({{ c }}){% else %}{{ c }}{% endif %}</label>{% endfor %}
+<label data-texte="{{ sans_code }}"><input type="checkbox" name="code" value="{{ sans_code }}" {% if sans_code in choix %}checked{% endif %}> {{ sans_code }}</label></div></details>

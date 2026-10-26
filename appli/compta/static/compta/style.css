@@ -431,3 +431,4 @@ table.tcd tr.tcd-groupe.tcd-n0 td { background: #e9eef7; }
 table.tcd td a { color: inherit; text-decoration: none; } table.tcd td a:hover { text-decoration: underline; }
 .tcd-bascule { cursor: pointer; display: inline-block; width: 1em; color: var(--bleu); }
 @media print { .tcd-cadre { overflow: visible; } .tcd-bascule { display: none; } }
+.ana-valeurs .tcd-cases input[type=search] { width: 100%; margin-bottom: 4px; }

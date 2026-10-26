@@ -2448,7 +2448,7 @@ class RapportsAnalytiques(TestCase):
         self.assertContains(r, "<h1>Analytique – Anal</h1>")
         self.assertContains(r, "/analytique/detail/?axe=Anal&amp;comptes=gestion&amp;code=COT.2")
         self.assertNotContains(r, "axe 2")
-        self.assertContains(r, '<option value="COT.2">COTISATIONS (COT.2)</option>')             # choix par le libellé
+        self.assertContains(r, '<input type="checkbox" name="code" value="COT.2" > COTISATIONS (COT.2)')  # choix par le libellé
         x = self.client.get("/analytique/?du=2026-01-01&au=2026-12-31&format=xlsx")
         wb = openpyxl.load_workbook(io.BytesIO(x.content))
         self.assertEqual(wb.sheetnames, ["Anal"])
@@ -2460,6 +2460,19 @@ class RapportsAnalytiques(TestCase):
         self.assertEqual({l["code"]: l["s"] for l in a["lignes"]}, {"BIL.4": D(400), "BIL.5": D(-200)})
         self.assertContains(r, "Solde")
         self.assertNotContains(r, "Résultat")
+
+    def test_selection_de_plusieurs_valeurs(self):
+        r = self.client.get("/analytique/?code=COT.2&code=FON.1&du=2026-01-01&au=2026-12-31")
+        a = r.context["a"]
+        self.assertEqual([l["code"] for l in a["lignes"]], ["COT.2", "FON.1"])
+        self.assertEqual(a["total"]["s"], D(250))
+        self.assertContains(r, "2 valeurs cochées")
+        self.assertContains(r, 'value="FON.1" checked')
+        self.assertContains(r, "code=COT.2&amp;code=FON.1&amp;du=2026-01-01&amp;au=2026-12-31&amp;format=xlsx")
+        d = self.client.get("/analytique/detail/?code=COT.2&code=(sans code)&du=2026-01-01&au=2026-12-31")
+        self.assertEqual([s["code"] for s in d.context["sections"]], ["(sans code)", "COT.2"])
+        x = self.client.get("/analytique/detail/?code=COT.2&code=FON.1&du=2026-01-01&au=2026-12-31&format=xlsx")
+        self.assertIn("2-valeurs", x["Content-Disposition"])
 
     def test_detail_par_code(self):
         r = self.client.get("/analytique/detail/?code=FON.1&du=2026-01-01&au=2026-12-31")
@@ -2481,7 +2494,7 @@ class RapportsAnalytiques(TestCase):
         self.assertIn("Sous-total 600000", valeurs)
         self.assertEqual(s["nb_mouvements"], 1)
         self.assertContains(r, "Sous-total 600000")
-        self.assertContains(r, 'data-cherchable')
+        self.assertContains(r, 'placeholder="Taper une partie du libellé…"')
 
 
 # ---------------------------------------------------------------- Excel et PDF sur toutes les pages

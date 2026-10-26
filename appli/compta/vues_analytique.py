@@ -81,13 +81,20 @@ def _total(lignes):
     return {"a": a, "b": b, "s": a - b}
 
 
-def synthese(debut, fin, nature, axe=TITRE):
+def codes_choisis(request):
+    """Valeurs cochées de l'axe (aucune = toutes)."""
+    return [c for c in request.GET.getlist("code") if c]
+
+
+def synthese(debut, fin, nature, axe=TITRE, choix=None):
     rows = (lignes_periode(debut, fin).filter(filtre_classes(nature))
             .values("compte__numero").annotate(d=Sum("debit"), c=Sum("credit")))
     par_compte = codes_des_comptes(axe)
     codes = OrderedDict()
     for r in sorted(rows, key=lambda r: (r["compte__numero"] in par_compte, par_compte.get(r["compte__numero"], ("",))[0])):
         code, libelle = par_compte.get(r["compte__numero"], (SANS_CODE, ""))
+        if choix and code not in choix:
+            continue
         x = codes.setdefault(code, {"code": code, "libelle": libelle or "", "a": ZERO, "b": ZERO})
         a, b = montants(nature, r["compte__numero"], r["d"] or ZERO, r["c"] or ZERO)
         x["a"] += a
@@ -99,15 +106,18 @@ def synthese(debut, fin, nature, axe=TITRE):
 
 
 def detail(debut, fin, nature, code=None, axe=TITRE):
-    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], ecritures: [...], total}] par valeur de l'axe."""
+    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], ecritures: [...], total}] par valeur de l'axe ; code : une
+    valeur, une liste de valeurs ou rien (toutes)."""
     par_compte = codes_des_comptes(axe)
+    choix = [code] if isinstance(code, str) else list(code or [])
     qs = (lignes_periode(debut, fin).filter(filtre_classes(nature))
           .select_related("mouvement", "compte")
           .order_by("mouvement__date", "mouvement__numero", "ordre"))
-    if code == SANS_CODE:
-        qs = qs.exclude(compte_id__in=list(par_compte))
-    elif code:
-        qs = qs.filter(compte_id__in=[c for c, (v, _) in par_compte.items() if v == code])
+    if choix:
+        q = Q(compte_id__in=[c for c, (v, _) in par_compte.items() if v in choix])
+        if SANS_CODE in choix:
+            q |= ~Q(compte_id__in=list(par_compte))
+        qs = qs.filter(q)
     sections = OrderedDict()
     for l in qs:
         cle, libelle = par_compte.get(l.compte_id, (SANS_CODE, ""))
@@ -130,9 +140,11 @@ def detail(debut, fin, nature, code=None, axe=TITRE):
     return res
 
 
-def _contexte(debut, fin, nature, axe=TITRE):
+def _contexte(debut, fin, nature, axe=TITRE, choix=()):
     n = NATURES[nature]
-    return {"debut": debut, "fin": fin, "nature": nature, "natures": NATURES, "titre_nature": n["titre"],
+    params = urlencode([("axe", axe), ("comptes", nature)] + [("code", c) for c in choix]
+                       + [("du", f"{debut:%Y-%m-%d}"), ("au", f"{fin:%Y-%m-%d}")])
+    return {"choix": list(choix), "params": params, "sans_code": SANS_CODE, "debut": debut, "fin": fin, "nature": nature, "natures": NATURES, "titre_nature": n["titre"],
             "axe": axe, "axes": axes_proposes(), "codes": codes_du_choix(axe),
             "col_a": n["colonnes"][0], "col_b": n["colonnes"][1], "col_s": n["colonnes"][2],
             "periode_texte": f"du {debut:%d/%m/%Y} au {fin:%d/%m/%Y}"}
@@ -142,9 +154,9 @@ def _contexte(debut, fin, nature, axe=TITRE):
 @consulter
 def analytique(request):
     debut, fin = periode(request)
-    nature, axe = nature_choisie(request), axe_choisi(request)
-    a = synthese(debut, fin, nature, axe)
-    ctx = _contexte(debut, fin, nature, axe)
+    nature, axe, choix = nature_choisie(request), axe_choisi(request), codes_choisis(request)
+    a = synthese(debut, fin, nature, axe, choix)
+    ctx = _contexte(debut, fin, nature, axe, choix)
     if request.GET.get("format") == "xlsx":
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
@@ -190,15 +202,16 @@ def classeur_detail(sections, ctx):
 @consulter
 def analytique_detail(request):
     debut, fin = periode(request)
-    nature, axe = nature_choisie(request), axe_choisi(request)
-    code = request.GET.get("code") or None
-    sections = detail(debut, fin, nature, code, axe)
-    ctx = _contexte(debut, fin, nature, axe)
+    nature, axe, choix = nature_choisie(request), axe_choisi(request), codes_choisis(request)
+    sections = detail(debut, fin, nature, choix, axe)
+    ctx = _contexte(debut, fin, nature, axe, choix)
+    code = choix[0] if len(choix) == 1 else ""
     if request.GET.get("format") == "xlsx":
-        nom = f"Analytique_{nature}_{axe}_{(code or 'tous').replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
+        quoi = code or (f"{len(choix)}-valeurs" if choix else "tous")
+        nom = f"Analytique_{nature}_{axe}_{quoi.replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
         return classeur_detail(sections, ctx).reponse(nom)
     return render(request, "compta/analytique_detail.html", {
-        **ctx, "titre_axe": axe, "code": code or "", "sections": sections, "sans_code": SANS_CODE,
+        **ctx, "titre_axe": axe, "code": code, "sections": sections,
         "total": _total([{"a": s["total"]["a"], "b": s["total"]["b"]} for s in sections])})
 
 
