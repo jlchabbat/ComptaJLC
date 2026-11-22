@@ -45,7 +45,9 @@
 
 <ul><li>Un fichier <b>Ecritures, Banque ou Budget</b> remplace <b>toutes</b> les données de sa nature (ce qui n'est plus
 dans le fichier est supprimé).</li>
-<li>Les <b>référentiels</b> sont mis à jour, jamais supprimés ; tout ou rien, sauvegarde avant.</li></ul>
+<li>Les <b>référentiels</b> sont mis à jour, jamais supprimés ; tout ou rien, sauvegarde avant.</li>
+<li>Avec un <b>Plan.xlsx</b> (plan d'un autre logiciel), le plan fait foi : comptes inutilisés, codes Anal et axes absents du plan
+sont supprimés ; sa feuille Journ crée les journaux absents. Remise à zéro type : Plan.xlsx + Ecritures.xlsx (avec ou sans code Anal).</li></ul>
 <form method="post" id="f-reinjecter">{% csrf_token %}<label>Taper REMPLACER pour confirmer <input name="confirmation" autocomplete="off"></label></form></details>
 
 <h2 id="exporter">Un seul fichier</h2>

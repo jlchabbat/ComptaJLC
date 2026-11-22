@@ -1794,6 +1794,65 @@ class Echanges(TransactionTestCase):
         (ech.imports() / "Ecrt.csv").write_text(texte, encoding="utf-8")
         self.assertIn("1 doublon(s) écarté(s)", ech.importer("Ecrt.csv")[1])
 
+    def test_plan_xlsx_complet(self):
+        """Plan.xlsx d'un autre logiciel : comptes, codes Anal, une colonne par axe, feuille Journ ; TVA selon le plan."""
+        from .models import AxeCompte, ValeurCompte
+        from . import tva
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Plan"
+        ws.append(["Compte", "LibelCompte", "Anal", "LibelAnal", "RubDecl", "Journ", "Groupe", "TvaNonImposable"])
+        ws.append([530999, "CAISSE EUROS", "0BILAN", "BILAN", None, "CZ", None, None])
+        ws.append(["706060", "LOYERS ENCAISSES", "1S16", "SOCO16 IMMO", "I-01-Loyers", None, "Soco", 1])
+        j = wb.create_sheet("Journ")
+        j.append(["Journ", "Dev", "Intitulé"])
+        j.append(["CZ", "€", "CAISSE EUROS"])
+        j.append(["OZ", "€", "OD DIVERSES"])
+        wb.save(ech.imports() / "Plan.xlsx")
+        self.assertEqual(ech.format_de(ech.imports() / "Plan.xlsx").nom, "Plan")
+        f, compte_rendu = ech.importer("Plan.xlsx")
+        self.assertIn("2 compte(s) créé(s)", compte_rendu)
+        self.assertIn("2 journal(aux) créé(s)", compte_rendu)
+        self.assertEqual(Compte.objects.get(numero="706060").anal1.libelle, "SOCO16 IMMO")
+        self.assertEqual(dict(ValeurCompte.objects.filter(compte_id="706060").values_list("axe__nom", "valeur")),
+                         {"LibelAnal": "SOCO16 IMMO", "RubDecl": "I-01-Loyers", "Groupe": "Soco", "TvaNonImposable": "1"})
+        self.assertEqual((Journal.objects.get(code="CZ").type, Journal.objects.get(code="CZ").compte_id), ("BQ", "530999"))
+        self.assertEqual(Journal.objects.get(code="OZ").type, "OD")
+        self.assertIn("Groupe", AxeCompte.objects.values_list("nom", flat=True))
+        m = Mouvement.objects.create(numero=9100, date=dt.date(2026, 5, 1), journal_id="CZ")
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="530999", libelle="LOYER", debit=D(700))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="706060", libelle="LOYER", credit=D(700))
+        (titre, lignes, total), = tva.operations(dt.date(2026, 1, 1), dt.date(2026, 12, 31))
+        self.assertEqual((titre, total), ("Opérations non imposables", D(700)))
+        ws["G3"] = None                                                 # valeur effacée dans le plan : effacée du site
+        ws["B3"] = "LOYERS"
+        wb.save(ech.imports() / "Plan.xlsx")
+        compte_rendu = ech.importer("Plan.xlsx")[1]
+        self.assertIn("1 compte(s) mis à jour", compte_rendu)
+        self.assertFalse(ValeurCompte.objects.filter(compte_id="706060", axe__nom="Groupe").exists())
+
+    def test_reinjecter_plan_et_ecritures_courtes(self):
+        """Remise à zéro par Tout réinjecter : Plan.xlsx fait foi, Ecritures sans code Anal remplace les écritures."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Plan"
+        ws.append(["Compte", "LibelCompte", "Anal", "LibelAnal", "RubDecl"])
+        ws.append(["512000", "BANQUE", "BIL.5", "TRESORERIE", None])
+        ws.append(["706000", "LOYERS", "1S16", "SOCO16 IMMO", "I-01"])
+        wb.save(ech.imports() / "Plan.xlsx")
+        e = openpyxl.Workbook()
+        e.active.append(["Mvt", "Jnl", "Date", "Compte", "Libelle", "Debit", "Credit", "Let"])
+        e.active.append([1, "B1", dt.date(2026, 3, 1), "512000", "LOYER", 500, None, None])
+        e.active.append([1, "B1", dt.date(2026, 3, 1), "706000", "LOYER", None, 500, None])
+        e.save(ech.imports() / "Ecritures.xlsx")
+        self.assertEqual(ech.format_de(ech.imports() / "Ecritures.xlsx").nom, "EcrituresCourtes")
+        Compte.objects.create(numero="699999", libelle="ANCIEN")                    # absent du plan, inutilisé
+        comptes_rendus, _ = ech.reinjecter()
+        self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [1])
+        self.assertEqual(Compte.objects.get(numero="706000").anal1_id, "1S16")
+        self.assertFalse(Compte.objects.filter(numero="699999").exists())
+        self.assertTrue(any("Hors du plan" in x for x in comptes_rendus))
+
     def test_rimport_txt(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .models import ZERO
