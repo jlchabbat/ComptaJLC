@@ -23,6 +23,10 @@ REGLAGES = [
     ("journal_tva", "Journal de l'écriture de liquidation de la TVA", "OD", "OD"),
     ("comptes_releves", "Journal de chaque compte des relevés de banque (n° de compte, 4 chiffres de carte, REVOLUT EUR…), "
                         "ex. « 00010982741=B1, 5524=I1, REVOLUT EUR=R1 »", "", ""),
+    ("axe_tva_imposable", "Axe du plan qui marque les comptes d'opérations imposables à la TVA (page TVA)", "TvaImposable",
+     "TvaImposable"),
+    ("axe_tva_non_imposable", "Axe du plan qui marque les comptes d'opérations non imposables à la TVA (page TVA)",
+     "TvaNonImposable", "TvaNonImposable"),
     ("siren", "SIREN (9 chiffres) qui nomme le fichier des écritures comptables (FEC) ; vide : 000000000", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]
