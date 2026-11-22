@@ -2463,6 +2463,25 @@ class RapportsAnalytiques(TestCase):
         self.assertContains(r, "Solde")
         self.assertNotContains(r, "Résultat")
 
+    def test_etat_detaille_sur_deux_axes(self):
+        from .models import AxeCompte, ValeurCompte
+        rub = AxeCompte.objects.create(nom="RubDecl")
+        for compte in ("600000", "630000", "710000"):
+            ValeurCompte.objects.create(compte_id=compte, axe=rub, valeur="R1")
+        r = self.client.get("/analytique/detail/?axe=RubDecl&axe2=Anal&du=2026-01-01&au=2026-12-31")
+        (s,) = r.context["sections"]
+        self.assertEqual([(g["code"], g["total"]["s"]) for g in s["groupes"]],
+                         [("COT.2", D(400)), ("FON.1", D(-150)), ("(sans code)", D(-50))])
+        self.assertEqual(s["total"]["s"], D(200))
+        self.assertContains(r, "Sous-total Anal FON.1")
+        self.assertContains(r, "État détaillé – RubDecl puis Anal")
+        self.assertContains(r, '<option selected>Anal</option>')
+        x = self.client.get("/analytique/detail/?axe=RubDecl&axe2=Anal&du=2026-01-01&au=2026-12-31&format=xlsx")
+        ws = openpyxl.load_workbook(io.BytesIO(x.content)).active
+        valeurs = [c.value for row in ws.iter_rows() for c in row if c.value is not None]
+        self.assertIn("Sous-total Anal COT.2", valeurs)
+        self.assertEqual(self.client.get("/analytique/detail/?axe=Anal&axe2=Anal").context["axe2"], "")   # pas deux fois
+
     def test_selection_de_plusieurs_valeurs(self):
         r = self.client.get("/analytique/?code=COT.2&code=FON.1&du=2026-01-01&au=2026-12-31")
         a = r.context["a"]

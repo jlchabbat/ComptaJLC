@@ -6,17 +6,19 @@
 <form class="filtres" method="get">
 <label><b>Axe</b> <select name="axe" onchange="this.form.querySelectorAll('input[name=code]').forEach(function (x) { x.checked = false; }); this.form.submit()">{% for x in axes %}<option {% if x == axe %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
 {% include "compta/_choix_valeurs.html" %}
+<label><b>puis par</b> <select name="axe2"><option value="">—</option>{% for x in axes %}{% if x != axe %}<option {% if x == axe2 %}selected{% endif %}>{{ x }}</option>{% endif %}{% endfor %}</select></label>
 <label>Type de comptes <select name="comptes">{% for cle, n in natures.items %}<option value="{{ cle }}" {% if cle == nature %}selected{% endif %}>{{ n.titre }}</option>{% endfor %}</select></label>
 <label>Du <input type="date" name="du" value="{{ debut|date:'Y-m-d' }}"></label><label>Au <input type="date" name="au" value="{{ fin|date:'Y-m-d' }}"></label>
 <button class="principal">Afficher</button></form>
-<p class="aide">Choisir l'axe (Anal ou une colonne du plan), puis cocher une ou plusieurs valeurs (taper une partie du libellé pour les trouver). Pour le PDF : « PDF / Imprimer », imprimante
+<p class="aide">Choisir l'axe (Anal ou une colonne du plan) et, si besoin, un second axe « puis par » (ex. RubDecl puis Anal) : chaque valeur est détaillée par valeur du second axe, avec sous-totaux. Cocher une ou plusieurs valeurs (taper une partie du libellé pour les trouver). Pour le PDF : « PDF / Imprimer », imprimante
 « Enregistrer au format PDF », et cocher « Graphiques d'arrière-plan » dans « Plus de paramètres ».</p></div>
 
-{% if sections|length > 1 %}<article class="situation">
+{% if sections|length > 1 or axe2 and sections %}<article class="situation">
 <div class="sit-entete"><div><div class="sit-titre">État détaillé – {{ titre_axe }}</div><div class="sit-asso">Récapitulatif de tous les codes · {{ titre_nature }}</div></div>
 <div class="sit-periode">Période {{ periode_texte }}</div></div>
-<table class="sit-table"><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
-{% for s in sections %}<tr><td><a href="#code-{{ forloop.counter }}">{{ s.code }}</a></td><td>{{ s.libelle }}</td><td class="n">{{ s.total.a|zero_vide }}</td><td class="n">{{ s.total.b|zero_vide }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}"><b>{{ s.total.s|shekel }}</b></td></tr>{% endfor %}
+<table class="sit-table"{% if axe2 %} data-tri="non" data-filtre="non"{% endif %}><tr><th>Code</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th><th class="n">{{ col_s }}</th></tr>
+{% for s in sections %}<tr><td><a href="#code-{{ forloop.counter }}">{{ s.code }}</a></td><td>{{ s.libelle }}</td><td class="n">{{ s.total.a|zero_vide }}</td><td class="n">{{ s.total.b|zero_vide }}</td><td class="n {% if s.total.s < 0 %}neg{% endif %}"><b>{{ s.total.s|shekel }}</b></td></tr>
+{% if axe2 %}{% for g in s.groupes %}<tr class="sous-axe2"><td>&emsp;{{ g.code }}</td><td>{{ g.libelle }}</td><td class="n">{{ g.total.a|zero_vide }}</td><td class="n">{{ g.total.b|zero_vide }}</td><td class="n {% if g.total.s < 0 %}neg{% endif %}">{{ g.total.s|shekel }}</td></tr>{% endfor %}{% endif %}{% endfor %}
 <tr class="total"><td colspan="2">Total</td><td class="n">{{ total.a|shekel }}</td><td class="n">{{ total.b|shekel }}</td><td class="n {% if total.s < 0 %}neg{% endif %}">{{ total.s|shekel }}</td></tr></table>
 </article>{% endif %}
 
@@ -30,12 +32,14 @@
 <div class="sit-cle"><div class="lib">Opérations</div><div class="val">{{ s.nb_mouvements }}</div><div class="note">{{ s.ecritures|length }} ligne{{ s.ecritures|length|pluralize }}</div></div>
 </section>
 
-<section class="sit-bloc"><h2>Détail par compte</h2>
+<section class="sit-bloc"><h2>Détail par {% if axe2 %}{{ axe2 }} puis par {% endif %}compte</h2>
 <table class="sit-table"><tr><th>Date</th><th>Mvt</th><th>Libellé</th><th class="n">{{ col_a }}</th><th class="n">{{ col_b }}</th></tr>
-{% for x in s.comptes %}<tr class="sit-compte"><td colspan="5"><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a> – {{ x.libelle }}</td></tr>
+{% for g in s.groupes %}{% if axe2 %}<tr class="sit-groupe"><td colspan="5"><b>{{ axe2 }} {{ g.code }}{% if g.libelle %} – {{ g.libelle }}{% endif %}</b></td></tr>{% endif %}
+{% for x in g.comptes %}<tr class="sit-compte"><td colspan="5"><a href="{% url 'grand_livre' %}?compte={{ x.numero }}&amp;du={{ debut|date:'Y-m-d' }}&amp;au={{ fin|date:'Y-m-d' }}">{{ x.numero }}</a> – {{ x.libelle }}</td></tr>
 {% for e in x.ecritures %}<tr><td>{{ e.ligne.mouvement.date|date:"d/m/Y" }}</td><td><a href="{% url 'mouvement' e.ligne.mouvement.numero %}">{{ e.ligne.mouvement.numero }}</a></td><td>{{ e.ligne.libelle }}</td><td class="n">{{ e.a|zero_vide }}</td><td class="n">{{ e.b|zero_vide }}</td></tr>{% endfor %}
-<tr class="sit-sous-total"><td colspan="4">Sous-total {{ x.numero }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td></tr>{% endfor %}
-<tr class="total"><td colspan="4">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} {{ devise }}</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
+<tr class="sit-sous-total"><td colspan="3">Sous-total {{ x.numero }}</td><td class="n">{{ x.a|zero_vide }}</td><td class="n">{{ x.b|zero_vide }}</td></tr>{% endfor %}
+{% if axe2 %}<tr class="sit-sous-total sit-sous-total-axe2"><td colspan="3">Sous-total {{ axe2 }} {{ g.code }} · {{ col_s|lower }} {{ g.total.s|shekel }}</td><td class="n">{{ g.total.a|zero_vide }}</td><td class="n">{{ g.total.b|zero_vide }}</td></tr>{% endif %}{% endfor %}
+<tr class="total"><td colspan="3">Total {{ s.code }} · {{ col_s|lower }} {{ s.total.s|shekel }} {{ devise }}</td><td class="n">{{ s.total.a|shekel }}</td><td class="n">{{ s.total.b|shekel }}</td></tr></table></section>
 </article>
 {% empty %}<p>Aucune opération sur la période.</p>{% endfor %}
 {% endblock %}

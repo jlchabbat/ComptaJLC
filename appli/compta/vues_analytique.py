@@ -106,10 +106,18 @@ def synthese(debut, fin, nature, axe=TITRE, choix=None):
     return {"titre": axe, "lignes": lignes, "total": _total(lignes)}
 
 
-def detail(debut, fin, nature, code=None, axe=TITRE):
-    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], ecritures: [...], total}] par valeur de l'axe ; code : une
-    valeur, une liste de valeurs ou rien (toutes)."""
+def axe2_choisi(request, axe):
+    """Second axe de l'état détaillé (sous-niveau), différent du premier ; vide = aucun."""
+    axe2 = request.GET.get("axe2") or ""
+    return axe2 if axe2 != axe and axe2 in axes_proposes() else ""
+
+
+def detail(debut, fin, nature, code=None, axe=TITRE, axe2=""):
+    """[{code, libelle, comptes: [{numero, libelle, a, b, s}], groupes, ecritures: [...], total}] par valeur de l'axe ;
+    code : une valeur, une liste de valeurs ou rien (toutes). groupes : les comptes regroupés par valeur du second axe
+    (axe2), avec sous-totaux ; sans second axe, un seul groupe sans code."""
     par_compte = codes_des_comptes(axe)
+    par_compte2 = codes_des_comptes(axe2) if axe2 else {}
     choix = [code] if isinstance(code, str) else list(code or [])
     qs = (lignes_periode(debut, fin).filter(filtre_classes(nature))
           .select_related("mouvement", "compte")
@@ -135,17 +143,24 @@ def detail(debut, fin, nature, code=None, axe=TITRE):
             x["s"] = x["a"] - x["b"]
             x["ecritures"] = [e for e in s["ecritures"] if e["ligne"].compte_id == x["numero"]]      # détail par compte
         s["total"] = _total(s["comptes"])
+        groupes = OrderedDict()
+        for x in s["comptes"]:
+            c2, lib2 = par_compte2.get(x["numero"], (SANS_CODE, "")) if axe2 else ("", "")
+            groupes.setdefault(c2, {"code": c2, "libelle": lib2 or "", "comptes": []})["comptes"].append(x)
+        s["groupes"] = sorted(groupes.values(), key=lambda g: (g["code"] == SANS_CODE, g["code"]))
+        for g in s["groupes"]:
+            g["total"] = _total(g["comptes"])
         s["nb_mouvements"] = len({e["ligne"].mouvement_id for e in s["ecritures"]})
         res.append(s)
     res.sort(key=lambda s: (s["code"] != SANS_CODE, s["code"]))
     return res
 
 
-def _contexte(debut, fin, nature, axe=TITRE, choix=()):
+def _contexte(debut, fin, nature, axe=TITRE, choix=(), axe2=""):
     n = NATURES[nature]
-    params = urlencode([("axe", axe), ("comptes", nature)] + [("code", c) for c in choix]
+    params = urlencode([("axe", axe)] + ([("axe2", axe2)] if axe2 else []) + [("comptes", nature)] + [("code", c) for c in choix]
                        + [("du", f"{debut:%Y-%m-%d}"), ("au", f"{fin:%Y-%m-%d}")])
-    return {"choix": list(choix), "params": params, "sans_code": SANS_CODE, "debut": debut, "fin": fin, "nature": nature, "natures": NATURES, "titre_nature": n["titre"],
+    return {"choix": list(choix), "params": params, "axe2": axe2, "sans_code": SANS_CODE, "debut": debut, "fin": fin, "nature": nature, "natures": NATURES, "titre_nature": n["titre"],
             "axe": axe, "axes": axes_proposes(), "codes": codes_du_choix(axe),
             "col_a": n["colonnes"][0], "col_b": n["colonnes"][1], "col_s": n["colonnes"][2],
             "periode_texte": f"du {debut:%d/%m/%Y} au {fin:%d/%m/%Y}"}
@@ -174,27 +189,34 @@ def classeur_detail(sections, ctx):
     import datetime as dt
     from .presentation import Presentation
     a, b, s_ = ctx["col_a"], ctx["col_b"], ctx["col_s"]
-    axe = ctx["axe"]
-    p = Presentation(axe[:31], "", (11, 8, 9, 44, 16, 16, 16), pied=f"État détaillé {axe} · {ctx['periode_texte']}")
+    axe, axe2 = ctx["axe"], ctx.get("axe2")
+    titre = f"{axe} puis {axe2}" if axe2 else axe
+    p = Presentation(axe[:31], "", (11, 8, 9, 44, 16, 16, 16), pied=f"État détaillé {titre} · {ctx['periode_texte']}")
     for n, sec in enumerate(sections):
         if n:
             p.ligne += 2
         p.titre(f"État détaillé – {sec['code']}" + (f" – {sec['libelle']}" if sec["libelle"] else ""),
-                [f"{axe} · {ctx['titre_nature']} · période {ctx['periode_texte']}",
+                [f"{titre} · {ctx['titre_nature']} · période {ctx['periode_texte']}",
                  f"Édité le {dt.datetime.now():%d/%m/%Y à %H:%M}"])
         t = sec["total"]
         p.section("Chiffres clés")
         p.tableau(["", "", "", "Indicateur", "Montant"], [["", "", "", a, t["a"]], ["", "", "", b, t["b"]], ["", "", "", s_, t["s"]]],
                   montants=(5,))
         p.note(f"{sec['nb_mouvements']} mouvement(s), {len(sec['ecritures'])} ligne(s) d'écriture")
-        p.section("Détail par compte")
-        for x in sec["comptes"]:
-            p.ecrire([f"{x['numero']} – {x['libelle']}"], police=p.police["gras"])
-            p.tableau(["Date", "Mvt", "Libellé", a, b],
-                      [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].libelle,
-                        e["a"] or None, e["b"] or None] for e in x["ecritures"]],
-                      montants=(4, 5), formats={1: "DD/MM/YYYY"})
-            p.sous_total(["", "", f"Sous-total {x['numero']}", x["a"], x["b"]], montants=(4, 5))
+        p.section(f"Détail par {axe2} puis par compte" if axe2 else "Détail par compte")
+        for g in sec["groupes"]:
+            if axe2:
+                p.ecrire([f"{axe2} {g['code']}" + (f" – {g['libelle']}" if g["libelle"] else "")], police=p.police["gras"],
+                         fond=p.fond["total"])
+            for x in g["comptes"]:
+                p.ecrire([f"{x['numero']} – {x['libelle']}"], police=p.police["gras"])
+                p.tableau(["Date", "Mvt", "Libellé", a, b],
+                          [[e["ligne"].mouvement.date, e["ligne"].mouvement.numero, e["ligne"].libelle,
+                            e["a"] or None, e["b"] or None] for e in x["ecritures"]],
+                          montants=(4, 5), formats={1: "DD/MM/YYYY"})
+                p.sous_total(["", "", f"Sous-total {x['numero']}", x["a"], x["b"]], montants=(4, 5))
+            if axe2:
+                p.sous_total(["", "", f"Sous-total {axe2} {g['code']}", g["total"]["a"], g["total"]["b"]], montants=(4, 5))
         p.ecrire(["Total " + sec["code"], "", "", t["a"], t["b"]], police=p.police["gras"], fond=p.fond["total"], montants=(4, 5))
     return p
 
@@ -204,15 +226,16 @@ def classeur_detail(sections, ctx):
 def analytique_detail(request):
     debut, fin = periode(request)
     nature, axe, choix = nature_choisie(request), axe_choisi(request), codes_choisis(request)
-    sections = detail(debut, fin, nature, choix, axe)
-    ctx = _contexte(debut, fin, nature, axe, choix)
+    axe2 = axe2_choisi(request, axe)
+    sections = detail(debut, fin, nature, choix, axe, axe2)
+    ctx = _contexte(debut, fin, nature, axe, choix, axe2)
     code = choix[0] if len(choix) == 1 else ""
     if request.GET.get("format") == "xlsx":
         quoi = code or (f"{len(choix)}-valeurs" if choix else "tous")
-        nom = f"Analytique_{nature}_{axe}_{quoi.replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
+        nom = f"Analytique_{nature}_{axe}{'-' + axe2 if axe2 else ''}_{quoi.replace('/', '-')}_{debut:%Y-%m-%d}_{fin:%Y-%m-%d}.xlsx"
         return classeur_detail(sections, ctx).reponse(nom)
     return render(request, "compta/analytique_detail.html", {
-        **ctx, "titre_axe": axe, "code": code, "sections": sections,
+        **ctx, "titre_axe": f"{axe} puis {axe2}" if axe2 else axe, "code": code, "sections": sections,
         "total": _total([{"a": s["total"]["a"], "b": s["total"]["b"]} for s in sections])})
 
 
