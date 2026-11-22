@@ -112,7 +112,8 @@ def credit_mutuel(wb):
 def isracard(wb):
     """Débits de cartes (feuille « חיובים בשקלים ») : une partie par carte (« ארבע ספרות אחרונות 5524 »), puis
     תאריך חיוב, תאריך העסקה, בית העסק, סכום העסקה, סכום החיוב. Le montant débité est sorti du compte de la carte, à la
-    date de l'achat."""
+    date de l'achat. Une opération en attente (achat en devise dont le taux n'est pas encore publié : ni date ni montant de
+    débit, ou montant nul, ou partie « en attente ») n'est pas reprise : elle viendra avec le relevé suivant."""
     comptes, carte = [], None
     for ws in wb.worksheets[:1]:
         for r in ws.iter_rows(values_only=True):
@@ -123,7 +124,10 @@ def isracard(wb):
                 nom = re.search(r"שם כרטיס:\s*(.+?)\s{2,}", premiere)
                 comptes.append((carte, [], f"Isracard carte {carte}" + (f" ({nom.group(1)})" if nom else "")))
                 continue
-            if carte and len(r) >= 5 and releves.date(r[1]) and releves.nombre(r[4]) is not None:
+            if re.search(r"שטרם|בתהליך|ממתינ|בהמתנה", premiere):     # partie des opérations en attente
+                carte = None
+                continue
+            if carte and len(r) >= 5 and releves.date(r[0]) and releves.date(r[1]) and releves.nombre(r[4]):
                 comptes[-1][1].append((releves.date(r[1]), f"{releves.texte(r[2])} (carte {carte}, débit du {releves.texte(r[0])})",
                                        -releves.nombre(r[4])))
     return comptes or None
@@ -158,7 +162,8 @@ MONTANT_REVOLUT = r"(?<![\w,])(-?(?:\d{1,3}(?:[   ]\d{3})+|\d+),\d\d)\s?[€�
 
 def revolut(texte):
     """Une partie par devise (« Relevé EUR ») : solde d'ouverture au résumé, mouvements « 1 nov. 2026  Libellé  montant
-    solde » ; le sens vient de la variation du solde. Les opérations « En attente » ne sont pas reprises."""
+    solde » ; le sens vient de la variation du solde. Les opérations « En attente » (taux pas encore appliqué) et
+    « Renvoyé » ne sont pas reprises."""
     comptes, devise, solde, attente = {}, None, None, False
     for ligne in texte.splitlines():
         s = ligne.strip()

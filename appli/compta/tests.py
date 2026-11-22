@@ -3348,6 +3348,10 @@ class RelevesDesBanques(TestCase):
         ws.append(["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"])
         ws.append(["02/12/2026", "26/08/2026", "הראל חובה חדש", 1623, 405])
         ws.append(["02/12/2026", "03/11/2026", "דור אלון", 437.19, 437.19])
+        ws.append(["", "20/11/2026", "AMAZON", "$ 25.00", None])                 # en attente : taux pas encore publié
+        ws.append(["02/12/2026", "21/11/2026", "EBAY", "$ 10.00", 0])
+        ws.append(["עסקאות שטרם נקלטו"])
+        ws.append(["02/12/2026", "21/11/2026", "ALIEXPRESS", "$ 12.00", 44.10])
         contenu = io.BytesIO()
         wb.save(contenu)
         self.assertIn("I9 : 2 ajoutée(s)", e.importer_banque("Isracard.xlsx", contenu.getvalue()))
