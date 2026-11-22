@@ -1,0 +1,13 @@
+{% extends "compta/base.html" %}{% block titre %}Relier les comptes du relevé{% endblock %}{% block contenu %}
+<h1>Relier les comptes du relevé</h1>
+<form method="post" action="{% url 'releve_relier' journal.code %}" class="carte" id="f-relier">{% csrf_token %}
+<p>Le relevé <b>{{ nom }}</b> contient {{ comptes|length }} compte{{ comptes|length|pluralize }} sans journal. Choisir le journal de chacun :
+le lien est enregistré (réglage comptes_releves) et servira pour les prochains relevés, puis l'import reprend.</p>
+<table><thead><tr><th>Compte au relevé</th><th>Nom</th><th>Journal</th></tr></thead><tbody>
+{% for c in comptes %}<tr><td>{{ c.cle }}</td><td>{{ c.libelle }}</td><td><select name="j_{{ forloop.counter0 }}" required>
+<option value="">— choisir —</option>{% for j in journaux %}<option value="{{ j.code }}"{% if j.code == c.propose %} selected{% endif %}>{{ j.code }} – {{ j.intitule }}</option>{% endfor %}
+</select></td></tr>{% endfor %}</tbody></table>
+<p class="aide">Le journal proposé est celui dont l'intitulé ressemble le plus au nom du compte : à vérifier.</p>
+<p><button class="principal">Enregistrer les liens et importer</button> <button name="annuler" value="1" formnovalidate>Abandonner</button></p>
+</form>
+{% endblock %}

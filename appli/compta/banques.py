@@ -19,11 +19,11 @@ HEBREU = re.compile(r"[֐-׿]")
 
 
 class Inconnu(Exception):
-    """Comptes du relevé sans journal : clés à ajouter au réglage comptes_releves."""
+    """Comptes du relevé sans journal : clés à ajouter au réglage comptes_releves ; libelles : {clé: nom du compte au relevé}."""
 
-    def __init__(self, cles):
+    def __init__(self, cles, libelles=None):
         super().__init__(", ".join(cles))
-        self.cles = cles
+        self.cles, self.libelles = cles, libelles or {}
 
 
 def correspondances():
@@ -44,12 +44,44 @@ def _ligne(journal, date, libelle, montant):
 
 
 def _par_journal(comptes):
-    """comptes : [(clé, [(date, libellé, montant)])] → lignes Banque ; Inconnu si une clé (avec des lignes) n'a pas de journal."""
+    """comptes : [(clé, [(date, libellé, montant)], nom du compte au relevé)] → lignes Banque ; Inconnu si une clé (avec des
+    lignes) n'a pas de journal."""
     table = correspondances()
-    manquent = [cle for cle, mvts in comptes if mvts and cle.upper() not in table]
+    manquent = [c for c in comptes if c[1] and c[0].upper() not in table]
     if manquent:
-        raise Inconnu(manquent)
-    return [_ligne(table[cle.upper()], d, lib, m) for cle, mvts in comptes for d, lib, m in mvts if m]
+        raise Inconnu([c[0] for c in manquent], {c[0]: (c[2] if len(c) > 2 else "") for c in manquent})
+    return [_ligne(table[c[0].upper()], d, lib, m) for c in comptes for d, lib, m in c[1] if m]
+
+
+def enregistrer(choix):
+    """Ajoute {clé: journal} au réglage comptes_releves (une clé déjà présente prend le nouveau journal)."""
+    from .models import Reglage
+    table = correspondances()
+    table.update({" ".join(c.split()).upper(): j for c, j in choix.items() if j})
+    Reglage.objects.update_or_create(cle="comptes_releves", defaults={"valeur": ", ".join(f"{c}={j}" for c, j in table.items())})
+
+
+def _mots(texte):
+    import unicodedata
+    texte = unicodedata.normalize("NFKD", texte.upper()).encode("ascii", "ignore").decode()
+    return re.findall(r"[A-Z0-9]+", texte)
+
+
+def journal_probable(libelle, journaux):
+    """Journal dont l'intitulé ressemble le plus au nom du compte au relevé : mots communs, sigles de deux mots
+    (« LIVRET BLEU JACQUELINE » → « BANQUE CM LB JACQUELINE », « Crédit Mutuel » → CM) ; à égalité, l'intitulé qui a le
+    moins de mots en trop. None sans mot commun."""
+    vides = {"COMPTE", "COURANT", "BANQUE", "BQUE", "CARTE", "EUR"}
+    mots = [m for m in _mots(libelle) if m not in vides]
+    cherches = {m for m in mots if len(m) >= 3} | {a[0] + b[0] for a, b in zip(mots, mots[1:]) if a.isalpha() and b.isalpha()}
+
+    def score(j):
+        siens = [m for m in _mots(j.intitule) if m not in vides]
+        communs = sum(m in cherches for m in siens)
+        return communs, communs - len(siens)
+
+    meilleur = max(journaux, key=score, default=None)
+    return meilleur.code if meilleur and score(meilleur)[0] else None
 
 
 # ---------------------------------------------------------------- classeurs
@@ -71,7 +103,9 @@ def credit_mutuel(wb):
                 continue
             montant = (releves.nombre(r[4]) or Decimal(0)) - abs(releves.nombre(r[3]) or Decimal(0))
             mvts.append((date, releves.texte(r[2]), montant))
-        comptes.append((rib.split()[-1], mvts))
+        titre = releves.texte(rangees[0][0] if rangees and rangees[0] else "")
+        nom = re.sub(r"^Situation de votre compte\s*|\s*\(.*$", "", titre)
+        comptes.append((rib.split()[-1], mvts, f"Crédit Mutuel {nom}".strip()))
     return comptes or None
 
 
@@ -86,7 +120,8 @@ def isracard(wb):
             trouve = re.search(r"ארבע ספרות אחרונות\s*(\d{4})", premiere)
             if trouve:
                 carte = trouve.group(1)
-                comptes.append((carte, []))
+                nom = re.search(r"שם כרטיס:\s*(.+?)\s{2,}", premiere)
+                comptes.append((carte, [], f"Isracard carte {carte}" + (f" ({nom.group(1)})" if nom else "")))
                 continue
             if carte and len(r) >= 5 and releves.date(r[1]) and releves.nombre(r[4]) is not None:
                 comptes[-1][1].append((releves.date(r[1]), f"{releves.texte(r[2])} (carte {carte}, débit du {releves.texte(r[0])})",
@@ -152,7 +187,7 @@ def revolut(texte):
         solde = nouveau
         jour = dt.date(int(date.group(3)), MOIS[date.group(2)[:4].rstrip(".")], int(date.group(1)))
         comptes[devise].append((jour, date.group(4), montant))
-    return [(f"REVOLUT {d}", m) for d, m in comptes.items()] or None
+    return [(f"REVOLUT {d}", m, f"Revolut compte en {d}") for d, m in comptes.items()] or None
 
 
 def _hebreu(texte):
@@ -174,7 +209,7 @@ def mizrahi(texte):
         if m:
             mvts.append((dt.datetime.strptime(m.group(3), "%d/%m/%y").date(), _hebreu(m.group(2)),
                          Decimal(m.group(1).replace(",", ""))))
-    return [(compte.group(1), mvts)] if mvts else None
+    return [(compte.group(1), mvts, f"Mizrahi compte {compte.group(1)}")] if mvts else None
 
 
 def depuis_pdf(contenu):

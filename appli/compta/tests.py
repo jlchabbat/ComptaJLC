@@ -3356,6 +3356,35 @@ class RelevesDesBanques(TestCase):
             e.importer_banque("Isracard.xlsx", contenu.getvalue())
         self.assertIn("compte « 5524 » sans journal", r.exception.erreurs[0])
 
+    def test_le_site_propose_le_journal_d_un_compte_inconnu(self):
+        from .models import LigneReleve
+        Reglage.objects.filter(cle="comptes_releves").update(valeur="")
+        Journal.objects.create(code="B4", intitule="BANQUE CM LB JACQUELINE", type="BQ")
+        Journal.objects.filter(code="B9").update(compte=Compte.objects.filter(numero__startswith="5").first())
+        self.client.force_login(User.objects.create_superuser("adm", password="x" * 12))
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Cpt 07395 00010982769"
+        ws.append(["Situation de votre compte LIVRET BLEU JACQUELINE (EUR) au 20/11/2026"])
+        ws.append(["R.I.B. : 10278 07395 00010982769"])
+        ws.append(["Date", "Valeur", "Libellé", "Débit", "Crédit"])
+        ws.append([dt.datetime(2026, 7, 1), dt.datetime(2026, 7, 1), "INTERETS", None, 12.5])
+        contenu = io.BytesIO()
+        wb.save(contenu)
+        contenu.name = "comptes.xlsx"
+        contenu.seek(0)
+        r = self.client.post("/rapprochement/B9/import/", {"fichier": contenu})
+        self.assertContains(r, "Crédit Mutuel LIVRET BLEU JACQUELINE")
+        self.assertContains(r, '<option value="B4" selected>')
+        self.assertFalse(LigneReleve.objects.filter(journal_id="B4").exists())
+        r = self.client.post("/rapprochement/B9/relier/", {"j_0": "B4"})
+        self.assertRedirects(r, "/rapprochement/B9/", fetch_redirect_response=False)
+        self.assertEqual(Reglage.objects.get(cle="comptes_releves").valeur, "00010982769=B4")
+        self.assertEqual(list(LigneReleve.objects.filter(journal_id="B4", ouverture=False).values_list("montant", flat=True)),
+                         [D("12.50")])
+        self.assertRedirects(self.client.post("/rapprochement/B9/relier/", {"j_0": "B4"}), "/rapprochement/B9/",
+                             fetch_redirect_response=False)                  # relevé déjà repris : rien à refaire
+
     def test_revolut_et_mizrahi(self):
         from . import banques
         revolut = "\n".join([
@@ -3369,14 +3398,15 @@ class RelevesDesBanques(TestCase):
             " 6 nov. 2026        Hotel Lyon                         1693,32€",
             "                                    Relevé ILS",
             " Compte (Compte courant)            100,00₪        0,00₪        0,00₪        100,00₪"])
-        (cle, mvts), _ = banques.revolut(revolut)
+        (cle, mvts, nom), _ = banques.revolut(revolut)
+        self.assertEqual(nom, "Revolut compte en EUR")
         self.assertEqual(cle, "REVOLUT EUR")
         self.assertEqual([m for _, _, m in mvts], [D("-36.13"), D("2000.00"), D("-13.87")])
         mizrahi = "\n".join(["חשבון מספר 732-204219 רפסמ ןובשח",
                              "  28900   9,555.65   -123.00   ימואל חוטיב-דוינ    22/10/26",
                              "  10282330           7,963.00   ל\"וחמ םילקש תרבעה  17/11/26",
                              "  5524   9,006.25   -1,500.00   (י) 681 ימואל טמופסכ   17/11/26"])
-        ((cle, mvts),) = banques.mizrahi(mizrahi)
+        ((cle, mvts, _),) = banques.mizrahi(mizrahi)
         self.assertEqual(cle, "732-204219")
         self.assertEqual([(l, m) for _, l, m in mvts], [("ניוד-ביטוח לאומי", D("-123.00")), ("העברת שקלים מחו\"ל", D("7963.00")),
                                                         ("כספומט לאומי 681 (י)", D("-1500.00"))])
