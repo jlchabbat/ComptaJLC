@@ -38,6 +38,8 @@ def _cle_secrete():
 SECRET_KEY = _cle_secrete()
 DEBUG = os.environ.get("COMPTAJLC_DEBUG") == "1"
 ALLOWED_HOSTS = os.environ.get("COMPTAJLC_HOTES", "127.0.0.1,localhost").split(",")
+# Relevés de plusieurs centaines de lignes : deux champs par ligne (compte, libellé) dépassent la limite de 1 000 de Django
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 
 if os.environ.get("COMPTAJLC_HTTPS") == "1":
     CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
