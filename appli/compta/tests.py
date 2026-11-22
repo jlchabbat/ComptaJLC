@@ -3385,6 +3385,15 @@ class RelevesDesBanques(TestCase):
         self.assertRedirects(self.client.post("/rapprochement/B9/relier/", {"j_0": "B4"}), "/rapprochement/B9/",
                              fetch_redirect_response=False)                  # relevé déjà repris : rien à refaire
 
+    def test_grand_releve_sans_bad_request(self):
+        """Un relevé de plus de 500 lignes envoie plus de 1 000 champs (compte et libellé par ligne) : jamais d'erreur 400."""
+        self.client.force_login(User.objects.create_superuser("adm", password="x" * 12))
+        donnees = {"relier_evidentes": "1"}
+        for i in range(700):
+            donnees[f"compte_{i}"], donnees[f"libelle_{i}"] = "", ""
+        r = self.client.post("/rapprochement/B9/", donnees)
+        self.assertNotEqual(r.status_code, 400)
+
     def test_revolut_et_mizrahi(self):
         from . import banques
         revolut = "\n".join([
