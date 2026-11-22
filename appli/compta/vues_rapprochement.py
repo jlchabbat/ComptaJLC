@@ -2,6 +2,9 @@
 
 
 import datetime as dt
+import re
+import uuid
+from pathlib import Path
 
 from django import forms
 from django.contrib import messages
@@ -204,8 +207,11 @@ def importer(request, code):
     form = ImportForm(request.POST, request.FILES)
     if form.is_valid():
         f = form.cleaned_data["fichier"]
+        contenu = f.read()
         try:
-            texte = echanges.importer_banque(f.name, f.read(), request.user)
+            texte = echanges.importer_banque(f.name, contenu, request.user)
+        except echanges.ComptesSansJournal as e:
+            return _proposer_journaux(request, journal, f.name, contenu, e)
         except echanges.Refus as e:
             messages.error(request, "Import refusé : rien n'a été enregistré.")
             for x in e.erreurs[:30]:
@@ -215,6 +221,66 @@ def importer(request, code):
             messages.success(request, f"{texte}." + (f" Attention : {ecarts} solde(s) du relevé de {journal.code} incohérent(s)." if ecarts else ""))
     else:
         messages.error(request, "Choisir un fichier.")
+    return redirect("rapprochement_journal", journal.code)
+
+
+def _en_attente():
+    """Dossier des relevés gardés le temps de choisir le journal de leurs comptes."""
+    from django.conf import settings
+    d = Path(settings.DATA_DIR) / "releves_en_attente"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _proposer_journaux(request, journal, nom, contenu, refus):
+    """Relevé dont des comptes n'ont pas de journal : le fichier est gardé, l'écran propose un journal pour chacun."""
+    from . import banques
+    for vieux in _en_attente().glob("*"):                      # relevés abandonnés depuis plus d'un jour
+        if vieux.stat().st_mtime < dt.datetime.now().timestamp() - 86400:
+            vieux.unlink(missing_ok=True)
+    jeton = uuid.uuid4().hex
+    (_en_attente() / jeton).write_bytes(contenu)
+    request.session["releve_en_attente"] = {"jeton": jeton, "nom": nom, "cles": refus.cles}
+    tous = list(Journal.objects.filter(actif=True).order_by("code"))
+    comptes = [{"cle": c, "libelle": refus.libelles.get(c, ""), "propose": banques.journal_probable(refus.libelles.get(c, ""), tous)}
+               for c in refus.cles]
+    return render(request, "compta/releve_relier.html", {"journal": journal, "nom": nom, "comptes": comptes, "journaux": tous})
+
+
+@login_required
+@pointer
+def relier(request, code):
+    """Enregistre le journal choisi pour chaque compte du relevé (réglage comptes_releves), puis reprend l'import."""
+    from . import banques
+    journal = get_object_or_404(Journal, code=code)
+    attente = request.session.get("releve_en_attente")
+    chemin = _en_attente() / attente["jeton"] if attente and re.fullmatch(r"[0-9a-f]{32}", attente.get("jeton", "")) else None
+    if request.method != "POST" or not chemin or not chemin.exists():
+        messages.error(request, "Relevé à reprendre introuvable : le télécharger à nouveau.")
+        return redirect("rapprochement_journal", journal.code)
+    codes = set(Journal.objects.values_list("code", flat=True))
+    choix = {c: request.POST.get(f"j_{i}", "") for i, c in enumerate(attente["cles"])}
+    if "annuler" in request.POST or not all(j in codes for j in choix.values()):
+        if "annuler" not in request.POST:
+            messages.error(request, "Choisir un journal pour chaque compte du relevé.")
+        else:
+            messages.info(request, "Import abandonné : rien n'a été enregistré.")
+        chemin.unlink(missing_ok=True)
+        request.session.pop("releve_en_attente", None)
+        return redirect("rapprochement_journal", journal.code)
+    banques.enregistrer(choix)
+    journaliser(request, "Comptes des relevés", attente["nom"], apres=", ".join(f"{c}={j}" for c, j in choix.items()))
+    contenu = chemin.read_bytes()
+    chemin.unlink(missing_ok=True)
+    request.session.pop("releve_en_attente", None)
+    try:
+        texte = echanges.importer_banque(attente["nom"], contenu, request.user)
+    except echanges.Refus as e:
+        messages.error(request, "Liens enregistrés, mais import refusé : rien n'a été enregistré.")
+        for x in e.erreurs[:30]:
+            messages.error(request, x)
+    else:
+        messages.success(request, f"Liens enregistrés dans le réglage comptes_releves. {texte}.")
     return redirect("rapprochement_journal", journal.code)
 
 

@@ -285,9 +285,12 @@ sur chaque champ. Un clic sur un montant liste ses écritures ; bouton Excel pou
 <b>lignes téléchargées qui n'ont pas encore d'écriture</b>. Boutons en haut : <b>Créer les écritures</b>, <b>Télécharger le relevé choisi</b>.</p>
 <figure><img src="images/13_banque.png"><figcaption>Lignes du relevé à passer en comptabilité, avec la traduction des libellés hébreux.</figcaption></figure>
 <h2>1. Préparer et télécharger le relevé</h2>
-<p>Il n'existe qu'<b>un seul modèle de fichier</b> : <b>Banque.xlsx</b> (modèle vierge dans <code>Imports/modeles</code>, ou
-<span class="menu">Administration › Imports et exports</span>). L'application ne lit ni PDF ni format de banque : le relevé est mis dans ce
-modèle <b>en amont</b> (par exemple avec Power Query dans Excel), une ligne par mouvement.</p>
+<p>Deux possibilités. Le relevé <b>tel que la banque le fournit</b> : classeur « Vos comptes » du Crédit Mutuel (tous les comptes
+dans un seul fichier), classeur des débits de cartes Isracard, relevé PDF Revolut (une partie par devise) ou relevé PDF des mouvements
+Mizrahi-Tefahot. La première fois qu'un compte du relevé apparaît, l'application demande son journal, en <b>proposant</b> celui dont
+l'intitulé ressemble le plus au nom du compte ; le lien est gardé (réglage <code>comptes_releves</code>) et l'import reprend aussitôt.
+Sinon, le modèle <b>Banque.xlsx</b> (modèle vierge dans <code>Imports/modeles</code>, ou
+<span class="menu">Administration › Imports et exports</span>), une ligne par mouvement :</p>
 <table><tr><th style="width:16%">Colonne</th><th>Contenu</th></tr>
 <tr><td>Journ</td><td>Code du journal de la banque ou de la caisse (B1, B2, CA…), tel que défini dans les journaux.</td></tr>
 <tr><td>Date</td><td>Date de l'opération (jj/mm/aaaa).</td></tr>

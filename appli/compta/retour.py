@@ -51,7 +51,7 @@ def adresse(request, fiche=None, defaut=None):
 
 SANS_FERMER = {"tableau_de_bord", "login", "demarrage", "demarrage_compte"}
 PARENTS = {                                   # page -> page d'où elle s'ouvre (mêmes paramètres d'adresse)
-    "releve_parametres": "rapprochement_journal", "releve_import": "rapprochement_journal",
+    "releve_parametres": "rapprochement_journal", "releve_import": "rapprochement_journal", "releve_relier": "rapprochement_journal",
     "rapprochement_journal": "rapprochement", "traductions": "rapprochement",
     "compte": "plan", "compte_nouveau": "plan", "journal": "journaux_param", "journal_nouveau": "journaux_param",
     "code_axe": "axes_param", "releves_historique": "rapprochement",

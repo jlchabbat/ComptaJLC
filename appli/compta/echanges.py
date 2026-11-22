@@ -1466,6 +1466,15 @@ def importer(nom, utilisateur=None):
     return f, texte
 
 
+class ComptesSansJournal(Refus):
+    """Relevé dont des comptes n'ont pas de journal : cles (clés du réglage comptes_releves), libelles {clé: nom au relevé}."""
+
+    def __init__(self, nom, cles, libelles):
+        super().__init__([f"{nom} : compte « {c} » sans journal. Choisir son journal ci-dessous, ou ajouter « {c}=<code du "
+                          "journal> » au réglage comptes_releves." for c in cles])
+        self.cles, self.libelles = cles, libelles
+
+
 def importer_banque(nom, contenu, utilisateur=None):
     """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl), ou
     relevé tel que la banque le fournit (Crédit Mutuel, Isracard, Revolut, Mizrahi : voir banques.py).
@@ -1481,8 +1490,7 @@ def importer_banque(nom, contenu, utilisateur=None):
     try:                                                  # relevé tel que la banque le fournit
         propres = banques.convertir(nom, contenu)
     except banques.Inconnu as e:
-        raise Refus([f"{nom} : compte « {cle} » sans journal. Ajouter « {cle}=<code du journal> » au réglage comptes_releves "
-                     "(Administration › Paramètres)." for cle in e.cles]) from None
+        raise ComptesSansJournal(nom, e.cles, e.libelles) from None
     except Exception as e:                                # PDF ou classeur illisible
         raise Refus([f"{nom} : relevé illisible ({e.__class__.__name__})."]) from None
     if propres is not None:

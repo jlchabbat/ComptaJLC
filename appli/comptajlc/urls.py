@@ -51,6 +51,7 @@ urlpatterns = [
     path("rapprochement/<str:code>/", rap.accueil, name="rapprochement_journal"),
     path("rapprochement/<str:code>/parametres/", rap.parametres, name="releve_parametres"),
     path("rapprochement/<str:code>/import/", rap.importer, name="releve_import"),
+    path("rapprochement/<str:code>/relier/", rap.relier, name="releve_relier"),
     path("tiers/", vues_tiers.liste, name="tiers"),
     path("tiers/modele-tiers.xlsx", vues_tiers.modele_tiers, name="modele_tiers"),
     path("tiers/<str:numero>/", vues_tiers.fiche, name="tiers_fiche"),
