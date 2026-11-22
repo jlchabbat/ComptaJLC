@@ -21,6 +21,8 @@ REGLAGES = [
     ("compte_tva_a_payer", "Compte de TVA à décaisser, crédité par la liquidation", "44551", "44551"),
     ("compte_credit_tva", "Compte de crédit de TVA à reporter, débité par la liquidation", "44567", "44567"),
     ("journal_tva", "Journal de l'écriture de liquidation de la TVA", "OD", "OD"),
+    ("comptes_releves", "Journal de chaque compte des relevés de banque (n° de compte, 4 chiffres de carte, REVOLUT EUR…), "
+                        "ex. « 00010982741=B1, 5524=I1, REVOLUT EUR=R1 »", "", ""),
     ("siren", "SIREN (9 chiffres) qui nomme le fichier des écritures comptables (FEC) ; vide : 000000000", "", ""),
     ("traductions_releve", "Traduire les libellés du relevé (hébreu → français) : oui ou non", "non", "oui"),
 ]

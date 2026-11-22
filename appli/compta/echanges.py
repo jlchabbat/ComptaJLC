@@ -1338,20 +1338,35 @@ def importer(nom, utilisateur=None):
 
 
 def importer_banque(nom, contenu, utilisateur=None):
-    """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl).
+    """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl), ou
+    relevé tel que la banque le fournit (Crédit Mutuel, Isracard, Revolut, Mizrahi : voir banques.py).
 
     Tout ou rien, ajout seulement ; renvoie le résumé par journal. Ne passe pas par le dossier Imports."""
     import tempfile
+    from . import banques
     f = PAR_NOM["Banque"]
     suffixe = Path(nom).suffix.lower()
-    if suffixe not in TABLEURS + (".csv",):
-        raise Refus([f"{nom} : fichier .xlsx, .xlsm ou .csv attendu (structure Banque : {' | '.join(f.colonnes)})."])
-    # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
-    # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
-        chemin = Path(dossier) / f"Banque{suffixe}"
-        chemin.write_bytes(contenu)
-        lignes = lire(chemin, f)
+    if suffixe not in TABLEURS + (".csv", ".pdf"):
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv ou .pdf attendu (structure Banque : {' | '.join(f.colonnes)}, "
+                     "ou relevé Crédit Mutuel, Isracard, Revolut, Mizrahi)."])
+    try:                                                  # relevé tel que la banque le fournit
+        propres = banques.convertir(nom, contenu)
+    except banques.Inconnu as e:
+        raise Refus([f"{nom} : compte « {cle} » sans journal. Ajouter « {cle}=<code du journal> » au réglage comptes_releves "
+                     "(Administration › Paramètres)." for cle in e.cles]) from None
+    except Exception as e:                                # PDF ou classeur illisible
+        raise Refus([f"{nom} : relevé illisible ({e.__class__.__name__})."]) from None
+    if propres is not None:
+        lignes = list(enumerate(propres, 2))
+    elif suffixe == ".pdf":
+        raise Refus([f"{nom} : relevé PDF non reconnu (Revolut ou Mizrahi attendu)."])
+    else:
+        # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
+        # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
+            chemin = Path(dossier) / f"Banque{suffixe}"
+            chemin.write_bytes(contenu)
+            lignes = lire(chemin, f)
     if not lignes:
         raise Refus([f"{nom} : aucune ligne de données."])
     with transaction.atomic():                            # ajout seul, sans doublon : pas de sauvegarde préalable

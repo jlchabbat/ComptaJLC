@@ -3232,3 +3232,73 @@ class Abonnements(TestCase):
 
 
 from . import abonnements as abonnements_moteur  # noqa: E402
+
+
+class RelevesDesBanques(TestCase):
+    """Relevés tels que les banques les fournissent : Crédit Mutuel, Isracard, Revolut, Mizrahi."""
+
+    def setUp(self):
+        referentiels_saisie()
+        for code in ("B9", "I9", "R9", "R8", "M9"):
+            Journal.objects.get_or_create(code=code, defaults={"intitule": code, "type": "BQ"})
+        Reglage.objects.update_or_create(cle="comptes_releves", defaults={
+            "valeur": "00010982741=B9, 5524=I9, 8240=I9, REVOLUT EUR=R9, REVOLUT ILS=R8, 732-204219=M9"})
+
+    def test_credit_mutuel_et_isracard(self):
+        from . import echanges as e
+        from .models import LigneReleve
+        wb = openpyxl.Workbook()
+        wb.active.title = "Vos comptes"
+        ws = wb.create_sheet("Cpt 07395 00010982741")
+        ws.append(["Situation de votre compte COMPTE COURANT (EUR) au 20/11/2026"])
+        ws.append(["R.I.B. : 10278 07395 00010982741"])
+        ws.append([None, None, None, "Solde initial : "])
+        ws.append(["Liste de vos comptes"])
+        ws.append(["Date", "Valeur", "Libellé", "Débit", "Crédit", "Solde", "Dev"])
+        ws.append([dt.datetime(2026, 7, 1), dt.datetime(2026, 7, 1), "PRLV FREE", -20.23, None, None, "EUR"])
+        ws.append([dt.datetime(2026, 7, 2), dt.datetime(2026, 7, 2), "VIR CAVP", None, 1380.61, None, "EUR"])
+        ws.append([dt.datetime(2026, 7, 3), dt.datetime(2026, 7, 3), "NOUVEAU TAUX", None, 0, None, "EUR"])  # 0 : ignorée
+        contenu = io.BytesIO()
+        wb.save(contenu)
+        self.assertIn("B9 : 2 ajoutée(s)", e.importer_banque("comptes.xlsx", contenu.getvalue()))
+        self.assertEqual(sorted(LigneReleve.objects.filter(journal_id="B9", ouverture=False).values_list("montant", flat=True)),
+                         [D("-20.23"), D("1380.61")])
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["חשבון כרטיס: 204219     שם כרטיס: מאסטרקארד בינלאומי    ארבע ספרות אחרונות 5524 "])
+        ws.append([])
+        ws.append(["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"])
+        ws.append(["02/12/2026", "26/08/2026", "הראל חובה חדש", 1623, 405])
+        ws.append(["02/12/2026", "03/11/2026", "דור אלון", 437.19, 437.19])
+        contenu = io.BytesIO()
+        wb.save(contenu)
+        self.assertIn("I9 : 2 ajoutée(s)", e.importer_banque("Isracard.xlsx", contenu.getvalue()))
+        Reglage.objects.filter(cle="comptes_releves").update(valeur="")
+        with self.assertRaises(e.Refus) as r:
+            e.importer_banque("Isracard.xlsx", contenu.getvalue())
+        self.assertIn("compte « 5524 » sans journal", r.exception.erreurs[0])
+
+    def test_revolut_et_mizrahi(self):
+        from . import banques
+        revolut = "\n".join([
+            "                                    Relevé EUR",
+            " Compte (Compte courant)            1076,61€        50,00€        2000,00€        3026,61€",
+            "Transactions du compte : du 1 novembre 2026 au 20 novembre 2026",
+            " 1 nov. 2026        Anthropic                          36,13€                              1040,48€",
+            " 6 nov. 2026        Paiement envoyé par M CHABBAT                      2000,00€            3040,48€",
+            " 8 nov. 2026        Expresso N1                        13,87€                              3026,61€",
+            "Renvoyé de 1 novembre 2026 à 20 novembre 2026",
+            " 6 nov. 2026        Hotel Lyon                         1693,32€",
+            "                                    Relevé ILS",
+            " Compte (Compte courant)            100,00₪        0,00₪        0,00₪        100,00₪"])
+        (cle, mvts), _ = banques.revolut(revolut)
+        self.assertEqual(cle, "REVOLUT EUR")
+        self.assertEqual([m for _, _, m in mvts], [D("-36.13"), D("2000.00"), D("-13.87")])
+        mizrahi = "\n".join(["חשבון מספר 732-204219 רפסמ ןובשח",
+                             "  28900   9,555.65   -123.00   ימואל חוטיב-דוינ    22/10/26",
+                             "  10282330           7,963.00   ל\"וחמ םילקש תרבעה  17/11/26",
+                             "  5524   9,006.25   -1,500.00   (י) 681 ימואל טמופסכ   17/11/26"])
+        ((cle, mvts),) = banques.mizrahi(mizrahi)
+        self.assertEqual(cle, "732-204219")
+        self.assertEqual([(l, m) for _, l, m in mvts], [("ניוד-ביטוח לאומי", D("-123.00")), ("העברת שקלים מחו\"ל", D("7963.00")),
+                                                        ("כספומט לאומי 681 (י)", D("-1500.00"))])
