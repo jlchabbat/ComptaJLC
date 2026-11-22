@@ -31,8 +31,10 @@ Dans `Ecritures.xlsx`, les colonnes `Anal` et `LibelAnal` sont donc **informativ
 | `Ecritures` | Mvt, Jnl, Date, Compte, LibelCompte, Libelle, Debit, Credit, Anal, LibelAnal, Lien, Let | un `Mvt` = une opération équilibrée |
 | `Libelles` | idem `Ecritures` | ne change que les libellés ; Mvt retrouvés par leur contenu |
 | `Liens` | Mvt, Lien, Description | documents restés en ligne, joints à leur Mvt |
-| `Banque` | Journ, Date, Libelle, Debit, Credit | un seul modèle pour toutes les banques et caisses |
+| `Banque` | Journ, Date, Libelle, Debit, Credit | un seul modèle pour toutes les banques et caisses ; la page Banque › Relevés accepte aussi les relevés tels que fournis : Crédit Mutuel (comptes.xlsx), Isracard (.xlsx), Revolut (.pdf), Mizrahi (.pdf), chaque compte relié à son journal par le réglage comptes_releves |
 | `Ecrt` (.csv) | Mvt, Journ, Date, Compte, LibelCompte, Libelle, Debit, Credit, Npiece, Anal, LibelAnal | autre logiciel ; Mvt renumérotés à la suite, doublons écartés |
+| `Plan` (.xlsx) | Compte, LibelCompte, Anal, LibelAnal, puis une colonne par axe (RubDecl, RubCh, Journ, Cat, Groupe, TvaImposable, TvaNonImposable…) ; feuille `Journ` facultative (Journ, Dev, Intitulé) | plan d'un autre logiciel : comptes, codes Anal, axes du plan (cellule vide = valeur effacée), journaux absents créés ; TvaImposable / TvaNonImposable alimentent la page TVA |
+| `EcrituresCourtes` | Mvt, Jnl, Date, Compte, Libelle, Debit, Credit, Let (Let facultative) | écritures sans code Anal : le compte, déjà au plan, donne son code Anal et ses axes ; reconnu par sa ligne 1, quel que soit le nom du fichier |
 | `RImport.txt` | texte « ##Transfert » (sections Mvt, Tiers, Jnl) | export d'un autre logiciel, importé avec les écritures |
 
 ## Banque.xlsx : le relevé

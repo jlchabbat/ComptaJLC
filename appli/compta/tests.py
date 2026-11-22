@@ -1794,6 +1794,65 @@ class Echanges(TransactionTestCase):
         (ech.imports() / "Ecrt.csv").write_text(texte, encoding="utf-8")
         self.assertIn("1 doublon(s) écarté(s)", ech.importer("Ecrt.csv")[1])
 
+    def test_plan_xlsx_complet(self):
+        """Plan.xlsx d'un autre logiciel : comptes, codes Anal, une colonne par axe, feuille Journ ; TVA selon le plan."""
+        from .models import AxeCompte, ValeurCompte
+        from . import tva
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Plan"
+        ws.append(["Compte", "LibelCompte", "Anal", "LibelAnal", "RubDecl", "Journ", "Groupe", "TvaNonImposable"])
+        ws.append([530999, "CAISSE EUROS", "0BILAN", "BILAN", None, "CZ", None, None])
+        ws.append(["706060", "LOYERS ENCAISSES", "1S16", "SOCO16 IMMO", "I-01-Loyers", None, "Soco", 1])
+        j = wb.create_sheet("Journ")
+        j.append(["Journ", "Dev", "Intitulé"])
+        j.append(["CZ", "€", "CAISSE EUROS"])
+        j.append(["OZ", "€", "OD DIVERSES"])
+        wb.save(ech.imports() / "Plan.xlsx")
+        self.assertEqual(ech.format_de(ech.imports() / "Plan.xlsx").nom, "Plan")
+        f, compte_rendu = ech.importer("Plan.xlsx")
+        self.assertIn("2 compte(s) créé(s)", compte_rendu)
+        self.assertIn("2 journal(aux) créé(s)", compte_rendu)
+        self.assertEqual(Compte.objects.get(numero="706060").anal1.libelle, "SOCO16 IMMO")
+        self.assertEqual(dict(ValeurCompte.objects.filter(compte_id="706060").values_list("axe__nom", "valeur")),
+                         {"LibelAnal": "SOCO16 IMMO", "RubDecl": "I-01-Loyers", "Groupe": "Soco", "TvaNonImposable": "1"})
+        self.assertEqual((Journal.objects.get(code="CZ").type, Journal.objects.get(code="CZ").compte_id), ("BQ", "530999"))
+        self.assertEqual(Journal.objects.get(code="OZ").type, "OD")
+        self.assertIn("Groupe", AxeCompte.objects.values_list("nom", flat=True))
+        m = Mouvement.objects.create(numero=9100, date=dt.date(2026, 5, 1), journal_id="CZ")
+        Ligne.objects.create(mouvement=m, ordre=0, compte_id="530999", libelle="LOYER", debit=D(700))
+        Ligne.objects.create(mouvement=m, ordre=1, compte_id="706060", libelle="LOYER", credit=D(700))
+        (titre, lignes, total), = tva.operations(dt.date(2026, 1, 1), dt.date(2026, 12, 31))
+        self.assertEqual((titre, total), ("Opérations non imposables", D(700)))
+        ws["G3"] = None                                                 # valeur effacée dans le plan : effacée du site
+        ws["B3"] = "LOYERS"
+        wb.save(ech.imports() / "Plan.xlsx")
+        compte_rendu = ech.importer("Plan.xlsx")[1]
+        self.assertIn("1 compte(s) mis à jour", compte_rendu)
+        self.assertFalse(ValeurCompte.objects.filter(compte_id="706060", axe__nom="Groupe").exists())
+
+    def test_reinjecter_plan_et_ecritures_courtes(self):
+        """Remise à zéro par Tout réinjecter : Plan.xlsx fait foi, Ecritures sans code Anal remplace les écritures."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Plan"
+        ws.append(["Compte", "LibelCompte", "Anal", "LibelAnal", "RubDecl"])
+        ws.append(["512000", "BANQUE", "BIL.5", "TRESORERIE", None])
+        ws.append(["706000", "LOYERS", "1S16", "SOCO16 IMMO", "I-01"])
+        wb.save(ech.imports() / "Plan.xlsx")
+        e = openpyxl.Workbook()
+        e.active.append(["Mvt", "Jnl", "Date", "Compte", "Libelle", "Debit", "Credit", "Let"])
+        e.active.append([1, "B1", dt.date(2026, 3, 1), "512000", "LOYER", 500, None, None])
+        e.active.append([1, "B1", dt.date(2026, 3, 1), "706000", "LOYER", None, 500, None])
+        e.save(ech.imports() / "Ecritures.xlsx")
+        self.assertEqual(ech.format_de(ech.imports() / "Ecritures.xlsx").nom, "EcrituresCourtes")
+        Compte.objects.create(numero="699999", libelle="ANCIEN")                    # absent du plan, inutilisé
+        comptes_rendus, _ = ech.reinjecter()
+        self.assertEqual(list(Mouvement.objects.values_list("numero", flat=True)), [1])
+        self.assertEqual(Compte.objects.get(numero="706000").anal1_id, "1S16")
+        self.assertFalse(Compte.objects.filter(numero="699999").exists())
+        self.assertTrue(any("Hors du plan" in x for x in comptes_rendus))
+
     def test_rimport_txt(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .models import ZERO
@@ -3251,3 +3310,73 @@ class Abonnements(TestCase):
 
 
 from . import abonnements as abonnements_moteur  # noqa: E402
+
+
+class RelevesDesBanques(TestCase):
+    """Relevés tels que les banques les fournissent : Crédit Mutuel, Isracard, Revolut, Mizrahi."""
+
+    def setUp(self):
+        referentiels_saisie()
+        for code in ("B9", "I9", "R9", "R8", "M9"):
+            Journal.objects.get_or_create(code=code, defaults={"intitule": code, "type": "BQ"})
+        Reglage.objects.update_or_create(cle="comptes_releves", defaults={
+            "valeur": "00010982741=B9, 5524=I9, 8240=I9, REVOLUT EUR=R9, REVOLUT ILS=R8, 732-204219=M9"})
+
+    def test_credit_mutuel_et_isracard(self):
+        from . import echanges as e
+        from .models import LigneReleve
+        wb = openpyxl.Workbook()
+        wb.active.title = "Vos comptes"
+        ws = wb.create_sheet("Cpt 07395 00010982741")
+        ws.append(["Situation de votre compte COMPTE COURANT (EUR) au 20/11/2026"])
+        ws.append(["R.I.B. : 10278 07395 00010982741"])
+        ws.append([None, None, None, "Solde initial : "])
+        ws.append(["Liste de vos comptes"])
+        ws.append(["Date", "Valeur", "Libellé", "Débit", "Crédit", "Solde", "Dev"])
+        ws.append([dt.datetime(2026, 7, 1), dt.datetime(2026, 7, 1), "PRLV FREE", -20.23, None, None, "EUR"])
+        ws.append([dt.datetime(2026, 7, 2), dt.datetime(2026, 7, 2), "VIR CAVP", None, 1380.61, None, "EUR"])
+        ws.append([dt.datetime(2026, 7, 3), dt.datetime(2026, 7, 3), "NOUVEAU TAUX", None, 0, None, "EUR"])  # 0 : ignorée
+        contenu = io.BytesIO()
+        wb.save(contenu)
+        self.assertIn("B9 : 2 ajoutée(s)", e.importer_banque("comptes.xlsx", contenu.getvalue()))
+        self.assertEqual(sorted(LigneReleve.objects.filter(journal_id="B9", ouverture=False).values_list("montant", flat=True)),
+                         [D("-20.23"), D("1380.61")])
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["חשבון כרטיס: 204219     שם כרטיס: מאסטרקארד בינלאומי    ארבע ספרות אחרונות 5524 "])
+        ws.append([])
+        ws.append(["תאריך חיוב", "תאריך העסקה", "בית העסק", "סכום העסקה", "סכום החיוב"])
+        ws.append(["02/12/2026", "26/08/2026", "הראל חובה חדש", 1623, 405])
+        ws.append(["02/12/2026", "03/11/2026", "דור אלון", 437.19, 437.19])
+        contenu = io.BytesIO()
+        wb.save(contenu)
+        self.assertIn("I9 : 2 ajoutée(s)", e.importer_banque("Isracard.xlsx", contenu.getvalue()))
+        Reglage.objects.filter(cle="comptes_releves").update(valeur="")
+        with self.assertRaises(e.Refus) as r:
+            e.importer_banque("Isracard.xlsx", contenu.getvalue())
+        self.assertIn("compte « 5524 » sans journal", r.exception.erreurs[0])
+
+    def test_revolut_et_mizrahi(self):
+        from . import banques
+        revolut = "\n".join([
+            "                                    Relevé EUR",
+            " Compte (Compte courant)            1076,61€        50,00€        2000,00€        3026,61€",
+            "Transactions du compte : du 1 novembre 2026 au 20 novembre 2026",
+            " 1 nov. 2026        Anthropic                          36,13€                              1040,48€",
+            " 6 nov. 2026        Paiement envoyé par M CHABBAT                      2000,00€            3040,48€",
+            " 8 nov. 2026        Expresso N1                        13,87€                              3026,61€",
+            "Renvoyé de 1 novembre 2026 à 20 novembre 2026",
+            " 6 nov. 2026        Hotel Lyon                         1693,32€",
+            "                                    Relevé ILS",
+            " Compte (Compte courant)            100,00₪        0,00₪        0,00₪        100,00₪"])
+        (cle, mvts), _ = banques.revolut(revolut)
+        self.assertEqual(cle, "REVOLUT EUR")
+        self.assertEqual([m for _, _, m in mvts], [D("-36.13"), D("2000.00"), D("-13.87")])
+        mizrahi = "\n".join(["חשבון מספר 732-204219 רפסמ ןובשח",
+                             "  28900   9,555.65   -123.00   ימואל חוטיב-דוינ    22/10/26",
+                             "  10282330           7,963.00   ל\"וחמ םילקש תרבעה  17/11/26",
+                             "  5524   9,006.25   -1,500.00   (י) 681 ימואל טמופסכ   17/11/26"])
+        ((cle, mvts),) = banques.mizrahi(mizrahi)
+        self.assertEqual(cle, "732-204219")
+        self.assertEqual([(l, m) for _, l, m in mvts], [("ניוד-ביטוח לאומי", D("-123.00")), ("העברת שקלים מחו\"ל", D("7963.00")),
+                                                        ("כספומט לאומי 681 (י)", D("-1500.00"))])

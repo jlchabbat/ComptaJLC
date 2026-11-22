@@ -4,6 +4,9 @@ Les soldes sont cumulés (depuis les derniers à-nouveaux, sinon depuis la premi
 période déclarée : une période non liquidée reste due à la suivante. La liquidation solde les comptes de TVA
 collectée et déductible ainsi que le crédit reporté, et porte le net au compte de TVA à décaisser (ou au
 crédit à reporter). Les comptes viennent des réglages (préfixes 4457 et 4456, comptes 44551 et 44567).
+
+Opérations imposables et non imposables de la période : comptes marqués dans les axes du plan TvaImposable et
+TvaNonImposable (noms dans les réglages ; toute valeur non vide marque le compte), montant crédit − débit.
 """
 
 from django.db import transaction
@@ -24,6 +27,23 @@ def _soldes(lignes, prefixe):
     return [(comptes[r["compte"]], arrondi(r["d"] - r["c"])) for r in rows if arrondi(r["d"] - r["c"])]
 
 
+def operations(debut, fin):
+    """[(titre, [(compte, montant crédit − débit de la période)], total)] des comptes marqués imposables et non imposables
+    dans les axes du plan ; vide si aucun compte n'est marqué."""
+    from .models import ValeurCompte
+    res = []
+    for titre, cle in (("Opérations imposables", "axe_tva_imposable"), ("Opérations non imposables", "axe_tva_non_imposable")):
+        numeros = list(ValeurCompte.objects.filter(axe__nom=lire(cle)).exclude(valeur="").values_list("compte_id", flat=True))
+        if not numeros:
+            continue
+        rows = (Ligne.objects.filter(mouvement__date__range=(debut, fin), compte_id__in=numeros).values("compte")
+                .annotate(d=Sum("debit"), c=Sum("credit")).order_by("compte"))
+        comptes = Compte.objects.in_bulk(numeros)
+        lignes = [(comptes[r["compte"]], arrondi(r["c"] - r["d"])) for r in rows if arrondi(r["c"] - r["d"])]
+        res.append((titre, lignes, sum((m for _, m in lignes), ZERO)))
+    return res
+
+
 def declaration(debut, fin):
     lignes = etats.lignes_cumulees(fin)
     collectee = [(c, -s) for c, s in _soldes(lignes, lire("tva_collectee"))]
@@ -40,7 +60,7 @@ def declaration(debut, fin):
             "total_collectee": total_c, "total_deductible": total_d, "net": net,
             "a_payer": max(net, ZERO), "credit": max(-net, ZERO),
             "chiffre_affaires": arrondi(ventes["c"]) - arrondi(ventes["d"]),
-            "a_liquider": bool(collectee or deductible)}
+            "a_liquider": bool(collectee or deductible), "operations": operations(debut, fin)}
 
 
 def _ligne(mv, ordre, compte, libelle, solde):

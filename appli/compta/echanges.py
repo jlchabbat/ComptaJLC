@@ -946,6 +946,131 @@ def imp_ecrt(lignes, fichier, utilisateur=None):
     return imp_ecritures(converties, fichier, utilisateur) + f" (Mvt numérotés à partir de {suivant})"
 
 
+COLONNES_PLAN = ["Compte", "LibelCompte", "Anal", "LibelAnal"]
+
+
+def imp_plan_complet(lignes, fichier, utilisateur=None):
+    """Plan.xlsx d'un autre logiciel : Compte, LibelCompte, Anal, LibelAnal puis une colonne par axe (RubDecl, RubCh, Journ,
+    Cat, Groupe, TvaImposable…). Le plan fait foi : codes Anal et comptes créés ou mis à jour (libellé, code Anal), chaque
+    autre colonne devient un axe du plan (une cellule vide efface la valeur). La feuille Journ (Journ, Dev, Intitulé), si
+    elle existe, crée les journaux absents et met à jour l'intitulé des autres ; un journal relié à un compte de classe 5 par la colonne Journ en devient le
+    journal de trésorerie."""
+    from .models import AxeCompte, ValeurCompte
+    from .tiers import creer_manquants, type_du_compte
+    L, comptes, codes, valeurs = Lecteur(), {}, {}, []
+    for n, d in lignes:
+        numero = L.texte(n, d, "Compte", True, 20)
+        lib, anal = L.texte(n, d, "LibelCompte", True, 100), rimport._anal(L.texte(n, d, "Anal", True) or "")
+        if len(anal) > 20:
+            L.erreur(n, "Anal : 20 caractères au plus.")
+        if anal:
+            codes.setdefault(anal, L.texte(n, d, "LibelAnal", longueur=100) or "")
+        comptes[numero] = (lib, anal)
+        for axe, v in d.items():
+            if axe not in ("Compte", "LibelCompte", "Anal"):
+                valeurs.append((numero, axe[:40], "" if v is None else str(v).strip()[:100]))
+    L.verifier()
+    c = defaultdict(int)
+    for code, lib in codes.items():
+        x = CodeAnalytique.objects.filter(code=code).first()
+        if x is None:
+            CodeAnalytique.objects.create(code=code, libelle=(lib or code)[:100])
+            c["code(s) Anal créé(s)"] += 1
+        elif lib and x.libelle != lib:
+            x.libelle = lib
+            x.save(update_fields=["libelle"])
+            c["code(s) Anal renommé(s)"] += 1
+    for numero, (lib, anal) in comptes.items():
+        x = Compte.objects.filter(numero=numero).first()
+        if x is None:
+            Compte.objects.create(numero=numero, libelle=lib, anal1_id=anal, lettrable=bool(type_du_compte(numero)))
+            c["compte(s) créé(s)"] += 1
+        elif (x.libelle, x.anal1_id) != (lib, anal):
+            x.libelle, x.anal1_id = lib, anal
+            x.save(update_fields=["libelle", "anal1"])
+            c["compte(s) mis à jour"] += 1
+        else:
+            c["compte(s) inchangé(s)"] += 1
+    fiches = creer_manquants()
+    for i, nom in enumerate(dict.fromkeys(a for _, a, _ in valeurs)):
+        AxeCompte.objects.get_or_create(nom=nom, defaults={"ordre": i})
+    axes = {a.nom: a for a in AxeCompte.objects.all()}
+    actuelles = {(v.compte_id, v.axe_id): v for v in ValeurCompte.objects.filter(axe__nom__in={a for _, a, _ in valeurs})}
+    for numero, axe, v in valeurs:
+        x = actuelles.get((numero, axes[axe].pk))
+        if not v:
+            if x:
+                x.delete()
+                c["valeur(s) d'axe effacée(s)"] += 1
+        elif x is None:
+            ValeurCompte.objects.create(compte_id=numero, axe=axes[axe], valeur=v)
+            c["valeur(s) d'axe"] += 1
+        elif x.valeur != v:
+            x.valeur = v
+            x.save(update_fields=["valeur"])
+            c["valeur(s) d'axe"] += 1
+    texte = resume_plan(c)
+    texte += _journaux_du_plan(fichier, comptes, {(numero, axe): v for numero, axe, v in valeurs})
+    return texte + (f", dont {fiches} fiche(s) tiers" if fiches else "")
+
+
+def resume_plan(c):
+    return " ; ".join(f"{n} {k}" for k, n in c.items() if n) or "rien à changer"
+
+
+def _journaux_du_plan(fichier, comptes, valeurs):
+    """Feuille Journ du classeur Plan.xlsx : journaux absents créés (type d'après le code et le compte relié)."""
+    chemin = imports() / fichier
+    if not chemin.is_file() or chemin.suffix.lower() not in TABLEURS:
+        return ""
+    wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
+    try:
+        ws = next((w for w in wb.worksheets if _norme(w.title) in ("journ", "journaux")), None)
+        rangees = [r for r in ws.iter_rows(values_only=True)] if ws else []
+    finally:
+        wb.close()
+    if not rangees or [_norme(str(v or "")) for v in rangees[0][:1]] != ["journ"]:
+        return ""
+    entetes = [_norme(str(v or "")) for v in rangees[0]]
+    col_int = entetes.index("intitule") if "intitule" in entetes else None
+    tresorerie = {v: numero for (numero, axe), v in valeurs.items() if axe == "Journ" and v and numero[:1] == "5"}
+    crees = maj = 0
+    for r in rangees[1:]:
+        code = str(r[0] or "").strip()[:10]
+        if not code:
+            continue
+        intitule = str(r[col_int] or code).strip()[:60] if col_int is not None else code
+        compte = tresorerie.get(code)
+        x = Journal.objects.filter(code=code).first()
+        if x:                                      # journal existant : intitulé du fichier, compte de trésorerie s'il manque
+            if x.intitule != intitule or (compte and not x.compte_id):
+                x.intitule, x.compte_id = intitule, x.compte_id or compte
+                x.save(update_fields=["intitule", "compte"])
+                maj += 1
+            continue
+        type_ = "AN" if code == "AN" else ("CA" if code == "CA" else "BQ") if compte else {"HA": "HA", "VT": "VT"}.get(code, "OD")
+        Journal.objects.create(code=code, intitule=intitule, type=type_, compte_id=compte if compte in comptes else None)
+        crees += 1
+    return (f" ; {crees} journal(aux) créé(s)" if crees else "") + (f" ; {maj} journal(aux) mis à jour" if maj else "")
+
+
+PLAN = Format("Plan", "Plan d'un autre logiciel (Plan.xlsx) : comptes, codes Anal et une colonne par axe ; feuille Journ",
+              COLONNES_PLAN, None, imp_plan_complet, libres=True)
+
+
+COLONNES_ECRITURES_COURTES = ["Mvt", "Jnl", "Date", "Compte", "Libelle", "Debit", "Credit", "Let"]
+
+
+def imp_ecritures_courtes(lignes, fichier, utilisateur=None):
+    """Écritures sans libellé de compte ni code Anal : le compte, déjà au plan, donne son code Anal et ses axes."""
+    return imp_ecritures([(n, {**d, "LibelCompte": None, "Anal": None, "LibelAnal": None, "Lien": None}) for n, d in lignes],
+                         fichier, utilisateur)
+
+
+ECRITURES_COURTES = Format("EcrituresCourtes", "Écritures sans code Anal (Mvt, Jnl, Date, Compte, Libelle, Debit, Credit, Let)",
+                           COLONNES_ECRITURES_COURTES, None, imp_ecritures_courtes, (6, 7), ("Let",))
+
+
 ECRT = Format("Ecrt", "Écritures d'un autre logiciel (Ecrt.csv), numérotées à la suite", COLONNES_ECRT, None, imp_ecrt)
 RIMPORT = Format("RImport", "Export RImport.txt d'un autre logiciel (écritures, journaux)", COLONNES_ECRITURES, None,
                  imp_rimport)
@@ -1123,11 +1248,13 @@ def formats_de_structure(entetes):
     if not vus:
         return []
     trouves = []
-    for f in FORMATS + [ECRT]:
+    for f in FORMATS + [ECRT, ECRITURES_COURTES]:
         base = [_norme(c) for c in f.colonnes]
         permis = [base[:len(base) - k] for k in range(len(f.facultatives) + 1)] + [[_norme(c) for c in x] for x in f.synonymes]
         if vus in permis:                                   # (colonnes libres : AxesComptes se reconnaît par son nom)
             trouves.append(f)
+    if vus[:len(PLAN.colonnes)] == [_norme(c) for c in PLAN.colonnes]:      # Plan.xlsx : 4 colonnes puis les axes
+        trouves.append(PLAN)
     return trouves
 
 
@@ -1143,7 +1270,7 @@ def format_de(chemin):
             return par_structure[0]
         if par_structure:
             return next((f for f in par_structure if f.reconnait(chemin)), None)
-    return next((f for f in FORMATS + [ECRT] if f.reconnait(chemin)), None)
+    return next((f for f in FORMATS + [ECRT, PLAN] if f.reconnait(chemin)), None)     # (EcrituresCourtes : par sa structure)
 
 
 # ---------------------------------------------------------------- fichiers
@@ -1264,6 +1391,8 @@ def importer_tout(utilisateur=None):
     from .base_donnees import sauvegarder
     ordre = {f.nom: i for i, f in enumerate(FORMATS)}
     ordre[RIMPORT.nom] = ordre[ECRT.nom] = ordre["Ecritures"]     # avec les écritures, après plan et journaux
+    ordre[PLAN.nom] = ordre["PlanComptable"]
+    ordre[ECRITURES_COURTES.nom] = ordre["Ecritures"]
     choisis = sorted(((f, p) for p, f in a_importer() if f and p.suffix.lower() in TABLEURS + (".csv",) + TEXTES),
                      key=lambda x: (ordre[x[0].nom], x[1].name.lower()))
     ignores = [p.name for p, f in a_importer() if not f and p.suffix.lower() in TABLEURS]
@@ -1338,20 +1467,35 @@ def importer(nom, utilisateur=None):
 
 
 def importer_banque(nom, contenu, utilisateur=None):
-    """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl).
+    """Relevé envoyé par le navigateur (structure unique Banque, une ligne par mouvement, journal dans la colonne Jnl), ou
+    relevé tel que la banque le fournit (Crédit Mutuel, Isracard, Revolut, Mizrahi : voir banques.py).
 
     Tout ou rien, ajout seulement ; renvoie le résumé par journal. Ne passe pas par le dossier Imports."""
     import tempfile
+    from . import banques
     f = PAR_NOM["Banque"]
     suffixe = Path(nom).suffix.lower()
-    if suffixe not in TABLEURS + (".csv",):
-        raise Refus([f"{nom} : fichier .xlsx, .xlsm ou .csv attendu (structure Banque : {' | '.join(f.colonnes)})."])
-    # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
-    # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
-        chemin = Path(dossier) / f"Banque{suffixe}"
-        chemin.write_bytes(contenu)
-        lignes = lire(chemin, f)
+    if suffixe not in TABLEURS + (".csv", ".pdf"):
+        raise Refus([f"{nom} : fichier .xlsx, .xlsm, .csv ou .pdf attendu (structure Banque : {' | '.join(f.colonnes)}, "
+                     "ou relevé Crédit Mutuel, Isracard, Revolut, Mizrahi)."])
+    try:                                                  # relevé tel que la banque le fournit
+        propres = banques.convertir(nom, contenu)
+    except banques.Inconnu as e:
+        raise Refus([f"{nom} : compte « {cle} » sans journal. Ajouter « {cle}=<code du journal> » au réglage comptes_releves "
+                     "(Administration › Paramètres)." for cle in e.cles]) from None
+    except Exception as e:                                # PDF ou classeur illisible
+        raise Refus([f"{nom} : relevé illisible ({e.__class__.__name__})."]) from None
+    if propres is not None:
+        lignes = list(enumerate(propres, 2))
+    elif suffixe == ".pdf":
+        raise Refus([f"{nom} : relevé PDF non reconnu (Revolut ou Mizrahi attendu)."])
+    else:
+        # ignore_cleanup_errors : sur l'hébergement, le disque réseau refuse parfois d'effacer le dossier temporaire
+        # (« Directory not empty ») ; cela ne doit jamais transformer un refus normal en erreur 500
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dossier:
+            chemin = Path(dossier) / f"Banque{suffixe}"
+            chemin.write_bytes(contenu)
+            lignes = lire(chemin, f)
     if not lignes:
         raise Refus([f"{nom} : aucune ligne de données."])
     with transaction.atomic():                            # ajout seul, sans doublon : pas de sauvegarde préalable
@@ -1373,7 +1517,38 @@ def fichiers_a_reinjecter():
                if len(ps) > 1]
     if doubles:
         raise Refus(doubles)
-    return [(f, par_format[f.nom][0]) for f in FORMATS if f.nom in par_format]
+    if "Ecritures" in par_format and ECRITURES_COURTES.nom in par_format:
+        raise Refus(["Deux fichiers d'écritures (complet et sans code Anal) ; n'en laisser qu'un."])
+    catalogue = [x for f in FORMATS for x in ([PLAN, f] if f.nom == "PlanComptable" else [f, ECRITURES_COURTES]
+                                               if f.nom == "Ecritures" else [f])]
+    return [(f, par_format[f.nom][0]) for f in catalogue if f.nom in par_format]
+
+
+def _purger_hors_plan(numeros, axes):
+    """Après la réinjection d'un Plan.xlsx : comptes absents du plan et inutilisés, codes Anal sans compte et axes ou valeurs
+    absents du plan sont supprimés (le plan fait foi). Renvoie le compte rendu."""
+    from django.db.models.deletion import ProtectedError
+    from .models import AxeCompte, Budget, ValeurCompte
+    sup = defaultdict(int)
+    ValeurCompte.objects.exclude(compte_id__in=numeros).delete()
+    sup["axe(s)"] = AxeCompte.objects.exclude(nom__in=axes).delete()[1].get("compta.AxeCompte", 0)
+    utilises = (set(Ligne.objects.values_list("compte_id", flat=True)) | set(Journal.objects.values_list("compte_id", flat=True))
+                | set(Budget.objects.values_list("compte_id", flat=True)))
+    for c in Compte.objects.exclude(numero__in=numeros).exclude(numero__in=utilises):
+        try:
+            Tiers.objects.filter(compte=c).delete()
+            c.delete()
+            sup["compte(s)"] += 1
+        except ProtectedError:
+            pass
+    for x in CodeAnalytique.objects.filter(comptes__isnull=True):
+        try:
+            x.delete()
+            sup["code(s) Anal"] += 1
+        except ProtectedError:
+            pass
+    texte = ", ".join(f"{n} {k}" for k, n in sup.items() if n)
+    return f"Hors du plan, supprimé(s) : {texte}" if texte else ""
 
 
 def _cles_releves():
@@ -1447,7 +1622,7 @@ def reinjecter(utilisateur=None):
     with transaction.atomic():
         memo = _memoriser()
         Rapprochement.objects.all().delete()
-        if "Ecritures" in noms:
+        if noms & {"Ecritures", ECRITURES_COURTES.nom}:
             Exercice.objects.update(mouvement_an=None)
             Mouvement.objects.all().delete()
         for f, _, lignes in lus:
@@ -1461,6 +1636,13 @@ def reinjecter(utilisateur=None):
             except Refus as e:
                 raise Refus([f"{chemin.name} : {x}" for x in e.erreurs])
             comptes_rendus.append(f"{chemin.name} : {texte}")
+        plan = next((lignes for f, _, lignes in lus if f is PLAN), None)
+        if plan:
+            numeros = {str(d.get("Compte")).strip() for _, d in plan}
+            axes = {k for _, d in plan for k in d if k not in ("Compte", "LibelCompte", "Anal")}
+            purge = _purger_hors_plan(numeros, axes)
+            if purge:
+                comptes_rendus.append(purge)
         perdus = _retablir(memo)
         if perdus:
             comptes_rendus.append(f"{perdus} lien(s) non recollé(s) (pointage ou à-nouveau dont l'écriture a changé)")

@@ -22,7 +22,8 @@ def journaliser(request, action, objet, apres=""):
 
 
 class ImportForm(forms.Form):
-    fichier = forms.FileField(label="Relevé (structure Banque : Journ, Date, Libelle, Debit, Credit)")
+    fichier = forms.FileField(label="Relevé (structure Banque : Journ, Date, Libelle, Debit, Credit ; ou relevé Crédit Mutuel, "
+                                    "Isracard, Revolut, Mizrahi tel que la banque le fournit)")
 
 
 
